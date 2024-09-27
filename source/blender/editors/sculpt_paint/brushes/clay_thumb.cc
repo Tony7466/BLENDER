@@ -53,33 +53,22 @@ static void calc_faces(const Depsgraph &depsgraph,
                        const PositionDeformData &position_data)
 {
   SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = node.verts();
+  const MutableSpan positions = gather_data_mesh(position_data.eval, verts, tls.positions);
 
-  calc_common_factor_mesh(depsgraph,
-                          brush,
-                          object,
-                          mesh,
-                          ss,
-                          cache,
-                          verts,
-                          position_data.eval,
-                          vert_normals,
-                          node,
-                          tls.factors,
-                          tls.distances);
+  calc_factors_common_mesh(
+      depsgraph, brush, object, positions, vert_normals, node, verts, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 
   tls.translations.resize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  calc_translations_to_plane(position_data.eval, verts, plane_tilt, translations);
+  calc_translations_to_plane(positions, plane_tilt, translations);
 
   scale_translations(translations, tls.factors);
 
-  clip_and_lock_translations(sd, ss, position_data.eval, verts, translations);
+  clip_and_lock_translations(sd, ss, positions, translations);
   position_data.deform(translations, verts);
 }
 
@@ -93,23 +82,13 @@ static void calc_grids(const Depsgraph &depsgraph,
                        LocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-  calc_common_factor_grids(depsgraph,
-                           brush,
-                           object,
-                           subdiv_ccg,
-                           ss,
-                           cache,
-                           grids,
-                           positions,
-                           node,
-                           tls.factors,
-                           tls.distances);
+  calc_factors_common_grids(
+      depsgraph, brush, object, positions, node, grids, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 
@@ -133,13 +112,12 @@ static void calc_bmesh(const Depsgraph &depsgraph,
                        LocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
 
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
   const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
-  calc_common_factor_bmesh(
-      depsgraph, brush, object, ss, cache, verts, positions, node, tls.factors, tls.distances);
+  calc_factors_common_bmesh(
+      depsgraph, brush, object, positions, node, verts, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 

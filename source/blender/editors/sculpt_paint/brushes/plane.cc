@@ -62,22 +62,18 @@ static void calc_faces(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = node.verts();
 
-  calc_common_factor_mesh(depsgraph,
-                          brush,
-                          object,
-                          mesh,
-                          ss,
-                          cache,
-                          verts,
-                          position_data.eval,
-                          vert_normals,
-                          node,
-                          tls.factors,
-                          tls.distances);
+  calc_factors_common_mesh_indexed(depsgraph,
+                                   brush,
+                                   object,
+                                   position_data.eval,
+                                   vert_normals,
+                                   node,
+                                   verts,
+                                   tls.factors,
+                                   tls.distances);
 
   scale_factors(tls.factors, strength);
 
@@ -110,17 +106,8 @@ static void calc_grids(const Depsgraph &depsgraph,
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-  calc_common_factor_grids(depsgraph,
-                           brush,
-                           object,
-                           subdiv_ccg,
-                           ss,
-                           cache,
-                           grids,
-                           positions,
-                           node,
-                           tls.factors,
-                           tls.distances);
+  calc_factors_common_grids(
+      depsgraph, brush, object, positions, node, grids, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 
@@ -152,8 +139,8 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
   const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
-  calc_common_factor_bmesh(
-      depsgraph, brush, object, ss, cache, verts, positions, node, tls.factors, tls.distances);
+  calc_factors_common_bmesh(
+      depsgraph, brush, object, positions, node, verts, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 

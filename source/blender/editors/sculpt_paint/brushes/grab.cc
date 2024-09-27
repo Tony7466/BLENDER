@@ -61,23 +61,19 @@ static void calc_faces(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const OrigPositionData orig_data = orig_position_data_get_mesh(object, node);
   const Span<int> verts = node.verts();
 
-  calc_common_factor_from_orig_data_mesh(depsgraph,
-                                         brush,
-                                         object,
-                                         mesh,
-                                         ss,
-                                         cache,
-                                         verts,
-                                         orig_data.positions,
-                                         orig_data.normals,
-                                         node,
-                                         tls.factors,
-                                         tls.distances);
+  calc_factors_common_from_orig_data_mesh(depsgraph,
+                                          brush,
+                                          object,
+                                          orig_data.positions,
+                                          orig_data.normals,
+                                          node,
+                                          verts,
+                                          tls.factors,
+                                          tls.distances);
 
   if (brush.flag2 & BRUSH_GRAB_SILHOUETTE) {
     calc_silhouette_factors(cache, offset, orig_data.normals, tls.factors);
@@ -108,18 +104,15 @@ static void calc_grids(const Depsgraph &depsgraph,
   const Span<int> grids = node.grids();
   const int grid_verts_num = grids.size() * key.grid_area;
 
-  calc_common_factor_from_orig_data_grids(depsgraph,
-                                          brush,
-                                          object,
-                                          subdiv_ccg,
-                                          ss,
-                                          cache,
-                                          grids,
-                                          orig_data.positions,
-                                          orig_data.normals,
-                                          node,
-                                          tls.factors,
-                                          tls.distances);
+  calc_factors_common_from_orig_data_grids(depsgraph,
+                                           brush,
+                                           object,
+                                           orig_data.positions,
+                                           orig_data.normals,
+                                           node,
+                                           grids,
+                                           tls.factors,
+                                           tls.distances);
 
   if (brush.flag2 & BRUSH_GRAB_SILHOUETTE) {
     calc_silhouette_factors(cache, offset, orig_data.normals, tls.factors);
@@ -150,17 +143,15 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   Array<float3> orig_normals(verts.size());
   orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
 
-  calc_common_factor_from_orig_data_bmesh(depsgraph,
-                                          brush,
-                                          object,
-                                          ss,
-                                          cache,
-                                          verts,
-                                          orig_positions,
-                                          orig_normals,
-                                          node,
-                                          tls.factors,
-                                          tls.distances);
+  calc_factors_common_from_orig_data_bmesh(depsgraph,
+                                           brush,
+                                           object,
+                                           orig_positions,
+                                           orig_normals,
+                                           node,
+                                           verts,
+                                           tls.factors,
+                                           tls.distances);
 
   if (brush.flag2 & BRUSH_GRAB_SILHOUETTE) {
     calc_silhouette_factors(cache, offset, orig_normals, tls.factors);

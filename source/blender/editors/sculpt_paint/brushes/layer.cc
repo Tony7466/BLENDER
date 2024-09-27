@@ -131,22 +131,12 @@ static void calc_faces(const Depsgraph &depsgraph,
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = node.verts();
+  const MutableSpan positions = gather_data_mesh(position_data.eval, verts, tls.positions);
 
-  calc_common_factor_mesh(depsgraph,
-                          brush,
-                          object,
-                          mesh,
-                          ss,
-                          cache,
-                          verts,
-                          position_data.eval,
-                          vert_normals,
-                          node,
-                          tls.factors,
-                          tls.distances);
+  calc_factors_common_mesh(
+      depsgraph, brush, object, positions, vert_normals, node, verts, tls.factors, tls.distances);
 
   if (mask_attribute.is_empty()) {
     tls.masks.clear();
@@ -161,7 +151,6 @@ static void calc_faces(const Depsgraph &depsgraph,
   const MutableSpan<float> displacement_factors = tls.displacement_factors;
   gather_data_mesh(layer_displacement_factor.as_span(), verts, displacement_factors);
 
-  const MutableSpan positions = gather_data_mesh(position_data.eval, verts, tls.positions);
   if (use_persistent_base) {
     if (cache.invert) {
       reset_displacement_factors(displacement_factors, tls.factors, cache.bstrength);
@@ -226,17 +215,8 @@ static void calc_grids(const Depsgraph &depsgraph,
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-  calc_common_factor_grids(depsgraph,
-                           brush,
-                           object,
-                           subdiv_ccg,
-                           ss,
-                           cache,
-                           grids,
-                           positions,
-                           node,
-                           tls.factors,
-                           tls.distances);
+  calc_factors_common_grids(
+      depsgraph, brush, object, positions, node, grids, tls.factors, tls.distances);
 
   const MutableSpan<float> displacement_factors = gather_data_grids(
       subdiv_ccg, layer_displacement_factor.as_span(), grids, tls.displacement_factors);
@@ -284,8 +264,8 @@ static void calc_bmesh(const Depsgraph &depsgraph,
 
   const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
-  calc_common_factor_bmesh(
-      depsgraph, brush, object, ss, cache, verts, positions, node, tls.factors, tls.distances);
+  calc_factors_common_bmesh(
+      depsgraph, brush, object, positions, node, verts, tls.factors, tls.distances);
 
   const MutableSpan<float> displacement_factors = gather_data_bmesh(
       layer_displacement_factor.as_span(), verts, tls.displacement_factors);

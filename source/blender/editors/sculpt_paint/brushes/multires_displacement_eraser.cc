@@ -55,23 +55,13 @@ static void calc_node(const Depsgraph &depsgraph,
                       LocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
-  const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-  calc_common_factor_grids(depsgraph,
-                           brush,
-                           object,
-                           subdiv_ccg,
-                           ss,
-                           cache,
-                           grids,
-                           positions,
-                           node,
-                           tls.factors,
-                           tls.distances);
+  calc_factors_common_grids(
+      depsgraph, brush, object, positions, node, grids, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 
