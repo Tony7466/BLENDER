@@ -5245,6 +5245,7 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator * /* op
   for (std::pair<Slot *, bAction *> &slot_data : slots) {
     Action &source_action = slot_data.second->wrap();
     move_slot(*bmain, *slot_data.first, source_action, *target_action);
+    DEG_id_tag_update(&source_action.id, ID_RECALC_ANIMATION_NO_FLUSH);
   }
 
   DEG_id_tag_update(&target_action->id, ID_RECALC_ANIMATION_NO_FLUSH);
