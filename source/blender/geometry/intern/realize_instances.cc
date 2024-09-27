@@ -13,6 +13,7 @@
 #include "BLI_noise.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_attribute_filters.hh"
 #include "BKE_collision_shape.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
@@ -478,6 +479,7 @@ static void threaded_fill(const GPointer value, GMutableSpan dst)
 
 static void copy_generic_attributes_to_result(
     const Span<std::optional<GVArraySpan>> src_attributes,
+    const bke::AttributeFilter &attribute_filter,
     const AttributeFallbacksArray &attribute_fallbacks,
     const OrderedAttributes &ordered_attributes,
     const FunctionRef<IndexRange(bke::AttrDomain)> &range_fn,
@@ -486,6 +488,10 @@ static void copy_generic_attributes_to_result(
   threading::parallel_for(
       dst_attribute_writers.index_range(), 10, [&](const IndexRange attribute_range) {
         for (const int attribute_index : attribute_range) {
+          if (attribute_filter.allow_skip(ordered_attributes.ids[attribute_index])) {
+            return;
+          }
+
           const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
           const IndexRange element_slice = range_fn(domain);
 
@@ -502,6 +508,24 @@ static void copy_generic_attributes_to_result(
           }
         }
       });
+}
+
+static void copy_generic_attributes_to_result(
+    const Span<std::optional<GVArraySpan>> src_attributes,
+    const AttributeFallbacksArray &attribute_fallbacks,
+    const OrderedAttributes &ordered_attributes,
+    const FunctionRef<IndexRange(bke::AttrDomain)> &range_fn,
+    MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
+{
+  const bke::AttributeFilterFromFunc default_filter = [](const StringRef /*name*/) {
+    return bke::AttributeFilter::Result::Process;
+  };
+  copy_generic_attributes_to_result(src_attributes,
+                                    default_filter,
+                                    attribute_fallbacks,
+                                    ordered_attributes,
+                                    range_fn,
+                                    dst_attribute_writers);
 }
 
 static void create_result_ids(const RealizeInstancesOptions &options,
@@ -2350,7 +2374,7 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
   using namespace bke::physics_attributes;
   using bke::PhysicsGeometry;
   using BodyAttribute = bke::PhysicsBodyAttribute;
-  using ConstraintAttribute = bke::PhysicsConstraintAttribute;
+  // using ConstraintAttribute = bke::PhysicsConstraintAttribute;
 
   Vector<bke::GeometryComponent::Type> src_component_types;
   src_component_types.append(bke::GeometryComponent::Type::Physics);
@@ -2358,22 +2382,34 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
     src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
+  const bke::AttributeFilterFromFunc filter =
+      [base_filter = options.attribute_filter](const StringRef name) {
+        /* Attributes that are always transformed manually and not handled by generic attribute
+         * copy. */
+        static const Array<std::string> skip_attributes = {
+            physics_attribute_name(BodyAttribute::collision_shape),
+            physics_attribute_name(BodyAttribute::position),
+            physics_attribute_name(BodyAttribute::rotation),
+            physics_attribute_name(BodyAttribute::velocity),
+            physics_attribute_name(BodyAttribute::angular_velocity)};
+
+        if (skip_attributes.as_span().contains(name)) {
+          return bke::AttributeFilter::Result::AllowSkip;
+        }
+        return base_filter.get().filter(name);
+      };
+
   Map<StringRef, AttributeKind> attributes_to_propagate;
   gather_attributes_for_propagation(in_geometry_set,
                                     src_component_types,
                                     bke::GeometryComponent::Type::Physics,
                                     varied_depth_options.depths,
                                     varied_depth_options.selection,
-                                    options.attribute_filter,
+                                    filter,
                                     attributes_to_propagate);
+  // r_create_id = attributes_to_propagate.pop_try("id").has_value();
 
   OrderedAttributes ordered_attributes;
-  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::collision_shape));
-  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::position));
-  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::rotation));
-  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::velocity));
-  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::angular_velocity));
-  // r_create_id = attributes_to_propagate.pop_try("id").has_value();
   for (auto &&item : attributes_to_propagate.items()) {
     ordered_attributes.ids.add_new(item.key);
     ordered_attributes.kinds.append(item.value);
@@ -2458,7 +2494,7 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
   return info;
 }
 
-static void execute_realize_physics_task(const RealizeInstancesOptions & /*options*/,
+static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          const AllPhysicsInfo & /*all_physics_info*/,
                                          const RealizePhysicsTask &task,
                                          const OrderedAttributes &ordered_attributes,
@@ -2474,6 +2510,9 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
                                          MutableSpan<int> all_dst_constraint_body2,
                                          MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
 {
+  using BodyAttribute = bke::PhysicsBodyAttribute;
+  using ConstraintAttribute = bke::PhysicsConstraintAttribute;
+
   const RealizePhysicsInfo &physics_info = *task.physics_info;
   const bke::PhysicsWorldState &state = physics_info.physics->state();
   /* Only change motion state of moved world data when the transform is non-zero. */
@@ -2481,8 +2520,6 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
                                                      true);
   /* Don't recreate constraints in moved world data. */
   const bool write_constraints = !world_was_moved;
-  /* Don't copy builtin attributes in moved world data. */
-  const bool write_builtin_attributes = !world_was_moved;
   /* Copy shapes in any case. */
   const bool write_shapes = true;
 
@@ -2567,26 +2604,51 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
     });
   }
 
-  /* XXX This will also disable copy of dynamic attributes!
-   * Needs a list of just the dynamic attributes plus fallbacks. */
-  if (write_builtin_attributes) {
-    copy_generic_attributes_to_result(
-        physics_info.attributes,
-        task.attribute_fallbacks,
-        ordered_attributes,
-        [&](const bke::AttrDomain domain) {
-          switch (domain) {
-            case bke::AttrDomain::Point:
-              return dst_body_range;
-            case bke::AttrDomain::Edge:
-              return dst_constraint_range;
-            default:
-              BLI_assert_unreachable();
-              return IndexRange();
-          }
-        },
-        dst_attribute_writers);
-  }
+  const bke::AttributeFilterFromFunc filter = [base_filter = options.attribute_filter,
+                                               world_was_moved](const StringRef name) {
+    /* Builtin attributes that should not be copied if the world data is moved.
+     * These are stored in the world data and all values get moved along with the world data.
+     * Attributes with write caches are not stored in world data and always get copied. */
+    static const Vector<std::string> skip_world_data_attributes = [&]() {
+      static Vector<std::string> names;
+      for (const BodyAttribute attribute : bke::physics_attributes::all_body_attributes()) {
+        if (!bke::physics_attributes::physics_attribute_use_write_cache(attribute)) {
+          names.append(bke::physics_attributes::physics_attribute_name(attribute));
+        }
+      }
+      for (const ConstraintAttribute attribute :
+           bke::physics_attributes::all_constraint_attributes())
+      {
+        if (!bke::physics_attributes::physics_attribute_use_write_cache(attribute)) {
+          names.append(bke::physics_attributes::physics_attribute_name(attribute));
+        }
+      }
+      return names;
+    }();
+
+    if (world_was_moved && skip_world_data_attributes.contains(name)) {
+      return bke::AttributeFilter::Result::AllowSkip;
+    }
+    return base_filter.get().filter(name);
+  };
+
+  copy_generic_attributes_to_result(
+      physics_info.attributes,
+      filter,
+      task.attribute_fallbacks,
+      ordered_attributes,
+      [&](const bke::AttrDomain domain) {
+        switch (domain) {
+          case bke::AttrDomain::Point:
+            return dst_body_range;
+          case bke::AttrDomain::Edge:
+            return dst_constraint_range;
+          default:
+            BLI_assert_unreachable();
+            return IndexRange();
+        }
+      },
+      dst_attribute_writers);
 }
 
 static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
@@ -2620,12 +2682,12 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     const bke::PhysicsWorldState &state = task.physics_info->physics->state();
     BLI_assert(state.has_world_data());
     dst_physics->state_for_write().try_move_data(state,
-                                                  dst_physics->bodies_num(),
-                                                  dst_physics->constraints_num(),
-                                                  state.bodies_range(),
-                                                  state.constraints_range(),
-                                                  task.start_indices.body,
-                                                  task.start_indices.constraint);
+                                                 dst_physics->bodies_num(),
+                                                 dst_physics->constraints_num(),
+                                                 state.bodies_range(),
+                                                 state.constraints_range(),
+                                                 task.start_indices.body,
+                                                 task.start_indices.constraint);
   }
 
   r_realized_geometry.replace_physics(dst_physics);

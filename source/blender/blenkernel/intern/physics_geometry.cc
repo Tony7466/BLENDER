@@ -306,13 +306,12 @@ void PhysicsWorldState::ensure_read_cache_no_lock() const
     }
   }
   /* Only use builtin attributes, dynamic attributes are already in custom data. */
-  src_attributes.foreach_attribute(
-      [&](const AttributeIter &iter) {
-        if (!src_attributes.is_builtin(iter.name)) {
-          local_body_attribute_names.add_new(iter.name);
-          local_constraint_attribute_names.add_new(iter.name);
-        }
-      });
+  src_attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (!src_attributes.is_builtin(iter.name)) {
+      local_body_attribute_names.add_new(iter.name);
+      local_constraint_attribute_names.add_new(iter.name);
+    }
+  });
 
   gather_attributes(src_attributes,
                     bke::AttrDomain::Point,
@@ -434,29 +433,28 @@ void PhysicsWorldState::remove_attribute_caches()
 {
   /* Force use of cache for writing. */
   MutableAttributeAccessor attributes = this->state_attributes_for_write();
-  attributes.foreach_attribute(
-      [&](const AttributeIter &iter) {
-        CustomData *custom_data = nullptr;
-        int totelem = 0;
-        switch (iter.domain) {
-          case AttrDomain::Point:
-            custom_data = &body_custom_data_;
-            totelem = body_num_;
-            break;
-          case AttrDomain::Edge:
-            custom_data = &constraint_custom_data_;
-            totelem = constraint_num_;
-            break;
-          case AttrDomain::Instance:
-            break;
-          default:
-            BLI_assert_unreachable();
-            break;
-        }
-        if (custom_data != nullptr) {
-          CustomData_free_layer_named(custom_data, iter.name, totelem);
-        }
-      });
+  attributes.foreach_attribute([&](const AttributeIter &iter) {
+    CustomData *custom_data = nullptr;
+    int totelem = 0;
+    switch (iter.domain) {
+      case AttrDomain::Point:
+        custom_data = &body_custom_data_;
+        totelem = body_num_;
+        break;
+      case AttrDomain::Edge:
+        custom_data = &constraint_custom_data_;
+        totelem = constraint_num_;
+        break;
+      case AttrDomain::Instance:
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+    if (custom_data != nullptr) {
+      CustomData_free_layer_named(custom_data, iter.name, totelem);
+    }
+  });
 }
 
 void PhysicsWorldState::create_world()
