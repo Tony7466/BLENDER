@@ -881,6 +881,25 @@ static void paint_brush_default_essentials_name_get(
       break;
     case OB_MODE_TEXTURE_PAINT:
       name = "Paint Hard";
+      if (brush_type) {
+        switch (eBrushImagePaintType(*brush_type)) {
+          case IMAGE_PAINT_BRUSH_TYPE_SOFTEN:
+            name = "Blur";
+            break;
+          case IMAGE_PAINT_BRUSH_TYPE_SMEAR:
+            name = "Smear";
+            break;
+          case IMAGE_PAINT_BRUSH_TYPE_FILL:
+            name = "Fill";
+            break;
+          case IMAGE_PAINT_BRUSH_TYPE_MASK:
+            name = "Mask";
+            break;
+          case IMAGE_PAINT_BRUSH_TYPE_DRAW:
+          case IMAGE_PAINT_BRUSH_TYPE_CLONE:
+            break;
+        }
+      }
       break;
     case OB_MODE_SCULPT_CURVES:
       name = "Comb";

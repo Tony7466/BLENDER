@@ -1973,10 +1973,50 @@ class _defs_texture_paint:
     def brush():
         return dict(
             idname="builtin.brush",
-            label="Brush",
+            label="Paint",
             icon="brush.sculpt.paint",
             cursor='PAINT_CROSS',
             options={'USE_BRUSHES'},
+        )
+
+    @ToolDef.from_fn
+    def blur():
+        return dict(
+            idname="builtin_brush.soften",
+            label="Blur",
+            icon="brush.paint_texture.soften",
+            options={'USE_BRUSHES'},
+            brush_type='SOFTEN',
+        )
+
+    @ToolDef.from_fn
+    def smear():
+        return dict(
+            idname="builtin_brush.smear",
+            label="Smear",
+            icon="brush.paint_texture.smear",
+            options={'USE_BRUSHES'},
+            brush_type='SMEAR',
+        )
+
+    @ToolDef.from_fn
+    def fill():
+        return dict(
+            idname="builtin_brush.fill",
+            label="Fill",
+            icon="brush.paint_texture.fill",
+            options={'USE_BRUSHES'},
+            brush_type='FILL',
+        )
+
+    @ToolDef.from_fn
+    def mask():
+        return dict(
+            idname="builtin_brush.mask",
+            label="Mask",
+            icon="brush.paint_texture.mask",
+            options={'USE_BRUSHES'},
+            brush_type='MASK',
         )
 
 
@@ -3429,15 +3469,6 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
 
     # Private tool lists for convenient reuse in `_tools`.
 
-    _brush_tool = ToolDef.from_dict(
-        dict(
-            idname="builtin.brush",
-            label="Brush",
-            icon="brush.sculpt.paint",
-            options={'USE_BRUSHES'},
-        )
-    )
-
     _tools_transform = (
         _defs_image_uv_transform.translate,
         _defs_image_uv_transform.rotate,
@@ -3492,7 +3523,11 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
         ],
         'PAINT': [
-            _brush_tool,
+            _defs_texture_paint.brush,
+            _defs_texture_paint.blur,
+            _defs_texture_paint.smear,
+            _defs_texture_paint.fill,
+            _defs_texture_paint.mask,
             None,
             *_tools_annotate,
         ],
@@ -3894,7 +3929,11 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
         ],
         'PAINT_TEXTURE': [
-            _brush_tool,
+            _defs_texture_paint.brush,
+            _defs_texture_paint.blur,
+            _defs_texture_paint.smear,
+            _defs_texture_paint.fill,
+            _defs_texture_paint.mask,
             None,
             lambda context: (
                 VIEW3D_PT_tools_active._tools_select
