@@ -1124,12 +1124,15 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   const bke::AttributeAccessor layer_attributes = grease_pencil.attributes();
   const VArray<ColorGeometry4f> tint_colors = *layer_attributes.lookup_or_default<ColorGeometry4f>(
       "tint_color", bke::AttrDomain::Layer, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+  const VArray<float> radius_offsets = *layer_attributes.lookup_or_default<float>(
+      "radius_offset", bke::AttrDomain::Layer, 0.0f);
 
   /* Fill buffers with data. */
   for (const int drawing_i : drawings.index_range()) {
     const ed::greasepencil::DrawingInfo &info = drawings[drawing_i];
     const Layer &layer = grease_pencil.layer(info.layer_index);
     const float4 tint_color = float4(tint_colors[info.layer_index]);
+    const float radius_offset = radius_offsets[info.layer_index];
     const float4x4 layer_space_to_object_space = layer.to_object_space(object);
     const float4x4 object_space_to_layer_space = math::invert(layer_space_to_object_space);
     const bke::CurvesGeometry &curves = info.drawing.strokes();
@@ -1198,7 +1201,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       copy_v3_v3(s_vert.pos, pos);
       /* GP data itself does not constrain radii to be positive, but drawing code expects it, and
        * use negative values as a special 'flag' to get rounded caps. */
-      s_vert.radius = math::max(radii[point_i], 0.0f) *
+      s_vert.radius = math::max(radii[point_i] + radius_offset, 0.0f) *
                       ((end_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
       /* Convert to legacy "pixel" space. We divide here, because the shader expects the values to
        * be in the `px` space rather than world space. Otherwise the values will get clamped. */

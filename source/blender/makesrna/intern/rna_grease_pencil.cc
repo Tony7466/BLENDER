@@ -421,6 +421,37 @@ static void rna_GreasePencilLayer_tint_factor_set(PointerRNA *ptr, const float v
   tint_colors.finish();
 }
 
+static float rna_GreasePencilLayer_radius_offset_get(PointerRNA *ptr)
+{
+  using namespace blender;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  const bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  const int layer_idx = *grease_pencil.get_layer_index(layer);
+
+  const VArray radius_offsets = *grease_pencil.attributes().lookup_or_default<float>(
+      "radius_offset", bke::AttrDomain::Layer, 0.0f);
+  return radius_offsets[layer_idx];
+}
+
+static void rna_GreasePencilLayer_radius_offset_set(PointerRNA *ptr, const float value)
+{
+  using namespace blender;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  const bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  const int layer_idx = *grease_pencil.get_layer_index(layer);
+
+  bke::SpanAttributeWriter<float> radius_offsets =
+      grease_pencil.attributes_for_write().lookup_or_add_for_write_span<float>(
+          "radius_offset",
+          bke::AttrDomain::Layer,
+          bke::AttributeInitVArray(VArray<float>::ForSingle(0.0f, grease_pencil.layers().size())));
+
+  radius_offsets.span[layer_idx] = value;
+  radius_offsets.finish();
+}
+
 static void rna_GreasePencilLayer_matrix_local_get(PointerRNA *ptr, float *values)
 {
   const blender::bke::greasepencil::Layer &layer =
@@ -848,6 +879,16 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                                nullptr);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Tint Factor", "Factor of tinting color");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Radius Offset. */
+  prop = RNA_def_property(srna, "radius_offset", PROP_FLOAT, PROP_TRANSLATION);
+  RNA_def_property_float_funcs(prop,
+                               "rna_GreasePencilLayer_radius_offset_get",
+                               "rna_GreasePencilLayer_radius_offset_set",
+                               nullptr);
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, RNA_TRANSLATION_PREC_DEFAULT);
+  RNA_def_property_ui_text(prop, "Radius Offset", "Radius change to apply to current strokes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Use Masks. */

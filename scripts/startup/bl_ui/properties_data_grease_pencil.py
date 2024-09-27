@@ -116,6 +116,9 @@ class GreasePencil_LayerAdjustmentsPanel:
         col.prop(layer, "tint_color")
         col.prop(layer, "tint_factor", text="Factor", slider=True)
 
+        col = layout.row(align=True)
+        col.prop(layer, "radius_offset", text="Stroke Thickness")
+
 
 class GreasPencil_LayerRelationsPanel:
     def draw(self, context):

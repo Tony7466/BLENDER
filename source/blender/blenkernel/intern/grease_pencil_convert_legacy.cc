@@ -1082,114 +1082,6 @@ static void legacy_gpencil_to_grease_pencil(ConversionData &conversion_data,
   }
 }
 
-constexpr const char *OFFSET_RADIUS_NODETREE_NAME = "Offset Radius GPv3 Conversion";
-static bNodeTree *offset_radius_node_tree_add(ConversionData &conversion_data, Library *library)
-{
-  using namespace blender;
-  /* NOTE: DO NOT translate this ID name, it is used to find a potentially already existing
-   * node-tree. */
-  bNodeTree *group = bke::node_tree_add_in_lib(
-      &conversion_data.bmain, library, OFFSET_RADIUS_NODETREE_NAME, "GeometryNodeTree");
-
-  if (!group->geometry_node_asset_traits) {
-    group->geometry_node_asset_traits = MEM_cnew<GeometryNodeAssetTraits>(__func__);
-  }
-  group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
-
-  group->tree_interface.add_socket(
-      DATA_("Geometry"), "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_INPUT, nullptr);
-  group->tree_interface.add_socket(
-      DATA_("Geometry"), "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_OUTPUT, nullptr);
-
-  bNodeTreeInterfaceSocket *radius_offset = group->tree_interface.add_socket(
-      DATA_("Offset"), "", "NodeSocketFloat", NODE_INTERFACE_SOCKET_INPUT, nullptr);
-  auto &radius_offset_data = *static_cast<bNodeSocketValueFloat *>(radius_offset->socket_data);
-  radius_offset_data.subtype = PROP_DISTANCE;
-  radius_offset_data.min = -FLT_MAX;
-  radius_offset_data.max = FLT_MAX;
-
-  group->tree_interface.add_socket(
-      DATA_("Layer"), "", "NodeSocketString", NODE_INTERFACE_SOCKET_INPUT, nullptr);
-
-  bNode *group_output = bke::node_add_node(nullptr, group, "NodeGroupOutput");
-  group_output->locx = 800;
-  group_output->locy = 160;
-  bNode *group_input = bke::node_add_node(nullptr, group, "NodeGroupInput");
-  group_input->locx = 0;
-  group_input->locy = 160;
-
-  bNode *set_curve_radius = bke::node_add_node(nullptr, group, "GeometryNodeSetCurveRadius");
-  set_curve_radius->locx = 600;
-  set_curve_radius->locy = 160;
-  bNode *named_layer_selection = bke::node_add_node(
-      nullptr, group, "GeometryNodeInputNamedLayerSelection");
-  named_layer_selection->locx = 200;
-  named_layer_selection->locy = 100;
-  bNode *input_radius = bke::node_add_node(nullptr, group, "GeometryNodeInputRadius");
-  input_radius->locx = 0;
-  input_radius->locy = 0;
-
-  bNode *add = bke::node_add_node(nullptr, group, "ShaderNodeMath");
-  add->custom1 = NODE_MATH_ADD;
-  add->locx = 200;
-  add->locy = 0;
-
-  bNode *clamp_radius = bke::node_add_node(nullptr, group, "ShaderNodeClamp");
-  clamp_radius->locx = 400;
-  clamp_radius->locy = 0;
-  bNodeSocket *sock_max = bke::node_find_socket(clamp_radius, SOCK_IN, "Max");
-  static_cast<bNodeSocketValueFloat *>(sock_max->default_value)->value = FLT_MAX;
-
-  bke::node_add_link(group,
-                     group_input,
-                     bke::node_find_socket(group_input, SOCK_OUT, "Socket_0"),
-                     set_curve_radius,
-                     bke::node_find_socket(set_curve_radius, SOCK_IN, "Curve"));
-  bke::node_add_link(group,
-                     set_curve_radius,
-                     bke::node_find_socket(set_curve_radius, SOCK_OUT, "Curve"),
-                     group_output,
-                     bke::node_find_socket(group_output, SOCK_IN, "Socket_1"));
-
-  bke::node_add_link(group,
-                     group_input,
-                     bke::node_find_socket(group_input, SOCK_OUT, "Socket_3"),
-                     named_layer_selection,
-                     bke::node_find_socket(named_layer_selection, SOCK_IN, "Name"));
-  bke::node_add_link(group,
-                     named_layer_selection,
-                     bke::node_find_socket(named_layer_selection, SOCK_OUT, "Selection"),
-                     set_curve_radius,
-                     bke::node_find_socket(set_curve_radius, SOCK_IN, "Selection"));
-
-  bke::node_add_link(group,
-                     group_input,
-                     bke::node_find_socket(group_input, SOCK_OUT, "Socket_2"),
-                     add,
-                     bke::node_find_socket(add, SOCK_IN, "Value"));
-  bke::node_add_link(group,
-                     input_radius,
-                     bke::node_find_socket(input_radius, SOCK_OUT, "Radius"),
-                     add,
-                     bke::node_find_socket(add, SOCK_IN, "Value_001"));
-  bke::node_add_link(group,
-                     add,
-                     bke::node_find_socket(add, SOCK_OUT, "Value"),
-                     clamp_radius,
-                     bke::node_find_socket(clamp_radius, SOCK_IN, "Value"));
-  bke::node_add_link(group,
-                     clamp_radius,
-                     bke::node_find_socket(clamp_radius, SOCK_OUT, "Result"),
-                     set_curve_radius,
-                     bke::node_find_socket(set_curve_radius, SOCK_IN, "Radius"));
-
-  LISTBASE_FOREACH (bNode *, node, &group->nodes) {
-    bke::node_set_selected(node, false);
-  }
-
-  return group;
-}
-
 static void thickness_factor_to_modifier(ConversionData &conversion_data,
                                          bGPdata &src_object_data,
                                          Object &dst_object)
@@ -1301,7 +1193,7 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       conversion_data,
       dst_object.id,
       src_object_data.id,
-      {{".line_change", "[\"Socket_2\"]", fcurve_convert_thickness_cb}});
+      {{".line_change", ".radius_offset", fcurve_convert_thickness_cb}});
 
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(dst_object.data);
 
@@ -1311,6 +1203,11 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
           bke::AttrDomain::Layer,
           bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
               ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f), grease_pencil.layers().size())));
+  bke::SpanAttributeWriter<float> radius_offsets =
+      grease_pencil.attributes_for_write().lookup_or_add_for_write_span<float>(
+          "radius_offset",
+          bke::AttrDomain::Layer,
+          bke::AttributeInitVArray(VArray<float>::ForSingle(0.0f, grease_pencil.layers().size())));
 
   int layer_idx = 0;
   /* Replace layer adjustments with modifiers. */
@@ -1353,60 +1250,11 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       const float radius_offset = math::safe_divide(
           float(thickness_px) * LEGACY_RADIUS_CONVERSION_FACTOR, uniform_object_scale);
 
-      const auto offset_radius_ntree_ensure = [&](Library *owner_library) {
-        if (bNodeTree **ntree = conversion_data.offset_radius_ntree_by_library.lookup_ptr(
-                owner_library))
-        {
-          /* Node tree has already been found/created for this versioning call. */
-          return *ntree;
-        }
-        /* Try to find an existing group added by previous versioning to avoid adding duplicates.
-         */
-        LISTBASE_FOREACH (bNodeTree *, ntree_iter, &conversion_data.bmain.nodetrees) {
-          if (ntree_iter->id.lib != owner_library) {
-            continue;
-          }
-          if (STREQ(ntree_iter->id.name + 2, OFFSET_RADIUS_NODETREE_NAME)) {
-            conversion_data.offset_radius_ntree_by_library.add_new(owner_library, ntree_iter);
-            return ntree_iter;
-          }
-        }
-        bNodeTree *new_ntree = offset_radius_node_tree_add(conversion_data, owner_library);
-        /* Remove the default user. The count is tracked manually when assigning to modifiers. */
-        id_us_min(&new_ntree->id);
-        conversion_data.offset_radius_ntree_by_library.add_new(owner_library, new_ntree);
-        BKE_ntree_update_main_tree(&conversion_data.bmain, new_ntree, nullptr);
-        return new_ntree;
-      };
-      bNodeTree *offset_radius_node_tree = offset_radius_ntree_ensure(dst_object.id.lib);
-
-      auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
-
-      char modifier_name[MAX_NAME];
-      SNPRINTF(modifier_name, "Thickness %s", gpl->info);
-      STRNCPY(md->modifier.name, modifier_name);
-      BKE_modifier_unique_name(&dst_object.modifiers, &md->modifier);
-      md->node_group = offset_radius_node_tree;
-
-      BLI_addtail(&dst_object.modifiers, md);
-      BKE_modifiers_persistent_uid_init(dst_object, md->modifier);
-
-      md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
-      IDProperty *radius_offset_prop =
-          bke::idprop::create(DATA_("Socket_2"), radius_offset).release();
-      auto *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(
-          IDP_ui_data_ensure(radius_offset_prop));
-      ui_data->soft_min = 0.0;
-      ui_data->base.rna_subtype = PROP_TRANSLATION;
-      IDP_AddToGroup(md->settings.properties, radius_offset_prop);
-      IDP_AddToGroup(md->settings.properties,
-                     bke::idprop::create(DATA_("Socket_3"), gpl->info).release());
+      radius_offsets.span[layer_idx] = radius_offset;
 
       if (has_thickness_adjustment_animation) {
-        char modifier_name_esc[MAX_NAME * 2];
-        BLI_str_escape(modifier_name_esc, md->modifier.name, sizeof(modifier_name_esc));
-        animdata_thickness_transfer.root_path_dst = fmt::format("modifiers[\"{}\"]",
-                                                                modifier_name_esc);
+        animdata_thickness_transfer.root_path_dst = fmt::format("data.layers[\"{}\"]",
+                                                                layer_name_esc);
 
         animdata_thickness_transfer.fcurves_convert();
       }
