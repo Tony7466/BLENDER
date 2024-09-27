@@ -5250,7 +5250,7 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator * /* op
 
   DEG_id_tag_update(&target_action->id, ID_RECALC_ANIMATION_NO_FLUSH);
   DEG_relations_tag_update(bmain);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA_ACTCHANGE | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
