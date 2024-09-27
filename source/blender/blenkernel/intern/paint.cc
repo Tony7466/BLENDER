@@ -881,13 +881,52 @@ static void paint_brush_default_essentials_name_get(
       eraser_name = "Eraser Soft";
       break;
     case OB_MODE_VERTEX_GPENCIL_LEGACY:
-      name = "Paint Point Color";
+      name = "Paint";
+      if (brush_type) {
+        switch (eBrushGPVertexType(*brush_type)) {
+          case GPVERTEX_BRUSH_TYPE_BLUR:
+            name = "Blur";
+            break;
+          case GPVERTEX_BRUSH_TYPE_AVERAGE:
+            name = "Average";
+            break;
+          case GPVERTEX_BRUSH_TYPE_SMEAR:
+            name = "Smear";
+            break;
+          case GPVERTEX_BRUSH_TYPE_REPLACE:
+            name = "Replace";
+            break;
+          case GPVERTEX_BRUSH_TYPE_DRAW:
+            /* Use default, don't override. */
+            break;
+          case GPVERTEX_BRUSH_TYPE_TINT:
+            /* Unused brush type. */
+            BLI_assert_unreachable();
+            break;
+        }
+      }
       break;
     case OB_MODE_SCULPT_GPENCIL_LEGACY:
       name = "Smooth Stroke";
       break;
     case OB_MODE_WEIGHT_GPENCIL_LEGACY:
-      name = "Paint Point Weight";
+      name = "Paint";
+      if (brush_type) {
+        switch (eBrushGPWeightType(*brush_type)) {
+          case GPWEIGHT_BRUSH_TYPE_BLUR:
+            name = "Blur";
+            break;
+          case GPWEIGHT_BRUSH_TYPE_AVERAGE:
+            name = "Average";
+            break;
+          case GPWEIGHT_BRUSH_TYPE_SMEAR:
+            name = "Smear";
+            break;
+          case GPWEIGHT_BRUSH_TYPE_DRAW:
+            /* Use default, don't override. */
+            break;
+        }
+      }
       break;
     default:
       BLI_assert_unreachable();

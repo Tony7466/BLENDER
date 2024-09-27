@@ -28,6 +28,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   brush.gpencil_draw.fill
   brush.paint_vertex.average
   brush.paint_vertex.blur
+  brush.paint_vertex.replace
   brush.paint_vertex.smear
   brush.paint_weight.average
   brush.paint_weight.blur
@@ -75,6 +76,9 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.primitive_line
   ops.gpencil.primitive_polyline
   ops.gpencil.radius
+  ops.gpencil.sculpt_average
+  ops.gpencil.sculpt_blur
+  ops.gpencil.sculpt_smear
   ops.gpencil.stroke_trim
   ops.gpencil.transform_fill
   ops.mesh.bevel

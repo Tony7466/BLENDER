@@ -2946,8 +2946,35 @@ class _defs_gpencil_weight:
 
 
 class _defs_grease_pencil_weight:
-    # No mode specific tools currently (only general ones).
-    pass
+    @ToolDef.from_fn
+    def blur():
+        return dict(
+            idname="builtin_brush.blur",
+            label="Blur",
+            icon="ops.gpencil.sculpt_blur",
+            options={'USE_BRUSHES'},
+            brush_type='BLUR',
+        )
+
+    @ToolDef.from_fn
+    def average():
+        return dict(
+            idname="builtin_brush.average",
+            label="Average",
+            icon="ops.gpencil.sculpt_average",
+            options={'USE_BRUSHES'},
+            brush_type='AVERAGE',
+        )
+
+    @ToolDef.from_fn
+    def smear():
+        return dict(
+            idname="builtin_brush.smear",
+            label="Smear",
+            icon="ops.gpencil.sculpt_smear",
+            options={'USE_BRUSHES'},
+            brush_type='SMEAR',
+        )
 
 
 class _defs_grease_pencil_vertex:
@@ -2965,6 +2992,46 @@ class _defs_grease_pencil_vertex:
                 tool_settings.use_gpencil_vertex_select_mask_stroke or
                 tool_settings.use_gpencil_vertex_select_mask_segment
             )
+        )
+
+    @ToolDef.from_fn
+    def blur():
+        return dict(
+            idname="builtin_brush.blur",
+            label="Blur",
+            icon="brush.paint_vertex.blur",
+            options={'USE_BRUSHES'},
+            brush_type='BLUR',
+        )
+
+    @ToolDef.from_fn
+    def average():
+        return dict(
+            idname="builtin_brush.average",
+            label="Average",
+            icon="brush.paint_vertex.average",
+            options={'USE_BRUSHES'},
+            brush_type='AVERAGE',
+        )
+
+    @ToolDef.from_fn
+    def smear():
+        return dict(
+            idname="builtin_brush.smear",
+            label="Smear",
+            icon="brush.paint_vertex.smear",
+            options={'USE_BRUSHES'},
+            brush_type='SMEAR',
+        )
+
+    @ToolDef.from_fn
+    def replace():
+        return dict(
+            idname="builtin_brush.replace",
+            label="Replace",
+            icon="brush.paint_vertex.replace",
+            options={'USE_BRUSHES'},
+            brush_type='REPLACE',
         )
 
 
@@ -3814,6 +3881,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'WEIGHT_GREASE_PENCIL': [
             _brush_tool,
+            _defs_grease_pencil_weight.blur,
+            _defs_grease_pencil_weight.average,
+            _defs_grease_pencil_weight.smear,
             None,
             *_tools_annotate,
         ],
@@ -3830,6 +3900,10 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'VERTEX_GREASE_PENCIL': [
             _brush_tool,
+            _defs_grease_pencil_vertex.blur,
+            _defs_grease_pencil_vertex.average,
+            _defs_grease_pencil_vertex.smear,
+            _defs_grease_pencil_vertex.replace,
             None,
             *_tools_annotate,
             None,
