@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BLI_map.hh"
+#include "BLI_span.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
@@ -172,7 +173,7 @@ void channel_draw_context_init(const bContext *C,
 
 /* `sequencer_edit.cc` */
 
-void seq_rectf(const Scene *scene, const Sequence *seq, rctf *rect);
+void seq_rectf(const Scene *scene, const Sequence *seq, rctf *r_rect);
 Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int sel);
 void recurs_sel_seq(Sequence *seq_meta);
 int seq_effect_find_selected(Scene *scene,
@@ -367,7 +368,7 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op);
 void sequencer_retiming_draw_continuity(const TimelineDrawContext *timeline_ctx,
                                         const StripDrawContext &strip_ctx);
 void sequencer_retiming_keys_draw(const TimelineDrawContext *timeline_ctx,
-                                  const StripDrawContext &strip_ctx);
+                                  blender::Span<StripDrawContext> strips);
 void sequencer_retiming_speed_draw(const TimelineDrawContext *timeline_ctx,
                                    const StripDrawContext &strip_ctx);
 void realize_fake_keys(const Scene *scene, Sequence *seq);
