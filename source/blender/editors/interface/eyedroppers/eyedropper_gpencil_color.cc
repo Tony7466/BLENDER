@@ -16,7 +16,7 @@
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
@@ -25,10 +25,8 @@
 #include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.hh"
-#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
 
 #include "UI_interface.hh"
 
@@ -40,11 +38,9 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 
-#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
 #include "eyedropper_intern.hh"
@@ -256,7 +252,7 @@ static void eyedropper_gpencil_color_set(bContext *C, const wmEvent *event, Eyed
 /* Sample the color below cursor. */
 static void eyedropper_gpencil_color_sample(bContext *C, EyedropperGPencil *eye, const int m_xy[2])
 {
-  eyedropper_color_sample_fl(C, m_xy, eye->color);
+  eyedropper_color_sample_fl(C, nullptr, m_xy, eye->color);
 }
 
 /* Cancel operator. */

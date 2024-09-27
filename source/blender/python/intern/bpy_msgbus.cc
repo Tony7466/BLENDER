@@ -9,31 +9,25 @@
 
 #include <Python.h>
 
-#include "../generic/py_capi_rna.h"
-#include "../generic/py_capi_utils.h"
-#include "../generic/python_compat.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/py_capi_rna.hh"
+#include "../generic/py_capi_utils.hh"
+#include "../generic/python_compat.hh"
+#include "../generic/python_utildefines.hh"
 
-#include "../mathutils/mathutils.h"
+#include "../mathutils/mathutils.hh"
 
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
 
-#include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 
-#include "bpy_capi_utils.h"
-#include "bpy_gizmo_wrap.h" /* own include */
-#include "bpy_intern_string.h"
-#include "bpy_rna.h"
+#include "bpy_capi_utils.hh"
+#include "bpy_rna.hh"
 
-#include "bpy_msgbus.h" /* own include */
+#include "bpy_msgbus.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Utils

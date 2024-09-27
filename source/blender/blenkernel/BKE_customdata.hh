@@ -11,6 +11,7 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_implicit_sharing.h"
+#include "BLI_memory_counter_fwd.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
@@ -73,7 +74,7 @@ extern const CustomData_MeshMasks CD_MASK_EVERYTHING;
  * CD_NUMTYPES elements, that indicate if a layer can be copied. */
 
 /** Add/copy/merge allocation types. */
-typedef enum eCDAllocType {
+enum eCDAllocType {
   /** Allocate and set to default, which is usually just zeroed memory. */
   CD_SET_DEFAULT = 2,
   /**
@@ -81,18 +82,18 @@ typedef enum eCDAllocType {
    * if all layer values will be set by the caller after creating the layer.
    */
   CD_CONSTRUCT = 5,
-} eCDAllocType;
+};
 
 #define CD_TYPE_AS_MASK(_type) (eCustomDataMask)((eCustomDataMask)1 << (eCustomDataMask)(_type))
 
 void customData_mask_layers__print(const CustomData_MeshMasks *mask);
 
-typedef void (*cd_interp)(
+using cd_interp = void (*)(
     const void **sources, const float *weights, const float *sub_weights, int count, void *dest);
-typedef void (*cd_copy)(const void *source, void *dest, int count);
-typedef void (*cd_set_default_value)(void *data, int count);
-typedef void (*cd_free)(void *data, int count);
-typedef bool (*cd_validate)(void *item, uint totitems, bool do_fixes);
+using cd_copy = void (*)(const void *source, void *dest, int count);
+using cd_set_default_value = void (*)(void *data, int count);
+using cd_free = void (*)(void *data, int count);
+using cd_validate = bool (*)(void *item, uint totitems, bool do_fixes);
 
 /**
  * Update mask_dst with layers defined in mask_src (equivalent to a bit-wise OR).
@@ -157,20 +158,26 @@ void CustomData_data_add(eCustomDataType type, void *data1, const void *data2);
  * Initializes a CustomData object with the same layer setup as source. `mask` is a bit-field where
  * `(mask & (1 << (layer type)))` indicates if a layer should be copied or not. Data layers using
  * implicit-sharing will not actually be copied but will be shared between source and destination.
+ *
+ * \warning Does not free or release any internal resources in `dest` CustomData, code must call
+ * #CustomData_free first if needed.
  */
-void CustomData_copy(const CustomData *source,
-                     CustomData *dest,
-                     eCustomDataMask mask,
-                     int totelem);
+void CustomData_init_from(const CustomData *source,
+                          CustomData *dest,
+                          eCustomDataMask mask,
+                          int totelem);
 /**
  * Initializes a CustomData object with the same layers as source. The data is not copied from the
  * source. Instead, the new layers are initialized using the given `alloctype`.
+ *
+ * \warning Does not free or release any internal resources in `dest` CustomData, code must call
+ * #CustomData_free first if needed.
  */
-void CustomData_copy_layout(const CustomData *source,
-                            CustomData *dest,
-                            eCustomDataMask mask,
-                            eCDAllocType alloctype,
-                            int totelem);
+void CustomData_init_layout_from(const CustomData *source,
+                                 CustomData *dest,
+                                 eCustomDataMask mask,
+                                 eCDAllocType alloctype,
+                                 int totelem);
 
 /* BMESH_TODO, not really a public function but `readfile.cc` needs it. */
 void CustomData_update_typemap(CustomData *data);
@@ -224,6 +231,8 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
 
 /**
  * NULL's all members and resets the #CustomData.typemap.
+ *
+ * \warning Does not free or release any internal resources.
  */
 void CustomData_reset(CustomData *data);
 
@@ -233,7 +242,7 @@ void CustomData_reset(CustomData *data);
 void CustomData_free(CustomData *data, int totelem);
 
 /**
- * Same as above, but only frees layers which matches the given mask.
+ * Same as #CustomData_free, but only frees layers which matches the given mask.
  */
 void CustomData_free_typemask(CustomData *data, int totelem, eCustomDataMask mask);
 
@@ -249,17 +258,16 @@ void *CustomData_add_layer(CustomData *data,
 
 /**
  * Adds a layer of the given type to the #CustomData object. The new layer takes ownership of the
- * passed in `layer_data`. If a #ImplicitSharingInfoHandle is passed in, its user count is
- * increased.
+ * passed in `layer_data`. If a #ImplicitSharingInfo is passed in, its user count is increased.
  */
 const void *CustomData_add_layer_with_data(CustomData *data,
                                            eCustomDataType type,
                                            void *layer_data,
                                            int totelem,
-                                           const ImplicitSharingInfoHandle *sharing_info);
+                                           const blender::ImplicitSharingInfo *sharing_info);
 
 /**
- * Same as above but accepts a name.
+ * Same as #CustomData_add_layer but accepts a name.
  */
 void *CustomData_add_layer_named(CustomData *data,
                                  eCustomDataType type,
@@ -272,20 +280,7 @@ const void *CustomData_add_layer_named_with_data(CustomData *data,
                                                  void *layer_data,
                                                  int totelem,
                                                  blender::StringRef name,
-                                                 const ImplicitSharingInfoHandle *sharing_info);
-
-void *CustomData_add_layer_anonymous(CustomData *data,
-                                     eCustomDataType type,
-                                     eCDAllocType alloctype,
-                                     int totelem,
-                                     const AnonymousAttributeIDHandle *anonymous_id);
-const void *CustomData_add_layer_anonymous_with_data(
-    CustomData *data,
-    eCustomDataType type,
-    const AnonymousAttributeIDHandle *anonymous_id,
-    int totelem,
-    void *layer_data,
-    const ImplicitSharingInfoHandle *sharing_info);
+                                                 const blender::ImplicitSharingInfo *sharing_info);
 
 /**
  * Frees the active or first data layer with the give type.
@@ -305,7 +300,7 @@ bool CustomData_free_layer_named(CustomData *data, blender::StringRef name, cons
 bool CustomData_free_layer_active(CustomData *data, eCustomDataType type, int totelem);
 
 /**
- * Same as above, but free all layers with type.
+ * Same as #CustomData_free_layer_active, but free all layers with type.
  */
 void CustomData_free_layers(CustomData *data, eCustomDataType type, int totelem);
 
@@ -804,6 +799,8 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, int count)
 
 size_t CustomData_get_elem_size(const CustomDataLayer *layer);
 
+void CustomData_count_memory(const CustomData &data, int totelem, blender::MemoryCounter &memory);
+
 #ifndef NDEBUG
 struct DynStr;
 /** Use to inspect mesh data when debugging. */
@@ -812,4 +809,5 @@ void CustomData_debug_info_from_layers(const CustomData *data, const char *inden
 
 namespace blender::bke {
 std::optional<VolumeGridType> custom_data_type_to_volume_grid_type(eCustomDataType type);
+std::optional<eCustomDataType> volume_grid_type_to_custom_data_type(VolumeGridType type);
 }  // namespace blender::bke

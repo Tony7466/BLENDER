@@ -18,8 +18,6 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
-#include "BKE_lib_query.hh"
-#include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
@@ -28,16 +26,15 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_grease_pencil_util.hh"
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
 namespace blender {
@@ -143,7 +140,7 @@ static PatternInfo get_pattern_info(const GreasePencilDashModifierData &dmd)
   return info;
 }
 
-/* Returns the segment covering the given index, including repetitions.*/
+/* Returns the segment covering the given index, including repetitions. */
 static int find_dash_segment(const PatternInfo &pattern_info, const int index)
 {
   const int repeat = index / pattern_info.length;
@@ -306,14 +303,14 @@ static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
 
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
-                         {},
-                         {"radius", "opacity"},
+                         bke::AttrDomain::Point,
+                         bke::attribute_filter_from_skip_ref({"radius", "opacity"}),
                          src_point_indices,
                          dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Curve,
-                         {},
-                         {"cyclic", "material_index"},
+                         bke::AttrDomain::Curve,
+                         bke::attribute_filter_from_skip_ref({"cyclic", "material_index"}),
                          src_curve_indices,
                          dst_attributes);
 
@@ -484,7 +481,8 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 
   modifier::greasepencil::read_influence_data(reader, &dmd->influence);
 
-  BLO_read_data_address(reader, &dmd->segments_array);
+  BLO_read_struct_array(
+      reader, GreasePencilDashModifierSegment, dmd->segments_num, &dmd->segments_array);
 }
 
 }  // namespace blender

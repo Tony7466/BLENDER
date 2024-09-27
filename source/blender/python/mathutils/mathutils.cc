@@ -8,14 +8,14 @@
 
 #include <Python.h>
 
-#include "mathutils.h"
+#include "mathutils.hh"
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
-#include "../generic/py_capi_utils.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/py_capi_utils.hh"
+#include "../generic/python_utildefines.hh"
 
 #ifndef MATH_STANDALONE
 #  include "BLI_dynstr.h"
@@ -191,7 +191,7 @@ int mathutils_array_parse(
 }
 
 int mathutils_array_parse_alloc(float **array,
-                                int array_num,
+                                int array_num_min,
                                 PyObject *value,
                                 const char *error_prefix)
 {
@@ -207,12 +207,12 @@ int mathutils_array_parse_alloc(float **array,
       return -1;
     }
 
-    if (num < array_num) {
+    if (num < array_num_min) {
       PyErr_Format(PyExc_ValueError,
-                   "%.200s: sequence size is %d, expected > %d",
+                   "%.200s: sequence size is %d, expected >= %d",
                    error_prefix,
                    num,
-                   array_num);
+                   array_num_min);
       return -1;
     }
 
@@ -235,13 +235,13 @@ int mathutils_array_parse_alloc(float **array,
 
   num = PySequence_Fast_GET_SIZE(value_fast);
 
-  if (num < array_num) {
+  if (num < array_num_min) {
     Py_DECREF(value_fast);
     PyErr_Format(PyExc_ValueError,
-                 "%.200s: sequence size is %d, expected > %d",
+                 "%.200s: sequence size is %d, expected >= %d",
                  error_prefix,
                  num,
-                 array_num);
+                 array_num_min);
     return -1;
   }
 
@@ -755,12 +755,12 @@ static PyModuleDef M_Mathutils_module_def = {
 };
 
 /* submodules only */
-#include "mathutils_geometry.h"
-#include "mathutils_interpolate.h"
+#include "mathutils_geometry.hh"
+#include "mathutils_interpolate.hh"
 #ifndef MATH_STANDALONE
-#  include "mathutils_bvhtree.h"
-#  include "mathutils_kdtree.h"
-#  include "mathutils_noise.h"
+#  include "mathutils_bvhtree.hh"
+#  include "mathutils_kdtree.hh"
+#  include "mathutils_noise.hh"
 #endif
 
 PyMODINIT_FUNC PyInit_mathutils()
