@@ -8,9 +8,11 @@
 
 #include "BKE_global.hh"
 
-#include "BLI_time.h"
+#include "DNA_userdef_types.h"
 
+#include "BLI_time.h"
 #include "BLI_string.h"
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -36,6 +38,8 @@
 #include "mtl_shader_log.hh"
 #include "mtl_texture.hh"
 #include "mtl_vertex_buffer.hh"
+
+#include "GHOST_C-api.h"
 
 extern const char datatoc_mtl_shader_common_msl[];
 
@@ -1889,25 +1893,40 @@ void MTLParallelShaderCompiler::create_compile_threads()
   id<MTLDevice> metal_device = metal_context->device;
 
 #if defined(MAC_OS_VERSION_13_3)
-  /* Clamp the number of threads if neccessary */
+  /* Clamp the number of threads if neccessary. */
   if (@available(macOS 13.3, *)) {
-    /* Check we've set the flag to allow more than 2 compile threads */
+    /* Check we've set the flag to allow more than 2 compile threads. */
     BLI_assert(metal_device.shouldMaximizeConcurrentCompilation);
     max_mtlcompiler_threads = MIN(int([metal_device maximumConcurrentCompilationTaskCount]),
                                   max_mtlcompiler_threads);
   }
 #endif
+  
+  /* GPU settings for context creation. */
+  GHOST_GPUSettings gpuSettings = {0};
+  gpuSettings.context_type = GHOST_kDrawingContextTypeMetal;
+  if (G.debug & G_DEBUG_GPU) {
+    gpuSettings.flags |= GHOST_gpuDebugContext;
+  }
+  gpuSettings.preferred_device.index = U.gpu_preferred_index;
+  gpuSettings.preferred_device.vendor_id = U.gpu_preferred_vendor_id;
+  gpuSettings.preferred_device.device_id = U.gpu_preferred_device_id;
 
-  /* Spawn the compiler threads */
+  /* Spawn the compiler threads. */
   for (int i = 0; i < max_mtlcompiler_threads; i++) {
 
-    /* Create a GPU context for each thread to use */
-    void *system_gpu_context = GPU_system_context_create();
-    BLI_assert(system_gpu_context);
-    GPUContext *per_thread_context = GPU_context_create(nullptr, system_gpu_context);
-
-    /* Restore the main thread context
-     * (required as the above context creation also makes it active) */
+    /* Grab the system handle.  */
+    GHOST_SystemHandle ghost_system = reinterpret_cast<GHOST_SystemHandle>(GPU_backend_ghost_system_get());
+    BLI_assert(ghost_system);
+    
+    /* Create a Ghost GPU Context using the system handle. */
+    GHOST_ContextHandle ghost_gpu_context = GHOST_CreateGPUContext(ghost_system, gpuSettings);
+    
+    /* Create a GPU context for the compile thread to use. */
+    GPUContext *per_thread_context = GPU_context_create(nullptr, ghost_gpu_context);
+   
+    /* Restore the main thread context.
+     * (required as the above context creation also makes it active). */
     GPU_context_active_set(main_thread_context);
 
     /* Create a new thread */

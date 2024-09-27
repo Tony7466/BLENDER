@@ -13,13 +13,13 @@
  * - free can be called from any thread
  */
 
+#include "GHOST_C-api.h"
+
 #include "BKE_global.hh"
 
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
-
-#include "WM_api.hh"
 
 #include "GPU_context.hh"
 #include "GPU_framebuffer.hh"
@@ -173,12 +173,6 @@ void GPU_context_end_frame(GPUContext *ctx)
   }
 }
 
-void *GPU_system_context_create()
-{
-  void *system_gpu_context = WM_system_gpu_context_create();
-  return system_gpu_context;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Main context global mutex
  *
@@ -249,6 +243,17 @@ static eGPUBackendType g_backend_type = GPU_BACKEND_OPENGL;
 static std::optional<eGPUBackendType> g_backend_type_override = std::nullopt;
 static std::optional<bool> g_backend_type_supported = std::nullopt;
 static GPUBackend *g_backend = nullptr;
+static GHOST_SystemHandle g_ghost_system = nullptr;
+
+void GPU_backend_ghost_system_set(void *ghost_system_handle)
+{
+  g_ghost_system = reinterpret_cast<GHOST_SystemHandle>(ghost_system_handle);
+}
+
+void *GPU_backend_ghost_system_get()
+{
+  return g_ghost_system;
+}
 
 void GPU_backend_type_selection_set(const eGPUBackendType backend)
 {
