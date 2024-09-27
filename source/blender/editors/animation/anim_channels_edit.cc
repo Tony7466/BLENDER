@@ -5284,8 +5284,6 @@ static void ANIM_OT_slot_channels_move_to_new_action(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-#endif /* WITH_ANIM_BAKLAVA */
-
 static int explode_action_exec(bContext *C, wmOperator * /* op */)
 {
   using namespace blender::animrig;
@@ -5303,15 +5301,15 @@ static int explode_action_exec(bContext *C, wmOperator * /* op */)
     char actname[MAX_ID_NAME - 2];
     SNPRINTF(actname, DATA_("%sAction"), slot->name + 2);
     Action &target_action = action_add(*bmain, actname);
-    Layer &layer = target_action.layer_add("TODO_REMOVE_AFTER_DEFAULT_WAS_ADDED");
+    Layer &layer = target_action.layer_add(std::nullopt);
     layer.strip_add(target_action, Strip::Type::Keyframe);
     move_slot(*bmain, *slot, *action, target_action);
     DEG_id_tag_update(&target_action.id, ID_RECALC_ANIMATION_NO_FLUSH);
   }
 
+  DEG_id_tag_update(&action->id, ID_RECALC_ANIMATION_NO_FLUSH);
   DEG_relations_tag_update(CTX_data_main(C));
-
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA_ACTCHANGE | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -5347,6 +5345,8 @@ static void ANIM_OT_explode_action(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+
+#endif /* WITH_ANIM_BAKLAVA */
 
 /**
  *  Find a Graph Editor area and set the context arguments accordingly.
@@ -5732,9 +5732,8 @@ void ED_operatortypes_animchannels()
 
 #ifdef WITH_ANIM_BAKLAVA
   WM_operatortype_append(ANIM_OT_slot_channels_move_to_new_action);
-#endif
-
   WM_operatortype_append(ANIM_OT_explode_action);
+#endif
 }
 
 void ED_keymap_animchannels(wmKeyConfig *keyconf)
