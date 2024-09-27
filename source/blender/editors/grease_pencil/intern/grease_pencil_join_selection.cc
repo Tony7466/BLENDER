@@ -103,16 +103,16 @@ Vector<PointsRange> retrieve_selection_ranges(Object &object,
   return selected_ranges;
 }
 
-template<typename T> void reverse_point_data(const IndexMask &point_selection, MutableSpan<T> data)
+template<typename T> void reverse_point_data(const IndexRange point_range, MutableSpan<T> data)
 {
-  data.slice(point_selection.first(), point_selection.size()).reverse();
+  data.slice(point_range.first(), point_range.size()).reverse();
 }
 
 /**
  * Change on \dst_curves the direction of \a points_to_reverse (switch the start and end) without
  * changing their shape.
  */
-void reverse_points_of(bke::CurvesGeometry &dst_curves, const IndexMask &points_to_reverse)
+void reverse_points_of(bke::CurvesGeometry &dst_curves, const IndexRange points_to_reverse)
 {
   bke::MutableAttributeAccessor attributes = dst_curves.attributes_for_write();
 
