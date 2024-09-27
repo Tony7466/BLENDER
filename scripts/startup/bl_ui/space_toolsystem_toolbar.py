@@ -3035,8 +3035,45 @@ class _defs_grease_pencil_vertex:
 
 
 class _defs_curves_sculpt:
-    # No mode specific tools currently (only general ones).
-    pass
+    @ToolDef.from_fn
+    def select():
+        return dict(
+            idname="builtin_brush.selection_paint",
+            label="Selection Paint",
+            icon="ops.generic.select_paint",
+            options={'USE_BRUSHES'},
+            brush_type='SELECTION_PAINT',
+        )
+
+    @ToolDef.from_fn
+    def density():
+        return dict(
+            idname="builtin_brush.density",
+            label="Density",
+            icon="ops.curves.sculpt_density",
+            options={'USE_BRUSHES'},
+            brush_type='DENSITY',
+        )
+
+    @ToolDef.from_fn
+    def add():
+        return dict(
+            idname="builtin_brush.add",
+            label="Add",
+            icon="ops.curves.sculpt_add",
+            options={'USE_BRUSHES'},
+            brush_type='ADD',
+        )
+
+    @ToolDef.from_fn
+    def delete():
+        return dict(
+            idname="builtin_brush.delete",
+            label="Delete",
+            icon="ops.curves.sculpt_delete",
+            options={'USE_BRUSHES'},
+            brush_type='DELETE',
+        )
 
 
 class _defs_gpencil_vertex:
@@ -3914,6 +3951,10 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'SCULPT_CURVES': [
             _brush_tool,
+            _defs_curves_sculpt.select,
+            _defs_curves_sculpt.density,
+            _defs_curves_sculpt.add,
+            _defs_curves_sculpt.delete,
             None,
             *_tools_annotate,
         ],

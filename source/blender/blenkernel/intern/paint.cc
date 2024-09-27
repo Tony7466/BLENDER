@@ -860,6 +860,24 @@ static void paint_brush_default_essentials_name_get(
       break;
     case OB_MODE_SCULPT_CURVES:
       name = "Comb";
+      if (brush_type) {
+        switch (eBrushCurvesSculptType(*brush_type)) {
+          case CURVES_SCULPT_BRUSH_TYPE_ADD:
+            name = "Add";
+            break;
+          case CURVES_SCULPT_BRUSH_TYPE_DELETE:
+            name = "Delete";
+            break;
+          case CURVES_SCULPT_BRUSH_TYPE_DENSITY:
+            name = "Density";
+            break;
+          case CURVES_SCULPT_BRUSH_TYPE_SELECTION_PAINT:
+            name = "Select";
+            break;
+          default:
+            break;
+        }
+      }
       break;
     case OB_MODE_PAINT_GPENCIL_LEGACY:
       name = "Pencil";
