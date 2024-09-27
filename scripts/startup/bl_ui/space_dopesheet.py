@@ -591,7 +591,7 @@ class DOPESHEET_MT_action(Menu):
     def draw(self, context):
         layout = self.layout
         layout.operator("anim.merge_animation")
-        layout.operator("anim.explode_action")
+        layout.operator("anim.separate_slots")
 
         layout.separator()
         layout.operator("anim.slot_channels_move_to_new_action")

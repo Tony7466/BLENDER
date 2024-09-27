@@ -5295,9 +5295,9 @@ static int explode_action_exec(bContext *C, wmOperator * /* op */)
   /* Also checked by the poll function. */
   BLI_assert(action != nullptr);
 
+  Main *bmain = CTX_data_main(C);
   while (action->slot_array_num) {
     Slot *slot = action->slot(action->slot_array_num - 1);
-    Main *bmain = CTX_data_main(C);
     char actname[MAX_ID_NAME - 2];
     SNPRINTF(actname, DATA_("%sAction"), slot->name + 2);
     Action &target_action = action_add(*bmain, actname);
@@ -5335,12 +5335,12 @@ static bool explode_action_poll(bContext *C)
 
 static void ANIM_OT_explode_action(wmOperatorType *ot)
 {
-  ot->name = "Explode Action";
-  ot->idname = "ANIM_OT_explode_action";
+  ot->name = "Separate Slots";
+  ot->idname = "ANIM_OT_separate_slots";
   ot->description =
       "Move all slots of the action on the active object into newly created, separate actions. "
       "All users of those slots will be reassigned to the new actions. The current action won't "
-      "be deleted but might end up having zero users";
+      "be deleted but will be empty and might end up having zero users";
 
   ot->exec = explode_action_exec;
   ot->poll = explode_action_poll;
