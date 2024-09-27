@@ -82,24 +82,20 @@ Vector<PointsRange> retrieve_selection_ranges(Object &object,
         continue;
       }
 
-      int range_begin = initial_range.first();
-      int range_size = 1;
-      int previous_curve = points_map[range_begin];
+      IndexRange range = {initial_range.start(), 1};
+      int previous_curve = points_map[range.start()];
       for (const int64_t index : initial_range.drop_front(1)) {
         const int current_curve = points_map[index];
         if (previous_curve != current_curve) {
-          IndexRange range{range_begin, range_size};
           selected_ranges.append({&info.drawing.strokes_for_write(), range, is_active_layer});
-          range_begin = index;
-          range_size = 1;
+          range = {index, 1};
           previous_curve = current_curve;
         }
         else {
-          range_size++;
+          range = {range.start(), range.size() + 1};
         }
       }
 
-      IndexRange range{range_begin, range_size};
       selected_ranges.append({&info.drawing.strokes_for_write(), range, is_active_layer});
     }
   }
