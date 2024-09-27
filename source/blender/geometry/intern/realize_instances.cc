@@ -2117,6 +2117,7 @@ static void execute_realize_grease_pencil_task(
     const bke::greasepencil::Layer &src_layer = *src_layers[layer_i];
     bke::greasepencil::Layer &dst_layer = *dst_layers[layer_i];
 
+    dst_layer.set_name(src_layer.name());
     dst_layer.set_local_transform(task.transform * src_layer.local_transform());
 
     const bke::greasepencil::Drawing *src_drawing = src_grease_pencil.get_eval_drawing(src_layer);
@@ -2183,21 +2184,16 @@ static void execute_realize_grease_pencil_tasks(
     return;
   }
 
+  const RealizeGreasePencilTask &last_task = tasks.last();
+  const int new_layers_num = last_task.start_index +
+                             last_task.grease_pencil_info->grease_pencil->layers().size();
+
   /* Allocate new grease pencil. */
   GreasePencil *dst_grease_pencil = BKE_grease_pencil_new_nomain();
   r_realized_geometry.replace_grease_pencil(dst_grease_pencil);
 
-  for (const RealizeGreasePencilTask &task : tasks) {
-    const GreasePencil &src_grease_pencil = *task.grease_pencil_info->grease_pencil;
-    const int layers_offset = dst_grease_pencil->layers().size();
-    dst_grease_pencil->add_layers_for_eval(src_grease_pencil.layers().size());
-    for (const int layer_i : src_grease_pencil.layers().index_range()) {
-      const bke::greasepencil::Layer &src_layer = src_grease_pencil.layer(layer_i);
-      bke::greasepencil::Layer &dst_layer = dst_grease_pencil->layer(layers_offset + layer_i);
-      dst_layer.set_name(src_layer.name());
-      dst_grease_pencil->insert_frame(dst_layer, dst_grease_pencil->runtime->eval_frame);
-    }
-  }
+  /* Allocate all layers. */
+  dst_grease_pencil->add_layers_with_empty_drawings_for_eval(new_layers_num);
 
   /* Transfer material pointers. The material indices are updated for each task separately. */
   if (!all_grease_pencils_info.materials.is_empty()) {
