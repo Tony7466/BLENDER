@@ -50,25 +50,19 @@ static void calc_node(const Depsgraph &depsgraph,
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-  tls.factors.resize(positions.size());
-  const MutableSpan<float> factors = tls.factors;
-  fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
-  filter_region_clip_factors(ss, positions, factors);
-  if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symm, subdiv_ccg, grids, factors);
-  }
+  calc_common_factor_grids(depsgraph,
+                           brush,
+                           object,
+                           subdiv_ccg,
+                           ss,
+                           cache,
+                           grids,
+                           positions,
+                           node,
+                           tls.factors,
+                           tls.distances);
 
-  tls.distances.resize(positions.size());
-  const MutableSpan<float> distances = tls.distances;
-  calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
-  filter_distances_with_radius(cache.radius, distances, factors);
-  apply_hardness_to_distances(cache, distances);
-  calc_brush_strength_factors(cache, brush, distances, factors);
-
-  auto_mask::calc_grids_factors(depsgraph, object, cache.automasking.get(), node, grids, factors);
-
-  calc_brush_texture_factors(ss, brush, positions, factors);
-  scale_factors(factors, strength);
+  scale_factors(tls.factors, strength);
 
   for (const int i : grids.index_range()) {
     const IndexRange node_grid_range = bke::ccg::grid_range(key.grid_area, i);
