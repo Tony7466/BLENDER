@@ -5284,7 +5284,7 @@ static void ANIM_OT_slot_channels_move_to_new_action(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int explode_action_exec(bContext *C, wmOperator * /* op */)
+static int separate_slots_exec(bContext *C, wmOperator * /* op */)
 {
   using namespace blender::animrig;
   Object *active_object = CTX_data_active_object(C);
@@ -5314,7 +5314,7 @@ static int explode_action_exec(bContext *C, wmOperator * /* op */)
   return OPERATOR_FINISHED;
 }
 
-static bool explode_action_poll(bContext *C)
+static bool separate_slots_poll(bContext *C)
 {
   Object *active_object = CTX_data_active_object(C);
   if (!active_object) {
@@ -5333,7 +5333,7 @@ static bool explode_action_poll(bContext *C)
   return true;
 }
 
-static void ANIM_OT_explode_action(wmOperatorType *ot)
+static void ANIM_OT_separate_slots(wmOperatorType *ot)
 {
   ot->name = "Separate Slots";
   ot->idname = "ANIM_OT_separate_slots";
@@ -5342,8 +5342,8 @@ static void ANIM_OT_explode_action(wmOperatorType *ot)
       "All users of those slots will be reassigned to the new actions. The current action won't "
       "be deleted but will be empty and might end up having zero users";
 
-  ot->exec = explode_action_exec;
-  ot->poll = explode_action_poll;
+  ot->exec = separate_slots_exec;
+  ot->poll = separate_slots_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
@@ -5734,7 +5734,7 @@ void ED_operatortypes_animchannels()
 
 #ifdef WITH_ANIM_BAKLAVA
   WM_operatortype_append(ANIM_OT_slot_channels_move_to_new_action);
-  WM_operatortype_append(ANIM_OT_explode_action);
+  WM_operatortype_append(ANIM_OT_separate_slots);
 #endif
 }
 
