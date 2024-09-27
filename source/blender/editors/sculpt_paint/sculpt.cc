@@ -6715,6 +6715,15 @@ void apply_translations(const Span<float3> translations,
   }
 }
 
+static void apply_translations(const Span<float3> translations,
+                               const IndexMask &verts,
+                               const MutableSpan<float3> positions)
+{
+  BLI_assert(verts.size() == translations.size());
+  verts.foreach_index_optimized<int>(
+      [&](const int i, const int pos) { positions[i] += translations[pos]; });
+}
+
 void apply_translations(const Span<float3> translations,
                         const Span<int> grids,
                         SubdivCCG &subdiv_ccg)
@@ -6765,6 +6774,17 @@ void apply_crazyspace_to_translations(const Span<float3x3> deform_imats,
   for (const int i : verts.index_range()) {
     translations[i] = math::transform_point(deform_imats[verts[i]], translations[i]);
   }
+}
+
+static void apply_crazyspace_to_translations(const Span<float3x3> deform_imats,
+                                             const IndexMask &verts,
+                                             const MutableSpan<float3> translations)
+{
+  BLI_assert(verts.size() == translations.size());
+
+  verts.foreach_index_optimized<int>([&](const int i, const int pos) {
+    translations[pos] = math::transform_point(deform_imats[i], translations[pos]);
+  });
 }
 
 void clip_and_lock_translations(const Sculpt &sd,
@@ -6884,7 +6904,53 @@ static void copy_indices(const Span<float3> src, const Span<int> indices, Mutabl
   }
 }
 
+static void copy_indices(const Span<float3> src, const IndexMask &mask, MutableSpan<float3> dst)
+{
+  mask.foreach_index_optimized<int>([&](const int i) { dst[i] = src[i]; });
+}
+
 void PositionDeformData::deform(MutableSpan<float3> translations, const Span<int> verts) const
+{
+  if (eval_mut_) {
+    /* Apply translations to the evaluated mesh. This is necessary because multiple brush
+     * evaluations can happen in between object reevaluations (otherwise just deforming the
+     * original positions would be enough). */
+    apply_translations(translations, verts, *eval_mut_);
+  }
+
+  if (deform_imats_) {
+    /* Apply the reverse procedural deformation, since subsequent translation happens to the state
+     * from "before" deforming modifiers. */
+    apply_crazyspace_to_translations(*deform_imats_, verts, translations);
+  }
+
+  if (KeyBlock *key = active_key_) {
+    const MutableSpan active_key_data(static_cast<float3 *>(key->data), key->totelem);
+    if (basis_active_) {
+      /* The active shape key positions and the mesh positions are always kept in sync. */
+      apply_translations(translations, verts, orig_);
+      copy_indices(orig_, verts, active_key_data);
+    }
+    else {
+      apply_translations(translations, verts, active_key_data);
+    }
+
+    if (dependent_keys_) {
+      int i;
+      LISTBASE_FOREACH_INDEX (KeyBlock *, other_key, &keys_->block, i) {
+        if ((other_key != key) && (*dependent_keys_)[i]) {
+          MutableSpan data(static_cast<float3 *>(other_key->data), other_key->totelem);
+          apply_translations(translations, verts, data);
+        }
+      }
+    }
+  }
+  else {
+    apply_translations(translations, verts, orig_);
+  }
+}
+
+void PositionDeformData::deform(MutableSpan<float3> translations, const IndexMask &verts) const
 {
   if (eval_mut_) {
     /* Apply translations to the evaluated mesh. This is necessary because multiple brush
@@ -7011,6 +7077,17 @@ void translations_from_new_positions(const Span<float3> new_positions,
   for (const int i : verts.index_range()) {
     translations[i] = new_positions[i] - old_positions[verts[i]];
   }
+}
+
+void translations_from_new_positions(const Span<float3> new_positions,
+                                     const IndexMask &verts,
+                                     const Span<float3> old_positions,
+                                     const MutableSpan<float3> translations)
+{
+  BLI_assert(new_positions.size() == verts.size());
+  verts.foreach_index_optimized<int>([&](const int i, const int pos) {
+    translations[pos] = new_positions[pos] - old_positions[i];
+  });
 }
 
 void translations_from_new_positions(const Span<float3> new_positions,
