@@ -1520,7 +1520,7 @@ static void rna_def_attribute_group_id_common(StructRNA *srna)
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Active Attribute Index", "Active attribute index or -1 when there is no active");
+      prop, "Active Attribute Index", "Active attribute index or -1 when none are active");
   RNA_def_property_range(prop, -1, INT_MAX);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_int_funcs(prop,
@@ -1697,7 +1697,7 @@ static void rna_def_attribute_group_grease_pencil_drawing(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Active Attribute Index", "Active attribute index or -1 when there is no active");
+      prop, "Active Attribute Index", "Active attribute index or -1 when none are active");
   RNA_def_property_range(prop, -1, INT_MAX);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_int_funcs(prop,
