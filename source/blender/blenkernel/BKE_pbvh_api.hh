@@ -208,8 +208,8 @@ class Tree {
   friend Node;
   Type type_;
 
-  /* Memory backing for Node.prim_indices. */
-  Array<int> prim_indices_;
+  /** Memory backing for #Node::prim_indices. Without an inline buffer to make #Tree movable. */
+  Array<int, 0> prim_indices_;
 
  public:
   std::variant<Vector<MeshNode>, Vector<GridsNode>, Vector<BMeshNode>> nodes_;
@@ -355,7 +355,7 @@ bool node_raycast_bmesh(BMeshNode &node,
                         BMVert **r_active_vertex,
                         float3 &r_face_normal);
 
-bool bmesh_node_raycast_detail(BMeshNode &node,
+bool raycast_node_detail_bmesh(BMeshNode &node,
                                const float3 &ray_start,
                                IsectRayPrecalc *isect_precalc,
                                float *depth,

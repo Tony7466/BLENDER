@@ -10,15 +10,17 @@
 
 #include "gpu_context_private.hh"
 
+#include "BLI_utility_mixins.hh"
 #include "vk_common.hh"
 
 namespace blender::gpu {
 class VKContext;
+class VKDevice;
 
 /**
  * Class for handing vulkan buffers (allocation/updating/binding).
  */
-class VKBuffer {
+class VKBuffer : public NonCopyable {
   size_t size_in_bytes_ = 0;
   VkBuffer vk_buffer_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
@@ -47,6 +49,11 @@ class VKBuffer {
    * rendering so we can only destroy them after the rendering is completed.
    */
   bool free();
+
+  /**
+   * Destroy the buffer immediately.
+   */
+  void free_immediately(VKDevice &device);
 
   int64_t size_in_bytes() const
   {
@@ -79,13 +86,10 @@ class VKBuffer {
 /**
  * Helper struct to enable buffers to be bound with an offset.
  *
- * VKImmediate mode uses a single VKBuffer with multiple vertex layouts. Those layouts are send to
- * the command buffer containing an offset.
- *
- * VKIndexBuffer uses this when it is a subrange of another buffer.
+ * Used for de-interleaved vertex input buffers and immediate mode buffers.
  */
 struct VKBufferWithOffset {
-  const VKBuffer &buffer;
+  const VkBuffer buffer;
   VkDeviceSize offset;
 };
 

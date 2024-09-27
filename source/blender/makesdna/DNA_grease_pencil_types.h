@@ -462,6 +462,8 @@ typedef struct GreasePencil {
   CustomData layers_data;
   /**
    * The index of the active attribute in the UI.
+   *
+   * Set to -1 when none is active.
    */
   int attributes_active_index;
   char _pad2[4];
@@ -509,8 +511,8 @@ typedef struct GreasePencil {
   /* Layers, layer groups and nodes read/write access. */
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
   blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();
-  const blender::bke::greasepencil::Layer *layer(int64_t index) const;
-  blender::bke::greasepencil::Layer *layer(int64_t index);
+  const blender::bke::greasepencil::Layer &layer(int64_t index) const;
+  blender::bke::greasepencil::Layer &layer(int64_t index);
 
   blender::Span<const blender::bke::greasepencil::LayerGroup *> layer_groups() const;
   blender::Span<blender::bke::greasepencil::LayerGroup *> layer_groups_for_write();
@@ -555,6 +557,12 @@ typedef struct GreasePencil {
   blender::bke::greasepencil::LayerGroup &add_layer_group(
       blender::bke::greasepencil::LayerGroup &parent_group, blender::StringRefNull name);
 
+  /**
+   *  Adds multiple layers with an empty name.
+   *  Note: Evaluated Grease Pencil geometry is allowed to have layers with the same name.
+   */
+  void add_layers_for_eval(int num_new_layers);
+
   /* Moving nodes. */
   void move_node_up(blender::bke::greasepencil::TreeNode &node, int step = 1);
   void move_node_down(blender::bke::greasepencil::TreeNode &node, int step = 1);
@@ -598,6 +606,15 @@ typedef struct GreasePencil {
       int frame_number,
       int duration = 0,
       eBezTriple_KeyframeType keytype = BEZT_KEYTYPE_KEYFRAME);
+
+  /**
+   * Same as #insert_frame but insert a new keyframe in each layer in \a layers. This will also
+   * create a new drawing for each of the created keyframes.
+   */
+  void insert_frames(blender::Span<blender::bke::greasepencil::Layer *> layers,
+                     int frame_number,
+                     int duration = 0,
+                     eBezTriple_KeyframeType keytype = BEZT_KEYTYPE_KEYFRAME);
   /**
    * Removes all the frames with \a frame_numbers in the \a layer.
    * \returns true if any frame was removed.
@@ -614,15 +631,15 @@ typedef struct GreasePencil {
    * Low-level resizing of drawings array. Only allocates new entries in the array, no drawings are
    * created in case of size increase. In case of size decrease, the removed drawings are deleted.
    */
-  void resize_drawings(const int new_num);
+  void resize_drawings(int new_num);
   /** Add `add_num` new empty geometry drawings. */
   void add_empty_drawings(int add_num);
   void add_duplicate_drawings(int duplicate_num,
                               const blender::bke::greasepencil::Drawing &drawing);
   bool insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
-                              const int src_frame_number,
-                              const int dst_frame_number,
-                              const bool do_instance);
+                              int src_frame_number,
+                              int dst_frame_number,
+                              bool do_instance);
 
   /**
    * Move a set of frames in a \a layer.
