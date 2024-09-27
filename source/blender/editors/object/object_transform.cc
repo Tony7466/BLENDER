@@ -855,6 +855,8 @@ static int apply_objects_internal(bContext *C,
     return OPERATOR_CANCELLED;
   }
 
+  bool has_errors;
+
   for (Object *ob : objects) {
     /* calculate rotation/scale matrix */
     if (apply_scale && apply_rot) {
@@ -871,7 +873,15 @@ static int apply_objects_internal(bContext *C,
 
       /* correct for scale, note mul_m3_m3m3 has swapped args! */
       BKE_object_scale_to_mat3(ob, tmat);
-      invert_m3_m3(timat, tmat);
+      bool invert_success = invert_m3_m3(timat, tmat);
+      if (!invert_success) {
+        BKE_reportf(reports,
+                    RPT_ERROR,
+                    "Can't apply rotation to object \"%s\", check if any of the axis has 0 scale.",
+                    ob->id.name + 2);
+        has_errors = 1;
+        continue;
+      }
       mul_m3_m3m3(rsmat, timat, rsmat);
       mul_m3_m3m3(rsmat, rsmat, tmat);
     }
@@ -1123,6 +1133,10 @@ static int apply_objects_internal(bContext *C,
 
   if (!changed) {
     BKE_report(reports, RPT_WARNING, "Objects have no data to transform");
+    return OPERATOR_CANCELLED;
+  }
+  if (has_errors) {
+    BKE_report(reports, RPT_WARNING, "Failed to apply rotation to some of the objects");
     return OPERATOR_CANCELLED;
   }
 
