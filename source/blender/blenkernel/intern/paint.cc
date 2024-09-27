@@ -818,17 +818,17 @@ static void paint_brush_default_essentials_name_get(
       name = "Draw";
       break;
     case OB_MODE_VERTEX_PAINT:
-      name = "Paint Vertex";
+      name = "Paint";
       if (brush_type) {
         switch (eBrushVertexPaintType(*brush_type)) {
           case VPAINT_BRUSH_TYPE_BLUR:
-            name = "Blur Vertex";
+            name = "Blur";
             break;
           case VPAINT_BRUSH_TYPE_AVERAGE:
-            name = "Average Vertex";
+            name = "Average";
             break;
           case VPAINT_BRUSH_TYPE_SMEAR:
-            name = "Smear Vertex";
+            name = "Smear";
             break;
           case VPAINT_BRUSH_TYPE_DRAW:
             /* Use default, don't override. */
@@ -837,17 +837,17 @@ static void paint_brush_default_essentials_name_get(
       }
       break;
     case OB_MODE_WEIGHT_PAINT:
-      name = "Paint Weight";
+      name = "Paint";
       if (brush_type) {
         switch (eBrushWeightPaintType(*brush_type)) {
           case WPAINT_BRUSH_TYPE_BLUR:
-            name = "Blur Weight";
+            name = "Blur";
             break;
           case WPAINT_BRUSH_TYPE_AVERAGE:
-            name = "Average Weight";
+            name = "Average";
             break;
           case WPAINT_BRUSH_TYPE_SMEAR:
-            name = "Smear Weight";
+            name = "Smear";
             break;
           case WPAINT_BRUSH_TYPE_DRAW:
             /* Use default, don't override. */

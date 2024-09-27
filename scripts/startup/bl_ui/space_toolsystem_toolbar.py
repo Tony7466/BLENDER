@@ -1856,7 +1856,7 @@ class _defs_vertex_paint:
     @ToolDef.from_fn
     def blur():
         return dict(
-            idname="builtin.blur",
+            idname="builtin_brush.blur",
             label="Blur",
             icon="brush.paint_vertex.blur",
             options={'USE_BRUSHES'},
@@ -1923,7 +1923,7 @@ class _defs_weight_paint:
     @ToolDef.from_fn
     def blur():
         return dict(
-            idname="builtin.blur",
+            idname="builtin_brush.blur",
             label="Blur",
             icon="brush.paint_weight.blur",
             options={'USE_BRUSHES'},
