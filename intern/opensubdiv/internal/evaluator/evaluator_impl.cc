@@ -550,8 +550,7 @@ OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
 
   blender::opensubdiv::PatchMap *patch_map = new blender::opensubdiv::PatchMap(*patch_table);
   // Wrap everything we need into an object which we control from our side.
-  OpenSubdiv_Evaluator *evaluator;
-  evaluator = new OpenSubdiv_Evaluator();
+  OpenSubdiv_Evaluator *evaluator = new OpenSubdiv_Evaluator();
   evaluator->type = evaluator_type;
 
   evaluator->eval_output = new blender::opensubdiv::EvalOutputAPI(eval_output, patch_map);

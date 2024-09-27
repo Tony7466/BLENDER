@@ -372,10 +372,6 @@ static const GPUVertFormat &get_uvs_format()
   return format;
 }
 
-#endif
-
-#ifdef WITH_OPENSUBDIV
-
 /* Vertex format for `OpenSubdiv::Osd::PatchArray`. */
 static const GPUVertFormat &get_patch_array_format()
 {
@@ -391,10 +387,6 @@ static const GPUVertFormat &get_patch_array_format()
   return format;
 }
 
-#endif
-
-#ifdef WITH_OPENSUBDIV
-
 /* Vertex format used for the `PatchTable::PatchHandle`. */
 static const GPUVertFormat &get_patch_handle_format()
 {
@@ -407,10 +399,6 @@ static const GPUVertFormat &get_patch_handle_format()
   return format;
 }
 
-#endif
-
-#ifdef WITH_OPENSUBDIV
-
 /* Vertex format used for the quad-tree nodes of the PatchMap. */
 static const GPUVertFormat &get_quadtree_format()
 {
@@ -420,10 +408,6 @@ static const GPUVertFormat &get_quadtree_format()
   }
   return format;
 }
-
-#endif
-
-#ifdef WITH_OPENSUBDIV
 
 /* Vertex format for `OpenSubdiv::Osd::PatchParam`, not really used, it is only for making sure
  * that the #gpu::VertBuf used to wrap the OpenSubdiv patch param buffer is valid. */
@@ -436,10 +420,6 @@ static const GPUVertFormat &get_patch_param_format()
   return format;
 }
 
-#endif
-
-#ifdef WITH_OPENSUBDIV
-
 /* Vertex format for the patches' vertices index buffer. */
 static const GPUVertFormat &get_patch_index_format()
 {
@@ -449,10 +429,6 @@ static const GPUVertFormat &get_patch_index_format()
   }
   return format;
 }
-
-#endif
-
-#ifdef WITH_OPENSUBDIV
 
 /* Vertex format for the OpenSubdiv vertex buffer. */
 static const GPUVertFormat &get_subdiv_vertex_format()
@@ -465,8 +441,6 @@ static const GPUVertFormat &get_subdiv_vertex_format()
   }
   return format;
 }
-
-#endif
 
 struct CompressedPatchCoord {
   int ptex_face_index;
@@ -482,8 +456,6 @@ MINLINE CompressedPatchCoord make_patch_coord(int ptex_face_index, float u, floa
   };
   return patch_coord;
 }
-
-#ifdef WITH_OPENSUBDIV
 
 /* Vertex format used for the #CompressedPatchCoord. */
 static const GPUVertFormat &get_blender_patch_coords_format()
@@ -897,8 +869,6 @@ static void draw_subdiv_invalidate_evaluator_for_orco(bke::subdiv::Subdiv *subdi
   }
 }
 
-#endif
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -939,8 +909,6 @@ struct DRWCacheBuildingContext {
   const int *orig_index_vert;
   const int *orig_index_edge;
 };
-
-#ifdef WITH_OPENSUBDIV
 
 static bool draw_subdiv_topology_info_cb(const bke::subdiv::ForeachContext *foreach_context,
                                          const int num_verts,
@@ -1207,10 +1175,6 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache &cache)
 
   MEM_freeN(tmp_set_faces);
 }
-
-#endif
-
-#ifdef WITH_OPENSUBDIV
 
 static bool draw_subdiv_build_cache(DRWSubdivCache &cache,
                                     bke::subdiv::Subdiv *subdiv,
