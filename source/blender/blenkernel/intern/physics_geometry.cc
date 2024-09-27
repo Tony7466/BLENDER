@@ -306,13 +306,12 @@ void PhysicsWorldState::ensure_read_cache_no_lock() const
     }
   }
   /* Only use builtin attributes, dynamic attributes are already in custom data. */
-  src_attributes.for_all(
-      [&](const StringRefNull id, const AttributeMetaData & /*meta_data*/) -> bool {
-        if (!src_attributes.is_builtin(id)) {
-          local_body_attribute_names.add_new(id);
-          local_constraint_attribute_names.add_new(id);
+  src_attributes.foreach_attribute(
+      [&](const AttributeIter &iter) {
+        if (!src_attributes.is_builtin(iter.name)) {
+          local_body_attribute_names.add_new(iter.name);
+          local_constraint_attribute_names.add_new(iter.name);
         }
-        return true;
       });
 
   gather_attributes(src_attributes,
@@ -435,11 +434,11 @@ void PhysicsWorldState::remove_attribute_caches()
 {
   /* Force use of cache for writing. */
   MutableAttributeAccessor attributes = this->state_attributes_for_write();
-  attributes.for_all(
-      [&](const StringRefNull attribute_id, const AttributeMetaData &meta_data) -> bool {
+  attributes.foreach_attribute(
+      [&](const AttributeIter &iter) {
         CustomData *custom_data = nullptr;
         int totelem = 0;
-        switch (meta_data.domain) {
+        switch (iter.domain) {
           case AttrDomain::Point:
             custom_data = &body_custom_data_;
             totelem = body_num_;
@@ -454,11 +453,9 @@ void PhysicsWorldState::remove_attribute_caches()
             BLI_assert_unreachable();
             break;
         }
-        if (custom_data == nullptr) {
-          return true;
+        if (custom_data != nullptr) {
+          CustomData_free_layer_named(custom_data, iter.name, totelem);
         }
-        CustomData_free_layer_named(custom_data, attribute_id, totelem);
-        return true;
       });
 }
 
