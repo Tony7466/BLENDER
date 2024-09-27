@@ -81,7 +81,7 @@ struct GPUCodegenCreateInfo : ShaderCreateInfo {
   NameBuffer name_buffer;
 
   GPUCodegenCreateInfo(const char *name) : ShaderCreateInfo(name){};
-  ~GPUCodegenCreateInfo()
+  virtual ~GPUCodegenCreateInfo()
   {
     delete interface_generated;
   };

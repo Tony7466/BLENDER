@@ -21,6 +21,7 @@
 #include "GPU_texture.hh"
 
 #include <iostream>
+#include <mutex>
 
 /* Force enable `printf` support in release build. */
 #define GPU_FORCE_ENABLE_SHADER_PRINTF 0
@@ -351,6 +352,18 @@ struct StageInterfaceInfo {
   }
 };
 
+/* This doesn't copy the mutex state,
+ * it just prevents objects holding a mutex property from becoming uncopyable. */
+struct CopyableMutex {
+  std::mutex mutex;
+  CopyableMutex() : mutex() {}
+  CopyableMutex(CopyableMutex const & /*other*/) : mutex() {}
+  CopyableMutex &operator=(const CopyableMutex & /*other*/)
+  {
+    return *this;
+  }
+};
+
 /**
  * \brief Describe inputs & outputs, stage interfaces, resources and sources of a shader.
  *        If all data is correctly provided, this is all that is needed to create and compile
@@ -392,6 +405,8 @@ struct ShaderCreateInfo {
   std::string typedef_source_generated = "";
   /** Manually set generated dependencies. */
   Vector<const char *, 0> dependencies_generated;
+
+  CopyableMutex finalize_mutex_;
 
 #define TEST_EQUAL(a, b, _member) \
   if (!((a)._member == (b)._member)) { \
@@ -624,7 +639,7 @@ struct ShaderCreateInfo {
 
  public:
   ShaderCreateInfo(const char *name) : name_(name){};
-  ~ShaderCreateInfo(){};
+  virtual ~ShaderCreateInfo(){};
 
   using Self = ShaderCreateInfo;
 

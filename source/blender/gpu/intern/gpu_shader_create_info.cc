@@ -96,9 +96,15 @@ bool ShaderCreateInfo::is_vulkan_compatible() const
 void ShaderCreateInfo::finalize()
 {
   if (finalized_) {
+    /* Check before trying to acquire the mutex. */
     return;
   }
-  finalized_ = true;
+
+  std::lock_guard lock(finalize_mutex_.mutex);
+  if (finalized_) {
+    /* Check in case the mutex was already locked. */
+    return;
+  }
 
   Set<StringRefNull> deps_merged;
 
@@ -231,6 +237,8 @@ void ShaderCreateInfo::finalize()
       set_resource_slot(res);
     }
   }
+
+  finalized_ = true;
 }
 
 std::string ShaderCreateInfo::check_error() const
