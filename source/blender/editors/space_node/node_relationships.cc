@@ -2424,6 +2424,8 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
   bNodeSocket *from_socket = old_link->fromsock;
   bNode *to_node = old_link->tonode;
 
+  const bool best_input_is_linked = best_input && best_input->is_directly_linked();
+
   if (best_output != nullptr) {
     /* Relink the "start" of the existing link to the newly inserted node. */
     old_link->fromnode = node_to_insert;
@@ -2436,14 +2438,7 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 
   if (best_input != nullptr) {
     /* Don't change an existing link. */
-    bool is_linked = false;
-    LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
-      if (link->tosock == best_input) {
-        is_linked = true;
-        break;
-      }
-    }
-    if (!is_linked) {
+    if (!best_input_is_linked) {
       /* Add a new link that connects the node on the left to the newly inserted node. */
       bke::node_add_link(&ntree, from_node, from_socket, node_to_insert, best_input);
     }
