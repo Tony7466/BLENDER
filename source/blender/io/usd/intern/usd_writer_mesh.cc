@@ -236,7 +236,7 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
     return;
   }
 
-  const GVArray attribute = *attr.get(attr.domain, attr.data_type);
+  const GVArray attribute = *attr.get();
   if (attribute.is_empty()) {
     return;
   }
