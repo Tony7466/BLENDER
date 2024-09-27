@@ -2557,7 +2557,6 @@ class _defs_gpencil_paint:
 
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
-        settings = tool_settings.gpencil_paint
 
         BrushAssetShelf.draw_popup_selector(row, context, brush)
 
