@@ -6187,13 +6187,14 @@ void calc_factors_common_mesh_indexed(const Depsgraph &depsgraph,
                                       const Span<float3> vert_positions,
                                       const Span<float3> vert_normals,
                                       const bke::pbvh::MeshNode &node,
-                                      const Span<int> verts,
                                       Vector<float> &r_factors,
                                       Vector<float> &r_distances)
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+  const Span<int> verts = node.verts();
 
   r_factors.resize(verts.size());
   const MutableSpan<float> factors = r_factors;
@@ -6222,13 +6223,14 @@ void calc_factors_common_mesh(const Depsgraph &depsgraph,
                               const Span<float3> positions,
                               const Span<float3> vert_normals,
                               const bke::pbvh::MeshNode &node,
-                              const Span<int> verts,
                               Vector<float> &r_factors,
                               Vector<float> &r_distances)
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+  const Span<int> verts = node.verts();
 
   r_factors.resize(verts.size());
   const MutableSpan<float> factors = r_factors;
@@ -6255,13 +6257,14 @@ void calc_factors_common_grids(const Depsgraph &depsgraph,
                                const Object &object,
                                const Span<float3> positions,
                                const bke::pbvh::GridsNode &node,
-                               const Span<int> grids,
                                Vector<float> &r_factors,
                                Vector<float> &r_distances)
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+
+  const Span<int> grids = node.grids();
 
   r_factors.resize(positions.size());
   const MutableSpan<float> factors = r_factors;
@@ -6287,13 +6290,14 @@ void calc_factors_common_bmesh(const Depsgraph &depsgraph,
                                const Brush &brush,
                                const Object &object,
                                const Span<float3> positions,
-                               const bke::pbvh::BMeshNode &node,
-                               const Set<BMVert *, 0> &verts,
+                               bke::pbvh::BMeshNode &node,
                                Vector<float> &r_factors,
                                Vector<float> &r_distances)
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
+
+  const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
   r_factors.resize(verts.size());
   const MutableSpan<float> factors = r_factors;
@@ -6321,13 +6325,14 @@ void calc_factors_common_from_orig_data_mesh(const Depsgraph &depsgraph,
                                              const Span<float3> positions,
                                              const Span<float3> normals,
                                              const bke::pbvh::MeshNode &node,
-                                             const Span<int> verts,
                                              Vector<float> &r_factors,
                                              Vector<float> &r_distances)
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
+
+  const Span<int> verts = node.verts();
 
   r_factors.resize(verts.size());
   const MutableSpan<float> factors = r_factors;
@@ -6356,13 +6361,14 @@ void calc_factors_common_from_orig_data_grids(const Depsgraph &depsgraph,
                                               const Span<float3> positions,
                                               const Span<float3> normals,
                                               const bke::pbvh::GridsNode &node,
-                                              const Span<int> grids,
                                               Vector<float> &r_factors,
                                               Vector<float> &r_distances)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+
+  const Span<int> grids = node.grids();
 
   r_factors.resize(positions.size());
   const MutableSpan<float> factors = r_factors;
@@ -6389,13 +6395,14 @@ void calc_factors_common_from_orig_data_bmesh(const Depsgraph &depsgraph,
                                               const Object &object,
                                               const Span<float3> positions,
                                               const Span<float3> normals,
-                                              const bke::pbvh::BMeshNode &node,
-                                              const Set<BMVert *, 0> &verts,
+                                              bke::pbvh::BMeshNode &node,
                                               Vector<float> &r_factors,
                                               Vector<float> &r_distances)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
+
+  const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
 
   r_factors.resize(verts.size());
   const MutableSpan<float> factors = r_factors;

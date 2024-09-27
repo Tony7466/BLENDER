@@ -58,8 +58,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
   const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
-  calc_factors_common_bmesh(
-      depsgraph, brush, object, positions, node, verts, tls.factors, tls.distances);
+  calc_factors_common_bmesh(depsgraph, brush, object, positions, node, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 

@@ -71,7 +71,6 @@ static void calc_faces(const Depsgraph &depsgraph,
                                    position_data.eval,
                                    vert_normals,
                                    node,
-                                   verts,
                                    tls.factors,
                                    tls.distances);
 
@@ -106,8 +105,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-  calc_factors_common_grids(
-      depsgraph, brush, object, positions, node, grids, tls.factors, tls.distances);
+  calc_factors_common_grids(depsgraph, brush, object, positions, node, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 
@@ -139,8 +137,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
   const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
-  calc_factors_common_bmesh(
-      depsgraph, brush, object, positions, node, verts, tls.factors, tls.distances);
+  calc_factors_common_bmesh(depsgraph, brush, object, positions, node, tls.factors, tls.distances);
 
   scale_factors(tls.factors, strength);
 

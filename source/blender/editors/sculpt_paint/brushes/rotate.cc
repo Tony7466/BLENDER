@@ -75,7 +75,6 @@ static void calc_faces(const Depsgraph &depsgraph,
                                           orig_data.positions,
                                           orig_data.normals,
                                           node,
-                                          verts,
                                           tls.factors,
                                           tls.distances);
 
@@ -116,7 +115,6 @@ static void calc_grids(const Depsgraph &depsgraph,
                                            orig_data.positions,
                                            orig_data.normals,
                                            node,
-                                           grids,
                                            tls.factors,
                                            tls.distances);
 
@@ -151,15 +149,8 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   Array<float3> orig_normals(verts.size());
   orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
 
-  calc_factors_common_from_orig_data_bmesh(depsgraph,
-                                           brush,
-                                           object,
-                                           orig_positions,
-                                           orig_normals,
-                                           node,
-                                           verts,
-                                           tls.factors,
-                                           tls.distances);
+  calc_factors_common_from_orig_data_bmesh(
+      depsgraph, brush, object, orig_positions, orig_normals, node, tls.factors, tls.distances);
 
   scale_factors(tls.factors, angle);
 
