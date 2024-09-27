@@ -132,19 +132,11 @@ static void sh_node_mix_label(const bNodeTree * /*ntree*/,
   }
 }
 
-static int sh_node_mix_ui_class(const bNode *node)
+static int node_ui_class(const bNode *node)
 {
   const NodeShaderMix &storage = node_storage(*node);
   const eNodeSocketDatatype data_type = static_cast<eNodeSocketDatatype>(storage.data_type);
-
-  switch (data_type) {
-    case SOCK_VECTOR:
-      return NODE_CLASS_OP_VECTOR;
-    case SOCK_RGBA:
-      return NODE_CLASS_OP_COLOR;
-    default:
-      return NODE_CLASS_CONVERTER;
-  }
+  return node_ui_class_from_data_type(data_type);
 }
 
 static void sh_node_mix_update(bNodeTree *ntree, bNode *node)
@@ -612,7 +604,7 @@ void register_node_type_sh_mix()
   static blender::bke::bNodeType ntype;
   sh_fn_node_type_base(&ntype, SH_NODE_MIX, "Mix", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_mix_declare;
-  ntype.ui_class = file_ns::sh_node_mix_ui_class;
+  ntype.ui_class = file_ns::node_ui_class;
   ntype.gpu_fn = file_ns::gpu_shader_mix;
   ntype.updatefunc = file_ns::sh_node_mix_update;
   ntype.initfunc = file_ns::node_mix_init;

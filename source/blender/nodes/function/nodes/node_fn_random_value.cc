@@ -197,6 +197,14 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   }
 }
 
+static int node_ui_class(const bNode *node)
+{
+  const NodeRandomValue &storage = node_storage(*node);
+  const eCustomDataType cd_type = static_cast<eCustomDataType>(storage.data_type);
+  eNodeSocketDatatype data_type = *bke::custom_data_type_to_socket_type(cd_type);
+  return node_ui_class_from_data_type(data_type);
+}
+
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
@@ -204,6 +212,7 @@ static void node_register()
   fn_node_type_base(&ntype, FN_NODE_RANDOM_VALUE, "Random Value", NODE_CLASS_CONVERTER);
   ntype.initfunc = fn_node_random_value_init;
   ntype.updatefunc = fn_node_random_value_update;
+  ntype.ui_class = node_ui_class;
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;

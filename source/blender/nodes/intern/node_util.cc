@@ -171,6 +171,20 @@ void node_math_update(bNodeTree *ntree, bNode *node)
   }
 }
 
+int node_ui_class_from_data_type(const eNodeSocketDatatype type)
+{
+  switch (type) {
+    case SOCK_VECTOR:
+      return NODE_CLASS_OP_VECTOR;
+    case SOCK_RGBA:
+      return NODE_CLASS_OP_COLOR;
+    case SOCK_GEOMETRY:
+      return NODE_CLASS_GEOMETRY;
+    default:
+      return NODE_CLASS_CONVERTER;
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

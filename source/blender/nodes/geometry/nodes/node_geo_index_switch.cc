@@ -366,6 +366,13 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       *ntree, *node, *node, *link);
 }
 
+static int node_ui_class(const bNode *node)
+{
+  const NodeIndexSwitch &storage = node_storage(*node);
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
+  return node_ui_class_from_data_type(data_type);
+}
+
 static void register_node()
 {
   static blender::bke::bNodeType ntype;
@@ -373,6 +380,7 @@ static void register_node()
   geo_node_type_base(&ntype, GEO_NODE_INDEX_SWITCH, "Index Switch", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
+  ntype.ui_class = node_ui_class;
   ntype.insert_link = node_insert_link;
   blender::bke::node_type_storage(&ntype, "NodeIndexSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;

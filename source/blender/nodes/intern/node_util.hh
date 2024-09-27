@@ -38,6 +38,9 @@ void node_sock_label(bNodeSocket *sock, const char *name);
 void node_sock_label_clear(bNodeSocket *sock);
 void node_math_update(bNodeTree *ntree, bNode *node);
 
+/**** Node Class ****/
+int node_ui_class_from_data_type(const eNodeSocketDatatype type);
+
 /**** Labels ****/
 void node_blend_label(const bNodeTree *ntree, const bNode *node, char *label, int label_maxncpy);
 void node_image_label(const bNodeTree *ntree, const bNode *node, char *label, int label_maxncpy);

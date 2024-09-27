@@ -60,14 +60,12 @@ static void node_shader_buts_map_range(uiLayout *layout, bContext * /*C*/, Point
   }
 }
 
-static int node_shader_map_range_ui_class(const bNode *node)
+static int node_ui_class(const bNode *node)
 {
   const NodeMapRange &storage = node_storage(*node);
-  const eCustomDataType data_type = static_cast<eCustomDataType>(storage.data_type);
-  if (data_type == CD_PROP_FLOAT3) {
-    return NODE_CLASS_OP_VECTOR;
-  }
-  return NODE_CLASS_CONVERTER;
+  const eCustomDataType cd_type = static_cast<eCustomDataType>(storage.data_type);
+  eNodeSocketDatatype data_type = *bke::custom_data_type_to_socket_type(cd_type);
+  return node_ui_class_from_data_type(data_type);
 }
 
 static void node_shader_update_map_range(bNodeTree *ntree, bNode *node)
@@ -527,7 +525,7 @@ void register_node_type_sh_map_range()
   sh_fn_node_type_base(&ntype, SH_NODE_MAP_RANGE, "Map Range", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_map_range_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_map_range;
-  ntype.ui_class = file_ns::node_shader_map_range_ui_class;
+  ntype.ui_class = file_ns::node_ui_class;
   ntype.initfunc = file_ns::node_shader_init_map_range;
   blender::bke::node_type_storage(
       &ntype, "NodeMapRange", node_free_standard_storage, node_copy_standard_storage);

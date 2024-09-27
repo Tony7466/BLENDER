@@ -242,6 +242,13 @@ static void node_rna(StructRNA *srna)
       });
 }
 
+static int node_ui_class(const bNode *node)
+{
+  const NodeSwitch &storage = node_storage(*node);
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(storage.input_type);
+  return node_ui_class_from_data_type(socket_type);
+}
+
 static void register_node()
 {
   static blender::bke::bNodeType ntype;
@@ -249,6 +256,7 @@ static void register_node()
   geo_node_type_base(&ntype, GEO_NODE_SWITCH, "Switch", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
+  ntype.ui_class = node_ui_class;
   blender::bke::node_type_storage(
       &ntype, "NodeSwitch", node_free_standard_storage, node_copy_standard_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
