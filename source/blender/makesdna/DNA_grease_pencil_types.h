@@ -555,7 +555,7 @@ typedef struct GreasePencil {
   blender::bke::greasepencil::LayerGroup &add_layer_group(
       blender::bke::greasepencil::LayerGroup &parent_group, blender::StringRefNull name);
 
-  /** 
+  /**
    *  Adds multiple layers with an empty name.
    *  Note: Evaluated Grease Pencil geometry is allowed to have layers with the same name.
    */
