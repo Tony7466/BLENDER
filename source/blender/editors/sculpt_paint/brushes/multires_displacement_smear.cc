@@ -124,7 +124,8 @@ static void calc_node(const Depsgraph &depsgraph,
 
         float3 new_co = cache.displacement_smear.limit_surface_co[vert] +
                         interp_limit_surface_disp;
-        ccg_positions[vert] = math::interpolate(ccg_positions[vert], new_co, factors[node_vert]);
+        ccg_positions[vert] = math::interpolate(
+            ccg_positions[vert], new_co, tls.factors[node_vert]);
       }
     }
   }
