@@ -7,3 +7,4 @@ Referenced by commit be4205b82484693d0f810ee0af3bedf8458274c6, Fix #127396: Inve
 Referenced by pull request #127474, Fix #127279: Various brushes do not work on multires
 Referenced by commit 8b3794514b57d3a6a89439bbe013a9fa735bf49a, Fix #127279: Various brushes do not work on multires
 Referenced by pull request #128221, Cleanup: Sculpt: Simplify threaded node iteration
+Referenced by commit f241c150426b20232ecd38ca47ff93ed9ccc80ee, Cleanup: Sculpt: Simplify threaded node iteration
