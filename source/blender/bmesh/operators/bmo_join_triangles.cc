@@ -370,37 +370,31 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   /* Local varaibles */
   BMIter bm_iter;
   BMEdge *edge;
+  BMOIter slot_iter;
+  BMFace *face, *f_a, *f_b;
 
   Heap *join_edges_heap = BLI_heap_new();
 
   DelimitData delimit_data = configure_delimit_data(bm, op);
 
+  /* Go through every face in the input slot. Mark triangles for processing. */
+  BMO_ITER (face, &slot_iter, op->slots_in, "faces", BM_FACE) {
+
+    /* Flag only the triangles.  This flag serves two functions.
+     * First, it marks the faces that are to be processed.
+     * Second, it is used later in the UI to print the number of triangles remaining. */
+    if (face->len == 3) {
+      face->head.hflag |= BM_ELEM_TAG;
+    }
+  }
+
   /* Go through every edge in the bmesh, Mark any mergable edges. */
   BM_ITER_MESH (edge, &bm_iter, bm, BM_EDGES_OF_MESH) {
-    BMFace *f_a, *f_b;
-
-    /* Skip any non-manifold edges.  They can't be merged.*/
-    if (!BM_edge_face_pair(edge, &f_a, &f_b)) {
-      continue;
-    }
-
-    /* Mark selected triangles with BM_ELEM_TAG. This tag is used to count and
-     * display the remaining unmergable triangles after the operator finishes.
-     *
-     * Note that if the mesh contains any selected triangles with THREE
-     * nonmanifold edges, the algorithm won't even try to count them. Sorry. */
-    if ((f_a->head.hflag & BM_ELEM_SELECT) && (f_a->len == 3)) {
-      f_a->head.hflag |= BM_ELEM_TAG;
-    }
-    if ((f_b->head.hflag & BM_ELEM_SELECT) && (f_b->len == 3)) {
-      f_b->head.hflag |= BM_ELEM_TAG;
-    }
-
-    /* If the edge is manifold, has a triangle on both sides, and is NOT a delmit edge...
+    
+    /* If the edge is manifold, has a tagged input tri on both sides, and is NOT delmit ...
      * then it's a candidate to merge.*/
-    if (((f_a->head.hflag & BM_ELEM_SELECT) && (f_a->len == 3)) &&
-        ((f_b->head.hflag & BM_ELEM_SELECT) && (f_b->len == 3)) &&
-        !edge_is_delimit(edge, &delimit_data))
+    if (BM_edge_face_pair(edge, &f_a, &f_b) && (f_a->head.hflag & BM_ELEM_TAG) &&
+        (f_b->head.hflag & BM_ELEM_TAG) && !edge_is_delimit(edge, &delimit_data))
     {
       /* Compute the error that would result from a merge */
       const BMVert *verts[4];
