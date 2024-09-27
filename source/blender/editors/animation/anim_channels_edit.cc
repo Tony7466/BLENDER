@@ -65,6 +65,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "BLT_translation.hh"
+
 /* -------------------------------------------------------------------- */
 /** \name Channel helper functions
  * \{ */
@@ -5185,6 +5187,68 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                   "Bake Modifiers into keyframes and delete them after");
 }
 
+static int explode_action_exec(bContext *C, wmOperator * /* op */)
+{
+  using namespace blender::animrig;
+  Object *active_object = CTX_data_active_object(C);
+  /* Checked by the poll function. */
+  BLI_assert(active_object != nullptr);
+
+  Action *action = get_action(active_object->id);
+  /* Also checked by the poll function. */
+  BLI_assert(action != nullptr);
+
+  while (action->slot_array_num) {
+    Slot *slot = action->slot(action->slot_array_num - 1);
+    Main *bmain = CTX_data_main(C);
+    char actname[MAX_ID_NAME - 2];
+    SNPRINTF(actname, DATA_("%sAction"), slot->name + 2);
+    Action &target_action = action_add(*bmain, actname);
+    Layer &layer = target_action.layer_add("TODO_REMOVE_AFTER_DEFAULT_WAS_ADDED");
+    layer.strip_add(target_action, Strip::Type::Keyframe);
+    move_slot(*bmain, *slot, *action, target_action);
+    DEG_id_tag_update(&target_action.id, ID_RECALC_ANIMATION_NO_FLUSH);
+  }
+
+  DEG_relations_tag_update(CTX_data_main(C));
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+static bool explode_action_poll(bContext *C)
+{
+  Object *active_object = CTX_data_active_object(C);
+  if (!active_object) {
+    return false;
+  }
+
+  blender::animrig::Action *action = blender::animrig::get_action(active_object->id);
+  if (!action) {
+    return false;
+  }
+  if (!action->is_action_layered()) {
+    return false;
+  }
+  return true;
+}
+
+static void ANIM_OT_explode_action(wmOperatorType *ot)
+{
+  ot->name = "Explode Action";
+  ot->idname = "ANIM_OT_explode_action";
+  ot->description =
+      "Move all slots of the action on the active object into newly created, separate actions. "
+      "All users of those slots will be reassigned to the new actions. The current action won't "
+      "be deleted but might end up having zero users";
+
+  ot->exec = explode_action_exec;
+  ot->poll = explode_action_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 /**
  *  Find a Graph Editor area and set the context arguments accordingly.
  */
@@ -5566,6 +5630,8 @@ void ED_operatortypes_animchannels()
   WM_operatortype_append(ANIM_OT_channels_ungroup);
 
   WM_operatortype_append(ANIM_OT_channels_bake);
+
+  WM_operatortype_append(ANIM_OT_explode_action);
 }
 
 void ED_keymap_animchannels(wmKeyConfig *keyconf)
