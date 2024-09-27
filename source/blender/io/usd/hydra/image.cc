@@ -36,7 +36,7 @@ static std::string cache_image_file(
     if (!pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(image->id.name)) {
       BKE_image_path_ext_from_imformat(&scene->r.im_format, &r_ext);
       BKE_image_format_free(&opts.im_format);
-      opts.im_format = scene->r.im_format;
+      BKE_image_format_copy(&opts.im_format, &scene->r.im_format);
     }
 
     SNPRINTF(file_name, "img_%p%s", image, r_ext);
