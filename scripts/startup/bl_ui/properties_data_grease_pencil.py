@@ -176,10 +176,6 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         ob = context.object
         grease_pencil = ob.data
         layer = grease_pencil.layers.active
-        space = context.space_data
-
-        if space.type == 'PROPERTIES':
-            layout.operator("grease_pencil.layer_group_add", text="Add Group")
 
         layout.separator()
         layout.operator("grease_pencil.layer_duplicate", text="Duplicate", icon='DUPLICATE').empty_keyframes = False
@@ -220,10 +216,8 @@ class GREASE_PENCIL_MT_group_context_menu(Menu):
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
     bl_label = "Layers"
 
-    def draw(self, context):
-        layout = self.layout
-
-        grease_pencil = context.grease_pencil
+    @classmethod
+    def draw_settings(cls, layout, grease_pencil):
         layer = grease_pencil.layers.active
         is_layer_active = layer is not None
         is_group_active = grease_pencil.layer_groups.active is not None
@@ -235,6 +229,9 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         sub = col.column(align=True)
         sub.operator_context = 'EXEC_DEFAULT'
         sub.operator("grease_pencil.layer_add", icon='ADD', text="")
+        sub.operator("grease_pencil.layer_group_add", icon='NEWFOLDER', text="")
+        sub.separator()
+
         if is_layer_active:
             sub.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
         if is_group_active:
@@ -268,6 +265,12 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
 
         row = layout.row(align=True)
         row.prop(layer, "use_lights", text="Lights")
+
+    def draw(self, context):
+        layout = self.layout
+        grease_pencil = context.grease_pencil
+
+        self.draw_settings(layout, grease_pencil)
 
 
 class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, GreasePencil_LayerMaskPanel, Panel):
