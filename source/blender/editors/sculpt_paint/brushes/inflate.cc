@@ -196,9 +196,9 @@ void do_inflate_brush(const Depsgraph &depsgraph,
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
         LocalData &tls = all_tls.local();
-          calc_faces(
-              depsgraph, sd, brush, scale, vert_normals, nodes[i], object, tls, position_data);
-          bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
+        calc_faces(
+            depsgraph, sd, brush, scale, vert_normals, nodes[i], object, tls, position_data);
+        bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
       });
       break;
     }
@@ -208,8 +208,8 @@ void do_inflate_brush(const Depsgraph &depsgraph,
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
         LocalData &tls = all_tls.local();
-          calc_grids(depsgraph, sd, object, brush, scale, nodes[i], tls);
-          bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
+        calc_grids(depsgraph, sd, object, brush, scale, nodes[i], tls);
+        bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
       });
       break;
     }
@@ -217,8 +217,8 @@ void do_inflate_brush(const Depsgraph &depsgraph,
       MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
         LocalData &tls = all_tls.local();
-          calc_bmesh(depsgraph, sd, object, brush, scale, nodes[i], tls);
-          bke::pbvh::update_node_bounds_bmesh(nodes[i]);
+        calc_bmesh(depsgraph, sd, object, brush, scale, nodes[i], tls);
+        bke::pbvh::update_node_bounds_bmesh(nodes[i]);
       });
       break;
     }
