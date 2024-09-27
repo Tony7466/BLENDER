@@ -978,6 +978,9 @@ static void mesh_build_extra_data(const Depsgraph &depsgraph,
   }
 }
 
+/**
+ * \note The caller must also call #mesh_build_data_update_object_before_eval beforehand.
+ */
 static void mesh_build_data(Depsgraph &depsgraph,
                             const Scene &scene,
                             Object &ob,
@@ -1041,6 +1044,9 @@ static void mesh_build_data(Depsgraph &depsgraph,
   mesh_build_extra_data(depsgraph, ob, *mesh_eval);
 }
 
+/**
+ * \note The caller must also call #mesh_build_data_update_object_before_eval beforehand.
+ */
 static void editbmesh_build_data(Depsgraph &depsgraph,
                                  const Scene &scene,
                                  Object &obedit,
@@ -1141,6 +1147,17 @@ static void object_get_datamask(const Depsgraph &depsgraph,
   }
 }
 
+/**
+ * Logic that runs before #mesh_build_data & #editbmesh_build_data.
+ */
+static void mesh_build_data_update_object_before_eval(Depsgraph &depsgraph, Object &ob)
+{
+  BKE_object_free_derived_caches(&ob);
+  if (DEG_is_active(&depsgraph)) {
+    BKE_sculpt_update_object_before_eval(&ob);
+  }
+}
+
 void mesh_data_update(Depsgraph &depsgraph,
                       const Scene &scene,
                       Object &ob,
@@ -1152,10 +1169,7 @@ void mesh_data_update(Depsgraph &depsgraph,
    * they aren't cleaned up properly on mode switch, causing crashes, e.g #58150. */
   BLI_assert(ob.id.tag & ID_TAG_COPIED_ON_EVAL);
 
-  BKE_object_free_derived_caches(&ob);
-  if (DEG_is_active(&depsgraph)) {
-    BKE_sculpt_update_object_before_eval(&ob);
-  }
+  mesh_build_data_update_object_before_eval(depsgraph, ob);
 
   /* NOTE: Access the `edit_mesh` after freeing the derived caches, so that `ob.data` is restored
    * to the pre-evaluated state. This is because the evaluated state is not necessarily sharing the
@@ -1207,6 +1221,8 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
       !CustomData_MeshMasks_are_matching(&(ob->runtime->last_data_mask), &cddata_masks) ||
       (need_mapping && !ob->runtime->last_need_mapping))
   {
+    mesh_build_data_update_object_before_eval(*depsgraph, *ob);
+
     CustomData_MeshMasks_update(&cddata_masks, &ob->runtime->last_data_mask);
     mesh_build_data(
         *depsgraph, *scene, *ob, cddata_masks, need_mapping || ob->runtime->last_need_mapping);
@@ -1263,6 +1279,8 @@ Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
   if (!obedit->runtime->editmesh_eval_cage ||
       !CustomData_MeshMasks_are_matching(&(obedit->runtime->last_data_mask), &cddata_masks))
   {
+    mesh_build_data_update_object_before_eval(*depsgraph, *obedit);
+
     editbmesh_build_data(*depsgraph, *scene, *obedit, cddata_masks);
   }
 
