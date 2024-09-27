@@ -36,7 +36,7 @@ struct TransCustomDataNode {
   /* Compare if the view has changed so we can update with `transformViewUpdate`. */
   rctf viewrect_prev;
 
-  bool only_attach_unlinked;
+  bool is_new_node;
 };
 
 /* -------------------------------------------------------------------- */
@@ -111,10 +111,10 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
                           NODE_EDGE_PAN_DELAY,
                           NODE_EDGE_PAN_ZOOM_INFLUENCE);
   customdata->viewrect_prev = customdata->edgepan_data.initial_rect;
-  customdata->only_attach_unlinked = !t->remove_on_cancel;
+  customdata->is_new_node = t->remove_on_cancel;
 
   space_node::node_insert_on_link_flags_set(
-      *snode, *t->region, t->modifiers & MOD_NODE_ATTACH, customdata->only_attach_unlinked);
+      *snode, *t->region, t->modifiers & MOD_NODE_ATTACH, customdata->is_new_node);
 
   t->custom.type.data = customdata;
   t->custom.type.use_free = true;
@@ -243,7 +243,7 @@ static void flushTransNodes(TransInfo *t)
     /* Handle intersection with noodles. */
     if (tc->data_len == 1) {
       space_node::node_insert_on_link_flags_set(
-          *snode, *t->region, t->modifiers & MOD_NODE_ATTACH, customdata->only_attach_unlinked);
+          *snode, *t->region, t->modifiers & MOD_NODE_ATTACH, customdata->is_new_node);
     }
   }
 }

@@ -2287,7 +2287,7 @@ static bool node_can_be_inserted_on_link(bNodeTree &tree, bNode &node, const bNo
 void node_insert_on_link_flags_set(SpaceNode &snode,
                                    const ARegion &region,
                                    const bool attach_enabled,
-                                   const bool only_attach_unlinked)
+                                   const bool is_new_node)
 {
   bNodeTree &node_tree = *snode.edittree;
   node_tree.ensure_topology_cache();
@@ -2298,19 +2298,15 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
   if (!node_to_insert) {
     return;
   }
-  if (only_attach_unlinked) {
-    if (std::any_of(node_to_insert->input_sockets().begin(),
-                    node_to_insert->input_sockets().end(),
-                    [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
-    {
-      return;
-    }
-    if (std::any_of(node_to_insert->output_sockets().begin(),
-                    node_to_insert->output_sockets().end(),
-                    [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
-    {
-      return;
-    };
+  Vector<bNodeSocket *> already_linked_sockets;
+  for (bNodeSocket *socket : node_to_insert->input_sockets()) {
+    already_linked_sockets.extend(socket->directly_linked_sockets());
+  }
+  for (bNodeSocket *socket : node_to_insert->output_sockets()) {
+    already_linked_sockets.extend(socket->directly_linked_sockets());
+  }
+  if (!is_new_node && !already_linked_sockets.is_empty()) {
+    return;
   }
 
   /* Find link to select/highlight. */
@@ -2323,6 +2319,20 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
     if (ELEM(node_to_insert, link->fromnode, link->tonode)) {
       /* Don't insert on a link that is connected to the node already. */
       continue;
+    }
+    if (is_new_node && !already_linked_sockets.is_empty()) {
+      /* Only allow links coming from or going to the already linked socket after
+       * link-drag-search. */
+      bool is_linked_to_linked = false;
+      for (const bNodeSocket *socket : already_linked_sockets) {
+        if (ELEM(socket, link->fromsock, link->tosock)) {
+          is_linked_to_linked = true;
+          break;
+        }
+      }
+      if (!is_linked_to_linked) {
+        continue;
+      }
     }
 
     std::array<float2, NODE_LINK_RESOL + 1> coords;
