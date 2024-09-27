@@ -2322,7 +2322,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     IndexRange bsocket_inner;
   };
 
-  /** Reduces the hardcoding of index offsets in lots of places below which is quite brittle. */
+  /** Reduces the hard-coding of index offsets in lots of places below which is quite brittle. */
   struct {
     ItemIndices inputs;
     ItemIndices main;
@@ -3133,15 +3133,14 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
       eCustomDataType type;
     };
     Vector<NameWithType> attributes_to_propagate;
-    src_attributes.for_all([&](const StringRef name, const AttributeMetaData &meta_data) {
-      if (meta_data.data_type == CD_PROP_STRING) {
-        return true;
+    src_attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
+      if (iter.data_type == CD_PROP_STRING) {
+        return;
       }
-      if (attribute_filter.allow_skip(name)) {
-        return true;
+      if (attribute_filter.allow_skip(iter.name)) {
+        return;
       }
-      attributes_to_propagate.append({name, meta_data.data_type});
-      return true;
+      attributes_to_propagate.append({iter.name, iter.data_type});
     });
     Map<StringRef, GVArray> cached_adapted_src_attributes;
 
