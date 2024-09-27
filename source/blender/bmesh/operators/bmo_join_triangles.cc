@@ -25,10 +25,10 @@
 
 #include "intern/bmesh_operators_private.hh" /* own include */
 
-/* This code was is used to keep track of our math for the error values and ensure it's not getting
- * out of control. It's left in, in _DEBUG builds only, as guardrails, but it really isn't worth
- * bothering with the asserts in release builds. This COULD be removed outright, but the diagnostic
- * value seems worthwhile given the small performance penalty during debug.
+/* This macro was is used to keep track of our math for the error values and ensure it's not
+ * getting out of control. It's left in, in _DEBUG builds only, as guardrails, but it really isn't
+ * worth bothering with the asserts in release builds. This COULD be removed outright, but the
+ * diagnostic value seems worthwhile given the small performance penalty during debug.
  */
 #ifdef _DEBUG
 #  define _DEBUG_ONLY_MONITOR_ERROR(val) \
@@ -46,8 +46,8 @@
  *    Note parallelograms are higher errror than squares or rectangles.
  *  A quad that is concave has higher error.
  *
- *  \param v1, v2, v3, v4   The four corner coordinates of the quad
- *  \return the computed error associated with the quad
+ * \param v1, v2, v3, v4   The four corner coordinates of the quad
+ * \return                 the computed error associated with the quad
  */
 static float quad_calc_error(const float v1[3],
                              const float v2[3],
@@ -71,6 +71,7 @@ static float quad_calc_error(const float v1[3],
     angle_b = compare_v3v3(n1, n2, FLT_EPSILON) ? 0.0f : angle_normalized_v3v3(n1, n2);
 
     diff = (angle_a + angle_b) / float(M_PI * 2);
+
     _DEBUG_ONLY_MONITOR_ERROR(diff);
 
     error += diff;
@@ -97,6 +98,7 @@ static float quad_calc_error(const float v1[3],
             fabsf(angle_normalized_v3v3(edge_vecs[2], edge_vecs[3]) - float(M_PI_2)) +
             fabsf(angle_normalized_v3v3(edge_vecs[3], edge_vecs[0]) - float(M_PI_2))) /
            float(M_PI * 2);
+
     _DEBUG_ONLY_MONITOR_ERROR(diff);
 
     error += diff;
@@ -115,10 +117,12 @@ static float quad_calc_error(const float v1[3],
 
     /* Note use of ternary operator to guard against divide by zero. */
     diff = area_max ? (1.0f - (area_min / area_max)) : 1.0f;
+
     _DEBUG_ONLY_MONITOR_ERROR(diff);
 
     error += diff;
   }
+
   _DEBUG_ONLY_MONITOR_ERROR(error);
 
   return error;
@@ -126,8 +130,8 @@ static float quad_calc_error(const float v1[3],
 
 /** Get the corners of the quad that would result after an edge merge.
  *
- *  \param edge     An edge to be merged.  It must be manifold and have triangles on either side.
- *  \param r_v_quad An array of vertices to return the corners.
+ * \param edge     An edge to be merged.  It must be manifold and have triangles on either side.
+ * \param r_v_quad An array of vertices to return the corners.
  */
 static void edge_to_quad_verts(const BMEdge *edge, const BMVert *r_v_quad[4])
 {
@@ -196,8 +200,8 @@ static bool edge_delimit_cdata(CustomData *ldata, eCustomDataType type, DelimitD
 
 /** Setup the delimit data from the parameters provided to the operator.
  *
- *  \param bm the bmesh to provide UV or color data
- *  \param op The operator to provide the parameters
+ * \param bm the bmesh to provide UV or color data
+ * \param op The operator to provide the parameters
  */
 static DelimitData configure_delimit_data(BMesh *bm, BMOperator *op)
 {
@@ -246,9 +250,9 @@ static DelimitData configure_delimit_data(BMesh *bm, BMOperator *op)
 
 /** computes if an edge is a delimit edge, therefore should not be considered for merging.
  *
- *  \param e            the edge to check
- *  \param delimit_data the delimit configuration
- *  \return true, if the edge is a delimit edge.
+ * \param e            the edge to check
+ * \param delimit_data the delimit configuration
+ * \return             true, if the edge is a delimit edge.
  */
 static bool edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
 {
@@ -390,7 +394,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 
   /* Go through every edge in the bmesh, Mark any mergable edges. */
   BM_ITER_MESH (edge, &bm_iter, bm, BM_EDGES_OF_MESH) {
-    
+
     /* If the edge is manifold, has a tagged input tri on both sides, and is NOT delmit ...
      * then it's a candidate to merge.*/
     if (BM_edge_face_pair(edge, &f_a, &f_b) && (f_a->head.hflag & BM_ELEM_TAG) &&
