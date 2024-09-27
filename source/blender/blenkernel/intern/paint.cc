@@ -816,6 +816,30 @@ static void paint_brush_default_essentials_name_get(
   switch (ob_mode) {
     case OB_MODE_SCULPT:
       name = "Draw";
+      if (brush_type) {
+        switch (eBrushSculptType(*brush_type)) {
+          case SCULPT_BRUSH_TYPE_MASK:
+            name = "Mask";
+            break;
+          case SCULPT_BRUSH_TYPE_DRAW_FACE_SETS:
+            name = "Face Set Paint";
+            break;
+          case SCULPT_BRUSH_TYPE_PAINT:
+            name = "Paint Hard";
+            break;
+          case SCULPT_BRUSH_TYPE_SIMPLIFY:
+            name = "Density";
+            break;
+          case SCULPT_BRUSH_TYPE_DISPLACEMENT_ERASER:
+            name = "Erase Multires Displacement";
+            break;
+          case SCULPT_BRUSH_TYPE_DISPLACEMENT_SMEAR:
+            name = "Smear Multires Displacement";
+            break;
+          default:
+            break;
+        }
+      }
       break;
     case OB_MODE_VERTEX_PAINT:
       name = "Paint";

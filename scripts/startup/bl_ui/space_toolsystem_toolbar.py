@@ -1398,6 +1398,81 @@ class _defs_particle:
 
 
 class _defs_sculpt:
+    @ToolDef.from_fn
+    def mask():
+        return dict(
+            idname="builtin_brush.mask",
+            label="Mask",
+            icon="brush.sculpt.mask",
+            options={'USE_BRUSHES'},
+            brush_type='MASK',
+        )
+
+    @ToolDef.from_fn
+    def draw_face_sets():
+        return dict(
+            idname="builtin_brush.draw_face_sets",
+            label="Draw Face Sets",
+            icon="brush.sculpt.draw_face_sets",
+            options={'USE_BRUSHES'},
+            brush_type='DRAW_FACE_SETS',
+        )
+
+    @ToolDef.from_fn
+    def paint():
+        return dict(
+            idname="builtin_brush.paint",
+            label="Paint",
+            icon="brush.sculpt.paint",
+            options={'USE_BRUSHES'},
+            brush_type='PAINT',
+        )
+
+    @staticmethod
+    def poll_dyntopo(context):
+        if context is None:
+            return True
+        return context.sculpt_object and context.sculpt_object.use_dynamic_topology_sculpting
+
+    @ToolDef.from_fn
+    def dyntopo_density():
+        return dict(
+            idname="builtin_brush.simplify",
+            label="Density",
+            icon="brush.sculpt.simplify",
+            options={'USE_BRUSHES'},
+            brush_type='SIMPLIFY',
+        )
+
+    @staticmethod
+    def poll_multires(context):
+        if context is None or context.sculpt_object is None:
+            return True
+
+        for mod in context.sculpt_object.modifiers:
+            if mod.type == 'MULTIRES':
+                return True
+        return False
+
+    @ToolDef.from_fn
+    def multires_eraser():
+        return dict(
+            idname="builtin_brush.displacement_eraser",
+            label="Multires Displacement Eraser",
+            icon="brush.sculpt.displacement_eraser",
+            options={'USE_BRUSHES'},
+            brush_type='DISPLACEMENT_ERASER',
+        )
+
+    @ToolDef.from_fn
+    def multires_smear():
+        return dict(
+            idname="builtin_brush.displacement_smear",
+            label="Multires Displacement Smear",
+            icon="brush.sculpt.displacement_smear",
+            options={'USE_BRUSHES'},
+            brush_type='DISPLACEMENT_SMEAR',
+        )
 
     @staticmethod
     def draw_lasso_stroke_settings(layout, props, draw_inline, draw_popover):
@@ -3749,6 +3824,24 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'SCULPT': [
             _brush_tool,
+            _defs_sculpt.mask,
+            _defs_sculpt.draw_face_sets,
+            _defs_sculpt.paint,
+            lambda context: (
+                (
+                    _defs_sculpt.dyntopo_density,
+                )
+                if _defs_sculpt.poll_dyntopo(context)
+                else ()
+            ),
+            lambda context: (
+                (
+                    _defs_sculpt.multires_eraser,
+                    _defs_sculpt.multires_smear,
+                )
+                if _defs_sculpt.poll_multires(context)
+                else ()
+            ),
             None,
             (
                 _defs_sculpt.mask_border,

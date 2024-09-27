@@ -40,7 +40,12 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   brush.particle.puff
   brush.particle.smooth
   brush.particle.weight
+  brush.sculpt.displacement_eraser
+  brush.sculpt.displacement_smear
+  brush.sculpt.draw_face_sets
+  brush.sculpt.mask
   brush.sculpt.paint
+  brush.sculpt.simplify
   brush.uv_sculpt.grab
   brush.uv_sculpt.pinch
   brush.uv_sculpt.relax
