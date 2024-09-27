@@ -41,8 +41,6 @@
 /** \name Local Structs
  * \{ */
 
-#ifdef WITH_OPENSUBDIV
-
 /* Surface refers to a simplified and lower-memory footprint representation of the limit surface.
  *
  * Used to store pre-calculated information which is expensive or impossible to evaluate when
