@@ -686,7 +686,7 @@ struct VKPipelineCachePrefixHeader {
 
 static std::string pipeline_cache_filepath_get()
 {
-  static char tmp_dir_buffer[1024];
+  static char tmp_dir_buffer[FILE_MAX];
   BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer));
   std::string blender_version = std::to_string(BLENDER_VERSION / 100) + "." +
                                 std::to_string(BLENDER_VERSION % 100);
