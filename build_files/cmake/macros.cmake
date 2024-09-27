@@ -1040,6 +1040,36 @@ function(data_to_c_simple
   set_source_files_properties(${_file_to} PROPERTIES GENERATED TRUE)
 endfunction()
 
+
+# Process glsl file and convert it to c
+function(glsl_to_c
+  file_from
+  list_to_add
+  )
+
+  # remove ../'s
+  get_filename_component(_file_from ${CMAKE_CURRENT_SOURCE_DIR}/${file_from}   REALPATH)
+  get_filename_component(_file_tmp  ${CMAKE_CURRENT_BINARY_DIR}/${file_from}   REALPATH)
+  get_filename_component(_file_to   ${CMAKE_CURRENT_BINARY_DIR}/${file_from}.c REALPATH)
+
+  list(APPEND ${list_to_add} ${_file_to})
+  source_group(Generated FILES ${_file_to})
+  list(APPEND ${list_to_add} ${file_from})
+  set(${list_to_add} ${${list_to_add}} PARENT_SCOPE)
+
+  get_filename_component(_file_to_path ${_file_to} PATH)
+
+  add_custom_command(
+    OUTPUT  ${_file_to}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${_file_to_path}
+    COMMAND "$<TARGET_FILE:glsl_preprocess>" ${_file_from} ${_file_tmp}
+    COMMAND "$<TARGET_FILE:datatoc>" ${_file_tmp} ${_file_to}
+    DEPENDS ${_file_from} datatoc glsl_preprocess)
+
+  set_source_files_properties(${_file_to} PROPERTIES GENERATED TRUE)
+endfunction()
+
+
 function(msgfmt_simple
   file_from
   list_to_add
