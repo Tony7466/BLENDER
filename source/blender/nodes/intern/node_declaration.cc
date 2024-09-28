@@ -642,6 +642,15 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::is_default_link_sock
   return *this;
 }
 
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::context_identifier(
+    const StringRef context_identifier)
+{
+  decl_base_->context_identifier = context_identifier;
+  BLI_assert(!node_decl_builder_->node_ ||
+             node_decl_builder_->node_->typeinfo->has_context_outputs);
+  return *this;
+}
+
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on_all()
 {
   if (this->is_input()) {

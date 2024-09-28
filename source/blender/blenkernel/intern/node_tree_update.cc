@@ -767,96 +767,63 @@ class NodeTreeMainUpdater {
     };
 
     for (const bNode *node : tree.all_nodes()) {
-      switch (node->type) {
-        case NODE_GROUP:
-        case NODE_CUSTOM_GROUP: {
-          const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
-          if (!group) {
-            continue;
-          }
-          group->ensure_interface_cache();
-          for (const bNodeTreeInterfaceSocket *interface_socket : group->interface_inputs()) {
-            /* Socket may not exist, because the group node has not been updated yet. */
-            const bNodeSocket *input_socket = node->runtime->inputs_by_identifier.lookup_default(
-                interface_socket->identifier, nullptr);
-            if (input_socket) {
-              const Span<const bNodeSocket *> origin_sockets =
-                  input_socket->directly_linked_sockets();
-              bool has_proper_origin = false;
-              for (const bNodeSocket *origin_socket : origin_sockets) {
-                const bNode &origin_node = origin_socket->owner_node();
-                if (!origin_node.is_dangling_reroute()) {
-                  has_proper_origin = true;
-                  break;
-                }
-              }
-              if (has_proper_origin) {
-                continue;
+      if (node->is_group()) {
+        const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+        if (!group) {
+          continue;
+        }
+        group->ensure_interface_cache();
+        for (const bNodeTreeInterfaceSocket *interface_socket : group->interface_inputs()) {
+          /* Socket may not exist, because the group node has not been updated yet. */
+          const bNodeSocket *input_socket = node->runtime->inputs_by_identifier.lookup_default(
+              interface_socket->identifier, nullptr);
+          if (input_socket) {
+            const Span<const bNodeSocket *> origin_sockets =
+                input_socket->directly_linked_sockets();
+            bool has_proper_origin = false;
+            for (const bNodeSocket *origin_socket : origin_sockets) {
+              const bNode &origin_node = origin_socket->owner_node();
+              if (!origin_node.is_dangling_reroute()) {
+                has_proper_origin = true;
+                break;
               }
             }
-            try_add_context_input(interface_socket->context_identifier,
-                                  interface_socket->name,
-                                  interface_socket->socket_type,
-                                  interface_socket->description);
+            if (has_proper_origin) {
+              continue;
+            }
           }
+          try_add_context_input(interface_socket->context_identifier,
+                                interface_socket->name,
+                                interface_socket->socket_type,
+                                interface_socket->description);
+        }
+      }
+      else if (node->type == GEO_NODE_CONTEXT_INPUT) {
+        const auto &storage = *static_cast<const NodeGeometryContextInput *>(node->storage);
+        const eNodeSocketDatatype type = eNodeSocketDatatype(storage.socket_type);
+        const char *type_idname = node_static_socket_type(type, PROP_NONE);
+        const StringRef context_identifier = storage.context_identifier;
+        const StringRef context_name = storage.context_name;
+        const StringRef context_description = storage.context_description;
+        if (context_identifier.startswith(".")) {
+          /* Context identifiers with the "." prefix are reserved for internal use. */
           break;
         }
-        case GEO_NODE_CONTEXT_INPUT: {
-          const auto &storage = *static_cast<const NodeGeometryContextInput *>(node->storage);
-          const eNodeSocketDatatype type = eNodeSocketDatatype(storage.socket_type);
-          const char *type_idname = node_static_socket_type(type, PROP_NONE);
-          const StringRef context_identifier = storage.context_identifier;
-          const StringRef context_name = storage.context_name;
-          const StringRef context_description = storage.context_description;
-          if (context_identifier.startswith(".")) {
-            /* Context identifiers with the "." prefix are reserved for internal use. */
-            break;
+        try_add_context_input(context_identifier, context_name, type_idname, context_description);
+      }
+      else if (node->typeinfo->has_context_outputs) {
+        /* TODO: Make sure this is run after node sockets are updated. */
+        for (const bNodeSocket *socket : node->output_sockets()) {
+          const SocketDeclaration *socket_decl = socket->runtime->declaration;
+          if (socket_decl) {
+            const StringRef context_identifier = socket_decl->context_identifier;
+            if (!context_identifier.is_empty()) {
+              try_add_context_input(context_identifier,
+                                    socket_decl->name,
+                                    socket->typeinfo->idname,
+                                    socket_decl->description);
+            }
           }
-          try_add_context_input(
-              context_identifier, context_name, type_idname, context_description);
-          break;
-        }
-        case GEO_NODE_TOOL_MOUSE_POSITION: {
-          try_add_context_input(".mouse_position_x", "Mouse Position X", "NodeSocketInt");
-          try_add_context_input(".mouse_position_y", "Mouse Position Y", "NodeSocketInt");
-          try_add_context_input(".region_width", "Region Width", "NodeSocketInt");
-          try_add_context_input(".region_height", "Region Height", "NodeSocketInt");
-          break;
-        }
-        case GEO_NODE_IS_VIEWPORT: {
-          try_add_context_input(".is_viewport", "Is Viewport", "NodeSocketBool");
-          break;
-        }
-        case GEO_NODE_INPUT_ACTIVE_CAMERA: {
-          try_add_context_input(".active_camera", "Active Camera", "NodeSocketObject");
-          break;
-        }
-        case GEO_NODE_INPUT_SCENE_TIME: {
-          try_add_context_input(".scene_time_seconds", "Scene Time Seconds", "NodeSocketFloat");
-          try_add_context_input(".scene_time_frame", "Scene Time Frame", "NodeSocketFloat");
-          break;
-        }
-        case GEO_NODE_SELF_OBJECT: {
-          try_add_context_input(".self_object", "Self Object", "NodeSocketObject");
-          break;
-        }
-        case GEO_NODE_TOOL_VIEWPORT_TRANSFORM: {
-          try_add_context_input(".viewport_projection", "Viewport Projection", "NodeSocketMatrix");
-          try_add_context_input(".viewport_view", "Viewport View", "NodeSocketMatrix");
-          try_add_context_input(
-              ".viewport_is_orthographic", "Is Orthographic View", "NodeSocketBool");
-          break;
-        }
-        case GEO_NODE_TOOL_ACTIVE_ELEMENT: {
-          try_add_context_input(".active_element_index", "Active Element Index", "NodeSocketInt");
-          try_add_context_input(
-              ".active_element_exists", "Active Element Exists", "NodeSocketBool");
-          break;
-        }
-        case GEO_NODE_TOOL_3D_CURSOR: {
-          try_add_context_input(".3d_cursor_location", "3D Cursor Location", "NodeSocketVector");
-          try_add_context_input(".3d_cursor_rotation", "3D Cursor Rotation", "NodeSocketRotation");
-          break;
         }
       }
     }

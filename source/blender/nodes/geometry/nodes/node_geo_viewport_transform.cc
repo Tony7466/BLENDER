@@ -13,12 +13,16 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Matrix>("Projection")
       .description(
           "Transforms points in view space to region space (\"clip space\" or \"normalized device "
-          "coordinates\")");
-  b.add_output<decl::Matrix>("View").description(
-      "Transforms points from object space to view space using the viewport's location and "
-      "rotation");
+          "coordinates\")")
+      .context_identifier(".viewport_projection");
+  b.add_output<decl::Matrix>("View")
+      .description(
+          "Transforms points from object space to view space using the viewport's location and "
+          "rotation")
+      .context_identifier(".viewport_view");
   b.add_output<decl::Bool>("Is Orthographic")
-      .description("Whether the viewport is using orthographic projection");
+      .description("Whether the viewport is using orthographic projection")
+      .context_identifier(".viewport_is_orthographic");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -42,6 +46,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = search_link_ops_for_tool_node;
+  ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

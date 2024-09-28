@@ -189,6 +189,7 @@ class SocketDeclaration : public ItemDeclaration {
   bool is_default_link_socket = false;
   /** Puts this socket on the same line as the previous one in the UI. */
   bool align_with_previous_socket = false;
+  std::string context_identifier;
 
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
@@ -291,6 +292,8 @@ class BaseSocketDeclarationBuilder {
   BaseSocketDeclarationBuilder &is_attribute_name(bool value = true);
 
   BaseSocketDeclarationBuilder &is_default_link_socket(bool value = true);
+
+  BaseSocketDeclarationBuilder &context_identifier(StringRef context_identifier);
 
   /** The input socket allows passing in a field. */
   BaseSocketDeclarationBuilder &supports_field();
@@ -520,6 +523,7 @@ class NodeDeclarationBuilder {
 
  private:
   friend PanelDeclarationBuilder;
+  friend BaseSocketDeclarationBuilder;
 
  public:
   NodeDeclarationBuilder(NodeDeclaration &declaration,

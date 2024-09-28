@@ -19,10 +19,12 @@ namespace blender::nodes::node_geo_tool_active_element_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Int>("Index").description(
-      "Index of the active element in the specified domain");
-  b.add_output<decl::Bool>("Exists").description(
-      "True if an active element exists in the mesh, false otherwise");
+  b.add_output<decl::Int>("Index")
+      .description("Index of the active element in the specified domain")
+      .context_identifier(".active_element_index");
+  b.add_output<decl::Bool>("Exists")
+      .description("True if an active element exists in the mesh, false otherwise")
+      .context_identifier(".active_element_exists");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -90,6 +92,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.gather_link_search_ops = search_link_ops_for_tool_node;
   ntype.draw_buttons = node_layout;
+  ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);

@@ -15,10 +15,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Vector>("Location")
       .subtype(PROP_TRANSLATION)
       .description(
-          "The location of the scene's 3D cursor, in the local space of the modified object");
+          "The location of the scene's 3D cursor, in the local space of the modified object")
+      .context_identifier(".3d_cursor_location");
   b.add_output<decl::Rotation>("Rotation")
       .description(
-          "The rotation of the scene's 3D cursor, in the local space of the modified object");
+          "The rotation of the scene's 3D cursor, in the local space of the modified object")
+      .context_identifier(".3d_cursor_rotation");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -43,6 +45,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = search_link_ops_for_tool_node;
+  ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

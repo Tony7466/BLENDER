@@ -12,8 +12,8 @@ namespace blender::nodes::node_geo_input_scene_time_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Float>("Seconds");
-  b.add_output<decl::Float>("Frame");
+  b.add_output<decl::Float>("Seconds").context_identifier(".scene_time_seconds");
+  b.add_output<decl::Float>("Frame").context_identifier(".scene_time_frame");
 }
 
 static void node_exec(GeoNodeExecParams params)
@@ -31,6 +31,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_INPUT_SCENE_TIME, "Scene Time", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_exec;
   ntype.declare = node_declare;
+  ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

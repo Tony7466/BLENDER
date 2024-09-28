@@ -8,12 +8,18 @@ namespace blender::nodes::node_geo_mouse_position_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Int>("Mouse X").description(
-      "The region-space mouse X location, in pixels, increasing from 0 at the left");
-  b.add_output<decl::Int>("Mouse Y").description(
-      "The region-space mouse Y location, in pixels, increasing from 0 at the bottom");
-  b.add_output<decl::Int>("Region Width").description("The total X size of the region in pixels");
-  b.add_output<decl::Int>("Region Height").description("The total Y size of the region in pixels");
+  b.add_output<decl::Int>("Mouse X")
+      .description("The region-space mouse X location, in pixels, increasing from 0 at the left")
+      .context_identifier(".region_mouse_x");
+  b.add_output<decl::Int>("Mouse Y")
+      .description("The region-space mouse Y location, in pixels, increasing from 0 at the bottom")
+      .context_identifier(".region_mouse_y");
+  b.add_output<decl::Int>("Region Width")
+      .description("The total X size of the region in pixels")
+      .context_identifier(".region_width");
+  b.add_output<decl::Int>("Region Height")
+      .description("The total Y size of the region in pixels")
+      .context_identifier(".region_height");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -36,6 +42,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = search_link_ops_for_tool_node;
+  ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

@@ -393,6 +393,8 @@ struct bNodeType {
 
   /** True when the node cannot be muted. */
   bool no_muting;
+  /** True if the node may have any output sockets which are derived from the context. */
+  bool has_context_outputs;
   /** True when the node still works but it's usage is discouraged. */
   const char *deprecation_notice;
 

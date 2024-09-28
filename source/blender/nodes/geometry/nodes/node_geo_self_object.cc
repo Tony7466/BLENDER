@@ -8,7 +8,7 @@ namespace blender::nodes::node_geo_self_object_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Object>("Self Object");
+  b.add_output<decl::Object>("Self Object").context_identifier(".self_object");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -23,6 +23,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_SELF_OBJECT, "Self Object", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

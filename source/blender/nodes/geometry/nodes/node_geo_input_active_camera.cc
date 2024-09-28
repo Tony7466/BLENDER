@@ -11,7 +11,8 @@ namespace blender::nodes::node_geo_input_active_camera_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Object>("Active Camera")
-      .description("The camera used for rendering the scene");
+      .description("The camera used for rendering the scene")
+      .context_identifier(".active_camera");
 }
 
 static void node_exec(GeoNodeExecParams params)
@@ -27,6 +28,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_INPUT_ACTIVE_CAMERA, "Active Camera", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_exec;
   ntype.declare = node_declare;
+  ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
