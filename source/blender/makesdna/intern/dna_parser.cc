@@ -301,21 +301,21 @@ template<SymbolType Type> struct Parser<Symbol<Type>> {
   }
 };
 
-using LBracketSymbol = Symbol<SymbolType::LBRACKET>;
-using RBracketSymbol = Symbol<SymbolType::RBRACKET>;
-using LBraceSymbol = Symbol<SymbolType::LBRACE>;
-using RBraceSymbol = Symbol<SymbolType::RBRACE>;
-using LParenSymbol = Symbol<SymbolType::LPAREN>;
-using RParenSymbol = Symbol<SymbolType::RPAREN>;
-using StarSymbol = Symbol<SymbolType::STAR>;
-using SemicolonSymbol = Symbol<SymbolType::SEMICOLON>;
-using ColonSymbol = Symbol<SymbolType::COLON>;
-using CommaSymbol = Symbol<SymbolType::COMMA>;
-using HashSymbol = Symbol<SymbolType::HASH>;
-using LessSymbol = Symbol<SymbolType::LESS>;
-using GreaterSymbol = Symbol<SymbolType::GREATER>;
-using AssignSymbol = Symbol<SymbolType::ASSIGN>;
-using MinusSymbol = Symbol<SymbolType::MINUS>;
+using LBracketSymbol = Symbol<SymbolType::LBracket>;
+using RBracketSymbol = Symbol<SymbolType::RBracket>;
+using LBraceSymbol = Symbol<SymbolType::LBrace>;
+using RBraceSymbol = Symbol<SymbolType::RBrace>;
+using LParenSymbol = Symbol<SymbolType::LParen>;
+using RParenSymbol = Symbol<SymbolType::RParen>;
+using StarSymbol = Symbol<SymbolType::Star>;
+using SemicolonSymbol = Symbol<SymbolType::Semicolon>;
+using ColonSymbol = Symbol<SymbolType::Colon>;
+using CommaSymbol = Symbol<SymbolType::Comma>;
+using HashSymbol = Symbol<SymbolType::Hash>;
+using LessSymbol = Symbol<SymbolType::Less>;
+using GreaterSymbol = Symbol<SymbolType::Greater>;
+using AssignSymbol = Symbol<SymbolType::Assign>;
+using MinusSymbol = Symbol<SymbolType::Minus>;
 
 static void skip_until_match_paired_symbols(SymbolType left,
                                             SymbolType right,
@@ -417,7 +417,7 @@ template<> struct Parser<Define> {
       if (std::holds_alternative<BreakLineToken>(*token) && !scape_bl) {
         break;
       }
-      scape_bl = is_symbol_type(*token, SymbolType::BACKSLASH);
+      scape_bl = is_symbol_type(*token, SymbolType::Backslash);
     }
     return Define{};
   }
@@ -621,7 +621,7 @@ template<> struct Parser<FunctionPtr> {
     fn_ptr.type = std::get<0>(fn.value()).str;
     fn_ptr.name = std::get<4>(fn.value()).str;
     /* Skip Function params. */
-    skip_until_match_paired_symbols(SymbolType::LPAREN, SymbolType::RPAREN, token_iterator);
+    skip_until_match_paired_symbols(SymbolType::LParen, SymbolType::RParen, token_iterator);
 
     /* Closing sequence. */
     if (!parse_t<SemicolonSymbol>(token_iterator).success()) {
@@ -693,7 +693,7 @@ template<> struct Parser<IfDef> {
       if (ifdef_deep == 0) {
         break;
       }
-      hash_carried = is_symbol_type(*token, SymbolType::HASH);
+      hash_carried = is_symbol_type(*token, SymbolType::Hash);
     }
     /* Not matching #endif. */
     if (ifdef_deep != 0) {
@@ -804,7 +804,7 @@ template<> struct Parser<Enum> {
       enum_def.type = std::get<1>(std::get<4>(enum_begin.value()).value()).str;
     }
     /* Skip enum body. */
-    skip_until_match_paired_symbols(SymbolType::LBRACE, SymbolType::RBRACE, token_iterator);
+    skip_until_match_paired_symbols(SymbolType::LBrace, SymbolType::RBrace, token_iterator);
 
     /* Enum end sequence. */
     if (!parse_t<Sequence<Optional<Identifier>, Optional<DNADeprecatedKeyword>, SemicolonSymbol>>(

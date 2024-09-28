@@ -150,26 +150,17 @@ void TokenIterator::eval_multiline_comment(std::string_view::iterator &itr,
 void TokenIterator::eval_symbol(std::string_view::iterator &itr,
                                 std::string_view::iterator /*last*/)
 {
-  struct SymbolItem {
-    char value;
-    SymbolType type;
+  static constexpr SymbolType symbols[] = {
+      SymbolType::Colon,     SymbolType::Semicolon, SymbolType::LParen,   SymbolType::RParen,
+      SymbolType::LBracket,  SymbolType::RBracket,  SymbolType::LBrace,   SymbolType::RBrace,
+      SymbolType::Assign,    SymbolType::Hash,      SymbolType::Dot,      SymbolType::Comma,
+      SymbolType::Star,      SymbolType::Less,      SymbolType::Greater,  SymbolType::BitOr,
+      SymbolType::BitAnd,    SymbolType::Plus,      SymbolType::Minus,    SymbolType::Exclamation,
+      SymbolType::Percent,   SymbolType::Caret,     SymbolType::Question, SymbolType::Tilde,
+      SymbolType::Backslash, SymbolType::Slash,
   };
-  static constexpr SymbolItem symbols[]{
-      {'!', SymbolType::EXCLAMATION}, {'#', SymbolType::HASH},       {'%', SymbolType::PERCENT},
-      {'&', SymbolType::BIT_AND},     {'(', SymbolType::LPAREN},     {')', SymbolType::RPAREN},
-      {'*', SymbolType::STAR},        {'+', SymbolType::PLUS},       {',', SymbolType::COMMA},
-      {'-', SymbolType::MINUS},       {'.', SymbolType::DOT},        {'/', SymbolType::SLASH},
-      {':', SymbolType::COLON},       {';', SymbolType::SEMICOLON},  {'<', SymbolType::LESS},
-      {'=', SymbolType::ASSIGN},      {'>', SymbolType::GREATER},    {'?', SymbolType::QUESTION},
-      {'[', SymbolType::LBRACKET},    {'\\', SymbolType::BACKSLASH}, {']', SymbolType::RBRACKET},
-      {'^', SymbolType::CARET},       {'{', SymbolType::LBRACE},     {'|', SymbolType::BIT_OR},
-      {'}', SymbolType::RBRACE},      {'~', SymbolType::TILDE},
-  };
-  const char value = itr[0];
-  auto test_symbol = [value](const SymbolItem &item) -> bool { return item.value == value; };
-  const SymbolItem *symbol_itr = std::find_if(std::begin(symbols), std::end(symbols), test_symbol);
-  if (symbol_itr != std::end(symbols)) {
-    this->append(SymbolToken{string_view_from_range(itr, itr + 1), symbol_itr->type});
+  if (std::find(std::begin(symbols), std::end(symbols), SymbolType(itr[0])) != std::end(symbols)) {
+    this->append(SymbolToken{string_view_from_range(itr, itr + 1), SymbolType(itr[0])});
     itr++;
   }
 }
