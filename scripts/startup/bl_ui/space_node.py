@@ -970,25 +970,29 @@ class NODE_PT_node_tree_interface(Panel):
             layout.use_property_decorate = False
 
             if active_item.item_type == 'SOCKET':
-                layout.prop(active_item, "socket_type", text="Type")
-                layout.prop(active_item, "description")
-                if active_item.context_identifier:
-                    layout.prop(active_item, "context_identifier")
-                # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
-                if tree.type == 'GEOMETRY':
-                    field_socket_types = {
-                        "NodeSocketInt",
-                        "NodeSocketColor",
-                        "NodeSocketVector",
-                        "NodeSocketBool",
-                        "NodeSocketFloat",
-                    }
-                    if active_item.socket_type in field_socket_types:
-                        if 'OUTPUT' in active_item.in_out:
-                            layout.prop(active_item, "attribute_domain")
-                        layout.prop(active_item, "default_attribute_name")
-                if hasattr(active_item, "draw"):
-                    active_item.draw(context, layout)
+                is_context_input = bool(active_item.context_identifier)
+                socket_layout = layout.column()
+                socket_layout.enabled = not is_context_input
+                socket_layout.prop(active_item, "socket_type", text="Type")
+                socket_layout.prop(active_item, "description")
+                if is_context_input:
+                    socket_layout.prop(active_item, "context_identifier")
+                else:
+                    # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
+                    if tree.type == 'GEOMETRY':
+                        field_socket_types = {
+                            "NodeSocketInt",
+                            "NodeSocketColor",
+                            "NodeSocketVector",
+                            "NodeSocketBool",
+                            "NodeSocketFloat",
+                        }
+                        if active_item.socket_type in field_socket_types:
+                            if 'OUTPUT' in active_item.in_out:
+                                socket_layout.prop(active_item, "attribute_domain")
+                            socket_layout.prop(active_item, "default_attribute_name")
+                    if hasattr(active_item, "draw"):
+                        active_item.draw(context, socket_layout)
 
             if active_item.item_type == 'PANEL':
                 layout.prop(active_item, "description")

@@ -5,6 +5,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_node_extra_info.hh"
 #include "NOD_rna_define.hh"
 
 #include "BLI_string.h"
@@ -76,6 +77,18 @@ static void node_free_storage(bNode *node)
   MEM_freeN(&storage);
 }
 
+static void node_extra_info(NodeExtraInfoParams &params)
+{
+  const NodeGeometryContextInput &storage = node_storage(params.node);
+  if (StringRef(storage.context_identifier).startswith(".")) {
+    NodeExtraInfoRow row;
+    row.text = IFACE_("Invalid Identifier");
+    row.tooltip = TIP_("Identifiers with a dot a prefix are reserved for internal use.");
+    row.icon = ICON_ERROR;
+    params.rows.append(std::move(row));
+  }
+}
+
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
@@ -87,6 +100,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
   ntype.no_muting = true;
+  ntype.get_extra_info = node_extra_info;
   bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

@@ -795,7 +795,13 @@ class NodeTreeMainUpdater {
           const auto &storage = *static_cast<const NodeGeometryContextInput *>(node->storage);
           const eNodeSocketDatatype type = eNodeSocketDatatype(storage.socket_type);
           const char *type_idname = node_static_socket_type(type, PROP_NONE);
-          try_add_context_input(storage.context_identifier, storage.context_name, type_idname);
+          const StringRef context_identifier = storage.context_identifier;
+          const StringRef context_name = storage.context_name;
+          if (context_identifier.startswith(".")) {
+            /* Context identifiers with the "." prefix are reserved for internal use. */
+            break;
+          }
+          try_add_context_input(context_identifier, context_name, type_idname);
           break;
         }
         case GEO_NODE_TOOL_MOUSE_POSITION: {

@@ -91,6 +91,7 @@ class NodeSocketViewItem : public BasicTreeViewItem {
  private:
   bNodeTree &nodetree_;
   bNodeTreeInterfaceSocket &socket_;
+  bool is_context_input_;
 
  public:
   NodeSocketViewItem(bNodeTree &nodetree,
@@ -98,6 +99,7 @@ class NodeSocketViewItem : public BasicTreeViewItem {
                      bNodeTreeInterfaceSocket &socket)
       : BasicTreeViewItem(socket.name, ICON_NONE), nodetree_(nodetree), socket_(socket)
   {
+    is_context_input_ = !StringRef(socket_.context_identifier).is_empty();
     set_is_active_fn([interface, &socket]() { return interface.active_item() == &socket.item; });
     set_on_activate_fn([&interface](bContext & /*C*/, BasicTreeViewItem &new_active) {
       NodeSocketViewItem &self = static_cast<NodeSocketViewItem &>(new_active);
@@ -121,7 +123,11 @@ class NodeSocketViewItem : public BasicTreeViewItem {
       uiItemL(input_socket_layout, "", ICON_BLANK1);
     }
 
-    this->add_label(row);
+    {
+      uiLayout *subrow = uiLayoutRow(&row, true);
+      uiLayoutSetEnabled(subrow, !is_context_input_);
+      this->add_label(*subrow);
+    }
 
     uiLayout *output_socket_layout = uiLayoutRow(&row, true);
     if (socket_.flag & NODE_INTERFACE_SOCKET_OUTPUT) {
@@ -149,7 +155,7 @@ class NodeSocketViewItem : public BasicTreeViewItem {
 
   bool supports_renaming() const override
   {
-    return true;
+    return !is_context_input_;
   }
   bool rename(const bContext &C, StringRefNull new_name) override
   {
