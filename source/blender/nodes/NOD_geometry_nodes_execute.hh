@@ -34,9 +34,11 @@ void find_node_tree_dependencies(const bNodeTree &tree,
 
 StringRef input_use_attribute_suffix();
 StringRef input_attribute_name_suffix();
+StringRef override_context_name_suffix();
 
 std::optional<StringRef> input_attribute_name_get(const IDProperty &props,
                                                   const bNodeTreeInterfaceSocket &io_input);
+bool input_override_context_get(const IDProperty &props, const bNodeTreeInterfaceSocket &io_input);
 
 /**
  * \return Whether using an attribute to input values of this type is supported.

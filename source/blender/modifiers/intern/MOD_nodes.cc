@@ -2164,6 +2164,7 @@ static void draw_property_for_socket(const bContext &C,
                                      const bNodeTreeInterfaceSocket &socket)
 {
   const StringRefNull identifier = socket.identifier;
+  const StringRef context_identifier = socket.context_identifier;
 
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, identifier.c_str());
@@ -2176,6 +2177,23 @@ static void draw_property_for_socket(const bContext &C,
 
   char socket_id_esc[MAX_NAME * 2];
   BLI_str_escape(socket_id_esc, identifier.c_str(), sizeof(socket_id_esc));
+
+  if (!context_identifier.is_empty()) {
+    const std::string override_context_path = fmt::format(
+        "[\"{}{}\"]", socket_id_esc, nodes::override_context_name_suffix());
+    uiItemR(layout,
+            md_ptr,
+            override_context_path.c_str(),
+            UI_ITEM_NONE,
+            "Override Context",
+            ICON_NONE);
+    const bool override_enabled = nodes::input_override_context_get(*nmd->settings.properties,
+                                                                    socket);
+    if (!override_enabled) {
+      layout = uiLayoutColumn(layout, false);
+      uiLayoutSetActive(layout, false);
+    }
+  }
 
   char rna_path[sizeof(socket_id_esc) + 4];
   SNPRINTF(rna_path, "[\"%s\"]", socket_id_esc);

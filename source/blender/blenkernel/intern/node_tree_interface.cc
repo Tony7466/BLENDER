@@ -1260,8 +1260,11 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_context_input(
       0, name, description, socket_type, NODE_INTERFACE_SOCKET_INPUT);
   BLI_assert(new_socket);
   MEM_SAFE_FREE(new_socket->identifier);
+  /* The suffix underscore exists to make sure that the user does not have full control over the
+   * suffix. This could lead to problems with id properties which use suffixes for
+   * sub-properties. */
   new_socket->identifier = BLI_sprintfN(
-      "Context_%.*s", int(context_identifier.size()), context_identifier.data());
+      "Context_%.*s_", int(context_identifier.size()), context_identifier.data());
   new_socket->context_identifier = BLI_strdupn(context_identifier.data(),
                                                context_identifier.size());
   context_panel->add_item(new_socket->item);

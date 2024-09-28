@@ -153,6 +153,11 @@ StringRef input_attribute_name_suffix()
   return "_attribute_name";
 }
 
+StringRef override_context_name_suffix()
+{
+  return "_override_context";
+}
+
 bool socket_type_has_attribute_toggle(const eNodeSocketDatatype type)
 {
   return socket_type_supports_fields(type);
@@ -443,6 +448,18 @@ static bool old_id_property_type_matches_socket_convert_to_new_string(
   return true;
 }
 
+static bool read_bool_or_int_prop(const IDProperty &prop)
+{
+  if (prop.type == IDP_INT) {
+    return IDP_Int(&prop) != 0;
+  }
+  if (prop.type == IDP_BOOLEAN) {
+    return IDP_Bool(&prop);
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
 /**
  * Check if the given `old_property` property type is compatible with the given `socket` type.
  * E.g. a #SOCK_FLOAT socket can use data from #IDP_FLOAT, #IDP_INT and #IDP_DOUBLE ID-properties.
@@ -500,14 +517,7 @@ static bool old_id_property_type_matches_socket_convert_to_new(
        * but do not consider int idprop as a valid input for a bool socket. */
       if (new_property) {
         BLI_assert(new_property->type == IDP_BOOLEAN);
-        switch (old_property.type) {
-          case IDP_INT:
-            IDP_Bool(new_property) = bool(IDP_Int(&old_property));
-            break;
-          case IDP_BOOLEAN:
-            IDP_Bool(new_property) = IDP_Bool(&old_property);
-            break;
-        }
+        IDP_Bool(new_property) = read_bool_or_int_prop(old_property);
       }
       return old_property.type == IDP_BOOLEAN;
     case SOCK_STRING:
@@ -682,21 +692,24 @@ std::optional<StringRef> input_attribute_name_get(const IDProperty &props,
   if (!use_attribute) {
     return std::nullopt;
   }
-  if (use_attribute->type == IDP_INT) {
-    if (IDP_Int(use_attribute) == 0) {
-      return std::nullopt;
-    }
-  }
-  if (use_attribute->type == IDP_BOOLEAN) {
-    if (!IDP_Bool(use_attribute)) {
-      return std::nullopt;
-    }
+  if (!read_bool_or_int_prop(*use_attribute)) {
+    return std::nullopt;
   }
 
   const IDProperty *property_attribute_name = IDP_GetPropertyFromGroup(
       &props, (io_input.identifier + input_attribute_name_suffix()).c_str());
 
   return IDP_String(property_attribute_name);
+}
+
+bool input_override_context_get(const IDProperty &props, const bNodeTreeInterfaceSocket &io_input)
+{
+  IDProperty *use_override = IDP_GetPropertyFromGroup(
+      &props, (io_input.identifier + override_context_name_suffix()).c_str());
+  if (!use_override) {
+    return false;
+  }
+  return read_bool_or_int_prop(*use_override);
 }
 
 static void initialize_group_input(const bNodeTree &tree,
@@ -709,17 +722,17 @@ static void initialize_group_input(const bNodeTree &tree,
   const bke::bNodeSocketType *typeinfo = io_input.socket_typeinfo();
   const eNodeSocketDatatype socket_data_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                           SOCK_CUSTOM;
-  const StringRef context_identifier = io_input.context_identifier;
-  if (!context_identifier.is_empty()) {
-    if (get_context_value(context_identifier, io_input.socket_type, r_value)) {
-      return;
-    }
-    typeinfo->get_geometry_nodes_cpp_value(io_input.socket_data, r_value);
-    return;
-  }
   if (properties == nullptr) {
     typeinfo->get_geometry_nodes_cpp_value(io_input.socket_data, r_value);
     return;
+  }
+  const StringRef context_identifier = io_input.context_identifier;
+  if (!context_identifier.is_empty()) {
+    if (!input_override_context_get(*properties, io_input)) {
+      if (get_context_value(context_identifier, io_input.socket_type, r_value)) {
+        return;
+      }
+    }
   }
   const IDProperty *property = IDP_GetPropertyFromGroup(properties, io_input.identifier);
   if (property == nullptr) {
@@ -1058,9 +1071,25 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
   for (const int i : tree_inputs.index_range()) {
     const bNodeTreeInterfaceSocket &socket = *tree_inputs[i];
     const StringRefNull socket_identifier = socket.identifier;
+    const StringRef context_identifier = socket.context_identifier;
     const bke::bNodeSocketType *typeinfo = socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;
+
+    if (!context_identifier.is_empty()) {
+      const std::string prop_name = socket.identifier + override_context_name_suffix();
+      IDProperty *override_context_prop = bke::idprop::create_bool(prop_name, false).release();
+      IDP_AddToGroup(&properties, override_context_prop);
+
+      if (old_properties) {
+        if (IDProperty *old_override_context_prop = IDP_GetPropertyFromGroup(old_properties,
+                                                                             prop_name.c_str()))
+        {
+          IDP_Bool(override_context_prop) = read_bool_or_int_prop(*old_override_context_prop);
+        }
+      }
+    }
+
     IDProperty *new_prop =
         nodes::id_property_create_from_socket(socket, use_name_for_ids).release();
     if (new_prop == nullptr) {
