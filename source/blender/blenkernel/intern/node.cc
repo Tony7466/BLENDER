@@ -916,6 +916,7 @@ void node_tree_blend_write(BlendWriter *writer, bNodeTree *ntree)
       BLO_write_struct(writer, NodeGeometryContextInput, &storage);
       BLO_write_string(writer, storage.context_identifier);
       BLO_write_string(writer, storage.context_name);
+      BLO_write_string(writer, storage.context_description);
     }
   }
 
@@ -1215,6 +1216,7 @@ void node_tree_blend_read_data(BlendDataReader *reader, ID *owner_id, bNodeTree 
               node->storage);
           BLO_read_string(reader, &storage->context_identifier);
           BLO_read_string(reader, &storage->context_name);
+          BLO_read_string(reader, &storage->context_description);
           break;
         }
 

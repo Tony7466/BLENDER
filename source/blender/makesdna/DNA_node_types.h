@@ -1916,6 +1916,7 @@ typedef struct NodeGeometryContextInput {
   char _pad[7];
   char *context_identifier;
   char *context_name;
+  char *context_description;
 } NodeGeometryContextInput;
 
 typedef struct NodeGeometryUVUnwrap {

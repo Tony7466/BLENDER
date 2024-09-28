@@ -9956,6 +9956,10 @@ static void rna_def_geo_context_input(StructRNA *srna)
   prop = RNA_def_property(srna, "context_name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Context Name", "");
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "context_description", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Context Description", "");
+  RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
 static void rna_def_geo_bake_item(BlenderRNA *brna)

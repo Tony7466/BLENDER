@@ -712,6 +712,7 @@ class NodeTreeMainUpdater {
     struct ContextInputInfo {
       StringRefNull type_idname;
       StringRef name;
+      StringRef description;
     };
 
     Set<StringRef> bad_context_identifiers;
@@ -723,7 +724,8 @@ class NodeTreeMainUpdater {
 
     auto try_add_context_input = [&](const StringRef context_identifier,
                                      const StringRef context_name,
-                                     const StringRefNull new_type_idname) {
+                                     const StringRefNull new_type_idname,
+                                     const StringRef context_description = "") {
       if (context_identifier.is_empty()) {
         return;
       }
@@ -731,7 +733,14 @@ class NodeTreeMainUpdater {
         return;
       }
       ContextInputInfo &context_info = required_context_inputs.lookup_or_add(
-          context_identifier, ContextInputInfo{new_type_idname, context_name});
+          context_identifier,
+          ContextInputInfo{new_type_idname, context_name, context_description});
+      if (context_info.name.is_empty() && !context_name.is_empty()) {
+        context_info.name = context_name;
+      }
+      if (context_info.description.is_empty() && !context_description.is_empty()) {
+        context_info.description = context_description;
+      }
       if (context_info.type_idname == new_type_idname) {
         return;
       }
@@ -787,7 +796,8 @@ class NodeTreeMainUpdater {
             }
             try_add_context_input(interface_socket->context_identifier,
                                   interface_socket->name,
-                                  interface_socket->socket_type);
+                                  interface_socket->socket_type,
+                                  interface_socket->description);
           }
           break;
         }
@@ -797,11 +807,13 @@ class NodeTreeMainUpdater {
           const char *type_idname = node_static_socket_type(type, PROP_NONE);
           const StringRef context_identifier = storage.context_identifier;
           const StringRef context_name = storage.context_name;
+          const StringRef context_description = storage.context_description;
           if (context_identifier.startswith(".")) {
             /* Context identifiers with the "." prefix are reserved for internal use. */
             break;
           }
-          try_add_context_input(context_identifier, context_name, type_idname);
+          try_add_context_input(
+              context_identifier, context_name, type_idname, context_description);
           break;
         }
         case GEO_NODE_TOOL_MOUSE_POSITION: {
@@ -891,6 +903,15 @@ class NodeTreeMainUpdater {
         if (context_info->name != socket.name) {
           MEM_SAFE_FREE(socket.name);
           socket.name = BLI_strdupn(context_info->name.data(), context_info->name.size());
+          interface_changed = true;
+        }
+        if (context_info->description != socket.description) {
+          MEM_SAFE_FREE(socket.description);
+          if (!context_info->description.is_empty()) {
+            socket.description = BLI_strdupn(context_info->description.data(),
+                                             context_info->description.size());
+          }
+          interface_changed = true;
         }
       }
       else {
@@ -920,7 +941,11 @@ class NodeTreeMainUpdater {
       const StringRef context_identifier = item.key;
       const ContextInputInfo &context_info = item.value;
       bNodeTreeInterfaceSocket *new_socket = tree.tree_interface.add_socket(
-          context_info.name, "", context_info.type_idname, NODE_INTERFACE_SOCKET_INPUT, nullptr);
+          context_info.name,
+          context_info.description,
+          context_info.type_idname,
+          NODE_INTERFACE_SOCKET_INPUT,
+          nullptr);
       new_socket->context_identifier = BLI_strdupn(context_identifier.data(),
                                                    context_identifier.size());
     }
