@@ -120,9 +120,3 @@ static inline const Context *unwrap(const GPUContext *ctx)
 }
 
 }  // namespace blender::gpu
-
-/*
- * Allow system contexts to be created without having to include
- * WM_api.hh" which causes a namespace clash with Apple Frameworks
- */
-void *GPU_system_context_create();
