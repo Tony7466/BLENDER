@@ -2164,10 +2164,6 @@ static void draw_property_for_socket(const bContext &C,
                                      const bNodeTreeInterfaceSocket &socket)
 {
   const StringRefNull identifier = socket.identifier;
-  const StringRef context_identifier = socket.context_identifier;
-  if (!context_identifier.is_empty()) {
-    return;
-  }
 
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, identifier.c_str());

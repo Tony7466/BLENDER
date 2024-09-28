@@ -121,6 +121,7 @@ typedef enum NodeTreeInterfacePanelFlag {
   NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS = 1 << 1,
   /* Allow adding sockets after panels. */
   NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS = 1 << 2,
+  NODE_INTERFACE_PANEL_IS_CONTEXT_PANEL = 1 << 3,
 } NodeTreeInterfacePanelFlag;
 ENUM_OPERATORS(NodeTreeInterfacePanelFlag, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
 

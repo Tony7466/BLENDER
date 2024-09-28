@@ -1237,6 +1237,25 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_context_input(
   });
 #endif
 
+  bNodeTreeInterfacePanel *context_panel = nullptr;
+  this->foreach_item([&](bNodeTreeInterfaceItem &item) {
+    if (item.item_type == NODE_INTERFACE_PANEL) {
+      auto &panel = get_item_as<bNodeTreeInterfacePanel>(item);
+      if (panel.flag & NODE_INTERFACE_PANEL_IS_CONTEXT_PANEL) {
+        context_panel = &panel;
+        return false;
+      }
+    }
+    return true;
+  });
+  if (!context_panel) {
+    context_panel = this->add_panel("Context",
+                                    "",
+                                    NODE_INTERFACE_PANEL_IS_CONTEXT_PANEL |
+                                        NODE_INTERFACE_PANEL_DEFAULT_CLOSED,
+                                    nullptr);
+  }
+
   bNodeTreeInterfaceSocket *new_socket = make_socket(
       0, name, description, socket_type, NODE_INTERFACE_SOCKET_INPUT);
   BLI_assert(new_socket);
@@ -1245,7 +1264,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_context_input(
       "Context_%.*s", int(context_identifier.size()), context_identifier.data());
   new_socket->context_identifier = BLI_strdupn(context_identifier.data(),
                                                context_identifier.size());
-  this->root_panel.add_item(new_socket->item);
+  context_panel->add_item(new_socket->item);
   this->tag_items_changed();
   return new_socket;
 }
