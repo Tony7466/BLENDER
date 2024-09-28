@@ -789,6 +789,46 @@ class NodeTreeMainUpdater {
           try_add_context_input(storage.identifier, type_idname);
           break;
         }
+        case GEO_NODE_TOOL_MOUSE_POSITION: {
+          try_add_context_input("mouse_position_x", "NodeSocketInt");
+          try_add_context_input("mouse_position_y", "NodeSocketInt");
+          try_add_context_input("region_width", "NodeSocketInt");
+          try_add_context_input("region_height", "NodeSocketInt");
+          break;
+        }
+        case GEO_NODE_IS_VIEWPORT: {
+          try_add_context_input("is_viewport", "NodeSocketBool");
+          break;
+        }
+        case GEO_NODE_INPUT_ACTIVE_CAMERA: {
+          try_add_context_input("active_camera", "NodeSocketObject");
+          break;
+        }
+        case GEO_NODE_INPUT_SCENE_TIME: {
+          try_add_context_input("scene_time_seconds", "NodeSocketFloat");
+          try_add_context_input("scene_time_frame", "NodeSocketFloat");
+          break;
+        }
+        case GEO_NODE_SELF_OBJECT: {
+          try_add_context_input("self_object", "NodeSocketObject");
+          break;
+        }
+        case GEO_NODE_TOOL_VIEWPORT_TRANSFORM: {
+          try_add_context_input("viewport_projection", "NodeSocketMatrix");
+          try_add_context_input("viewport_view", "NodeSocketMatrix");
+          try_add_context_input("viewport_is_orthographic", "NodeSocketBool");
+          break;
+        }
+        case GEO_NODE_TOOL_ACTIVE_ELEMENT: {
+          try_add_context_input("active_element_index", "NodeSocketInt");
+          try_add_context_input("active_element_exists", "NodeSocketBool");
+          break;
+        }
+        case GEO_NODE_TOOL_3D_CURSOR: {
+          try_add_context_input("3d_cursor_location", "NodeSocketVector");
+          try_add_context_input("3d_cursor_rotation", "NodeSocketRotation");
+          break;
+        }
       }
     }
 
