@@ -914,7 +914,8 @@ void node_tree_blend_write(BlendWriter *writer, bNodeTree *ntree)
     if (node->type == GEO_NODE_CONTEXT_INPUT) {
       auto &storage = *static_cast<NodeGeometryContextInput *>(node->storage);
       BLO_write_struct(writer, NodeGeometryContextInput, &storage);
-      BLO_write_string(writer, storage.identifier);
+      BLO_write_string(writer, storage.context_identifier);
+      BLO_write_string(writer, storage.context_name);
     }
   }
 
@@ -1212,7 +1213,8 @@ void node_tree_blend_read_data(BlendDataReader *reader, ID *owner_id, bNodeTree 
         case GEO_NODE_CONTEXT_INPUT: {
           NodeGeometryContextInput *storage = static_cast<NodeGeometryContextInput *>(
               node->storage);
-          BLO_read_string(reader, &storage->identifier);
+          BLO_read_string(reader, &storage->context_identifier);
+          BLO_read_string(reader, &storage->context_name);
           break;
         }
 

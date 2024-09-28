@@ -48,20 +48,31 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
               "",
               ICON_NONE,
               IFACE_("Identifier"));
+  uiItemFullR(col,
+              ptr,
+              RNA_struct_find_property(ptr, "context_name"),
+              -1,
+              0,
+              UI_ITEM_NONE,
+              "",
+              ICON_NONE,
+              IFACE_("Name"));
 }
 
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
 {
   const NodeGeometryContextInput &src_storage = node_storage(*src_node);
   auto *dst_storage = MEM_cnew<NodeGeometryContextInput>(__func__, src_storage);
-  dst_storage->identifier = BLI_strdup_null(dst_storage->identifier);
+  dst_storage->context_identifier = BLI_strdup_null(dst_storage->context_identifier);
+  dst_storage->context_name = BLI_strdup_null(dst_storage->context_name);
   dst_node->storage = dst_storage;
 }
 
 static void node_free_storage(bNode *node)
 {
   NodeGeometryContextInput &storage = node_storage(*node);
-  MEM_SAFE_FREE(storage.identifier);
+  MEM_SAFE_FREE(storage.context_identifier);
+  MEM_SAFE_FREE(storage.context_name);
   MEM_freeN(&storage);
 }
 

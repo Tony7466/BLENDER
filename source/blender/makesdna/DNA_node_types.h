@@ -1914,7 +1914,8 @@ typedef struct NodeGeometryContextInput {
   /** #eNodeSocketDatatype. */
   int8_t socket_type;
   char _pad[7];
-  char *identifier;
+  char *context_identifier;
+  char *context_name;
 } NodeGeometryContextInput;
 
 typedef struct NodeGeometryUVUnwrap {

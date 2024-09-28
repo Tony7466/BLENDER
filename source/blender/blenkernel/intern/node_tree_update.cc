@@ -708,14 +708,21 @@ class NodeTreeMainUpdater {
   bool update_context_inputs(bNodeTree &tree)
   {
     tree.ensure_topology_cache();
+
+    struct ContextInputInfo {
+      StringRefNull type_idname;
+      StringRef name;
+    };
+
     Set<StringRef> bad_context_identifiers;
-    Map<StringRef, StringRefNull> required_context_inputs;
+    Map<StringRef, ContextInputInfo> required_context_inputs;
 
     static const std::array complexity_order_array = {
         SOCK_BOOLEAN, SOCK_INT, SOCK_FLOAT, SOCK_VECTOR, SOCK_ROTATION, SOCK_RGBA, SOCK_MATRIX};
     const Span<eNodeSocketDatatype> complexity_order = complexity_order_array;
 
     auto try_add_context_input = [&](const StringRef context_identifier,
+                                     const StringRef context_name,
                                      const StringRefNull new_type_idname) {
       if (context_identifier.is_empty()) {
         return;
@@ -723,12 +730,13 @@ class NodeTreeMainUpdater {
       if (bad_context_identifiers.contains(context_identifier)) {
         return;
       }
-      const StringRefNull old_type_idname = required_context_inputs.lookup_or_add(
-          context_identifier, new_type_idname);
-      if (old_type_idname == new_type_idname) {
+      ContextInputInfo &context_info = required_context_inputs.lookup_or_add(
+          context_identifier, ContextInputInfo{new_type_idname, context_name});
+      if (context_info.type_idname == new_type_idname) {
         return;
       }
-      const bNodeSocketType *old_type_info = node_socket_type_find(old_type_idname.c_str());
+      const bNodeSocketType *old_type_info = node_socket_type_find(
+          context_info.type_idname.c_str());
       const bNodeSocketType *new_type_info = node_socket_type_find(new_type_idname.c_str());
       if (!old_type_info || !new_type_info) {
         bad_context_identifiers.add(context_identifier);
@@ -745,7 +753,7 @@ class NodeTreeMainUpdater {
       const int old_complexity = complexity_order.first_index_try(old_type);
       const int new_complexity = complexity_order.first_index_try(new_type);
       if (new_complexity > old_complexity) {
-        required_context_inputs.add_overwrite(context_identifier, new_type_idname);
+        context_info.type_idname = new_type_idname;
       }
     };
 
@@ -778,6 +786,7 @@ class NodeTreeMainUpdater {
               }
             }
             try_add_context_input(interface_socket->context_identifier,
+                                  interface_socket->name,
                                   interface_socket->socket_type);
           }
           break;
@@ -786,47 +795,49 @@ class NodeTreeMainUpdater {
           const auto &storage = *static_cast<const NodeGeometryContextInput *>(node->storage);
           const eNodeSocketDatatype type = eNodeSocketDatatype(storage.socket_type);
           const char *type_idname = node_static_socket_type(type, PROP_NONE);
-          try_add_context_input(storage.identifier, type_idname);
+          try_add_context_input(storage.context_identifier, storage.context_name, type_idname);
           break;
         }
         case GEO_NODE_TOOL_MOUSE_POSITION: {
-          try_add_context_input("mouse_position_x", "NodeSocketInt");
-          try_add_context_input("mouse_position_y", "NodeSocketInt");
-          try_add_context_input("region_width", "NodeSocketInt");
-          try_add_context_input("region_height", "NodeSocketInt");
+          try_add_context_input(".mouse_position_x", "Mouse Position X", "NodeSocketInt");
+          try_add_context_input(".mouse_position_y", "Mouse Position Y", "NodeSocketInt");
+          try_add_context_input(".region_width", "Region Width", "NodeSocketInt");
+          try_add_context_input(".region_height", "Region Height", "NodeSocketInt");
           break;
         }
         case GEO_NODE_IS_VIEWPORT: {
-          try_add_context_input("is_viewport", "NodeSocketBool");
+          try_add_context_input(".is_viewport", "Is Viewport", "NodeSocketBool");
           break;
         }
         case GEO_NODE_INPUT_ACTIVE_CAMERA: {
-          try_add_context_input("active_camera", "NodeSocketObject");
+          try_add_context_input(".active_camera", "Active Camera", "NodeSocketObject");
           break;
         }
         case GEO_NODE_INPUT_SCENE_TIME: {
-          try_add_context_input("scene_time_seconds", "NodeSocketFloat");
-          try_add_context_input("scene_time_frame", "NodeSocketFloat");
+          try_add_context_input(".scene_time_seconds", "Scene Time Seconds", "NodeSocketFloat");
+          try_add_context_input(".scene_time_frame", "Scene Time Frame", "NodeSocketFloat");
           break;
         }
         case GEO_NODE_SELF_OBJECT: {
-          try_add_context_input("self_object", "NodeSocketObject");
+          try_add_context_input(".self_object", "Self Object", "NodeSocketObject");
           break;
         }
         case GEO_NODE_TOOL_VIEWPORT_TRANSFORM: {
-          try_add_context_input("viewport_projection", "NodeSocketMatrix");
-          try_add_context_input("viewport_view", "NodeSocketMatrix");
-          try_add_context_input("viewport_is_orthographic", "NodeSocketBool");
+          try_add_context_input(".viewport_projection", "Viewport Projection", "NodeSocketMatrix");
+          try_add_context_input(".viewport_view", "Viewport View", "NodeSocketMatrix");
+          try_add_context_input(
+              ".viewport_is_orthographic", "Is Orthographic View", "NodeSocketBool");
           break;
         }
         case GEO_NODE_TOOL_ACTIVE_ELEMENT: {
-          try_add_context_input("active_element_index", "NodeSocketInt");
-          try_add_context_input("active_element_exists", "NodeSocketBool");
+          try_add_context_input(".active_element_index", "Active Element Index", "NodeSocketInt");
+          try_add_context_input(
+              ".active_element_exists", "Active Element Exists", "NodeSocketBool");
           break;
         }
         case GEO_NODE_TOOL_3D_CURSOR: {
-          try_add_context_input("3d_cursor_location", "NodeSocketVector");
-          try_add_context_input("3d_cursor_rotation", "NodeSocketRotation");
+          try_add_context_input(".3d_cursor_location", "3D Cursor Location", "NodeSocketVector");
+          try_add_context_input(".3d_cursor_rotation", "3D Cursor Rotation", "NodeSocketRotation");
           break;
         }
       }
@@ -858,12 +869,16 @@ class NodeTreeMainUpdater {
         required_context_inputs.remove(socket_context_identifier);
         return true;
       }
-      const std::optional<StringRefNull> new_type_idname = required_context_inputs.pop_try(
+      const std::optional<ContextInputInfo> context_info = required_context_inputs.pop_try(
           socket_context_identifier);
-      if (new_type_idname.has_value()) {
-        if (*new_type_idname != StringRef(socket.socket_type)) {
-          socket.set_socket_type(new_type_idname->c_str());
+      if (context_info.has_value()) {
+        if (context_info->type_idname != socket.socket_type) {
+          socket.set_socket_type(context_info->type_idname.c_str());
           interface_changed = true;
+        }
+        if (context_info->name != socket.name) {
+          MEM_SAFE_FREE(socket.name);
+          socket.name = BLI_strdupn(context_info->name.data(), context_info->name.size());
         }
       }
       else {
@@ -891,9 +906,9 @@ class NodeTreeMainUpdater {
     /* Add new context inputs. */
     for (const auto &&item : required_context_inputs.items()) {
       const StringRef context_identifier = item.key;
-      const StringRef socket_type = item.value;
+      const ContextInputInfo &context_info = item.value;
       bNodeTreeInterfaceSocket *new_socket = tree.tree_interface.add_socket(
-          context_identifier, "", socket_type, NODE_INTERFACE_SOCKET_INPUT, nullptr);
+          context_info.name, "", context_info.type_idname, NODE_INTERFACE_SOCKET_INPUT, nullptr);
       new_socket->context_identifier = BLI_strdupn(context_identifier.data(),
                                                    context_identifier.size());
     }
