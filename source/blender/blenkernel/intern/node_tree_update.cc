@@ -759,6 +759,24 @@ class NodeTreeMainUpdater {
           }
           group->ensure_interface_cache();
           for (const bNodeTreeInterfaceSocket *interface_socket : group->interface_inputs()) {
+            /* Socket may not exist, because the group node has not been updated yet. */
+            const bNodeSocket *input_socket = node->runtime->inputs_by_identifier.lookup_default(
+                interface_socket->identifier, nullptr);
+            if (input_socket) {
+              const Span<const bNodeSocket *> origin_sockets =
+                  input_socket->directly_linked_sockets();
+              bool has_proper_origin = false;
+              for (const bNodeSocket *origin_socket : origin_sockets) {
+                const bNode &origin_node = origin_socket->owner_node();
+                if (!origin_node.is_dangling_reroute()) {
+                  has_proper_origin = true;
+                  break;
+                }
+              }
+              if (has_proper_origin) {
+                continue;
+              }
+            }
             try_add_context_input(interface_socket->context_identifier,
                                   interface_socket->socket_type);
           }

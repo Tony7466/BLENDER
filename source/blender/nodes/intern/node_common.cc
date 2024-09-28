@@ -503,6 +503,10 @@ void node_group_declare(NodeDeclarationBuilder &b)
           r_declaration.items.append(std::move(output_decl));
         }
         if (input_decl) {
+          if (!StringRef(socket.context_identifier).is_empty()) {
+            input_decl->hide_value = true;
+          }
+
           r_declaration.inputs.append(input_decl.get());
           r_declaration.items.append(std::move(input_decl));
         }
@@ -755,6 +759,9 @@ static void group_input_declare(NodeDeclarationBuilder &b)
         if (socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
           SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
               *node_tree, socket, SOCK_OUT);
+          if (!StringRef(socket.context_identifier).is_empty()) {
+            socket_decl->is_available = false;
+          }
           r_declaration.outputs.append(socket_decl.get());
           r_declaration.items.append(std::move(socket_decl));
         }
