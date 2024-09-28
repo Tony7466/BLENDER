@@ -847,6 +847,12 @@ class NodeTreeMainUpdater {
       required_context_inputs.remove(bad_identifier);
     }
 
+    for (auto &&[context_identifier, context_info] : required_context_inputs.items()) {
+      if (context_info.name.is_empty()) {
+        context_info.name = context_identifier;
+      }
+    }
+
     bool interface_changed = false;
 
     /* Update existing context inputs and find context inputs to remove. */
