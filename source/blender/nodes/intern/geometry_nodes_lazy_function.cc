@@ -3525,7 +3525,7 @@ struct GeometryNodesLazyFunctionBuilder {
    * The inputs sockets in the graph. Multiple group input nodes are combined into one in the
    * lazy-function graph.
    */
-  Vector<const lf::GraphInputSocket *> group_input_sockets_;
+  Vector<lf::GraphInputSocket *> group_input_sockets_;
   /**
    * Interface output sockets that correspond to the active group output node. If there is no such
    * node, defaulted fallback outputs are created.
@@ -3546,6 +3546,7 @@ struct GeometryNodesLazyFunctionBuilder {
    * which attributes should be propagated and which can be removed (for optimization purposes).
    */
   Map<int, const lf::GraphInputSocket *> attribute_set_by_geometry_output_;
+  MultiValueMap<StringRef, const bNodeSocket *> context_output_sockets_by_identifier;
 
   friend class UsedSocketVisualizeOptions;
 
@@ -3568,6 +3569,42 @@ struct GeometryNodesLazyFunctionBuilder {
     mapping_ = &lf_graph_info_->mapping;
     conversions_ = &bke::get_implicit_type_conversions();
     tree_zones_ = btree_.zones();
+
+    for (const bNode *node : btree_.all_nodes()) {
+      const bke::bNodeType *node_type = node->typeinfo;
+      if (!node_type) {
+        continue;
+      }
+      if (node->type == GEO_NODE_CONTEXT_INPUT) {
+        const auto &storage = *static_cast<const NodeGeometryContextInput *>(node->storage);
+        const StringRef context_identifier = storage.context_identifier;
+        if (context_identifier.is_empty()) {
+          continue;
+        }
+        if (context_identifier.startswith(".")) {
+          continue;
+        }
+        context_output_sockets_by_identifier.add(context_identifier, &node->output_socket(0));
+        continue;
+      }
+      if (!node_type->has_context_outputs) {
+        continue;
+      }
+      for (const bNodeSocket *socket : node->output_sockets()) {
+        if (!socket->is_available()) {
+          continue;
+        }
+        const SocketDeclaration *socket_decl = socket->runtime->declaration;
+        if (!socket_decl) {
+          continue;
+        }
+        const StringRef context_identifier = socket_decl->context_identifier;
+        if (context_identifier.is_empty()) {
+          continue;
+        }
+        context_output_sockets_by_identifier.add(context_identifier, socket);
+      }
+    }
 
     this->initialize_mapping_arrays();
     this->build_zone_functions();
@@ -4066,6 +4103,47 @@ struct GeometryNodesLazyFunctionBuilder {
     for (const auto item : graph_params.lf_output_by_bsocket.items()) {
       this->insert_links_from_socket(*item.key, *item.value, graph_params);
     }
+
+    {
+      const Span<const bNodeTreeInterfaceSocket *> interface_inputs = btree_.interface_inputs();
+      for (const int interface_input_i : interface_inputs.index_range()) {
+        const bNodeTreeInterfaceSocket &io_socket = *interface_inputs[interface_input_i];
+        const StringRef context_identifier = io_socket.context_identifier;
+        if (context_identifier.is_empty()) {
+          continue;
+        }
+        const bke::bNodeSocketType *io_socket_type = io_socket.socket_typeinfo();
+        const Span<const bNodeSocket *> context_sockets =
+            context_output_sockets_by_identifier.lookup(context_identifier);
+        if (context_sockets.is_empty()) {
+          continue;
+        }
+        lf::OutputSocket *lf_io_input = group_input_sockets_[interface_input_i];
+        for (const bNodeSocket *context_socket : context_sockets) {
+          const Span<const bNodeLink *> links = context_socket->directly_linked_links();
+          if (links.is_empty()) {
+            continue;
+          }
+          const bke::bNodeSocketType *context_socket_type = context_socket->typeinfo;
+          lf::OutputSocket *lf_context_socket = this->insert_type_conversion_if_necessary(
+              *lf_io_input, *io_socket_type, *context_socket_type, lf_graph);
+          for (const bNodeLink *link : links) {
+            const Vector<lf::InputSocket *> lf_link_targets = this->find_link_targets(
+                *link, *root_graph_build_params_);
+            if (lf_link_targets.is_empty()) {
+              continue;
+            }
+            /* TODO: Handle invalid conversion? */
+            lf::OutputSocket *converted_lf_socket = this->insert_type_conversion_if_necessary(
+                *lf_context_socket, *io_socket_type, *link->tosock->typeinfo, lf_graph);
+            for (lf::InputSocket *to_lf_socket : lf_link_targets) {
+              lf_graph.add_link(*converted_lf_socket, *to_lf_socket);
+            }
+          }
+        }
+      }
+    }
+
     this->build_group_input_usages(graph_params);
     this->add_default_inputs(graph_params);
 
@@ -4567,6 +4645,10 @@ struct GeometryNodesLazyFunctionBuilder {
     }
     if (bnode.is_muted()) {
       this->build_muted_node(bnode, graph_params);
+      return;
+    }
+    if (node_type->has_context_outputs) {
+      /* Don't build context nodes. Their outputs are linked directly from the group input. */
       return;
     }
     switch (node_type->type) {

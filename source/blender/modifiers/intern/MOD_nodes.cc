@@ -1848,6 +1848,14 @@ static void modifyGeometry(ModifierData *md,
       new (r_value) bke::SocketValueVariant(scene_ctime);
       return true;
     }
+    if (context_identifier == ".scene_time_seconds" && socket_type_idname == "NodeSocketFloat") {
+      const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
+      const float scene_ctime = BKE_scene_ctime_get(scene);
+      const double frame_rate = double(scene->r.frs_sec) / double(scene->r.frs_sec_base);
+      const float seconds = scene_ctime / frame_rate;
+      new (r_value) bke::SocketValueVariant(seconds);
+      return true;
+    }
     return false;
   };
 

@@ -16,20 +16,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Frame").context_identifier(".scene_time_frame");
 }
 
-static void node_exec(GeoNodeExecParams params)
-{
-  const Scene *scene = DEG_get_input_scene(params.depsgraph());
-  const float scene_ctime = BKE_scene_ctime_get(scene);
-  const double frame_rate = double(scene->r.frs_sec) / double(scene->r.frs_sec_base);
-  params.set_output("Seconds", float(scene_ctime / frame_rate));
-  params.set_output("Frame", scene_ctime);
-}
-
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_INPUT_SCENE_TIME, "Scene Time", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = node_exec;
   ntype.declare = node_declare;
   ntype.has_context_outputs = true;
   blender::bke::node_register_type(&ntype);
