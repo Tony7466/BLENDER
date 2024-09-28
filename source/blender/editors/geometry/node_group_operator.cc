@@ -561,10 +561,19 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
       call_data.socket_log_contexts = &socket_log_contexts;
     }
 
+    auto get_context_value = [&](const StringRef /*context_identifier*/,
+                                 const StringRefNull /*socket_type_idname*/,
+                                 void * /*r_value*/) { return false; };
+
     bke::GeometrySet geometry_orig = get_original_geometry_eval_copy(*object, operator_eval_data);
 
     bke::GeometrySet new_geometry = nodes::execute_geometry_nodes_on_geometry(
-        *node_tree, properties, compute_context, call_data, std::move(geometry_orig));
+        *node_tree,
+        properties,
+        compute_context,
+        call_data,
+        std::move(geometry_orig),
+        get_context_value);
 
     store_result_geometry(*op, *bmain, *scene, *object, std::move(new_geometry));
 

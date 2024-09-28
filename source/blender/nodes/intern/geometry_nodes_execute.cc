@@ -702,12 +702,21 @@ std::optional<StringRef> input_attribute_name_get(const IDProperty &props,
 static void initialize_group_input(const bNodeTree &tree,
                                    const IDProperty *properties,
                                    const int input_index,
+                                   const FunctionRef<GetContextValueFn> get_context_value,
                                    void *r_value)
 {
   const bNodeTreeInterfaceSocket &io_input = *tree.interface_inputs()[input_index];
   const bke::bNodeSocketType *typeinfo = io_input.socket_typeinfo();
   const eNodeSocketDatatype socket_data_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                           SOCK_CUSTOM;
+  const StringRef context_identifier = io_input.context_identifier;
+  if (!context_identifier.is_empty()) {
+    if (get_context_value(context_identifier, io_input.socket_type, r_value)) {
+      return;
+    }
+    typeinfo->get_geometry_nodes_cpp_value(io_input.socket_data, r_value);
+    return;
+  }
   if (properties == nullptr) {
     typeinfo->get_geometry_nodes_cpp_value(io_input.socket_data, r_value);
     return;
@@ -929,11 +938,13 @@ static void store_output_attributes(bke::GeometrySet &geometry,
   });
 }
 
-bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
-                                                    const IDProperty *properties,
-                                                    const ComputeContext &base_compute_context,
-                                                    GeoNodesCallData &call_data,
-                                                    bke::GeometrySet input_geometry)
+bke::GeometrySet execute_geometry_nodes_on_geometry(
+    const bNodeTree &btree,
+    const IDProperty *properties,
+    const ComputeContext &base_compute_context,
+    GeoNodesCallData &call_data,
+    bke::GeometrySet input_geometry,
+    const FunctionRef<GetContextValueFn> get_context_value)
 {
   const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info =
       *nodes::ensure_geometry_nodes_lazy_function_graph(btree);
@@ -979,7 +990,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
     const CPPType *type = typeinfo->geometry_nodes_cpp_type;
     BLI_assert(type != nullptr);
     void *value = allocator.allocate(type->size(), type->alignment());
-    initialize_group_input(btree, properties, i, value);
+    initialize_group_input(btree, properties, i, get_context_value, value);
     param_inputs[function.inputs.main[i]] = {type, value};
     inputs_to_destruct.append({type, value});
   }

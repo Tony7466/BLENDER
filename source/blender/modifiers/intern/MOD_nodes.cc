@@ -59,6 +59,7 @@
 #include "BKE_object.hh"
 #include "BKE_packedFile.hh"
 #include "BKE_pointcloud.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.hh"
 
@@ -1838,11 +1839,24 @@ static void modifyGeometry(ModifierData *md,
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
+  auto get_context_value = [&](const StringRef context_identifier,
+                               const StringRefNull socket_type_idname,
+                               void *r_value) {
+    if (context_identifier == ".scene_time_frame" && socket_type_idname == "NodeSocketFloat") {
+      const Scene *scene = DEG_get_input_scene(ctx->depsgraph);
+      const float scene_ctime = BKE_scene_ctime_get(scene);
+      new (r_value) bke::SocketValueVariant(scene_ctime);
+      return true;
+    }
+    return false;
+  };
+
   geometry_set = nodes::execute_geometry_nodes_on_geometry(tree,
                                                            nmd->settings.properties,
                                                            modifier_compute_context,
                                                            call_data,
-                                                           std::move(geometry_set));
+                                                           std::move(geometry_set),
+                                                           get_context_value);
 
   if (logging_enabled(ctx)) {
     nmd_orig->runtime->eval_log = std::move(eval_log);
