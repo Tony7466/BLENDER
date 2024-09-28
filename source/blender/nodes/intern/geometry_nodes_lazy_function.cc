@@ -1557,6 +1557,8 @@ struct BuildGraphParams {
   /** Cache to avoid building the same socket combinations multiple times. */
   Map<Vector<lf::OutputSocket *>, lf::OutputSocket *> socket_usages_combination_cache;
 
+  MultiValueMap<StringRef, const bNodeSocket *> context_input_sockets;
+
   BuildGraphParams(lf::Graph &lf_graph) : lf_graph(lf_graph) {}
 };
 
@@ -4115,9 +4117,6 @@ struct GeometryNodesLazyFunctionBuilder {
         const bke::bNodeSocketType *io_socket_type = io_socket.socket_typeinfo();
         const Span<const bNodeSocket *> context_sockets =
             context_output_sockets_by_identifier.lookup(context_identifier);
-        if (context_sockets.is_empty()) {
-          continue;
-        }
         lf::OutputSocket *lf_io_input = group_input_sockets_[interface_input_i];
         for (const bNodeSocket *context_socket : context_sockets) {
           const Span<const bNodeLink *> links = context_socket->directly_linked_links();
@@ -4139,6 +4138,18 @@ struct GeometryNodesLazyFunctionBuilder {
             for (lf::InputSocket *to_lf_socket : lf_link_targets) {
               lf_graph.add_link(*converted_lf_socket, *to_lf_socket);
             }
+          }
+        }
+        const Span<const bNodeSocket *> target_sockets = graph_params.context_input_sockets.lookup(
+            context_identifier);
+        for (const bNodeSocket *target_socket : target_sockets) {
+          const bke::bNodeSocketType *target_socket_type = target_socket->typeinfo;
+          lf::OutputSocket *converted_lf_socket = this->insert_type_conversion_if_necessary(
+              *lf_io_input, *io_socket_type, *target_socket_type, lf_graph);
+          const Span<lf::InputSocket *> lf_target_sockets =
+              graph_params.lf_inputs_by_bsocket.lookup(target_socket);
+          for (lf::InputSocket *lf_target_socket : lf_target_sockets) {
+            lf_graph.add_link(*converted_lf_socket, *lf_target_socket);
           }
         }
       }
@@ -4858,6 +4869,12 @@ struct GeometryNodesLazyFunctionBuilder {
       lf::InputSocket &lf_socket = lf_node.input(group_lf_graph_info->function.inputs.main[i]);
       graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
+
+      const bNodeTreeInterfaceSocket &io_socket = *group_btree->interface_inputs()[i];
+      const StringRef context_identifier = io_socket.context_identifier;
+      if (!context_identifier.is_empty()) {
+        graph_params.context_input_sockets.add(context_identifier, &bsocket);
+      }
     }
     for (const int i : bnode.output_sockets().index_range()) {
       const bNodeSocket &bsocket = bnode.output_socket(i);
