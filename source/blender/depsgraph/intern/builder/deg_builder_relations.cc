@@ -953,6 +953,31 @@ void DepsgraphRelationBuilder::build_object_modifiers(Object *object)
       add_relation(time_src_key, modifier_key, "Time Source -> Modifier");
     }
 
+    if (modifier->type == eModifierType_Nodes) {
+      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(modifier);
+      if (nmd->node_group) {
+        nmd->node_group->ensure_interface_cache();
+        for (const bNodeTreeInterfaceSocket *io_socket : nmd->node_group->interface_inputs()) {
+          if (!io_socket->context_identifier) {
+            continue;
+          }
+          const StringRefNull context_identifier = io_socket->context_identifier;
+          if (context_identifier.is_empty()) {
+            continue;
+          }
+          const bool is_custom_property_context = context_identifier.startswith("[\"") &&
+                                                  context_identifier.endswith("\"]");
+          if (!is_custom_property_context) {
+            continue;
+          }
+          const PointerRNA scene_ptr = RNA_id_pointer_create(&scene_->id);
+          this->build_driver_id_property(scene_ptr, context_identifier.c_str());
+          RNAPathKey variable_key(scene_ptr, context_identifier.c_str(), RNAPointerSource::EXIT);
+          add_relation(variable_key, modifier_key, "Custom Property -> Geometry Nodes");
+        }
+      }
+    }
+
     previous_key = modifier_key;
   }
   add_relation(previous_key, eval_key, "modifier stack order");

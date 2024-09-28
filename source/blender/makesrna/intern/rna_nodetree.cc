@@ -9951,7 +9951,7 @@ static void rna_def_geo_context_input(StructRNA *srna)
 
   prop = RNA_def_property(srna, "context_identifier", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Context Identifier", "");
-  RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE, "rna_Node_update_relations");
 
   prop = RNA_def_property(srna, "context_name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Context Name", "");

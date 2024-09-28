@@ -945,6 +945,7 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
     OperationNode *modifier_node = add_operation_node(
         &object->id, NodeType::GEOMETRY, OperationCode::MODIFIER, nullptr, modifier->name);
     if (modifier->type == eModifierType_Nodes) {
+      NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(modifier);
       modifier_node->evaluate =
           [id_node, modifier_index, modifier_node](::Depsgraph * /*depsgraph*/) {
             Object *ob_eval = reinterpret_cast<Object *>(id_node->id_cow);
@@ -954,6 +955,25 @@ void DepsgraphNodeBuilder::build_object_modifiers(Object *object)
             const bool is_user_modified = modifier_node->flag & DEPSOP_FLAG_USER_MODIFIED;
             SET_FLAG_FROM_TEST(md_eval->flag, is_user_modified, eModifierFlag_UserModified);
           };
+      if (nmd->node_group) {
+        nmd->node_group->ensure_interface_cache();
+        for (const bNodeTreeInterfaceSocket *io_socket : nmd->node_group->interface_inputs()) {
+          if (!io_socket->context_identifier) {
+            continue;
+          }
+          const StringRefNull context_identifier = io_socket->context_identifier;
+          if (context_identifier.is_empty()) {
+            continue;
+          }
+          const bool is_custom_property_context = context_identifier.startswith("[\"") &&
+                                                  context_identifier.endswith("\"]");
+          if (!is_custom_property_context) {
+            continue;
+          }
+          const PointerRNA scene_ptr = RNA_id_pointer_create(&scene_->id);
+          this->build_driver_id_property(scene_ptr, context_identifier.c_str());
+        }
+      }
     }
 
     /* Mute modifier mode if the modifier is not enabled for the dependency graph mode.

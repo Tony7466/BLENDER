@@ -2646,7 +2646,8 @@ bNode *node_add_node(const bContext *C, bNodeTree *ntree, const char *idname)
            GEO_NODE_INPUT_SCENE_TIME,
            GEO_NODE_INPUT_ACTIVE_CAMERA,
            GEO_NODE_SELF_OBJECT,
-           GEO_NODE_SIMULATION_INPUT))
+           GEO_NODE_SIMULATION_INPUT,
+           GEO_NODE_CONTEXT_INPUT))
   {
     DEG_relations_tag_update(CTX_data_main(C));
   }
@@ -3603,8 +3604,11 @@ void node_remove_node(Main *bmain, bNodeTree *ntree, bNode *node, const bool do_
 
   /* Also update relations for the scene time node, which causes a dependency
    * on time that users expect to be removed when the node is removed. */
-  if (node_has_id ||
-      ELEM(node->type, GEO_NODE_INPUT_SCENE_TIME, GEO_NODE_SELF_OBJECT, GEO_NODE_SIMULATION_INPUT))
+  if (node_has_id || ELEM(node->type,
+                          GEO_NODE_INPUT_SCENE_TIME,
+                          GEO_NODE_SELF_OBJECT,
+                          GEO_NODE_SIMULATION_INPUT,
+                          GEO_NODE_CONTEXT_INPUT))
   {
     if (bmain != nullptr) {
       DEG_relations_tag_update(bmain);
