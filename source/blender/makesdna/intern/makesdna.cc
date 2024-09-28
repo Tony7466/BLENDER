@@ -183,39 +183,6 @@ void print_struct_sizes();
  *
  * Make DNA string (write to file).
  * \{ */
-
-static bool match_identifier_with_len(const char *str,
-                                      const char *identifier,
-                                      const size_t identifier_len)
-{
-  if (strncmp(str, identifier, identifier_len) == 0) {
-    /* Check `str` isn't a prefix to a longer identifier. */
-    if (isdigit(str[identifier_len]) || isalpha(str[identifier_len]) ||
-        (str[identifier_len] == '_'))
-    {
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-static bool match_identifier(const char *str, const char *identifier)
-{
-  const size_t identifier_len = strlen(identifier);
-  return match_identifier_with_len(str, identifier, identifier_len);
-}
-
-static bool match_identifier_and_advance(char **str_ptr, const char *identifier)
-{
-  const size_t identifier_len = strlen(identifier);
-  if (match_identifier_with_len(*str_ptr, identifier, identifier_len)) {
-    (*str_ptr) += identifier_len;
-    return true;
-  }
-  return false;
-}
-
 static const char *version_struct_static_from_alias(const char *type_alias)
 {
   const char *type_static = static_cast<const char *>(
@@ -527,81 +494,6 @@ static bool str_startswith(const char *__restrict str, const char *__restrict st
   }
 
   return (*start == '\0');
-}
-
-/**
- * Check if `str` is a preprocessor string that starts with `start`.
- * The `start` doesn't need the `#` prefix.
- * `ifdef VALUE` will match `#ifdef VALUE` as well as `#  ifdef VALUE`.
- */
-static bool match_preproc_prefix(const char *__restrict str, const char *__restrict start)
-{
-  if (*str != '#') {
-    return false;
-  }
-  str++;
-  while (*str == ' ') {
-    str++;
-  }
-  return str_startswith(str, start);
-}
-
-/**
- * \return The point in `str` that starts with `start` or nullptr when not found.
- */
-static char *match_preproc_strstr(char *__restrict str, const char *__restrict start)
-{
-  while ((str = strchr(str, '#'))) {
-    str++;
-    while (*str == ' ') {
-      str++;
-    }
-    if (str_startswith(str, start)) {
-      return str;
-    }
-  }
-  return nullptr;
-}
-
-static void *read_file_data(const char *filepath, int *r_len)
-{
-#ifdef WIN32
-  FILE *fp = fopen(filepath, "rb");
-#else
-  FILE *fp = fopen(filepath, "r");
-#endif
-  void *data;
-
-  if (!fp) {
-    *r_len = -1;
-    return nullptr;
-  }
-
-  fseek(fp, 0L, SEEK_END);
-  *r_len = ftell(fp);
-  fseek(fp, 0L, SEEK_SET);
-
-  if (*r_len == -1) {
-    fclose(fp);
-    return nullptr;
-  }
-
-  data = MEM_mallocN(*r_len, "read_file_data");
-  if (!data) {
-    *r_len = -1;
-    fclose(fp);
-    return nullptr;
-  }
-
-  if (fread(data, *r_len, 1, fp) != 1) {
-    *r_len = -1;
-    MEM_freeN(data);
-    fclose(fp);
-    return nullptr;
-  }
-
-  fclose(fp);
-  return data;
 }
 
 using namespace blender::dna::parser::ast;
