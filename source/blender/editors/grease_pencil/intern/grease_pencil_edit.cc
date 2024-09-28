@@ -2178,14 +2178,141 @@ static void GREASE_PENCIL_OT_separate(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Split Operator
  * \{ */
+static bke::CurvesGeometry split_points(const bke::CurvesGeometry &curves, const IndexMask &mask)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const VArray<bool> src_cyclic = curves.cyclic();
+
+  Array<bool> points_to_split(curves.points_num());
+  mask.to_bools(points_to_split.as_mutable_span());
+  const int total_split = points_to_split.as_span().count(true);
+
+  /*Return if splitting everything or nothing.*/
+  /*see if total split is 0 or equals the total number of points.*/
+  if (total_split == 0) {
+    return curves;
+  }
+  /* can I use an or condition somehow to combine this with the one above?*/
+  if (total_split == curves.points_num()) {
+    return curves;
+  }
+
+  Array<int> dst_to_src_point(total_split); /* idk if I need this, just copying delete for now*/
+  Vector<int> dst_curve_counts;
+  Vector<int> dst_to_src_curve;
+  Vector<bool> dst_cyclic;
+
+  for (const int curve_i : curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i]; /*point where source curve_i begins*/
+    const Span<bool> curve_points_to_split = points_to_split.as_span().slice(
+        points); /*specifically, how does slicing a span work?*/
+    const bool curve_cyclic = src_cyclic[curve_i];
+
+    const Vector<IndexRange> ranges_between_splits = array_utils::find_all_ranges(
+        curve_points_to_split, false);
+
+    if (ranges_between_splits.is_empty()) {
+      continue;
+    }
+
+    const bool is_last_segment_selected = curve_cyclic &&
+                                          ranges_between_splits.first().first() == 0 &&
+                                          ranges_between_splits.last().last() == points.size() - 1;
+    /*idk exactly how the line above works, think about it*/
+    const bool is_curve_self_joined = is_last_segment_selected &&
+                                      ranges_between_splits.size() != 1;
+    const bool is_cyclic = ranges_between_splits.size() == 1 && is_last_segment_selected;
+
+    IndexRange range_ids = ranges_between_splits.index_range();
+    /* idk exactly why, but skip first range because joined to end of last range. maybe it's only
+     * *if* it's self-joined? */
+    for (const int range_i : ranges_between_splits.index_range().drop_front(is_curve_self_joined))
+    {
+      const IndexRange range = ranges_between_splits[range_i];
+
+      int count = range.size();
+      /*for (const int src_point : range.shift(points.first())) {
+        dst_to_src_point[curr_dst_point_id++] =
+            src_point;
+      }
+
+      if (is_curve_self_joined && range_ i == range_ids.last()) {
+        const IndexRange first_range = ranges_between_splits[range_ids.first()];
+        for (const int src_point : first_range.shift(points.first())) {
+          dst_to_src_point[curr_dst_point_id++] = src_point;
+        }
+        count += first_range.size()
+      } */ /* not sure exactly but I think the above stuff is only if cyclic, so I'ma ignore it for now*/
+
+      dst_curve_counts.append(
+          count); /* this might be all I need, can drop the working logic above maybe?*/
+      dst_to_src_curve.append(curve_i);
+      dst_cyclic.append(is_cyclic); /* probably still need in case I split a segement and a later
+                                       curve is cyclic, this shifts the attr*/
+    }
+  }
+
+  const int total_curves = dst_to_src_curve.size();
+
+  bke::CurvesGeometry dst_curves(curves.points_num(), total_curves);
+
+  BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
+
+  MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
+  array_utils::copy(dst_curve_counts.as_span(),
+                    new_curve_offsets);  // is this where the points get fed in to offset array?
+  offset_indices::accumulate_counts_to_offsets(new_curve_offsets);
+
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
+
+  /*try leaving out curve attrs*/
+
+  /*transfer point attributes
+  gather_attributes(src_attributes,
+                    bke::AttrDomain::Point,
+                    bke::AttrDomain::Point,
+                    {},
+                    dst_to_src_point,
+                    dst_attributes);*/
+
+  dst_curves.update_curve_types();
+
+  return dst_curves;
+};
 
 static int grease_pencil_split_exec(bContext *C, wmOperator *op)
 {
   using namespace bke::greasepencil;
-  Object *object_src = CTX_data_active_object(C);
-  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src.data);
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  sel_pts = retrieve_editable_and_selected_points(object_src, );
+  bool changed = false;
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask points_to_split = retrieve_editable_and_selected_points(
+        *object, info.drawing, info.layer_index, memory);
+    if (points_to_split.is_empty()) {
+      return;
+    };
+
+    /* do I need a check of some sort to ensure were're in point selection mode or doesn't it
+     * matter?*/
+
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    curves = split_points(curves, points_to_split);
+
+    /* old message just to show things ran*/
+    BKE_report(op->reports,
+               RPT_ERROR,
+               "You got to the drawing loop with stuff selected. This message per drawings "
+               "editable.");
+
+    info.drawing.tag_topology_changed();
+    changed = true;
+  });
 
   /* if not anything selected, return operator cancelled*/
 
