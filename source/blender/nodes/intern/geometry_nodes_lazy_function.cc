@@ -3526,7 +3526,6 @@ struct GeometryNodesLazyFunctionBuilder {
    * lazy-function graph.
    */
   Vector<const lf::GraphInputSocket *> group_input_sockets_;
-  Map<ContextInputID, lf::GraphInputSocket *> context_graph_input_sockets_;
   /**
    * Interface output sockets that correspond to the active group output node. If there is no such
    * node, defaulted fallback outputs are created.
@@ -4085,7 +4084,7 @@ struct GeometryNodesLazyFunctionBuilder {
 
     this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
 
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();
@@ -4104,11 +4103,6 @@ struct GeometryNodesLazyFunctionBuilder {
 
     lf_graph_inputs.extend(group_input_sockets_);
     function.inputs.main = lf_graph_inputs.index_range().take_back(group_input_sockets_.size());
-
-    lf_graph_inputs.extend(context_graph_input_sockets_.values().begin(),
-                           context_graph_input_sockets_.values().end());
-    function.inputs.context = lf_graph_inputs.index_range().take_back(
-        context_graph_input_sockets_.size());
 
     lf_graph_inputs.extend(group_output_used_sockets_);
     function.inputs.output_usages = lf_graph_inputs.index_range().take_back(
@@ -4592,10 +4586,6 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_group_output_node(bnode, graph_params);
         break;
       }
-      case GEO_NODE_CONTEXT_INPUT: {
-        this->handle_context_input_node(bnode, graph_params);
-        break;
-      }
       case NODE_CUSTOM_GROUP:
       case NODE_GROUP: {
         this->build_group_node(bnode, graph_params);
@@ -4741,19 +4731,6 @@ struct GeometryNodesLazyFunctionBuilder {
       graph_params.lf_output_by_bsocket.add_new(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
-  }
-
-  void handle_context_input_node(const bNode &bnode, BuildGraphParams &graph_params)
-  {
-    const bNodeSocket &bsocket = bnode.output_socket(0);
-    const auto &storage = *static_cast<const NodeGeometryContextInput *>(bnode.storage);
-    const ContextInputID id{storage.identifier, eNodeSocketDatatype(storage.socket_type)};
-    lf::GraphInputSocket *lf_socket = context_graph_input_sockets_.lookup_default(id, nullptr);
-    if (!lf_socket) {
-      return;
-    }
-    graph_params.lf_output_by_bsocket.add_new(&bsocket, lf_socket);
-    mapping_->bsockets_by_lf_socket_map.add(lf_socket, &bsocket);
   }
 
   void build_group_output_node(const bNode &bnode, BuildGraphParams &graph_params)
