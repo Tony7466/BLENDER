@@ -1873,6 +1873,41 @@ static void modifyGeometry(ModifierData *md,
       new (r_value) ObjectPtr(camera);
       return true;
     }
+    /* TODO: Depsgraph relations, more property types. */
+    if (context_identifier.startswith("[\"") && context_identifier.endswith("\"]")) {
+      const std::string context_identifier_c = context_identifier.drop_prefix(2).drop_suffix(2);
+
+      const Object *self_object = ctx->object;
+      if (self_object->id.properties) {
+        IDProperty *prop = IDP_GetPropertyFromGroup(self_object->id.properties,
+                                                    context_identifier_c.c_str());
+        if (prop && prop->type == IDP_FLOAT && socket_type_idname == "NodeSocketFloat") {
+          const float value = IDP_Float(prop);
+          new (r_value) bke::SocketValueVariant(value);
+          return true;
+        }
+        if (prop && prop->type == IDP_DOUBLE && socket_type_idname == "NodeSocketFloat") {
+          const float value = IDP_Double(prop);
+          new (r_value) bke::SocketValueVariant(value);
+          return true;
+        }
+      }
+      const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+      if (scene->id.properties) {
+        IDProperty *prop = IDP_GetPropertyFromGroup(scene->id.properties,
+                                                    context_identifier_c.c_str());
+        if (prop && prop->type == IDP_FLOAT && socket_type_idname == "NodeSocketFloat") {
+          const float value = IDP_Float(prop);
+          new (r_value) bke::SocketValueVariant(value);
+          return true;
+        }
+        if (prop && prop->type == IDP_DOUBLE && socket_type_idname == "NodeSocketFloat") {
+          const float value = IDP_Double(prop);
+          new (r_value) bke::SocketValueVariant(value);
+          return true;
+        }
+      }
+    }
     return false;
   };
 
