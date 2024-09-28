@@ -257,37 +257,37 @@ template<KeywordType Type> struct Parser<Keyword<Type>> {
   }
 };
 
-using ConstKeyword = Keyword<KeywordType::CONST>;
-using IncludeKeyword = Keyword<KeywordType::INCLUDE>;
-using StructKeyword = Keyword<KeywordType::STRUCT>;
-using DefineKeyword = Keyword<KeywordType::DEFINE>;
-using UnsignedKeyword = Keyword<KeywordType::UNSIGNED>;
-using IntKeyword = Keyword<KeywordType::INT>;
-using Int8Keyword = Keyword<KeywordType::INT8_T>;
-using Int16Keyword = Keyword<KeywordType::INT16_T>;
-using Int32Keyword = Keyword<KeywordType::INT32_T>;
-using Int64Keyword = Keyword<KeywordType::INT64_T>;
-using UInt8Keyword = Keyword<KeywordType::UINT8_T>;
-using UInt16Keyword = Keyword<KeywordType::UINT16_T>;
-using UInt32Keyword = Keyword<KeywordType::UINT32_T>;
-using UInt64Keyword = Keyword<KeywordType::UINT64_T>;
-using FloatKeyword = Keyword<KeywordType::FLOAT>;
-using DoubleKeyword = Keyword<KeywordType::DOUBLE>;
-using ShortKeyword = Keyword<KeywordType::SHORT>;
-using CharKeyword = Keyword<KeywordType::CHAR>;
-using VoidKeyword = Keyword<KeywordType::VOID>;
-using IfKeyword = Keyword<KeywordType::IF>;
-using IfDefKeyword = Keyword<KeywordType::IFDEF>;
-using IfnDefKeyword = Keyword<KeywordType::IFNDEF>;
-using EndIfKeyword = Keyword<KeywordType::ENDIF>;
-using ExternKeyword = Keyword<KeywordType::EXTERN>;
-using TypedefKeyword = Keyword<KeywordType::TYPEDEF>;
-using PragmaKeyword = Keyword<KeywordType::PRAGMA>;
-using OnceKeyword = Keyword<KeywordType::ONCE>;
-using EnumKeyword = Keyword<KeywordType::ENUM>;
-using ClassKeyword = Keyword<KeywordType::CLASS>;
-using DNADeprecatedKeyword = Keyword<KeywordType::DNA_DEPRECATED>;
-using DNADeprecatedAllowKeyword = Keyword<KeywordType::DNA_DEPRECATED_ALLOW>;
+using ConstKeyword = Keyword<KeywordType::Const>;
+using IncludeKeyword = Keyword<KeywordType::Include>;
+using StructKeyword = Keyword<KeywordType::Struct>;
+using DefineKeyword = Keyword<KeywordType::Define>;
+using UnsignedKeyword = Keyword<KeywordType::Unsigned>;
+using IntKeyword = Keyword<KeywordType::Int>;
+using Int8Keyword = Keyword<KeywordType::Int8_t>;
+using Int16Keyword = Keyword<KeywordType::Int16_t>;
+using Int32Keyword = Keyword<KeywordType::Int32_t>;
+using Int64Keyword = Keyword<KeywordType::Int64_t>;
+using UInt8Keyword = Keyword<KeywordType::Uint8_t>;
+using UInt16Keyword = Keyword<KeywordType::Uint16_t>;
+using UInt32Keyword = Keyword<KeywordType::Uint32_t>;
+using UInt64Keyword = Keyword<KeywordType::Uint64_t>;
+using FloatKeyword = Keyword<KeywordType::Float>;
+using DoubleKeyword = Keyword<KeywordType::Double>;
+using ShortKeyword = Keyword<KeywordType::Short>;
+using CharKeyword = Keyword<KeywordType::Char>;
+using VoidKeyword = Keyword<KeywordType::Void>;
+using IfKeyword = Keyword<KeywordType::If>;
+using IfDefKeyword = Keyword<KeywordType::Ifdef>;
+using IfnDefKeyword = Keyword<KeywordType::Ifndef>;
+using EndIfKeyword = Keyword<KeywordType::Endif>;
+using ExternKeyword = Keyword<KeywordType::Extern>;
+using TypedefKeyword = Keyword<KeywordType::Typedef>;
+using PragmaKeyword = Keyword<KeywordType::Pragma>;
+using OnceKeyword = Keyword<KeywordType::Once>;
+using EnumKeyword = Keyword<KeywordType::Enum>;
+using ClassKeyword = Keyword<KeywordType::Class>;
+using DNADeprecatedKeyword = Keyword<KeywordType::DNADeprecated>;
+using DNADeprecatedAllowKeyword = Keyword<KeywordType::DNADeprecatedAllow>;
 
 /** Symbol parser. */
 template<SymbolType type> struct Symbol {};
@@ -330,7 +330,7 @@ template<KeywordType Type> struct Parser<MacroCall<Type>> {
   static ParseResult<MacroCall<Type>> parse(TokenIterator &token_iterator)
   {
     if (parse_t<Sequence<Keyword<Type>, LParenSymbol>>(token_iterator).success()) {
-      skip_until_match_paired_symbols(SymbolType::LPAREN, SymbolType::RPAREN, token_iterator);
+      skip_until_match_paired_symbols(SymbolType::LParen, SymbolType::RParen, token_iterator);
       parse_t<SemicolonSymbol>(token_iterator);
       return MacroCall<Type>{};
     }
@@ -461,8 +461,8 @@ template<> struct Parser<PrimitiveType> {
                                           UInt16Keyword,
                                           UInt32Keyword,
                                           UInt64Keyword,
-                                          Keyword<KeywordType::LONG>,
-                                          Keyword<KeywordType::ULONG>>;
+                                          Keyword<KeywordType::Long>,
+                                          Keyword<KeywordType::Ulong>>;
     ParseResult<PrimitiveTypeVariants> type = parse_t<PrimitiveTypeVariants>(token_iterator);
     if (!type.success()) {
       return parse_failed;
@@ -683,11 +683,11 @@ template<> struct Parser<IfDef> {
          token = token_iterator.next_variant())
     {
       if (hash_carried &&
-          is_keyword_type<KeywordType::IF, KeywordType::IFDEF, KeywordType::IFNDEF>(*token))
+          is_keyword_type<KeywordType::If, KeywordType::Ifdef, KeywordType::Ifndef>(*token))
       {
         ifdef_deep++;
       }
-      if (hash_carried && is_keyword_type<KeywordType::ENDIF>(*token)) {
+      if (hash_carried && is_keyword_type<KeywordType::Endif>(*token)) {
         ifdef_deep--;
       }
       if (ifdef_deep == 0) {
@@ -720,7 +720,7 @@ template<> struct Parser<Struct> {
       result.name = std::get<2>(struct_seq.value()).value().str;
     }
     while (true) {
-      using DNA_DEF_CCX_Macro = MacroCall<lex::KeywordType::DNA_DEFINE_CXX_METHODS>;
+      using DNA_DEF_CCX_Macro = MacroCall<lex::KeywordType::DNADefineCxxMethods>;
 
       if (auto member = parse_t<Variant<Variable, FunctionPtr, PointerToArray, Struct>>(
               token_iterator);
@@ -761,8 +761,8 @@ template<> struct Parser<Skip> {
                 Sequence<HashSymbol, PragmaKeyword, OnceKeyword>,
                 Sequence<HashSymbol, HashSymbol, Struct>,
                 Sequence<ExternKeyword, Variable>,
-                MacroCall<lex::KeywordType::BLI_STATIC_ASSERT_ALIGN>,
-                MacroCall<lex::KeywordType::ENUM_OPERATORS>,
+                MacroCall<lex::KeywordType::BLIStaticAssertAlign>,
+                MacroCall<lex::KeywordType::EnumOperators>,
                 Sequence<TypedefKeyword, StructKeyword, Identifier, Identifier, SemicolonSymbol>>;
     if (parse_t<UnusedDeclarations>(token_iterator).success()) {
       return Skip{};

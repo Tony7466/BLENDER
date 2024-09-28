@@ -35,47 +35,48 @@ enum class SymbolType : char {
 };
 
 enum class KeywordType : int8_t {
-  INCLUDE = 0,
-  STRUCT,
-  TYPEDEF,
-  CLASS,
-  ENUM,
-  DEFINE,
-  PUBLIC,
-  PRIVATE,
-  CONST,
-  VOID,
-  CHAR,
-  CHAR16_T,
-  CHAR32_T,
-  UNSIGNED,
-  SIGNED,
-  SHORT,
-  LONG,
-  ULONG,
-  INT,
-  INT8_T,
-  INT16_T,
-  INT32_T,
-  INT64_T,
-  UINT8_T,
-  UINT16_T,
-  UINT32_T,
-  UINT64_T,
-  FLOAT,
-  DOUBLE,
-  IF,
-  IFDEF,
-  IFNDEF,
-  ENDIF,
-  EXTERN,
-  PRAGMA,
-  ONCE,
-  DNA_DEFINE_CXX_METHODS,
-  DNA_DEPRECATED,
-  ENUM_OPERATORS,
-  BLI_STATIC_ASSERT_ALIGN,
-  DNA_DEPRECATED_ALLOW
+  Include = 0, /* include */
+  Struct,      /* struct */
+  Typedef,     /* typedef */
+  Class,       /* class */
+  Enum,        /* enum */
+  Define,      /* define */
+  Public,      /* public */
+  Private,     /* private */
+  Const,       /* const */
+  Void,        /* void */
+  Char,        /* char */
+  Char16_t,    /* char16_t */
+  Char32_t,    /* char32_t */
+  Unsigned,    /* unsigned */
+  Signed,      /* signed */
+  Short,       /* short */
+  Long,        /* long */
+  Ulong,       /* ulong */
+  Int,         /* int */
+  Int8_t,      /* int8_t */
+  Int16_t,     /* int16_t */
+  Int32_t,     /* int32_t */
+  Int64_t,     /* int64_t */
+  Uint8_t,     /* uint8_t */
+  Uint16_t,    /* uint16_t */
+  Uint32_t,    /* uint32_t */
+  Uint64_t,    /* uint64_t */
+  Float,       /* float */
+  Double,      /* double */
+  If,          /* if */
+  Ifdef,       /* ifdef */
+  Ifndef,      /* ifndef */
+  Endif,       /* endif */
+  Extern,      /* extern */
+  Pragma,      /* pragma */
+  Once,        /* once */
+  /* Common Blender macros in DNA. */
+  BLIStaticAssertAlign, /* BLI_STATIC_ASSERT_ALIGN */
+  DNADefineCxxMethods,  /* DNA_DEFINE_CXX_METHODS */
+  DNADeprecated,        /* DNA_DEPRECATED */
+  DNADeprecatedAllow,   /* DNA_DEPRECATED_ALLOW */
+  EnumOperators,        /* ENUM_OPERATORS */
 };
 
 struct Token {
