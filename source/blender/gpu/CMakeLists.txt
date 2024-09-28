@@ -31,8 +31,6 @@ set(INC
 
   ../../../intern/ghost
   ../../../intern/mantaflow/extern
-  
-  ../windowmanager
 )
 
 if(WITH_BUILDINFO)
