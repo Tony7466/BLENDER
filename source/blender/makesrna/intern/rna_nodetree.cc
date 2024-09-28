@@ -2163,6 +2163,16 @@ static const EnumPropertyItem *rna_GeometryNodeAttributeDomain_attribute_domain_
   return item_array;
 }
 
+static const EnumPropertyItem *rna_GeometryNodeContextInput_socket_type_itemf(
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+{
+  *r_free = true;
+  return itemf_function_check(rna_enum_node_socket_data_type_items,
+                              [&](const EnumPropertyItem *item) {
+                                return !ELEM(item->value, SOCK_SHADER, SOCK_MENU, SOCK_TEXTURE);
+                              });
+}
+
 static StructRNA *rna_ShaderNode_register(Main *bmain,
                                           ReportList *reports,
                                           void *data,
@@ -9933,7 +9943,9 @@ static void rna_def_geo_context_input(StructRNA *srna)
   RNA_def_struct_sdna_from(srna, "NodeGeometryContextInput", "storage");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_node_socket_type_items);
+  RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
+  RNA_def_property_enum_funcs(
+      prop, nullptr, nullptr, "rna_GeometryNodeContextInput_socket_type_itemf");
   RNA_def_property_ui_text(prop, "Socket Type", "");
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 

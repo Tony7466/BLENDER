@@ -9,6 +9,7 @@
 
 #include "BLI_string.h"
 
+#include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
@@ -38,7 +39,15 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayout *col = uiLayoutColumn(layout, false);
   uiItemR(col, ptr, "socket_type", UI_ITEM_NONE, "", ICON_NONE);
-  uiItemR(col, ptr, "context_identifier", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemFullR(col,
+              ptr,
+              RNA_struct_find_property(ptr, "context_identifier"),
+              -1,
+              0,
+              UI_ITEM_NONE,
+              "",
+              ICON_NONE,
+              IFACE_("Identifier"));
 }
 
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
