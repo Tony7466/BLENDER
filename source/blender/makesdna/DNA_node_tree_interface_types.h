@@ -327,6 +327,15 @@ typedef struct bNodeTreeInterface {
                                        blender::StringRef socket_type,
                                        NodeTreeInterfaceSocketFlag flag,
                                        bNodeTreeInterfacePanel *parent);
+
+  /**
+   * Add a new input socket for a context identifier.
+   */
+  bNodeTreeInterfaceSocket *add_context_input(blender::StringRef name,
+                                              blender::StringRef description,
+                                              blender::StringRef socket_type,
+                                              blender::StringRef context_identifier);
+
   /**
    * Insert a new socket.
    * \param parent: Panel in which to add the socket. If parent is null the socket is added in the

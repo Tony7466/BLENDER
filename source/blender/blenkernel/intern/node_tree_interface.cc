@@ -1220,6 +1220,36 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(const blender::StringRe
   return new_socket;
 }
 
+bNodeTreeInterfaceSocket *bNodeTreeInterface::add_context_input(
+    const blender::StringRef name,
+    const blender::StringRef description,
+    const blender::StringRef socket_type,
+    const blender::StringRef context_identifier)
+{
+  BLI_assert(!context_identifier.is_empty());
+#ifndef NDEBUG
+  this->foreach_item([&](const bNodeTreeInterfaceItem &item) {
+    if (item.item_type == NODE_INTERFACE_SOCKET) {
+      auto &socket = get_item_as<bNodeTreeInterfaceSocket>(item);
+      BLI_assert(socket.context_identifier != context_identifier);
+    }
+    return true;
+  });
+#endif
+
+  bNodeTreeInterfaceSocket *new_socket = make_socket(
+      0, name, description, socket_type, NODE_INTERFACE_SOCKET_INPUT);
+  BLI_assert(new_socket);
+  MEM_SAFE_FREE(new_socket->identifier);
+  new_socket->identifier = BLI_sprintfN(
+      "Context_%.*s", int(context_identifier.size()), context_identifier.data());
+  new_socket->context_identifier = BLI_strdupn(context_identifier.data(),
+                                               context_identifier.size());
+  this->root_panel.add_item(new_socket->item);
+  this->tag_items_changed();
+  return new_socket;
+}
+
 bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(const blender::StringRef name,
                                                             const blender::StringRef description,
                                                             const blender::StringRef socket_type,

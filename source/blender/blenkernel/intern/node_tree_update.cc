@@ -907,14 +907,10 @@ class NodeTreeMainUpdater {
     for (const auto &&item : required_context_inputs.items()) {
       const StringRef context_identifier = item.key;
       const ContextInputInfo &context_info = item.value;
-      bNodeTreeInterfaceSocket *new_socket = tree.tree_interface.add_socket(
-          context_info.name,
-          context_info.description,
-          context_info.type_idname,
-          NODE_INTERFACE_SOCKET_INPUT,
-          nullptr);
-      new_socket->context_identifier = BLI_strdupn(context_identifier.data(),
-                                                   context_identifier.size());
+      tree.tree_interface.add_context_input(context_info.name,
+                                            context_info.description,
+                                            context_info.type_idname,
+                                            context_identifier);
     }
     if (interface_changed) {
       tree.tree_interface.tag_items_changed();
