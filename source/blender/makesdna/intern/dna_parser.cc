@@ -10,7 +10,7 @@
 
 namespace blender::dna::parser {
 
-void to_string(std::stringstream &ss, const ast::Variable &var, size_t /*padding*/)
+static void to_string(std::stringstream &ss, const ast::Variable &var, size_t /*padding*/)
 {
   ss << fmt::format("{}{} ", var.const_tag ? "const " : "", var.type);
 
@@ -27,23 +27,23 @@ void to_string(std::stringstream &ss, const ast::Variable &var, size_t /*padding
   }
 }
 
-void to_string(std::stringstream &ss, const ast::FunctionPtr &fn, size_t /*padding*/)
+static void to_string(std::stringstream &ss, const ast::FunctionPtr &fn, size_t /*padding*/)
 {
   const std::string const_tag = fn.const_tag ? "const " : "";
   ss << fmt::format("{}{} (*{})(...)", const_tag, fn.type, fn.name);
 }
 
-void to_string(std::stringstream &ss, const ast::PointerToArray &ptr, size_t /*padding*/)
+static void to_string(std::stringstream &ss, const ast::PointerToArray &ptr, size_t /*padding*/)
 {
   ss << fmt::format("{} (*{})[{}]", ptr.type, ptr.name, ptr.size);
 }
 
-void to_string(std::stringstream &ss, const ast::DefineInt &val, size_t /*padding*/)
+static void to_string(std::stringstream &ss, const ast::DefineInt &val, size_t /*padding*/)
 {
   ss << fmt::format("#define {} {}", val.name, val.value);
 }
 
-void to_string(std::stringstream &ss, const ast::Enum &val, size_t /*padding*/)
+static void to_string(std::stringstream &ss, const ast::Enum &val, size_t /*padding*/)
 {
   ss << fmt::format("enum {}", val.name.value_or("unnamed"));
   if (val.type) {
@@ -52,7 +52,7 @@ void to_string(std::stringstream &ss, const ast::Enum &val, size_t /*padding*/)
   ss << " {...}";
 }
 
-void to_string(std::stringstream &ss, const ast::Struct &val, size_t padding)
+static void to_string(std::stringstream &ss, const ast::Struct &val, size_t padding)
 {
   const auto add_padding = [&ss](size_t padding) {
     ss << fmt::format("{: >{}}", "", padding * 4);
