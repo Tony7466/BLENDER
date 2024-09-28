@@ -261,6 +261,7 @@ struct StepData {
   Vector<std::unique_ptr<Node>> nodes;
 
   std::unique_ptr<PositionUndoStorage> position_step_storage;
+  std::thread compress_thread;
 
   size_t undo_size;
 };
@@ -406,14 +407,14 @@ static void restore_position_mesh(const Depsgraph &depsgraph,
 {
   Array<float3> decompressed = decompress_data<float3>(undo_data.compressed_data);
   PositionDeformData position_data(depsgraph, object);
-  threading::EnumerableThreadSpecific<Vector<float3>> all_tls;
   threading::parallel_for(undo_data.mask.index_range(), 512, [&](const IndexRange range) {
     const IndexMask &mask = undo_data.mask.slice(range);
+    MutableSpan<float3> positions = decompressed.as_mutable_span().slice(range);
 
     Array<float3, 1024> translations(mask.size());
-    translations_from_new_positions(decompressed, mask, position_data.eval, translations);
+    translations_from_new_positions(positions, mask, position_data.eval, translations);
 
-    array_utils::gather(position_data.eval, mask, decompressed.as_mutable_span().slice(range));
+    array_utils::gather(position_data.eval, mask, positions);
 
     position_data.deform(translations, mask);
   });
@@ -886,6 +887,10 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
           return;
         }
         const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+
+        if (step_data.compress_thread.joinable()) {
+          step_data.compress_thread.join();
+        }
         restore_position_mesh(*depsgraph, object, *step_data.position_step_storage);
 
         BitVector<> modified_verts(mesh.verts_num);
@@ -1737,10 +1742,7 @@ static size_t node_size_in_bytes(const Node &node)
   return size;
 }
 
-static
-
-    void
-    push_end_ex(Object &ob, const bool use_nested_undo)
+void push_end_ex(Object &ob, const bool use_nested_undo)
 {
   StepData *step_data = get_step_data();
 
@@ -1761,7 +1763,7 @@ static
       step_data->nodes.clear_and_shrink();
     };
 
-    std::thread compress_thread(compress_position_data);
+    step_data->compress_thread = std::thread(compress_position_data);
   }
   else {
     step_data->undo_size = threading::parallel_reduce(
