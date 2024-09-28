@@ -4135,8 +4135,10 @@ struct GeometryNodesLazyFunctionBuilder {
             /* TODO: Handle invalid conversion? */
             lf::OutputSocket *converted_lf_socket = this->insert_type_conversion_if_necessary(
                 *lf_context_socket, *io_socket_type, *link->tosock->typeinfo, lf_graph);
-            for (lf::InputSocket *to_lf_socket : lf_link_targets) {
-              lf_graph.add_link(*converted_lf_socket, *to_lf_socket);
+            if (converted_lf_socket) {
+              for (lf::InputSocket *to_lf_socket : lf_link_targets) {
+                lf_graph.add_link(*converted_lf_socket, *to_lf_socket);
+              }
             }
           }
         }

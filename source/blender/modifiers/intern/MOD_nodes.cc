@@ -1856,6 +1856,23 @@ static void modifyGeometry(ModifierData *md,
       new (r_value) bke::SocketValueVariant(seconds);
       return true;
     }
+    if (context_identifier == ".self_object" && socket_type_idname == "NodeSocketObject") {
+      using ObjectPtr = Object *;
+      new (r_value) ObjectPtr(ctx->object);
+      return true;
+    }
+    if (context_identifier == ".is_viewport" && socket_type_idname == "NodeSocketBool") {
+      const eEvaluationMode mode = DEG_get_mode(ctx->depsgraph);
+      new (r_value) bke::SocketValueVariant(mode == DAG_EVAL_VIEWPORT);
+      return true;
+    }
+    if (context_identifier == ".active_camera" && socket_type_idname == "NodeSocketObject") {
+      const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+      Object *camera = DEG_get_evaluated_object(ctx->depsgraph, scene->camera);
+      using ObjectPtr = Object *;
+      new (r_value) ObjectPtr(camera);
+      return true;
+    }
     return false;
   };
 
