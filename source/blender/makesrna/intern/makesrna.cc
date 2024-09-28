@@ -3630,6 +3630,8 @@ static const char *rna_property_subtypename(PropertySubType type)
       return "PROP_WAVELENGTH";
     case PROP_COLOR_TEMPERATURE:
       return "PROP_COLOR_TEMPERATURE";
+    case PROP_FREQUENCY:
+      return "PROP_FREQUENCY";
     default: {
       /* in case we don't have a type preset that includes the subtype */
       if (RNA_SUBTYPE_UNIT(type)) {
@@ -3673,6 +3675,8 @@ static const char *rna_property_subtype_unit(PropertySubType type)
       return "PROP_UNIT_WAVELENGTH";
     case PROP_UNIT_COLOR_TEMPERATURE:
       return "PROP_UNIT_COLOR_TEMPERATURE";
+    case PROP_UNIT_FREQUENCY:
+      return "PROP_UNIT_FREQUENCY";
     default:
       return "PROP_UNIT_UNKNOWN";
   }
@@ -4829,7 +4833,6 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_mesh.cc", "rna_mesh_api.cc", RNA_def_mesh},
     {"rna_meta.cc", "rna_meta_api.cc", RNA_def_meta},
     {"rna_modifier.cc", nullptr, RNA_def_modifier},
-    {"rna_gpencil_legacy_modifier.cc", nullptr, RNA_def_greasepencil_modifier},
     {"rna_shader_fx.cc", nullptr, RNA_def_shader_fx},
     {"rna_nla.cc", nullptr, RNA_def_nla},
     {"rna_nodetree.cc", nullptr, RNA_def_nodetree},

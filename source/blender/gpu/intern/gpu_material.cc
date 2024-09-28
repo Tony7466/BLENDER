@@ -186,8 +186,8 @@ GPUTexture **gpu_material_sky_texture_layer_set(
 
 GPUTexture **gpu_material_ramp_texture_row_set(GPUMaterial *mat,
                                                int size,
-                                               float *pixels,
-                                               float *row)
+                                               const float *pixels,
+                                               float *r_row)
 {
   /* In order to put all the color-bands into one 1D array texture,
    * we need them to be the same size. */
@@ -201,9 +201,9 @@ GPUTexture **gpu_material_ramp_texture_row_set(GPUMaterial *mat,
   }
 
   int layer = mat->coba_builder->current_layer;
-  *row = float(layer);
+  *r_row = float(layer);
 
-  if (*row == MAX_COLOR_BAND) {
+  if (*r_row == MAX_COLOR_BAND) {
     printf("Too many color band in shader! Remove some Curve, Black Body or Color Ramp Node.\n");
   }
   else {
@@ -865,7 +865,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   }
 
   /* Localize tree to create links for reroute and mute. */
-  bNodeTree *localtree = blender::bke::ntreeLocalize(ntree, nullptr);
+  bNodeTree *localtree = blender::bke::node_tree_localize(ntree, nullptr);
   ntreeGPUMaterialNodes(localtree, mat);
 
   gpu_material_ramp_texture_build(mat);
@@ -935,7 +935,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   }
 
   /* Only free after GPU_pass_shader_get where GPUUniformBuf read data from the local tree. */
-  blender::bke::ntreeFreeLocalTree(localtree);
+  blender::bke::node_tree_free_local_tree(localtree);
   BLI_assert(!localtree->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
   MEM_freeN(localtree);
 

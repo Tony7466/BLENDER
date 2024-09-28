@@ -22,9 +22,10 @@
 #include "BKE_duplilist.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_material.h"
 #include "BKE_scene.hh"
+
+#include "ANIM_action_legacy.hh"
 
 #include "BLT_translation.hh"
 
@@ -77,12 +78,11 @@ static void gpencil_bake_set_frame_end(Main * /*main*/, Scene * /*scene*/, Point
 static bool gpencil_bake_grease_pencil_animation_poll(bContext *C)
 {
   Object *obact = CTX_data_active_object(C);
-  if (CTX_data_mode_enum(C) != CTX_MODE_OBJECT) {
-    return false;
-  }
 
   /* Check if grease pencil or empty for dupli groups. */
-  if ((obact == nullptr) || !ELEM(obact->type, OB_GPENCIL_LEGACY, OB_EMPTY)) {
+  if ((obact == nullptr) || (obact->mode != OB_MODE_OBJECT) ||
+      !ELEM(obact->type, OB_GPENCIL_LEGACY, OB_EMPTY))
+  {
     return false;
   }
 
@@ -104,11 +104,7 @@ static void animdata_keyframe_list_get(ListBase *ob_list,
   /* Loop all objects to get the list of keyframes used. */
   LISTBASE_FOREACH (GpBakeOb *, elem, ob_list) {
     Object *ob = elem->ob;
-    AnimData *adt = BKE_animdata_from_id(&ob->id);
-    if ((adt == nullptr) || (adt->action == nullptr)) {
-      continue;
-    }
-    LISTBASE_FOREACH (FCurve *, fcurve, &adt->action->curves) {
+    for (FCurve *fcurve : blender::animrig::legacy::fcurves_for_assigned_action(ob->adt)) {
       int i;
       BezTriple *bezt;
       for (i = 0, bezt = fcurve->bezt; i < fcurve->totvert; i++, bezt++) {
@@ -279,12 +275,9 @@ static int gpencil_bake_grease_pencil_animation_exec(bContext *C, wmOperator *op
         }
         MEM_freeN(layer_name);
 
-        /* Apply time modifier. */
-        int remap_cfra = BKE_gpencil_time_modifier_cfra(
-            depsgraph, scene, elem->ob, gpl_src, scene->r.cfra, false);
         /* Duplicate frame. */
         bGPDframe *gpf_src = BKE_gpencil_layer_frame_get(
-            gpl_src, remap_cfra, GP_GETFRAME_USE_PREV);
+            gpl_src, scene->r.cfra, GP_GETFRAME_USE_PREV);
         if (gpf_src == nullptr) {
           continue;
         }

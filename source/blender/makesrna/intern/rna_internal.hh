@@ -22,7 +22,6 @@ enum class AttributeOwnerType;
 
 struct FreestyleSettings;
 struct ID;
-struct IDOverrideLibrary;
 struct IDProperty;
 struct FreestyleLineSet;
 struct FreestyleModuleConfig;
@@ -160,7 +159,6 @@ void RNA_def_dynamic_paint(BlenderRNA *brna);
 void RNA_def_fcurve(BlenderRNA *brna);
 void RNA_def_annotations(BlenderRNA *brna);
 void RNA_def_grease_pencil(BlenderRNA *brna);
-void RNA_def_greasepencil_modifier(BlenderRNA *brna);
 void RNA_def_shader_fx(BlenderRNA *brna);
 void RNA_def_curves(BlenderRNA *brna);
 void RNA_def_image(BlenderRNA *brna);
@@ -407,6 +405,11 @@ void rna_userdef_is_dirty_update_impl();
  * So the preferences are saved when modified.
  */
 void rna_userdef_is_dirty_update(Main *bmain, Scene *scene, PointerRNA *ptr);
+
+const EnumPropertyItem *rna_WorkSpaceTool_brush_type_itemf(bContext *C,
+                                                           PointerRNA *ptr,
+                                                           PropertyRNA *prop,
+                                                           bool *r_free);
 
 /* API functions */
 

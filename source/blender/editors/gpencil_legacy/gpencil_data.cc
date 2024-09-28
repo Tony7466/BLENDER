@@ -44,7 +44,6 @@
 #include "BKE_deform.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -2503,29 +2502,21 @@ void GPENCIL_OT_vertex_group_normalize_all(wmOperatorType *ot)
 
 /****************************** Join ***********************************/
 
-/** User-data for #gpencil_joined_fix_animdata_cb(). */
-struct tJoinGPencil_AdtFixData {
-  bGPdata *src_gpd;
-  bGPdata *tar_gpd;
-
-  GHash *names_map;
-};
-
 /**
  * Callback to pass to #BKE_fcurves_main_cb()
  * for RNA Paths attached to each F-Curve used in the #AnimData.
  */
-static void gpencil_joined_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data)
+static void gpencil_joined_fix_animdata_cb(
+    ID *id, FCurve *fcu, bGPdata *src_gpd, bGPdata *tar_gpd, GHash *names_map)
 {
-  tJoinGPencil_AdtFixData *afd = (tJoinGPencil_AdtFixData *)user_data;
-  ID *src_id = &afd->src_gpd->id;
-  ID *dst_id = &afd->tar_gpd->id;
+  ID *src_id = &src_gpd->id;
+  ID *dst_id = &tar_gpd->id;
 
   GHashIterator gh_iter;
 
   /* Fix paths - If this is the target datablock, it will have some "dirty" paths */
   if ((id == src_id) && fcu->rna_path && strstr(fcu->rna_path, "layers[")) {
-    GHASH_ITER (gh_iter, afd->names_map) {
+    GHASH_ITER (gh_iter, names_map) {
       const char *old_name = static_cast<const char *>(BLI_ghashIterator_getKey(&gh_iter));
       const char *new_name = static_cast<const char *>(BLI_ghashIterator_getValue(&gh_iter));
 
@@ -2557,7 +2548,7 @@ static void gpencil_joined_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data)
            * little twists so that we know that it isn't going to clobber the wrong data
            */
           if (dtar->rna_path && strstr(dtar->rna_path, "layers[")) {
-            GHASH_ITER (gh_iter, afd->names_map) {
+            GHASH_ITER (gh_iter, names_map) {
               const char *old_name = static_cast<const char *>(BLI_ghashIterator_getKey(&gh_iter));
               const char *new_name = static_cast<const char *>(
                   BLI_ghashIterator_getValue(&gh_iter));
@@ -2634,15 +2625,6 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
         Object *ob_src = ob_iter;
         bGPdata *gpd_src = static_cast<bGPdata *>(ob_iter->data);
 
-        /* Apply all GP modifiers before */
-        LISTBASE_FOREACH (GpencilModifierData *, md, &ob_iter->greasepencil_modifiers) {
-          const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
-              GpencilModifierType(md->type));
-          if (mti->bake_modifier) {
-            mti->bake_modifier(bmain, depsgraph, md, ob_iter);
-          }
-        }
-
         /* copy vertex groups to the base one's */
         int old_idx = 0;
         LISTBASE_FOREACH (bDeformGroup *, dg, &gpd_src->vertex_group_names) {
@@ -2684,10 +2666,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
         }
 
         /* Duplicate #bGPDlayers. */
-        tJoinGPencil_AdtFixData afd = {nullptr};
-        afd.src_gpd = gpd_src;
-        afd.tar_gpd = gpd_dst;
-        afd.names_map = BLI_ghash_str_new("joined_gp_layers_map");
+        GHash *names_map = BLI_ghash_str_new("joined_gp_layers_map");
 
         float imat[3][3], bmat[3][3];
         float offset_global[3];
@@ -2737,15 +2716,17 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
                          '.',
                          offsetof(bGPDlayer, info),
                          sizeof(gpl_new->info));
-          BLI_ghash_insert(afd.names_map, BLI_strdup(gpl_src->info), gpl_new->info);
+          BLI_ghash_insert(names_map, BLI_strdup(gpl_src->info), gpl_new->info);
 
           /* add to destination datablock */
           BLI_addtail(&gpd_dst->layers, gpl_new);
         }
 
         /* Fix all the animation data */
-        BKE_fcurves_main_cb(bmain, gpencil_joined_fix_animdata_cb, &afd);
-        BLI_ghash_free(afd.names_map, MEM_freeN, nullptr);
+        BKE_fcurves_main_cb(bmain, [&](ID *id, FCurve *fcu) {
+          gpencil_joined_fix_animdata_cb(id, fcu, gpd_src, gpd_dst, names_map);
+        });
+        BLI_ghash_free(names_map, MEM_freeN, nullptr);
 
         /* Only copy over animdata now, after all the remapping has been done,
          * so that we don't have to worry about ambiguities re which datablock
@@ -3470,47 +3451,6 @@ void GPENCIL_OT_materials_copy_to_object(wmOperatorType *ot)
                          "Append only active material, uncheck to append all materials");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-}
-
-bool ED_gpencil_add_lattice_modifier(const bContext *C,
-                                     ReportList *reports,
-                                     Object *ob,
-                                     Object *ob_latt)
-{
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
-
-  if (ob == nullptr) {
-    return false;
-  }
-
-  /* if no lattice modifier, add a new one */
-  GpencilModifierData *md = BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Lattice);
-  if (md == nullptr) {
-    md = blender::ed::object::gpencil_modifier_add(
-        reports, bmain, scene, ob, "Lattice", eGpencilModifierType_Lattice);
-    if (md == nullptr) {
-      BKE_report(reports, RPT_ERROR, "Unable to add a new Lattice modifier to object");
-      return false;
-    }
-    DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  }
-
-  /* verify lattice */
-  LatticeGpencilModifierData *mmd = (LatticeGpencilModifierData *)md;
-  if (mmd->object == nullptr) {
-    mmd->object = ob_latt;
-  }
-  else {
-    if (ob_latt != mmd->object) {
-      BKE_report(reports,
-                 RPT_ERROR,
-                 "The existing Lattice modifier is already using a different Lattice object");
-      return false;
-    }
-  }
-
-  return true;
 }
 
 /* Masking operators */

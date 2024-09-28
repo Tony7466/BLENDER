@@ -69,7 +69,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.primitive_line
   ops.gpencil.primitive_polyline
   ops.gpencil.radius
-  ops.gpencil.stroke_cutter
+  ops.gpencil.stroke_trim
   ops.gpencil.transform_fill
   ops.mesh.bevel
   ops.mesh.bisect
@@ -157,6 +157,7 @@ if(WITH_BLENDER)
 
     set(SVG_FILENAMES_NOEXT
       action
+      action_slot
       action_tweak
       add
       aliased
@@ -177,7 +178,11 @@ if(WITH_BLENDER)
       anim_data
       antialiased
       append_blend
+      area_dock
       area_join
+      area_join_down
+      area_join_left
+      area_join_up
       area_swap
       armature_data
       arrow_leftright
@@ -308,6 +313,7 @@ if(WITH_BLENDER)
       file_large
       filebrowser
       file_3d
+      file_alias
       file_archive
       file_backup
       file_blank
@@ -354,6 +360,7 @@ if(WITH_BLENDER)
       fullscreen_exit
       fund
       geometry_nodes
+      geometry_set
       ghost_disabled
       ghost_enabled
       gizmo
@@ -366,6 +373,7 @@ if(WITH_BLENDER)
       gp_select_strokes
       graph
       greasepencil
+      greasepencil_layer_group
       grid
       grip
       group
@@ -425,8 +433,34 @@ if(WITH_BLENDER)
       keyframe
       keyframe_hlt
       keyingset
+	    key_backspace
+      key_backspace_filled
+      key_command
+      key_command_filled
+      key_control
+      key_control_filled
       key_dehlt
+      key_empty1
+      key_empty1_filled
+      key_empty2
+      key_empty2_filled
+      key_empty3
+      key_empty3_filled
       key_hlt
+      key_menu
+      key_menu_filled
+      key_option
+      key_option_filled
+      key_return
+      key_return_filled
+      key_ring
+      key_ring_filled
+      key_shift
+      key_shift_filled
+      key_tab
+      key_tab_filled
+      key_windows
+      key_windows_filled
       lattice_data
       layer_active
       layer_used
@@ -547,9 +581,11 @@ if(WITH_BLENDER)
       mod_wireframe
       monkey
       mouse_lmb
+      mouse_lmb_2x
       mouse_lmb_drag
       mouse_mmb
       mouse_mmb_drag
+      mouse_mmb_scroll
       mouse_move
       mouse_rmb
       mouse_rmb_drag

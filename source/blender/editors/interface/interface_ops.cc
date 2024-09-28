@@ -1222,7 +1222,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
     if (RNA_struct_is_a(ptr->type, &RNA_NodeSocket)) {
       bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
       bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-      if (blender::bke::nodeFindNodeTry(ntree, sock, &node, nullptr)) {
+      if (blender::bke::node_find_node_try(ntree, sock, &node, nullptr)) {
         path = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_Node);
         if (path) {
           /* we're good! */
@@ -1270,7 +1270,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
         for (const PointerRNA &ob_ptr : lb) {
           Object *ob = (Object *)ob_ptr.owner_id;
           if (ID *id_data = static_cast<ID *>(ob->data)) {
-            id_data->tag |= LIB_TAG_DOIT;
+            id_data->tag |= ID_TAG_DOIT;
           }
         }
 
@@ -1278,7 +1278,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
         for (const PointerRNA &link : lb) {
           Object *ob = (Object *)link.owner_id;
           ID *id_data = static_cast<ID *>(ob->data);
-          if ((id_data == nullptr) || (id_data->tag & LIB_TAG_DOIT) == 0 ||
+          if ((id_data == nullptr) || (id_data->tag & ID_TAG_DOIT) == 0 ||
               !ID_IS_EDITABLE(id_data) || (GS(id_data->name) != id_code))
           {
             continue;
@@ -1287,7 +1287,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
           new_lb.append(RNA_id_pointer_create(id_data));
 
           if (id_data) {
-            id_data->tag &= ~LIB_TAG_DOIT;
+            id_data->tag &= ~ID_TAG_DOIT;
           }
         }
 
@@ -2056,9 +2056,7 @@ static bool ui_editsource_uibut_match(uiBut *but_a, uiBut *but_b)
   return false;
 }
 
-extern "C" {
-void PyC_FileAndNum_Safe(const char **r_filename, int *r_lineno);
-}
+extern void PyC_FileAndNum_Safe(const char **r_filename, int *r_lineno);
 
 void UI_editsource_active_but_test(uiBut *but)
 {
@@ -2776,6 +2774,8 @@ void ED_operatortypes_ui()
   WM_operatortype_append(UI_OT_eyedropper_depth);
   WM_operatortype_append(UI_OT_eyedropper_driver);
   WM_operatortype_append(UI_OT_eyedropper_gpencil_color);
+  WM_operatortype_append(UI_OT_eyedropper_bone);
+  WM_operatortype_append(UI_OT_eyedropper_grease_pencil_color);
 }
 
 void ED_keymap_ui(wmKeyConfig *keyconf)

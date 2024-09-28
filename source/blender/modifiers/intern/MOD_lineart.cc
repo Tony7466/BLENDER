@@ -26,7 +26,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "MOD_gpencil_legacy_lineart.h" /* Needed for line art cache functions. */
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_lineart.h"
 #include "MOD_modifiertypes.hh"
@@ -214,9 +213,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   }
 
   uiLayout *col = uiLayoutColumn(layout, false);
-  uiItemPointerR(col, ptr, "target_layer", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
   uiItemPointerR(
-      col, ptr, "target_material", &obj_data_ptr, "materials", nullptr, ICON_GREASEPENCIL);
+      col, ptr, "target_layer", &obj_data_ptr, "layers", nullptr, ICON_OUTLINER_DATA_GP_LAYER);
+  uiItemPointerR(col, ptr, "target_material", &obj_data_ptr, "materials", nullptr, ICON_MATERIAL);
 
   col = uiLayoutColumn(layout, false);
   uiItemR(col, ptr, "thickness", UI_ITEM_R_SLIDER, IFACE_("Line Thickness"), ICON_NONE);

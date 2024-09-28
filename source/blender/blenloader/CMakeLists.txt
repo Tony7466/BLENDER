@@ -66,6 +66,7 @@ set(LIB
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf::intern::memutil
 )
 
 if(WITH_BUILDINFO)
@@ -116,7 +117,7 @@ if(WITH_GTESTS)
   )
   blender_add_lib(bf_blenloader_test_util "${TEST_UTIL_SRC}" "${TEST_UTIL_INC}" "${TEST_UTIL_INC_SYS}" "${TEST_UTIL_LIB}")
 
-  # Actual blenloader tests.
+  # Actual `blenloader` tests.
   set(TEST_SRC
     tests/blendfile_load_test.cc
   )

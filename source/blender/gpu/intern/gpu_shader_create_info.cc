@@ -133,6 +133,7 @@ void ShaderCreateInfo::finalize()
     defines_.extend_non_duplicates(info.defines_);
     batch_resources_.extend_non_duplicates(info.batch_resources_);
     pass_resources_.extend_non_duplicates(info.pass_resources_);
+    geometry_resources_.extend_non_duplicates(info.geometry_resources_);
     typedef_sources_.extend_non_duplicates(info.typedef_sources_);
 
     /* API-specific parameters.
@@ -224,6 +225,9 @@ void ShaderCreateInfo::finalize()
       set_resource_slot(res);
     }
     for (auto &res : pass_resources_) {
+      set_resource_slot(res);
+    }
+    for (auto &res : geometry_resources_) {
       set_resource_slot(res);
     }
   }
@@ -335,7 +339,7 @@ void ShaderCreateInfo::validate_merge(const ShaderCreateInfo &other_info)
       }
     };
 
-    auto print_error_msg = [&](const Resource &res, Vector<Resource> &resources) {
+    auto print_error_msg = [&](const Resource &res, const Vector<Resource> &resources) {
       auto print_resource_name = [&](const Resource &res) {
         switch (res.bind_type) {
           case Resource::BindType::UNIFORM_BUFFER:
@@ -369,15 +373,19 @@ void ShaderCreateInfo::validate_merge(const ShaderCreateInfo &other_info)
 
     for (auto &res : batch_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res, batch_resources_);
-        print_error_msg(res, pass_resources_);
+        print_error_msg(res, resources_get_all_());
       }
     }
 
     for (auto &res : pass_resources_) {
       if (register_resource(res) == false) {
-        print_error_msg(res, batch_resources_);
-        print_error_msg(res, pass_resources_);
+        print_error_msg(res, resources_get_all_());
+      }
+    }
+
+    for (auto &res : geometry_resources_) {
+      if (register_resource(res) == false) {
+        print_error_msg(res, resources_get_all_());
       }
     }
   }
@@ -493,8 +501,12 @@ void gpu_shader_create_info_init()
     overlay_edit_mesh_edge_flat = overlay_edit_mesh_edge_flat_no_geom;
     overlay_edit_mesh_edge_clipped = overlay_edit_mesh_edge_clipped_no_geom;
     overlay_edit_mesh_edge_flat_clipped = overlay_edit_mesh_edge_flat_clipped_no_geom;
+    /* Overlay Edit Curve. */
     overlay_edit_curve_handle = overlay_edit_curve_handle_no_geom;
     overlay_edit_curve_handle_clipped = overlay_edit_curve_handle_clipped_no_geom;
+    /* Overlay Edit Curves. */
+    overlay_edit_curves_handle = overlay_edit_curves_handle_no_geom;
+    overlay_edit_curves_handle_clipped = overlay_edit_curves_handle_clipped_no_geom;
 
     /* Overlay Armature Shape outline. */
     overlay_armature_shape_outline = overlay_armature_shape_outline_no_geom;
@@ -504,13 +516,6 @@ void gpu_shader_create_info_init()
     /* Overlay Motion Path Line. */
     overlay_motion_path_line = overlay_motion_path_line_no_geom;
     overlay_motion_path_line_clipped = overlay_motion_path_line_clipped_no_geom;
-
-    /* Workbench shadows.
-     * NOTE: Updates additional-info used by workbench shadow permutations.
-     * Must be prepared prior to permutation preparation. */
-    workbench_shadow_manifold = workbench_shadow_manifold_no_geom;
-    workbench_shadow_no_manifold = workbench_shadow_no_manifold_no_geom;
-    workbench_shadow_caps = workbench_shadow_caps_no_geom;
 
     /* Conservative rasterization. */
     basic_depth_mesh_conservative = basic_depth_mesh_conservative_no_geom;
@@ -624,9 +629,7 @@ bool gpu_shader_create_info_compile(const char *name_starts_with_filter)
         /* TODO(fclem): Limit this to OpenGL backend. */
         const ShaderInterface *interface = unwrap(shader)->interface;
 
-        blender::Vector<ShaderCreateInfo::Resource> all_resources;
-        all_resources.extend(info->pass_resources_);
-        all_resources.extend(info->batch_resources_);
+        blender::Vector<ShaderCreateInfo::Resource> all_resources = info->resources_get_all_();
 
         for (ShaderCreateInfo::Resource &res : all_resources) {
           blender::StringRefNull name = "";

@@ -550,7 +550,7 @@ const EnumPropertyItem rna_enum_operator_type_flag_items[] = {
      0,
      "Modal Priority",
      "Handle events before other modal operators without this option. Use with caution, do not "
-     "modify data that other modal operators assume is unchanged during their operation"},
+     "modify data that other modal operators assume is unchanged during their operation."},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -618,7 +618,7 @@ const EnumPropertyItem rna_enum_wm_report_items[] = {
 #  include "MEM_guardedalloc.h"
 
 #  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
+#    include "BPY_extern.hh"
 #  endif
 
 static wmOperator *rna_OperatorProperties_find_operator(PointerRNA *ptr)
@@ -1610,8 +1610,8 @@ static bool rna_Operator_unregister(Main *bmain, StructRNA *type);
 
 /* `bpy_operator_wrap.cc` */
 
-extern "C" void BPY_RNA_operator_wrapper(wmOperatorType *ot, void *userdata);
-extern "C" void BPY_RNA_operator_macro_wrapper(wmOperatorType *ot, void *userdata);
+extern void BPY_RNA_operator_wrapper(wmOperatorType *ot, void *userdata);
+extern void BPY_RNA_operator_macro_wrapper(wmOperatorType *ot, void *userdata);
 
 static StructRNA *rna_Operator_register(Main *bmain,
                                         ReportList *reports,
