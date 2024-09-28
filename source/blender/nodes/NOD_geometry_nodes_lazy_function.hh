@@ -325,18 +325,6 @@ struct InputUsageHint {
   Vector<int> output_dependencies;
 };
 
-struct ContextInputID {
-  StringRef identifier;
-  eNodeSocketDatatype socket_type;
-
-  uint64_t hash() const
-  {
-    return get_default_hash(this->identifier, this->socket_type);
-  }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_2(ContextInputID, identifier, socket_type)
-};
-
 /**
  * Contains the mapping between the #bNodeTree and the corresponding lazy-function graph.
  * This is *not* a one-to-one mapping.
@@ -365,8 +353,6 @@ struct GeometryNodeLazyFunctionGraphMapping {
   Array<int> lf_input_index_for_attribute_propagation_to_output;
   /* Indexed by #bNodeSocket::index_in_tree. */
   Array<int> lf_index_by_bsocket;
-
-  VectorSet<ContextInputID> context_inputs;
 };
 
 /**

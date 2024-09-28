@@ -10,6 +10,7 @@
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
+#include "BLI_string.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_vector_set.hh"
 
@@ -492,6 +493,9 @@ class NodeTreeMainUpdater {
 
     ntree.runtime->link_errors_by_target_node.clear();
 
+    if (this->update_context_inputs(ntree)) {
+      result.interface_changed = true;
+    }
     this->update_socket_link_and_use(ntree);
     this->update_individual_nodes(ntree);
     this->update_internal_links(ntree);
@@ -699,6 +703,146 @@ class NodeTreeMainUpdater {
 
       this->update_internal_links_in_node(ntree, *node, expected_internal_links);
     }
+  }
+
+  bool update_context_inputs(bNodeTree &tree)
+  {
+    tree.ensure_topology_cache();
+    Set<StringRef> bad_context_identifiers;
+    Map<StringRef, StringRefNull> required_context_inputs;
+
+    static const std::array complexity_order_array = {
+        SOCK_BOOLEAN, SOCK_INT, SOCK_FLOAT, SOCK_VECTOR, SOCK_ROTATION, SOCK_RGBA, SOCK_MATRIX};
+    const Span<eNodeSocketDatatype> complexity_order = complexity_order_array;
+
+    auto try_add_context_input = [&](const StringRef context_identifier,
+                                     const StringRefNull new_type_idname) {
+      if (context_identifier.is_empty()) {
+        return;
+      }
+      if (bad_context_identifiers.contains(context_identifier)) {
+        return;
+      }
+      const StringRefNull old_type_idname = required_context_inputs.lookup_or_add(
+          context_identifier, new_type_idname);
+      if (old_type_idname == new_type_idname) {
+        return;
+      }
+      const bNodeSocketType *old_type_info = node_socket_type_find(old_type_idname.c_str());
+      const bNodeSocketType *new_type_info = node_socket_type_find(new_type_idname.c_str());
+      if (!old_type_info || !new_type_info) {
+        bad_context_identifiers.add(context_identifier);
+        return;
+      }
+      const eNodeSocketDatatype old_type = eNodeSocketDatatype(old_type_info->type);
+      const eNodeSocketDatatype new_type = eNodeSocketDatatype(new_type_info->type);
+      const bool types_are_compatible = tree.typeinfo->validate_link(old_type, new_type) &&
+                                        tree.typeinfo->validate_link(new_type, old_type);
+      if (!types_are_compatible) {
+        bad_context_identifiers.add(context_identifier);
+        return;
+      }
+      const int old_complexity = complexity_order.first_index_try(old_type);
+      const int new_complexity = complexity_order.first_index_try(new_type);
+      if (new_complexity > old_complexity) {
+        required_context_inputs.add_overwrite(context_identifier, new_type_idname);
+      }
+    };
+
+    for (const bNode *node : tree.all_nodes()) {
+      switch (node->type) {
+        case NODE_GROUP:
+        case NODE_CUSTOM_GROUP: {
+          const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+          if (!group) {
+            continue;
+          }
+          group->ensure_interface_cache();
+          for (const bNodeTreeInterfaceSocket *interface_socket : group->interface_inputs()) {
+            try_add_context_input(interface_socket->context_identifier,
+                                  interface_socket->socket_type);
+          }
+          break;
+        }
+        case GEO_NODE_CONTEXT_INPUT: {
+          const auto &storage = *static_cast<const NodeGeometryContextInput *>(node->storage);
+          const eNodeSocketDatatype type = eNodeSocketDatatype(storage.socket_type);
+          const char *type_idname = node_static_socket_type(type, PROP_NONE);
+          try_add_context_input(storage.identifier, type_idname);
+          break;
+        }
+      }
+    }
+
+    for (const StringRef bad_identifier : bad_context_identifiers) {
+      required_context_inputs.remove(bad_identifier);
+    }
+
+    bool interface_changed = false;
+
+    /* Update existing context inputs and find context inputs to remove. */
+    Vector<std::string> socket_identifiers_to_remove;
+    tree.tree_interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
+      if (item.item_type != NODE_INTERFACE_SOCKET) {
+        return true;
+      }
+      auto &socket = node_interface::get_item_as<bNodeTreeInterfaceSocket>(item);
+      if (!(socket.flag & NODE_INTERFACE_SOCKET_INPUT)) {
+        return true;
+      }
+      const StringRef socket_context_identifier = socket.context_identifier;
+      if (socket_context_identifier.is_empty()) {
+        return true;
+      }
+      if (bad_context_identifiers.contains(socket_context_identifier)) {
+        /* Keep this interface socket in its old state. Removing it could accidentally remove links
+         * that don't come back automatically when the issue has been resolved. */
+        required_context_inputs.remove(socket_context_identifier);
+        return true;
+      }
+      const std::optional<StringRefNull> new_type_idname = required_context_inputs.pop_try(
+          socket_context_identifier);
+      if (new_type_idname.has_value()) {
+        if (*new_type_idname != StringRef(socket.socket_type)) {
+          socket.set_socket_type(new_type_idname->c_str());
+          interface_changed = true;
+        }
+      }
+      else {
+        socket_identifiers_to_remove.append(socket.identifier);
+      }
+      return true;
+    });
+    /* Actually remove context inputs;*/
+    for (const StringRefNull socket_identifier : socket_identifiers_to_remove) {
+      bNodeTreeInterfaceSocket *socket_to_remove = nullptr;
+      tree.tree_interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
+        if (item.item_type == NODE_INTERFACE_SOCKET) {
+          auto &socket = node_interface::get_item_as<bNodeTreeInterfaceSocket>(item);
+          if (socket.identifier == socket_identifier) {
+            socket_to_remove = &socket;
+            return false;
+          }
+        }
+        return true;
+      });
+      BLI_assert(socket_to_remove);
+      tree.tree_interface.remove_item(socket_to_remove->item);
+      interface_changed = true;
+    }
+    /* Add new context inputs. */
+    for (const auto &&item : required_context_inputs.items()) {
+      const StringRef context_identifier = item.key;
+      const StringRef socket_type = item.value;
+      bNodeTreeInterfaceSocket *new_socket = tree.tree_interface.add_socket(
+          context_identifier, "", socket_type, NODE_INTERFACE_SOCKET_INPUT, nullptr);
+      new_socket->context_identifier = BLI_strdupn(context_identifier.data(),
+                                                   context_identifier.size());
+    }
+    if (interface_changed) {
+      tree.tree_interface.tag_items_changed();
+    }
+    return interface_changed;
   }
 
   const bNodeSocket *find_internally_linked_input(const bNodeSocket *output_socket)
