@@ -544,6 +544,7 @@ static void item_write_data(BlendWriter *writer, bNodeTreeInterfaceItem &item)
       BLO_write_string(writer, socket.description);
       BLO_write_string(writer, socket.socket_type);
       BLO_write_string(writer, socket.default_attribute_name);
+      BLO_write_string(writer, socket.context_identifier);
       if (socket.properties) {
         IDP_BlendWrite(writer, socket.properties);
       }
@@ -590,6 +591,7 @@ static void item_read_data(BlendDataReader *reader, bNodeTreeInterfaceItem &item
       BLO_read_string(reader, &socket.socket_type);
       BLO_read_string(reader, &socket.default_attribute_name);
       BLO_read_string(reader, &socket.identifier);
+      BLO_read_string(reader, &socket.context_identifier);
       BLO_read_struct(reader, IDProperty, &socket.properties);
       IDP_BlendDataRead(reader, &socket.properties);
 

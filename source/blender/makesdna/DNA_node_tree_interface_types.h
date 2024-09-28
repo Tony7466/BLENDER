@@ -90,6 +90,9 @@ typedef struct bNodeTreeInterfaceSocket {
   /* Socket default value and associated data, e.g. bNodeSocketValueFloat. */
   void *socket_data;
 
+  /** If set, this input socket is a contextual input. */
+  char *context_identifier;
+
   IDProperty *properties;
 
 #ifdef __cplusplus

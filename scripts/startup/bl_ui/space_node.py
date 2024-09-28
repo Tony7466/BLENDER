@@ -972,6 +972,8 @@ class NODE_PT_node_tree_interface(Panel):
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "socket_type", text="Type")
                 layout.prop(active_item, "description")
+                if active_item.context_identifier:
+                    layout.prop(active_item, "context_identifier")
                 # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
                 if tree.type == 'GEOMETRY':
                     field_socket_types = {
