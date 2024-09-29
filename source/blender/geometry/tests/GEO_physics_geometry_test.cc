@@ -14,6 +14,7 @@
 #include "BKE_physics_geometry.hh"
 
 #include "BLI_array_utils.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_math_rotation.hh"
 #include "BLI_memory_utils.hh"
 #include "BLI_utildefines.h"
@@ -27,16 +28,188 @@
 
 namespace blender::bke::tests {
 
+struct TestAttributeOwner {
+  Array<int> values;
+  std::function<void()> on_update;
+
+  /* The test attribute uses a DerivedSpan VArray in order to test behavior of the
+   * SpanAttributeWriter for non-span attributes. These getter/setter functions just modify the
+   * values in a way that is easy to identify and debug. */
+  static int get_derived_int_value(const int &data)
+  {
+    return data + 100;
+  }
+  static void set_derived_int_value(int &data, const int v)
+  {
+    data = v - 100;
+  }
+
+  static const StringRefNull test_attribute_name;
+
+  static TestAttributeOwner &get_owner(void *owner)
+  {
+    return *static_cast<TestAttributeOwner *>(owner);
+  }
+
+  static const TestAttributeOwner &get_owner(const void *owner)
+  {
+    return *static_cast<const TestAttributeOwner *>(owner);
+  }
+
+  static GAttributeReader get_test_attribute_reader(const void *owner)
+  {
+    return GAttributeReader{
+        VArray<int>::ForDerivedSpan<int, get_derived_int_value>(get_owner(owner).values),
+        AttrDomain::Point,
+        nullptr};
+  }
+
+  static GAttributeWriter get_test_attribute_writer(void *owner)
+  {
+    return GAttributeWriter{
+        VMutableArray<int>::ForDerivedSpan<int, get_derived_int_value, set_derived_int_value>(
+            get_owner(owner).values),
+        AttrDomain::Point,
+        [on_update = get_owner(owner).on_update]() {
+          if (on_update) {
+            on_update();
+          }
+        }};
+  }
+
+  /* Simple attribute functions that only return one attribute. */
+  static AttributeAccessorFunctions get_accessor_functions()
+  {
+    AttributeAccessorFunctions fn;
+    fn.is_builtin = [](const void * /*owner*/, StringRef attribute_id) {
+      if (attribute_id == test_attribute_name) {
+        return true;
+      }
+      return false;
+    };
+    fn.lookup = [](const void *owner, StringRef attribute_id) {
+      if (attribute_id == test_attribute_name) {
+        return get_test_attribute_reader(owner);
+      }
+      return GAttributeReader{};
+    };
+    fn.foreach_attribute = [](const void *owner,
+                              FunctionRef<void(const AttributeIter &iter)> fn,
+                              const AttributeAccessor & /*accessor*/) {
+      const auto get_fn = [owner]() { return get_test_attribute_reader(owner); };
+      fn(AttributeIter(test_attribute_name, AttrDomain::Point, CD_PROP_INT32, get_fn));
+    };
+    fn.lookup_validator = [](const void * /*owner*/, StringRef /*attribute_id*/) {
+      return AttributeValidator{};
+    };
+    fn.lookup_for_write = [](void *owner, StringRef attribute_id) {
+      if (attribute_id == test_attribute_name) {
+        return get_test_attribute_writer(owner);
+      }
+      return GAttributeWriter{};
+    };
+    fn.remove = [](void * /*owner*/, StringRef /*attribute_id*/) { return false; };
+    fn.add = [](void * /*owner*/,
+                StringRef /*attribute_id*/,
+                AttrDomain /*domain*/,
+                eCustomDataType /*data_type*/,
+                const AttributeInit & /*initializer*/) { return false; };
+    fn.domain_size = [](const void *owner, const AttrDomain domain) -> int {
+      if (domain == AttrDomain::Point) {
+        return get_owner(owner).values.size();
+      }
+      return 0;
+    };
+    fn.domain_supported = [](const void * /*owner*/, const AttrDomain domain) {
+      return domain == AttrDomain::Point;
+    };
+    fn.adapt_domain = [](const void * /*owner*/,
+                         const GVArray & /*varray*/,
+                         const AttrDomain /*from_domain*/,
+                         const AttrDomain /*to_domain*/) -> GVArray { return {}; };
+    return fn;
+  }
+
+  static const AttributeAccessorFunctions &get_accessor_functions_ref()
+  {
+    static const AttributeAccessorFunctions fn = get_accessor_functions();
+    return fn;
+  }
+
+  AttributeAccessor attributes() const
+  {
+    return AttributeAccessor(this, get_accessor_functions_ref());
+  }
+
+  MutableAttributeAccessor attributes_for_write()
+  {
+    return MutableAttributeAccessor(this, get_accessor_functions_ref());
+  }
+};
+
+const StringRefNull TestAttributeOwner::test_attribute_name = "test";
+
+TEST(attribute_accessor, PartialSpanWriter)
+{
+  TestAttributeOwner attribute_owner;
+  /* Initial values. */
+  attribute_owner.values = {7, 7, 7, 7, 7};
+
+  /* The attribute varray is NOT a span. The SpanAttributeWriter then uses an intermediate buffer
+   * that can be accessed as a span. The span is copied to the actual varray by calling
+   * writer.finish(). */
+  SpanAttributeWriter writer = attribute_owner.attributes_for_write().lookup_for_write_span<int>(
+      TestAttributeOwner::test_attribute_name);
+
+  /* Initialize the span buffer.
+   * NOTE: This is not technically necessary, but it allows us to identify uninitialized values in
+   * the buffer span and test for them. */
+  writer.span.fill(55);
+
+  /* Partial write: This should only affect elements in the index mask. */
+  IndexRange write_range = IndexRange::from_begin_size(1, 2);
+  IndexMask(write_range).foreach_index([&](const int index) { writer.span[index] = 9999; });
+
+  /* At this point only the values in the index mask have not yet been modified, only the internal
+   * writer buffer has been partially initialized. */
+  EXPECT_EQ_ARRAY(Span<int>{7, 7, 7, 7, 7, 7}.data(),
+                  attribute_owner.values.data(),
+                  attribute_owner.values.size());
+  /* Only values in the index mask are modified, others are uninitialized.
+   * Note: these are the raw values, the DerivedSpan will further transform these. */
+  EXPECT_EQ_ARRAY(
+      Span<int>{55, 9999, 9999, 55, 55}.data(), writer.span.data(), writer.span.size());
+
+  /* Copies all values from the buffer span to the actual VArray. */
+  writer.finish();
+
+  /* These are the actual expected values - this test will fail!
+   * Calling finish() overwrites ALL the values with the buffer span, which is only partially
+   * initialized! */
+  // EXPECT_EQ_ARRAY(Span<int>{7, 9899, 9899, 7, 7, 7}.data(),
+  //                 attribute_owner.values.data(),
+  //                 attribute_owner.values.size());
+  /* These are the actual values, resulting from "uninitialized" values (55) passing through the
+   * DerivedSpan function: (x-100)=-45. */
+  EXPECT_EQ_ARRAY(Span<int>{-45, 9899, 9899, -45, -45, -45}.data(),
+                  attribute_owner.values.data(),
+                  attribute_owner.values.size());
+}
+
 class PhysicsGeometryTest : public testing::Test {
  protected:
   PhysicsGeometryTest() {}
 
   static void SetUpTestSuite()
   {
-    /* BKE_id_free() hits a code path that uses CLOG, which crashes if not initialized properly. */
+    /* BKE_id_free() hits a code path that uses CLOG, which crashes if not initialized
+     * properly.
+     */
     CLG_init();
 
-    /* To make id_can_have_animdata() and friends work, the `id_types` array needs to be set up. */
+    /* To make id_can_have_animdata() and friends work, the `id_types` array needs to be set
+     * up.
+     */
     BKE_idtype_init();
 
     blender::bke::jolt_physics_init();
@@ -522,8 +695,8 @@ TEST_F(PhysicsGeometryTest, copy_immutable_physics_geometry)
   /* Force copy-on-write. */
   geo_copy.attributes_for_write();
 
-  /* Attribute caches should copy over dirty flags, so that the cache still gets updated correctly
-   * after the copy. */
+  /* Attribute caches should copy over dirty flags, so that the cache still gets updated
+   * correctly after the copy. */
   EXPECT_EQ(1, geo_copy.state().shapes().size());
   EXPECT_EQ(all_shapes_data.box_shape, geo_copy.state().shapes()[0]);
   EXPECT_EQ(3, geo_copy.body_shapes().size());
@@ -877,8 +1050,8 @@ TEST_F(PhysicsGeometryTest, body_shapes_update)
 {
   AllShapesData all_shapes_data;
 
-  /* Change the body shape indices without(!) updating the internal pointers straight away. This
-   * should return the same values when reading from the cache. */
+  /* Change the body shape indices without(!) updating the internal pointers straight away.
+   * This should return the same values when reading from the cache. */
   bke::PhysicsGeometry geo = bke::PhysicsGeometry(8, 0, 1);
   geo.state_for_write().create_world();
   /* Set actual shape pointers. */
@@ -963,9 +1136,11 @@ TEST_F(PhysicsGeometryTest, update_read_cache)
   }
 }
 
-/* Some attributes are connected internally. Changing mass, motion type (static/kinematic/dynamic)
- * or the shape is expected to conditionally change the other attributes on the Bullet side.
- * Attributes remain untouched, these read/write from custom data. */
+/* Some attributes are connected internally. Changing mass, motion type
+ * (static/kinematic/dynamic) or the shape is expected to conditionally change the other
+ * attributes on the Bullet side. Attributes remain untouched, these read/write from custom
+ * data.
+ */
 TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
 {
   AllShapesData all_shapes_data;
