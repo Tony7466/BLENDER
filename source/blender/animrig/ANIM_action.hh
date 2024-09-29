@@ -15,6 +15,8 @@
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 
+#include "BKE_anim_data.hh"
+
 #include "BLI_math_vector.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
@@ -107,7 +109,7 @@ class Action : public ::bAction {
   const Layer *layer(int64_t index) const;
   Layer *layer(int64_t index);
 
-  Layer &layer_add(StringRefNull name);
+  Layer &layer_add(std::optional<StringRefNull> name);
 
   /**
    * Remove the layer from this Action.
@@ -867,8 +869,45 @@ class ChannelBag : public ::ActionChannelBag {
    * valid, as the curve will have been freed.
    *
    * \return true when the F-Curve was found & removed, false if it wasn't found.
+   *
+   * \see fcurve_detach
    */
   bool fcurve_remove(FCurve &fcurve_to_remove);
+
+  /**
+   * Remove an F-Curve from the ChannelBag, identified by its index in the array.
+   *
+   * Acts the same as fcurve_remove() except it's a bit more efficient as it
+   * doesn't need to find the F-Curve in the array first.
+   *
+   * \see fcurve_remove
+   */
+  void fcurve_remove_by_index(int64_t fcurve_array_index);
+
+  /**
+   * Detach an F-Curve from the ChannelBag.
+   *
+   * Additionally, if the fcurve was the last fcurve in a channel group, that
+   * channel group is deleted.
+   *
+   * The F-Curve is not freed. After the call returns `true`, its ownership has
+   * transferred to the caller.
+   *
+   * \return true when the F-Curve was found & detached, false if it wasn't found.
+   *
+   * \see fcurve_remove
+   */
+  bool fcurve_detach(FCurve &fcurve_to_detach);
+
+  /**
+   * Detach an F-Curve from the ChannelBag, identified by its index in the array.
+   *
+   * Acts the same as fcurve_detach() except it's a bit more efficient as it
+   * doesn't need to find the F-Curve in the array first.
+   *
+   * \see fcurve_detach
+   */
+  void fcurve_detach_by_index(int64_t fcurve_array_index);
 
   /**
    * Move the given fcurve to position `to_fcurve_index` in the fcurve array.
@@ -1094,6 +1133,16 @@ static_assert(sizeof(ChannelGroup) == sizeof(::bActionGroup),
               "DNA struct and its C++ wrapper must have the same size");
 
 /**
+ * Create a new Action with zero users.
+ *
+ * This is basically the same as `BKE_action_add`, except that the Action has
+ * zero users and it's already wrapped with its C++ wrapper.
+ *
+ * \see BKE_action_add
+ */
+Action &action_add(Main &bmain, StringRefNull name);
+
+/**
  * Assign the Action to the ID.
  *
  * This will make a best-effort guess as to which slot to use, in this
@@ -1110,16 +1159,41 @@ static_assert(sizeof(ChannelGroup) == sizeof(::bActionGroup),
  * be animated). If the above fall-through case of "no slot found" is reached, this function
  * will still return `true` as the Action was successfully assigned.
  */
-bool assign_action(Action *action, ID &animated_id);
+[[nodiscard]] bool assign_action(bAction *action, ID &animated_id);
+
+/**
+ * Same as assign_action(action, id) above.
+ *
+ * Use this function when you already have the AnimData struct of this ID.
+ *
+ * \return true when succesful, false otherwise. This can fail when the NLA is in tweak mode (no
+ * action changes allowed) or when a legacy Action is assigned and it doesn't match the animated
+ * ID's type.
+ */
+[[nodiscard]] bool assign_action(bAction *action, OwnedAnimData owned_adt);
+
+/**
+ * Same as assign_action, except it assigns to #AnimData::tmpact and #AnimData::tmp_slot_handle.
+ */
+[[nodiscard]] bool assign_tmpaction(bAction *action, OwnedAnimData owned_adt);
 
 /**
  * Un-assign the Action assigned to this ID.
  *
  * Same as calling `assign_action(nullptr, animated_id)`.
  *
- * \see assign_action
+ * \see blender::animrig::assign_action(ID &animated_id)
  */
-void unassign_action(ID &animated_id);
+[[nodiscard]] bool unassign_action(ID &animated_id);
+
+/**
+ * Un-assign the Action assigned to this ID.
+ *
+ * Same as calling `assign_action(nullptr, owned_adt)`.
+ *
+ * \see blender::animrig::assign_action(OwnedAnimData owned_adt)
+ */
+[[nodiscard]] bool unassign_action(OwnedAnimData owned_adt);
 
 /**
  * Assign the Action, ensuring that a Slot is also assigned.
@@ -1127,8 +1201,10 @@ void unassign_action(ID &animated_id);
  * If this Action happens to already be assigned, and a Slot is assigned too, that Slot is
  * returned. Otherwise a new Slot is created + assigned.
  *
- * \returns the assigned slot if the assignment was successful, or `nullptr` otherwise.
- * The only reason the assignment can fail is when the given ID is of an animatable type.
+ * \returns the assigned slot if the assignment was successful, or `nullptr` otherwise. Reasons the
+ * assignment can fail is when the given ID is of an animatable type, when the ID is in NLA Tweak
+ * mode (in which case no Action assignments can happen), or when the legacy Action ID type doesn't
+ * match the animated ID.
  *
  * \note Contrary to `assign_action()` this skips the search by slot name when the Action is
  * already assigned. It should be possible for an animator to un-assign a slot, then create a new
@@ -1137,7 +1213,7 @@ void unassign_action(ID &animated_id);
  *
  * \see assign_action()
  */
-Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id);
+[[nodiscard]] Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id);
 
 /**
  * Generic function to build Action-assignment logic.
@@ -1145,13 +1221,12 @@ Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id);
  * This is a low-level function, intended as a building block for higher-level Action assignment
  * functions.
  *
- * This function always succeeds, and thus it doesn't have any return value.
  */
-void generic_assign_action(ID &animated_id,
-                           Action *action_to_assign,
-                           bAction *&action_ptr_ref,
-                           slot_handle_t &slot_handle_ref,
-                           char *slot_name);
+[[nodiscard]] bool generic_assign_action(ID &animated_id,
+                                         bAction *action_to_assign,
+                                         bAction *&action_ptr_ref,
+                                         slot_handle_t &slot_handle_ref,
+                                         char *slot_name);
 
 enum class ActionSlotAssignmentResult : int8_t {
   OK = 0,
@@ -1276,17 +1351,109 @@ FCurve *action_fcurve_ensure(Main *bmain,
                              FCurveDescriptor fcurve_descriptor);
 
 /**
- * Find the F-Curve from the given Action. This assumes that all the destinations are valid.
+ * Find the F-Curve in the given Action.
+ *
+ * All the Action slots are searched for this F-Curve. To limit to a single
+ * slot, use fcurve_find_in_action_slot().
+ *
+ * \see blender::animrig::fcurve_find_in_action_slot
  */
-FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
+FCurve *fcurve_find_in_action(bAction *act, FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Find the F-Curve in the given Action Slot.
+ *
+ * \see blender::animrig::fcurve_find_in_action
+ */
+FCurve *fcurve_find_in_action_slot(bAction *act,
+                                   slot_handle_t slot_handle,
+                                   FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Find the F-Curve in the Action Slot assigned to this ADT.
+ *
+ * \see blender::animrig::fcurve_find_in_action
+ */
+FCurve *fcurve_find_in_assigned_slot(AnimData &adt, FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Find all F-Curves that target the named item in the collection.
+ *
+ * For example, to find all F-Curves for the pose bone named `"botje"`, you'd pass
+ * `collection_rna_path = "pose.bones["` and `item_name="botje"`.
+ *
+ * This could be implemented as iterator as well, but it's only used in one
+ * place, and that modifies the Action while it's looping.
+ */
+Vector<FCurve *> fcurve_find_in_action_slot_filtered(bAction *act,
+                                                     slot_handle_t slot_handle,
+                                                     StringRefNull collection_rna_path,
+                                                     StringRefNull data_name);
 
 /**
  * Remove the given FCurve from the action by searching for it in all channelbags.
  * This assumes that an FCurve can only exist in an action once.
  *
  *  \returns true if the given FCurve was removed.
+ *
+ * \see action_fcurve_detach
  */
 bool action_fcurve_remove(Action &action, FCurve &fcu);
+
+/**
+ * Detach the F-Curve from the Action, searching for it in all channelbags.
+ *
+ * Compatible with both legacy and layered Actions. The slot handles are ignored
+ * for legacy Actions.
+ *
+ * The F-Curve is not freed, and ownership is transferred to the caller.
+ *
+ * \see action_fcurve_remove
+ * \see action_fcurve_attach
+ * \see action_fcurve_move
+ *
+ * \return true when the F-Curve was found and detached, false if not found.
+ */
+bool action_fcurve_detach(Action &action, FCurve &fcurve_to_detach);
+
+/**
+ * Attach the F-Curve to the Action Slot.
+ *
+ * Compatible with both legacy and layered Actions. The slot handle is ignored
+ * for legacy Actions.
+ *
+ * On layered Actions, this assumes the 'Baklava Phase 1' invariants (one layer,
+ * one keyframe strip).
+ *
+ * \see action_fcurve_detach
+ * \see action_fcurve_move
+ */
+void action_fcurve_attach(Action &action,
+                          slot_handle_t action_slot,
+                          FCurve &fcurve_to_attach,
+                          std::optional<StringRefNull> group_name);
+
+/**
+ * Move an F-Curve from one Action to the other.
+ *
+ * If the F-Curve was part of a channel group, the group membership also carries
+ * over to the destination Action. If no group with the same name exists, it is
+ * created. This only happens for layered Actions, though.
+ *
+ * Compatible with both legacy and layered Actions. The slot handle and group
+ * membership are ignored for legacy Actions.
+ *
+ * The F-Curve must exist on the source Action. All channelbags for all slots
+ * are searched for the F-Curve.
+ *
+ * \param action_slot_dst may not be Slot::unassigned on layered Actions.
+ *
+ * \see blender::animrig::action_fcurve_detach
+ */
+void action_fcurve_move(Action &action_dst,
+                        slot_handle_t action_slot_dst,
+                        Action &action_src,
+                        FCurve &fcurve);
 
 /**
  * Find an appropriate user of the given Action + Slot for keyframing purposes.

@@ -13,6 +13,7 @@
 
 #include "ANIM_action.hh"
 #include "ANIM_action_iterators.hh"
+#include "ANIM_action_legacy.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -523,7 +524,7 @@ static SingleKeyingResult insert_keyframe_fcurve_value(Main *bmain,
 
   FCurve *fcu = key_insertion_may_create_fcurve(flag) ?
                     action_fcurve_ensure(bmain, act, group, ptr, {rna_path, array_index}) :
-                    action_fcurve_find(act, {rna_path, array_index});
+                    fcurve_find_in_action(act, {rna_path, array_index});
 
   /* We may not have a F-Curve when we're replacing only. */
   if (!fcu) {
@@ -645,7 +646,7 @@ int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna
   else {
     /* Will only loop once unless the array index was -1. */
     for (; array_index < array_index_max; array_index++) {
-      FCurve *fcu = action_fcurve_find(act, {rna_path.path, array_index});
+      FCurve *fcu = fcurve_find_in_action(act, {rna_path.path, array_index});
 
       if (fcu == nullptr) {
         continue;
@@ -716,7 +717,7 @@ int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_
   if (action.is_action_layered()) {
     if (adt->slot_handle) {
       Vector<FCurve *> fcurves;
-      action_foreach_fcurve(action, adt->slot_handle, [&](FCurve &fcurve) {
+      foreach_fcurve_in_action_slot(action, adt->slot_handle, [&](FCurve &fcurve) {
         if (rna_path.index.has_value() && rna_path.index.value() != fcurve.array_index) {
           return;
         }
@@ -749,7 +750,7 @@ int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_
     }
     /* Will only loop once unless the array index was -1. */
     for (; array_index < array_index_max; array_index++) {
-      FCurve *fcu = action_fcurve_find(act, {rna_path.path, array_index});
+      FCurve *fcu = fcurve_find_in_action(act, {rna_path.path, array_index});
 
       if (fcu == nullptr) {
         continue;
@@ -972,10 +973,8 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
   bAction *dna_action = id_action_ensure(bmain, id);
   BLI_assert(dna_action != nullptr);
 
-  Action &action = dna_action->wrap();
-  if (!action.is_action_legacy() ||
-      (action.is_empty() && USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)))
-  {
+  if (!animrig::legacy::action_treat_as_legacy(*dna_action)) {
+    Action &action = dna_action->wrap();
     KeyframeSettings key_settings = get_keyframe_settings(
         (insert_key_flags & INSERTKEY_NO_USERPREF) == 0);
     key_settings.keyframe_type = key_type;
@@ -1046,7 +1045,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
       /* Determine if at least one element would succeed getting keyed. */
       bool at_least_one_would_succeed = false;
       for (int i = 0; i < rna_values.size(); i++) {
-        const FCurve *fcu = action_fcurve_find(dna_action, {*rna_path_id_to_prop, i});
+        const FCurve *fcu = fcurve_find_in_action(dna_action, {*rna_path_id_to_prop, i});
         if (!fcu) {
           continue;
         }

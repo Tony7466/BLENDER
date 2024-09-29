@@ -178,6 +178,11 @@ static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, drawing_reference->id_reference, IDWALK_CB_USER);
     }
   }
+  for (const blender::bke::greasepencil::Layer *layer : grease_pencil->layers()) {
+    if (layer->parent) {
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, layer->parent, IDWALK_CB_USER);
+    }
+  }
 }
 
 static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -1975,7 +1980,7 @@ int BKE_grease_pencil_stroke_point_count(const GreasePencil &grease_pencil)
   int total_points = 0;
 
   for (const int layer_i : grease_pencil.layers().index_range()) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    const bke::greasepencil::Layer &layer = grease_pencil.layer(layer_i);
     const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
     frames.foreach_item(
         [&](const bke::greasepencil::FramesMapKeyT /*key*/, const GreasePencilFrame frame) {
@@ -1999,7 +2004,7 @@ void BKE_grease_pencil_point_coords_get(const GreasePencil &grease_pencil,
   using namespace blender;
 
   for (const int layer_i : grease_pencil.layers().index_range()) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    const bke::greasepencil::Layer &layer = grease_pencil.layer(layer_i);
     const float4x4 layer_to_object = layer.local_transform();
     const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
     frames.foreach_item(
@@ -2029,7 +2034,7 @@ void BKE_grease_pencil_point_coords_apply(GreasePencil &grease_pencil,
   using namespace blender;
 
   for (const int layer_i : grease_pencil.layers().index_range()) {
-    bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    bke::greasepencil::Layer &layer = grease_pencil.layer(layer_i);
     const float4x4 layer_to_object = layer.local_transform();
     const float4x4 object_to_layer = math::invert(layer_to_object);
     const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
@@ -2062,7 +2067,7 @@ void BKE_grease_pencil_point_coords_apply_with_mat4(GreasePencil &grease_pencil,
   const float scalef = mat4_to_scale(mat.ptr());
 
   for (const int layer_i : grease_pencil.layers().index_range()) {
-    bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    bke::greasepencil::Layer &layer = grease_pencil.layer(layer_i);
     const float4x4 layer_to_object = layer.local_transform();
     const float4x4 object_to_layer = math::invert(layer_to_object);
     const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
@@ -2466,6 +2471,38 @@ blender::bke::greasepencil::Drawing *GreasePencil::insert_frame(
   return &drawing->wrap();
 }
 
+void GreasePencil::insert_frames(Span<blender::bke::greasepencil::Layer *> layers,
+                                 const int frame_number,
+                                 const int duration,
+                                 const eBezTriple_KeyframeType keytype)
+{
+  using namespace blender;
+  if (layers.is_empty()) {
+    return;
+  }
+  Vector<GreasePencilFrame *> frames;
+  frames.reserve(layers.size());
+  for (bke::greasepencil::Layer *layer : layers) {
+    BLI_assert(layer != nullptr);
+    GreasePencilFrame *frame = layer->add_frame(frame_number, duration);
+    if (frame != nullptr) {
+      frames.append(frame);
+    }
+  }
+
+  if (frames.is_empty()) {
+    return;
+  }
+
+  this->add_empty_drawings(frames.size());
+  const IndexRange new_drawings = this->drawings().index_range().take_back(frames.size());
+  for (const int frame_i : frames.index_range()) {
+    GreasePencilFrame *frame = frames[frame_i];
+    frame->drawing_index = new_drawings[frame_i];
+    frame->type = int8_t(keytype);
+  }
+}
+
 bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
                                           const int src_frame_number,
                                           const int dst_frame_number,
@@ -2558,16 +2595,22 @@ void GreasePencil::add_layers_with_empty_drawings_for_eval(const int num)
   using namespace blender;
   using namespace blender::bke::greasepencil;
   const int old_drawings_num = this->drawing_array_num;
+  const int old_layers_num = this->layers().size();
   this->add_empty_drawings(num);
-  for (const int i : IndexRange(num)) {
-    const int drawing_i = old_drawings_num + i;
-    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(this->drawing(drawing_i))->wrap();
-    Layer &layer = this->add_layer(std::to_string(i));
-    GreasePencilFrame *frame = layer.add_frame(this->runtime->eval_frame);
-    BLI_assert(frame);
-    frame->drawing_index = drawing_i;
-    drawing.add_user();
-  }
+  this->add_layers_for_eval(num);
+  threading::parallel_for(IndexRange(num), 256, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int new_drawing_i = old_drawings_num + i;
+      const int new_layer_i = old_layers_num + i;
+      Drawing &drawing =
+          reinterpret_cast<GreasePencilDrawing *>(this->drawing(new_drawing_i))->wrap();
+      Layer &layer = this->layer(new_layer_i);
+      GreasePencilFrame *frame = layer.add_frame(this->runtime->eval_frame);
+      BLI_assert(frame);
+      frame->drawing_index = new_drawing_i;
+      drawing.add_user();
+    }
+  });
 }
 
 void GreasePencil::remove_drawings_with_no_users()
@@ -3080,10 +3123,21 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   blender::bke::greasepencil::Layer &new_layer = this->add_layer(name);
-  /* Hide masks by default. */
-  new_layer.base.flag |= GP_LAYER_TREE_NODE_HIDE_MASKS;
   move_node_into(new_layer.as_node(), parent_group);
   return new_layer;
+}
+
+void GreasePencil::add_layers_for_eval(const int num_new_layers)
+{
+  using namespace blender;
+  const int num_layers = this->layers().size();
+  CustomData_realloc(&layers_data, num_layers, num_layers + num_new_layers);
+  for ([[maybe_unused]] const int i : IndexRange(num_new_layers)) {
+    bke::greasepencil::Layer *new_layer = MEM_new<bke::greasepencil::Layer>(__func__);
+    /* Hide masks by default. */
+    new_layer->base.flag |= GP_LAYER_TREE_NODE_HIDE_MASKS;
+    this->root_group().add_node(new_layer->as_node());
+  }
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::duplicate_layer(
