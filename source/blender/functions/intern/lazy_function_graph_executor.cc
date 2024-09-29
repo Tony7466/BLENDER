@@ -130,45 +130,6 @@ struct OutputState {
   void *value = nullptr;
 };
 
-struct DynamicInputState : public InputState {
-  const CPPType *type = nullptr;
-};
-
-struct DynamicOutputState : public OutputState {
-  const CPPType *type = nullptr;
-};
-
-struct DynamicsState {
-  std::mutex mutex;
-
-  Map<Slot, DynamicInputState *> input_states;
-  Map<Slot, DynamicOutputState *> output_states;
-
-  DynamicInputState *get_input(const Slot slot)
-  {
-    std::lock_guard lock{this->mutex};
-    return this->input_states.lookup(slot);
-  }
-
-  DynamicOutputState *get_output(const Slot slot)
-  {
-    std::lock_guard lock{this->mutex};
-    return this->output_states.lookup(slot);
-  }
-
-  void add_input(const Slot slot, DynamicInputState *state)
-  {
-    std::lock_guard lock{this->mutex};
-    this->input_states.add_new(slot, state);
-  }
-
-  void add_output(const Slot slot, DynamicOutputState *state)
-  {
-    std::lock_guard lock{this->mutex};
-    this->output_states.add_new(slot, state);
-  }
-};
-
 struct NodeState {
   /**
    * Needs to be locked when any data in this state is accessed that is not explicitly marked as
@@ -223,8 +184,6 @@ struct NodeState {
    * Custom storage of the node.
    */
   void *storage = nullptr;
-
-  DynamicsState *dynamics = nullptr;
 };
 
 /**
@@ -368,8 +327,6 @@ class Executor {
    * Set to false when the first execution ends.
    */
   bool is_first_execution_ = true;
-
-  Map<int, int> dynamic_outputs_by_main_output_;
 
   friend GraphExecutorLFParams;
 
@@ -517,11 +474,6 @@ class Executor {
       const InputSocket &input_socket = node.input(i);
       this->destruct_input_value_if_exists(input_state, input_socket.type());
     }
-    if (node_state.dynamics) {
-      for (DynamicInputState *input_state : node_state.dynamics->input_states.values()) {
-        this->destruct_input_value_if_exists(*input_state, *input_state->type);
-      }
-    }
     std::destroy_at(&node_state);
   }
 
@@ -531,38 +483,26 @@ class Executor {
   void schedule_for_new_output_usages(CurrentTask &current_task, const LocalData &local_data)
   {
     for (const int graph_output_index : self_.graph_outputs_.index_range()) {
-      const int dynamic_num = dynamic_outputs_by_main_output_.lookup_default(graph_output_index,
-                                                                             0);
-      this->schedule_for_new_output_usage(current_task, local_data, Slot(graph_output_index));
-      for (const int i : IndexRange(dynamic_num)) {
-        this->schedule_for_new_output_usage(current_task, local_data, Slot(graph_output_index, i));
+      if (params_->output_was_set(graph_output_index)) {
+        continue;
       }
+      const ValueUsage output_usage = params_->get_output_usage(graph_output_index);
+      if (output_usage == ValueUsage::Maybe) {
+        continue;
+      }
+      const InputSocket &socket = *self_.graph_outputs_[graph_output_index];
+      const Node &node = socket.node();
+      NodeState &node_state = *node_states_[node.index_in_graph()];
+      this->with_locked_node(
+          node, node_state, current_task, local_data, [&](LockedNode &locked_node) {
+            if (output_usage == ValueUsage::Used) {
+              this->set_input_required(locked_node, socket);
+            }
+            else {
+              this->set_input_unused(locked_node, socket);
+            }
+          });
     }
-  }
-
-  void schedule_for_new_output_usage(CurrentTask &current_task,
-                                     const LocalData &local_data,
-                                     const Slot graph_output_slot)
-  {
-    if (params_->output_was_set(graph_output_slot)) {
-      return;
-    }
-    const ValueUsage output_usage = params_->get_output_usage(graph_output_slot);
-    if (output_usage == ValueUsage::Maybe) {
-      return;
-    }
-    const InputSocket &socket = *self_.graph_outputs_[graph_output_slot.main_index()];
-    const Node &node = socket.node();
-    NodeState &node_state = *node_states_[node.index_in_graph()];
-    this->with_locked_node(
-        node, node_state, current_task, local_data, [&](LockedNode &locked_node) {
-          if (output_usage == ValueUsage::Used) {
-            this->set_input_required(locked_node, socket);
-          }
-          else {
-            this->set_input_unused(locked_node, socket);
-          }
-        });
   }
 
   void set_defaulted_graph_outputs(const LocalData &local_data)
@@ -1402,43 +1342,43 @@ class GraphExecutorLFParams final : public Params {
     return executor_.get_local_data();
   }
 
-  void *try_get_input_data_ptr_impl(const Slot slot) const override
+  void *try_get_input_data_ptr_impl(const int index) const override
   {
-    const InputState &input_state = node_state_.inputs[slot.main_index()];
+    const InputState &input_state = node_state_.inputs[index];
     if (input_state.was_ready_for_execution) {
       return input_state.value;
     }
     return nullptr;
   }
 
-  void *try_get_input_data_ptr_or_request_impl(const Slot slot) override
+  void *try_get_input_data_ptr_or_request_impl(const int index) override
   {
-    const InputState &input_state = node_state_.inputs[slot.main_index()];
+    const InputState &input_state = node_state_.inputs[index];
     if (input_state.was_ready_for_execution) {
       return input_state.value;
     }
     return executor_.set_input_required_during_execution(
-        node_, node_state_, slot.main_index(), current_task_, this->get_local_data());
+        node_, node_state_, index, current_task_, this->get_local_data());
   }
 
-  void *get_output_data_ptr_impl(const Slot slot) override
+  void *get_output_data_ptr_impl(const int index) override
   {
-    OutputState &output_state = node_state_.outputs[slot.main_index()];
+    OutputState &output_state = node_state_.outputs[index];
     BLI_assert(!output_state.has_been_computed);
     if (output_state.value == nullptr) {
       LinearAllocator<> &allocator = *this->get_local_data().allocator;
-      const CPPType &type = node_.output(slot.main_index()).type();
+      const CPPType &type = node_.output(index).type();
       output_state.value = allocator.allocate(type.size(), type.alignment());
     }
     return output_state.value;
   }
 
-  void output_set_impl(const Slot slot) override
+  void output_set_impl(const int index) override
   {
-    OutputState &output_state = node_state_.outputs[slot.main_index()];
+    OutputState &output_state = node_state_.outputs[index];
     BLI_assert(!output_state.has_been_computed);
     BLI_assert(output_state.value != nullptr);
-    const OutputSocket &output_socket = node_.output(slot.main_index());
+    const OutputSocket &output_socket = node_.output(index);
     executor_.forward_value_to_linked_inputs(output_socket,
                                              {output_socket.type(), output_state.value},
                                              current_task_,
@@ -1447,34 +1387,22 @@ class GraphExecutorLFParams final : public Params {
     output_state.has_been_computed = true;
   }
 
-  bool output_was_set_impl(const Slot slot) const override
+  bool output_was_set_impl(const int index) const override
   {
-    const OutputState &output_state = node_state_.outputs[slot.main_index()];
+    const OutputState &output_state = node_state_.outputs[index];
     return output_state.has_been_computed;
   }
 
-  ValueUsage get_output_usage_impl(const Slot slot) const override
+  ValueUsage get_output_usage_impl(const int index) const override
   {
-    const OutputState &output_state = node_state_.outputs[slot.main_index()];
+    const OutputState &output_state = node_state_.outputs[index];
     return output_state.usage_for_execution;
   }
 
-  void set_input_unused_impl(const Slot slot) override
+  void set_input_unused_impl(const int index) override
   {
     executor_.set_input_unused_during_execution(
-        node_, node_state_, slot.main_index(), current_task_, this->get_local_data());
-  }
-
-  int get_dynamic_inputs_num_impl(const int main_input) const
-  {
-    /* TODO */
-    return 0;
-  }
-
-  std::optional<IndexRange> try_add_dynamic_outputs_impl(const int main_output, const int amount)
-  {
-    /* TODO */
-    return std::nullopt;
+        node_, node_state_, index, current_task_, this->get_local_data());
   }
 
   bool try_enable_multi_threading_impl() override

@@ -35,25 +35,25 @@ class LazyFunctionForUnbundle : public LazyFunction {
     }
   }
 
-  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const final
+  void execute_impl(lf::Params & /*params*/, const lf::Context & /*context*/) const final
   {
-    const int outputs_num = node_.output_sockets().size();
-    const int bundle_param = 0;
+    // const int outputs_num = node_.output_sockets().size();
+    // const int bundle_param = 0;
 
-    BLI_assert(params.get_dynamic_inputs_num(bundle_param) == outputs_num);
+    // BLI_assert(params.get_dynamic_inputs_num(bundle_param) == outputs_num);
 
-    for (const int i : IndexRange(outputs_num)) {
-      const lf::Slot input_slot{bundle_param, i};
-      const lf::Slot output_slot{i};
-      if (params.get_output_usage(output_slot) != lf::ValueUsage::Used) {
-        continue;
-      }
-      if (GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(
-              input_slot))
-      {
-        params.set_output(output_slot, std::move(*geometry));
-      }
-    }
+    // for (const int i : IndexRange(outputs_num)) {
+    //   const lf::Slot input_slot{bundle_param, i};
+    //   const lf::Slot output_slot{i};
+    //   if (params.get_output_usage(output_slot) != lf::ValueUsage::Used) {
+    //     continue;
+    //   }
+    //   if (GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(
+    //           input_slot))
+    //   {
+    //     params.set_output(output_slot, std::move(*geometry));
+    //   }
+    // }
   }
 };
 

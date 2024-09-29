@@ -126,45 +126,6 @@ struct Context {
   }
 };
 
-class Slot {
- private:
-  int main_index_;
-  int dynamic_index_;
-
- public:
-  Slot(const int main_index, const int dynamic_index = -1)
-      : main_index_(main_index), dynamic_index_(dynamic_index)
-  {
-  }
-
-  bool is_main() const
-  {
-    return dynamic_index_ == -1;
-  }
-
-  bool is_dynamic() const
-  {
-    return !this->is_main();
-  }
-
-  int main_index() const
-  {
-    return main_index_;
-  }
-
-  int dynamic_index() const
-  {
-    return dynamic_index_;
-  }
-
-  uint64_t hash() const
-  {
-    return get_default_hash(main_index_, dynamic_index_);
-  }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_2(Slot, main_index_, dynamic_index_)
-};
-
 /**
  * Defines the calling convention for a lazy-function. During execution, a lazy-function retrieves
  * its inputs and sets the outputs through #Params.
@@ -188,13 +149,13 @@ class Params {
    *
    * The #LazyFunction must leave returned object in an initialized state, but can move from it.
    */
-  void *try_get_input_data_ptr(Slot slot) const;
+  void *try_get_input_data_ptr(int index) const;
 
   /**
    * Same as #try_get_input_data_ptr, but if the data is not yet available, request it. This makes
    * sure that the data will be available in a future execution of the #LazyFunction.
    */
-  void *try_get_input_data_ptr_or_request(Slot slot);
+  void *try_get_input_data_ptr_or_request(int index);
 
   /**
    * Get a pointer to where the output value should be stored.
@@ -202,39 +163,39 @@ class Params {
    * The #LazyFunction is responsible for initializing the value.
    * After the output has been initialized to its final value, #output_set has to be called.
    */
-  void *get_output_data_ptr(Slot slot);
+  void *get_output_data_ptr(int index);
 
   /**
    * Call this after the output value is initialized. After this is called, the value must not be
    * touched anymore. It may be moved or destructed immediately.
    */
-  void output_set(Slot slot);
+  void output_set(int index);
 
   /**
    * Allows the #LazyFunction to check whether an output was computed already without keeping
    * track of it itself.
    */
-  bool output_was_set(Slot slot) const;
+  bool output_was_set(int index) const;
 
   /**
    * Can be used to detect which outputs have to be computed.
    */
-  ValueUsage get_output_usage(Slot slot) const;
+  ValueUsage get_output_usage(int index) const;
 
   /**
    * Tell the caller of the #LazyFunction that a specific input will definitely not be used.
    * Only an input that was not #ValueUsage::Used can become unused.
    */
-  void set_input_unused(Slot slot);
+  void set_input_unused(int index);
 
   /**
    * Typed utility methods that wrap the methods above.
    */
-  template<typename T> T extract_input(Slot slot);
-  template<typename T> T &get_input(Slot slot) const;
-  template<typename T> T *try_get_input_data_ptr(Slot slot) const;
-  template<typename T> T *try_get_input_data_ptr_or_request(Slot slot);
-  template<typename T> void set_output(Slot slot, T &&value);
+  template<typename T> T extract_input(int index);
+  template<typename T> T &get_input(int index) const;
+  template<typename T> T *try_get_input_data_ptr(int index) const;
+  template<typename T> T *try_get_input_data_ptr_or_request(int index);
+  template<typename T> void set_output(int index, T &&value);
 
   /**
    * Returns true when the lazy-function is now allowed to use multi-threading when interacting
@@ -242,32 +203,22 @@ class Params {
    */
   bool try_enable_multi_threading();
 
-  int get_dynamic_inputs_num(int main_input) const;
-  std::optional<IndexRange> try_add_dynamic_outputs(int main_output, Span<const CPPType *> types);
-
  private:
   void assert_valid_thread() const;
-
-  bool is_valid_input_slot(const Slot slot) const;
-  bool is_valid_output_slot(const Slot slot) const;
 
   /**
    * Methods that need to be implemented by subclasses. Those are separate from the non-virtual
    * methods above to make it easy to insert additional debugging logic on top of the
    * implementations.
    */
-  virtual void *try_get_input_data_ptr_impl(Slot slot) const = 0;
-  virtual void *try_get_input_data_ptr_or_request_impl(Slot slot) = 0;
-  virtual void *get_output_data_ptr_impl(Slot slot) = 0;
-  virtual void output_set_impl(Slot slot) = 0;
-  virtual bool output_was_set_impl(Slot slot) const = 0;
-  virtual ValueUsage get_output_usage_impl(Slot slot) const = 0;
-  virtual void set_input_unused_impl(Slot slot) = 0;
+  virtual void *try_get_input_data_ptr_impl(int index) const = 0;
+  virtual void *try_get_input_data_ptr_or_request_impl(int index) = 0;
+  virtual void *get_output_data_ptr_impl(int index) = 0;
+  virtual void output_set_impl(int index) = 0;
+  virtual bool output_was_set_impl(int index) const = 0;
+  virtual ValueUsage get_output_usage_impl(int index) const = 0;
+  virtual void set_input_unused_impl(int index) = 0;
   virtual bool try_enable_multi_threading_impl();
-
-  virtual int get_dynamic_inputs_num_impl(int main_input) const;
-  virtual std::optional<IndexRange> try_add_dynamic_outputs_impl(int main_output,
-                                                                 Span<const CPPType *> types);
 };
 
 /**
@@ -435,87 +386,87 @@ inline Params::Params(const LazyFunction &fn,
 {
 }
 
-inline void *Params::try_get_input_data_ptr(const Slot slot) const
+inline void *Params::try_get_input_data_ptr(const int index) const
 {
-  BLI_assert(this->is_valid_input_slot(slot));
-  return this->try_get_input_data_ptr_impl(slot);
+  BLI_assert(index >= 0 && index < fn_.inputs().size());
+  return this->try_get_input_data_ptr_impl(index);
 }
 
-inline void *Params::try_get_input_data_ptr_or_request(const Slot slot)
+inline void *Params::try_get_input_data_ptr_or_request(const int index)
 {
-  BLI_assert(this->is_valid_input_slot(slot));
+  BLI_assert(index >= 0 && index < fn_.inputs().size());
   this->assert_valid_thread();
-  return this->try_get_input_data_ptr_or_request_impl(slot);
+  return this->try_get_input_data_ptr_or_request_impl(index);
 }
 
-inline void *Params::get_output_data_ptr(const Slot slot)
+inline void *Params::get_output_data_ptr(const int index)
 {
-  BLI_assert(this->is_valid_output_slot(slot));
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
   this->assert_valid_thread();
-  return this->get_output_data_ptr_impl(slot);
+  return this->get_output_data_ptr_impl(index);
 }
 
-inline void Params::output_set(const Slot slot)
+inline void Params::output_set(const int index)
 {
-  BLI_assert(this->is_valid_output_slot(slot));
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
   this->assert_valid_thread();
-  this->output_set_impl(slot);
+  this->output_set_impl(index);
 }
 
-inline bool Params::output_was_set(const Slot slot) const
+inline bool Params::output_was_set(const int index) const
 {
-  BLI_assert(this->is_valid_output_slot(slot));
-  return this->output_was_set_impl(slot);
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  return this->output_was_set_impl(index);
 }
 
-inline ValueUsage Params::get_output_usage(const Slot slot) const
+inline ValueUsage Params::get_output_usage(const int index) const
 {
-  BLI_assert(this->is_valid_output_slot(slot));
-  return this->get_output_usage_impl(slot);
+  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  return this->get_output_usage_impl(index);
 }
 
-inline void Params::set_input_unused(const Slot slot)
+inline void Params::set_input_unused(const int index)
 {
-  BLI_assert(this->is_valid_input_slot(slot));
+  BLI_assert(index >= 0 && index < fn_.inputs().size());
   this->assert_valid_thread();
-  this->set_input_unused_impl(slot);
+  this->set_input_unused_impl(index);
 }
 
-template<typename T> inline T Params::extract_input(const Slot slot)
+template<typename T> inline T Params::extract_input(const int index)
 {
   this->assert_valid_thread();
-  void *data = this->try_get_input_data_ptr(slot);
+  void *data = this->try_get_input_data_ptr(index);
   BLI_assert(data != nullptr);
   T return_value = std::move(*static_cast<T *>(data));
   return return_value;
 }
 
-template<typename T> inline T &Params::get_input(const Slot slot) const
+template<typename T> inline T &Params::get_input(const int index) const
 {
-  void *data = this->try_get_input_data_ptr(slot);
+  void *data = this->try_get_input_data_ptr(index);
   BLI_assert(data != nullptr);
   return *static_cast<T *>(data);
 }
 
-template<typename T> inline T *Params::try_get_input_data_ptr(const Slot slot) const
+template<typename T> inline T *Params::try_get_input_data_ptr(const int index) const
 {
   this->assert_valid_thread();
-  return static_cast<T *>(this->try_get_input_data_ptr(slot));
+  return static_cast<T *>(this->try_get_input_data_ptr(index));
 }
 
-template<typename T> inline T *Params::try_get_input_data_ptr_or_request(const Slot slot)
+template<typename T> inline T *Params::try_get_input_data_ptr_or_request(const int index)
 {
   this->assert_valid_thread();
-  return static_cast<T *>(this->try_get_input_data_ptr_or_request(slot));
+  return static_cast<T *>(this->try_get_input_data_ptr_or_request(index));
 }
 
-template<typename T> inline void Params::set_output(const Slot slot, T &&value)
+template<typename T> inline void Params::set_output(const int index, T &&value)
 {
   using DecayT = std::decay_t<T>;
   this->assert_valid_thread();
-  void *data = this->get_output_data_ptr(slot);
+  void *data = this->get_output_data_ptr(index);
   new (data) DecayT(std::forward<T>(value));
-  this->output_set(slot);
+  this->output_set(index);
 }
 
 inline bool Params::try_enable_multi_threading()
@@ -540,29 +491,6 @@ inline void Params::assert_valid_thread() const
     BLI_assert_unreachable();
   }
 #endif
-}
-
-inline int Params::get_dynamic_inputs_num(const int main_input) const
-{
-  BLI_assert(this->is_valid_input_slot(main_input));
-  return this->get_dynamic_inputs_num_impl(main_input);
-}
-
-inline std::optional<IndexRange> Params::try_add_dynamic_outputs(const int main_output,
-                                                                 const Span<const CPPType *> types)
-{
-  BLI_assert(this->is_valid_output_slot(main_output));
-  return this->try_add_dynamic_outputs_impl(main_output, types);
-}
-
-inline bool Params::is_valid_input_slot(const Slot slot) const
-{
-  return slot.main_index() >= 0 && slot.main_index() < fn_.inputs().size();
-}
-
-inline bool Params::is_valid_output_slot(const Slot slot) const
-{
-  return slot.main_index() >= 0 && slot.main_index() < fn_.outputs().size();
 }
 
 /** \} */
