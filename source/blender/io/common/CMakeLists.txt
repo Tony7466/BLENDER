@@ -19,6 +19,7 @@ set(SRC
   intern/orientation.cc
   intern/path_util.cc
   intern/subdiv_disabler.cc
+  intern/unit_type.cc
 
   IO_abstract_hierarchy_iterator.h
   IO_dupli_persistent_id.hh
@@ -27,6 +28,7 @@ set(SRC
   IO_path_util_types.hh
   IO_subdiv_disabler.hh
   IO_types.hh
+  IO_unit_type.hh
   intern/dupli_parent_finder.hh
 )
 

@@ -14,6 +14,8 @@
 
 #include "IO_orientation.hh"
 
+#include "IO_unit_type.hh"
+
 struct Mesh;
 struct bContext;
 struct ReportList;
@@ -37,6 +39,7 @@ struct STLExportParams {
   eIOAxis forward_axis;
   eIOAxis up_axis;
   float global_scale;
+  UnitType file_unit_type;
   bool export_selected_objects;
   bool use_scene_unit;
   bool apply_modifiers;

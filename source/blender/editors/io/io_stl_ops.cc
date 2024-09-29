@@ -33,6 +33,7 @@
 #  include "IO_stl.hh"
 #  include "io_stl_ops.hh"
 #  include "io_utils.hh"
+#  include <intern/unit_type.cc>
 
 static int wm_stl_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
@@ -52,6 +53,7 @@ static int wm_stl_export_execute(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", export_params.filepath);
   export_params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
   export_params.up_axis = eIOAxis(RNA_enum_get(op->ptr, "up_axis"));
+  export_params.file_unit_type = UnitType(RNA_enum_get(op->ptr, "file_unit_type"));
   export_params.global_scale = RNA_float_get(op->ptr, "global_scale");
   export_params.apply_modifiers = RNA_boolean_get(op->ptr, "apply_modifiers");
   export_params.export_selected_objects = RNA_boolean_get(op->ptr, "export_selected_objects");
@@ -91,8 +93,20 @@ static void wm_stl_export_draw(bContext *C, wmOperator *op)
           sub, ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
     }
 
-    uiItemR(sub, ptr, "global_scale", UI_ITEM_NONE, IFACE_("Scale"), ICON_NONE);
-    uiItemR(sub, ptr, "use_scene_unit", UI_ITEM_NONE, IFACE_("Scene Unit"), ICON_NONE);
+    uiItemR(sub, ptr, "file_unit_type", UI_ITEM_NONE, IFACE_("File Unit"), ICON_NONE);
+    /* The scale input field should only be enabled, if unit type is set to CUSTOM */
+    uiLayout *subScale = uiLayoutColumn(sub, true);
+    PropertyRNA *prop = RNA_struct_find_property(ptr, "file_unit_type");
+    int selected_file_unit_type = RNA_property_enum_get(ptr, prop);
+    if (selected_file_unit_type == IO_UNIT_TYPE_CUSTOM) {
+      uiLayoutSetEnabled(subScale, true);
+    }
+    else {
+      uiLayoutSetEnabled(subScale, false);
+    }
+    uiItemR(subScale, ptr, "global_scale", UI_ITEM_NONE, IFACE_("Scale"), ICON_NONE);
+    uiItemR(subScale, ptr, "use_scene_unit", UI_ITEM_NONE, IFACE_("Scene Unit"), ICON_NONE);
+
     uiItemR(sub, ptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward"), ICON_NONE);
     uiItemR(sub, ptr, "up_axis", UI_ITEM_NONE, IFACE_("Up"), ICON_NONE);
   }
@@ -169,7 +183,23 @@ void WM_OT_stl_export(wmOperatorType *ot)
                         "Export only objects from this collection (and its children)");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
-  RNA_def_float(ot->srna, "global_scale", 1.0f, 1e-6f, 1e6f, "Scale", "", 0.001f, 1000.0f);
+  prop = RNA_def_enum(ot->srna,
+                      "file_unit_type",
+                      io_unit_type,
+                      IO_UNIT_TYPE_METER,
+                      "File Unit",
+                      "Unit used for the output file as STL is a unitless file format. Usually "
+                      "millimieters is assumed");
+  RNA_def_property_update_runtime(prop, io_ui_unit_type_export_update);
+  RNA_def_float(ot->srna,
+                "global_scale",
+                1.0f,
+                1e-6f,
+                1e6f,
+                "Scale",
+                "Scale value used when 'File Unit' is set to 'CUSTOM'",
+                0.001f,
+                1000.0f);
   RNA_def_boolean(ot->srna,
                   "use_scene_unit",
                   false,
@@ -242,8 +272,21 @@ static void ui_stl_import_settings(const bContext *C, uiLayout *layout, PointerR
 
   if (uiLayout *panel = uiLayoutPanel(C, layout, "STL_import_general", false, IFACE_("General"))) {
     uiLayout *col = uiLayoutColumn(panel, false);
-    uiItemR(col, ptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "use_scene_unit", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+    uiItemR(col, ptr, "file_unit_type", UI_ITEM_NONE, IFACE_("File Unit"), ICON_NONE);
+    /* The scale input field should only be enabled, if unit type is set to CUSTOM */
+    uiLayout *subScale = uiLayoutColumn(col, true);
+    PropertyRNA *prop = RNA_struct_find_property(ptr, "file_unit_type");
+    int selected_file_unit_type = RNA_property_enum_get(ptr, prop);
+    if (selected_file_unit_type == IO_UNIT_TYPE_CUSTOM) {
+      uiLayoutSetEnabled(subScale, true);
+    }
+    else {
+      uiLayoutSetEnabled(subScale, false);
+    }
+    uiItemR(subScale, ptr, "global_scale", UI_ITEM_NONE, IFACE_("Scale"), ICON_NONE);
+    uiItemR(subScale, ptr, "use_scene_unit", UI_ITEM_NONE, IFACE_("Scene Unit"), ICON_NONE);
+
     uiItemR(col, ptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward Axis"), ICON_NONE);
     uiItemR(col, ptr, "up_axis", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
@@ -284,7 +327,23 @@ void WM_OT_stl_import(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  RNA_def_float(ot->srna, "global_scale", 1.0f, 1e-6f, 1e6f, "Scale", "", 0.001f, 1000.0f);
+  prop = RNA_def_enum(ot->srna,
+                      "file_unit_type",
+                      io_unit_type,
+                      IO_UNIT_TYPE_METER,
+                      "File Unit",
+                      "Unit used in the input file as STL is a unitless file format. Usually "
+                      "millimieters is assumed");
+  RNA_def_property_update_runtime(prop, io_ui_unit_type_export_update);
+  RNA_def_float(ot->srna,
+                "global_scale",
+                1.0f,
+                1e-6f,
+                1e6f,
+                "Scale",
+                "Scale value used when 'File Unit' is set to 'CUSTOM'",
+                0.001f,
+                1000.0f);
   RNA_def_boolean(ot->srna,
                   "use_scene_unit",
                   false,
