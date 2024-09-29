@@ -17,10 +17,6 @@
 #define gpu_BaseInstance gl_BaseInstanceARB
 #define gpu_InstanceIndex (gl_InstanceID + gpu_BaseInstance)
 
-/* derivative signs. */
-#define DFDX_SIGN 1.0
-#define DFDY_SIGN 1.0
-
 /* Type definitions. */
 /* int implicitly cast to bool in MSL. */
 using bool32_t = int32_t;
