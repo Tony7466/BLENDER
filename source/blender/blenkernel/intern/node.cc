@@ -59,6 +59,8 @@
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_cryptomatte.h"
+#include "BKE_geometry_nodes_bundle.hh"
+#include "BKE_geometry_nodes_closure.hh"
 #include "BKE_global.hh"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
@@ -371,6 +373,8 @@ static void library_foreach_node_socket(bNodeSocket *sock, LibraryForeachIDData 
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
     case SOCK_MENU:
+    case SOCK_BUNDLE:
+    case SOCK_CLOSURE:
       break;
   }
 }
@@ -738,6 +742,8 @@ static void write_node_socket_default_value(BlendWriter *writer, const bNodeSock
       break;
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_BUNDLE:
+    case SOCK_CLOSURE:
       BLI_assert_unreachable();
       break;
   }
@@ -979,6 +985,8 @@ static bool is_node_socket_supported(const bNodeSocket *sock)
     case SOCK_ROTATION:
     case SOCK_MENU:
     case SOCK_MATRIX:
+    case SOCK_BUNDLE:
+    case SOCK_CLOSURE:
       return true;
   }
   return false;
@@ -1964,6 +1972,8 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_BUNDLE:
+    case SOCK_CLOSURE:
       break;
   }
 }
@@ -2012,6 +2022,8 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_BUNDLE:
+    case SOCK_CLOSURE:
       break;
   }
   return false;
@@ -2070,6 +2082,8 @@ void node_modify_socket_type(bNodeTree *ntree,
         case SOCK_TEXTURE:
         case SOCK_MATERIAL:
         case SOCK_MENU:
+        case SOCK_BUNDLE:
+        case SOCK_CLOSURE:
           break;
       }
     }
@@ -2213,6 +2227,10 @@ const char *node_static_socket_type(const int type, const int subtype)
       return "NodeSocketMaterial";
     case SOCK_MENU:
       return "NodeSocketMenu";
+    case SOCK_BUNDLE:
+      return "NodeSocketBundle";
+    case SOCK_CLOSURE:
+      return "NodeSocketClosure";
     case SOCK_CUSTOM:
       break;
   }
@@ -2309,6 +2327,10 @@ const char *node_static_socket_interface_type_new(const int type, const int subt
       return "NodeTreeInterfaceSocketMaterial";
     case SOCK_MENU:
       return "NodeTreeInterfaceSocketMenu";
+    case SOCK_BUNDLE:
+      return "NodeTreeInterfaceSocketBundle";
+    case SOCK_CLOSURE:
+      return "NodeTreeInterfaceSocketClosure";
     case SOCK_CUSTOM:
       break;
   }
@@ -2350,6 +2372,10 @@ const char *node_static_socket_label(const int type, const int /*subtype*/)
       return "Material";
     case SOCK_MENU:
       return "Menu";
+    case SOCK_BUNDLE:
+      return "Bundle";
+    case SOCK_CLOSURE:
+      return "Closure";
     case SOCK_CUSTOM:
       break;
   }
@@ -2836,6 +2862,8 @@ static void *socket_value_storage(bNodeSocket &socket)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_BUNDLE:
+    case SOCK_CLOSURE:
       /* Unmovable types. */
       break;
   }
@@ -4460,6 +4488,12 @@ const CPPType *socket_type_to_geo_nodes_base_cpp_type(const eNodeSocketDatatype 
     case SOCK_MATRIX:
       cpp_type = &CPPType::get<float4x4>();
       break;
+    case SOCK_BUNDLE:
+      cpp_type = &CPPType::get<Bundle>();
+      break;
+    case SOCK_CLOSURE:
+      cpp_type = &CPPType::get<Closure>();
+      break;
     default:
       cpp_type = slow_socket_type_to_geo_nodes_base_cpp_type(type);
       break;
@@ -4493,6 +4527,12 @@ std::optional<eNodeSocketDatatype> geo_nodes_base_cpp_type_to_socket_type(const 
   }
   if (type.is<std::string>()) {
     return SOCK_STRING;
+  }
+  if (type.is<Bundle>()) {
+    return SOCK_BUNDLE;
+  }
+  if (type.is<Closure>()) {
+    return SOCK_CLOSURE;
   }
   return std::nullopt;
 }

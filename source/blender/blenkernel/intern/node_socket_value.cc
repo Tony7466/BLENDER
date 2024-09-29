@@ -9,6 +9,8 @@
 #include <sstream>
 
 #include "BKE_customdata.hh"
+#include "BKE_geometry_nodes_bundle.hh"
+#include "BKE_geometry_nodes_closure.hh"
 #include "BKE_node.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_volume_grid.hh"
@@ -60,6 +62,12 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
   if constexpr (is_same_any_v<T, std::string>) {
     return SOCK_STRING;
   }
+  if constexpr (is_same_any_v<T, Bundle>) {
+    return SOCK_BUNDLE;
+  }
+  if constexpr (is_same_any_v<T, Closure>) {
+    return SOCK_CLOSURE;
+  }
   return std::nullopt;
 }
 
@@ -88,6 +96,10 @@ static bool static_type_is_base_socket_type(const eNodeSocketDatatype socket_typ
       return std::is_same_v<T, std::string>;
     case SOCK_MENU:
       return std::is_same_v<T, int>;
+    case SOCK_BUNDLE:
+      return std::is_same_v<T, Bundle>;
+    case SOCK_CLOSURE:
+      return std::is_same_v<T, Closure>;
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_OBJECT:
@@ -252,6 +264,14 @@ void SocketValueVariant::store_single(const eNodeSocketDatatype socket_type, con
       value_.emplace<std::string>(*static_cast<const std::string *>(value));
       break;
     }
+    case SOCK_BUNDLE: {
+      value_.emplace<Bundle>(*static_cast<const Bundle *>(value));
+      break;
+    }
+    case SOCK_CLOSURE: {
+      value_.emplace<Closure>(*static_cast<const Closure *>(value));
+      break;
+    }
     default: {
       BLI_assert_unreachable();
       break;
@@ -343,6 +363,10 @@ void *SocketValueVariant::allocate_single(const eNodeSocketDatatype socket_type)
       return value_.allocate<std::string>();
     case SOCK_MENU:
       return value_.allocate<int>();
+    case SOCK_BUNDLE:
+      return value_.allocate<Bundle>();
+    case SOCK_CLOSURE:
+      return value_.allocate<Closure>();
     default: {
       BLI_assert_unreachable();
       return nullptr;
@@ -401,6 +425,8 @@ INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(blender::math::Quaternion)
 
 INSTANTIATE(std::string)
 INSTANTIATE(fn::GField)
+INSTANTIATE(blender::bke::Bundle)
+INSTANTIATE(blender::bke::Closure)
 
 INSTANTIATE(float4x4)
 INSTANTIATE(fn::Field<float4x4>)

@@ -364,6 +364,16 @@ static SocketDeclarationPtr declaration_for_interface_socket(
         dst = std::move(value);
         break;
       }
+      case SOCK_BUNDLE: {
+        auto value = std::make_unique<decl::Bundle>();
+        dst = std::move(value);
+        break;
+      }
+      case SOCK_CLOSURE: {
+        auto value = std::make_unique<decl::Closure>();
+        dst = std::move(value);
+        break;
+      }
       case SOCK_CUSTOM: {
         auto value = std::make_unique<decl::Custom>();
         value->init_socket_fn = get_init_socket_fn(ntree.tree_interface, io_socket);

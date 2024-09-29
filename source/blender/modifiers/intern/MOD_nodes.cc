@@ -874,7 +874,7 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
 
     IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, socket->identifier);
     if (property == nullptr) {
-      if (ELEM(type, SOCK_GEOMETRY, SOCK_MATRIX)) {
+      if (ELEM(type, SOCK_GEOMETRY, SOCK_MATRIX, SOCK_BUNDLE, SOCK_CLOSURE)) {
         geometry_socket_count++;
       }
       else {

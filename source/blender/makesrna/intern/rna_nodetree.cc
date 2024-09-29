@@ -92,6 +92,8 @@ const EnumPropertyItem rna_enum_node_socket_data_type_items[] = {
     {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
     {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
     {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
+    {SOCK_BUNDLE, "BUNDLE", 0, "Bundle", ""},
+    {SOCK_CLOSURE, "CLOSURE", 0, "Closure", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

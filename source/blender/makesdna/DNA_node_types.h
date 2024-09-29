@@ -270,6 +270,8 @@ typedef enum eNodeSocketDatatype {
   SOCK_ROTATION = 14,
   SOCK_MENU = 15,
   SOCK_MATRIX = 16,
+  SOCK_BUNDLE = 17,
+  SOCK_CLOSURE = 18,
 } eNodeSocketDatatype;
 
 /** Socket shape. */
