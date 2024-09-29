@@ -10,7 +10,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("A");
   b.add_input<decl::Geometry>("B");
-  b.add_output<decl::Geometry>("Bundle").propagate_all();
+  b.add_output<decl::Bundle>("Bundle");
 }
 
 class LazyFunctionForBundle : public LazyFunction {

@@ -8,7 +8,7 @@ namespace blender::nodes::node_geo_unbundle_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Bundle");
+  b.add_input<decl::Bundle>("Bundle");
   b.add_output<decl::Geometry>("A");
   b.add_output<decl::Geometry>("B");
 }
