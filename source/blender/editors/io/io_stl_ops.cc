@@ -183,13 +183,16 @@ void WM_OT_stl_export(wmOperatorType *ot)
                         "Export only objects from this collection (and its children)");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
-  prop = RNA_def_enum(ot->srna,
-                      "file_unit_type",
-                      io_unit_type,
-                      IO_UNIT_TYPE_METER,
-                      "File Unit",
-                      "Unit used for the output file as STL is a unitless file format. Usually "
-                      "millimieters is assumed");
+  prop = RNA_def_enum(
+      ot->srna,
+      "file_unit_type",
+      io_unit_type,
+      IO_UNIT_TYPE_METER,
+      "File Unit",
+      "Unit used for the output file as STL is a unitless file format. Usually "
+      "millimieters is assumed by most programs, however blender uses meters.\nThe choice depends "
+      "on the modelling scale, e.g. for 1m in blender to be perceived as 1m (equal to 1000mm) by "
+      "most other applications, set this option to 'Millimeters'");
   RNA_def_property_update_runtime(prop, io_ui_unit_type_export_update);
   RNA_def_float(ot->srna,
                 "global_scale",
@@ -333,8 +336,8 @@ void WM_OT_stl_import(wmOperatorType *ot)
                       IO_UNIT_TYPE_METER,
                       "File Unit",
                       "Unit used in the input file as STL is a unitless file format. Usually "
-                      "millimieters is assumed");
-  RNA_def_property_update_runtime(prop, io_ui_unit_type_export_update);
+                      "millimieters is assumed by most programs, however blender uses meters");
+  RNA_def_property_update_runtime(prop, io_ui_unit_type_import_update);
   RNA_def_float(ot->srna,
                 "global_scale",
                 1.0f,
