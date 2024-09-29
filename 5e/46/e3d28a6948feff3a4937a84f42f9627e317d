@@ -1,2 +1,3 @@
 Referenced by pull request #128278, Subdiv: Remove evaluator C-API wrapper
 Referenced by pull request #128318, Fix: Build error without OpenVDB
+Referenced by commit 774bf4892553004959b48acc34499c4a0ea8114a, Fix: Build error without OpenVDB
