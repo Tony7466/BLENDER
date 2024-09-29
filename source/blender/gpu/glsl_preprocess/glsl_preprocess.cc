@@ -41,8 +41,13 @@ int main(int argc, char **argv)
   bool first_comment = true;
   bool inside_comment = false;
 
+  int error = 0;
+
   std::string line;
+  size_t line_index = 0;
   while (std::getline(input_file, line)) {
+    line_index++;
+
     /* Remove licence headers (first comment). */
     if (line.rfind("/*", 0) == 0 && first_comment) {
       first_comment = false;
@@ -67,6 +72,22 @@ int main(int argc, char **argv)
         std::regex inout("(out|inout|in)\\s+(\\w+)\\s+(\\w+)");
         line = std::regex_replace(line, inout, "$1 $2 _$1_sta $3 _$1_end");
       }
+      {
+        /* Invalid matrix constructors (linting). */
+        std::regex matrix_cast(" (mat(\\d|\\dx\\d)|float\\dx\\d)\\([^,\\s\\d]+\\)");
+        std::smatch match;
+        if (std::regex_search(line, match, matrix_cast)) {
+          /* This only catches some invalid usage. For the rest, the CI will catch them. */
+          std::cerr << input_file_name << ':' << std::to_string(line_index) << ':'
+                    << std::to_string(line_index) << ':';
+          std::cerr << " error: Matrix cast is not cross API compatible. Use to_floatNxM to "
+                       "reshape the matrix or use other constructors instead.\n"
+                    << std::endl;
+          std::cerr << line << std::endl;
+          std::cerr << std::string(match.position(), ' ') << '^' << std::endl;
+          error = 1;
+        }
+      }
     }
 
     output_file << line << "\n";
@@ -75,5 +96,5 @@ int main(int argc, char **argv)
   input_file.close();
   output_file.close();
 
-  return 0;
+  return error;
 }
