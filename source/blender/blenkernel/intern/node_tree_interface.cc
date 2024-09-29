@@ -689,7 +689,7 @@ bool bNodeTreeInterfaceSocket::set_socket_type(const char *new_socket_type)
   }
   MEM_SAFE_FREE(this->socket_type);
 
-  this->socket_type = BLI_strdup(new_socket_type);
+  this->socket_type = BLI_strdup(idname);
   this->socket_data = socket_types::make_socket_data(new_socket_type);
 
   return true;
@@ -1060,7 +1060,7 @@ static bNodeTreeInterfaceSocket *make_socket(const int uid,
   new_socket->description = description.is_empty() ?
                                 nullptr :
                                 BLI_strdupn(description.data(), description.size());
-  new_socket->socket_type = BLI_strdupn(socket_type.data(), socket_type.size());
+  new_socket->socket_type = BLI_strdup(idname);
   new_socket->flag = flag;
 
   new_socket->socket_data = socket_types::make_socket_data(socket_type);

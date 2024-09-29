@@ -863,6 +863,7 @@ class NodeTreeMainUpdater {
       const std::optional<ContextInputInfo> context_info = required_context_inputs.pop_try(
           socket_context_identifier);
       if (context_info.has_value()) {
+        /* TODO: Handle types like NodeSocketVectorTranslation. */
         if (context_info->type_idname != socket.socket_type) {
           socket.set_socket_type(context_info->type_idname.c_str());
           interface_changed = true;

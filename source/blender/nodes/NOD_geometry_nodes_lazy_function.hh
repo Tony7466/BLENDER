@@ -195,9 +195,6 @@ struct GeoNodesOperatorData {
   int2 mouse_position;
   int2 region_size;
 
-  float3 cursor_position;
-  math::Quaternion cursor_rotation;
-
   float4x4 viewport_winmat;
   float4x4 viewport_viewmat;
   bool viewport_is_perspective;

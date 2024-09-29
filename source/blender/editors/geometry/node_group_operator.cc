@@ -34,6 +34,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_socket_value.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
 #include "BKE_report.hh"
@@ -542,10 +543,13 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     operator_eval_data.depsgraphs = &depsgraphs;
     operator_eval_data.self_object_orig = object;
     operator_eval_data.scene_orig = scene;
+
+    float3 cursor_position;
+    math::Quaternion cursor_rotation;
     RNA_int_get_array(op->ptr, "mouse_position", operator_eval_data.mouse_position);
     RNA_int_get_array(op->ptr, "region_size", operator_eval_data.region_size);
-    RNA_float_get_array(op->ptr, "cursor_position", operator_eval_data.cursor_position);
-    RNA_float_get_array(op->ptr, "cursor_rotation", &operator_eval_data.cursor_rotation.w);
+    RNA_float_get_array(op->ptr, "cursor_position", cursor_position);
+    RNA_float_get_array(op->ptr, "cursor_rotation", &cursor_rotation.w);
     RNA_float_get_array(
         op->ptr, "viewport_projection_matrix", operator_eval_data.viewport_winmat.base_ptr());
     RNA_float_get_array(
@@ -561,9 +565,26 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
       call_data.socket_log_contexts = &socket_log_contexts;
     }
 
-    auto get_context_value = [&](const StringRef /*context_identifier*/,
-                                 const StringRefNull /*socket_type_idname*/,
-                                 void * /*r_value*/) { return false; };
+    const float4x4 &world_to_object = object->world_to_object();
+
+    auto get_context_value = [&](const StringRef context_identifier,
+                                 const StringRefNull socket_type_idname,
+                                 void *r_value) {
+      if (context_identifier == ".3d_cursor_location" && socket_type_idname == "NodeSocketVector")
+      {
+        new (r_value)
+            bke::SocketValueVariant(math::transform_point(world_to_object, cursor_position));
+        return true;
+      }
+      if (context_identifier == ".3d_cursor_rotation" &&
+          socket_type_idname == "NodeSocketRotation")
+      {
+        new (r_value)
+            bke::SocketValueVariant(math::to_quaternion(world_to_object) * cursor_rotation);
+        return true;
+      }
+      return false;
+    };
 
     bke::GeometrySet geometry_orig = get_original_geometry_eval_copy(*object, operator_eval_data);
 
