@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,7 +30,7 @@ const EnumPropertyItem io_unit_type[] = {
 
 static float lookup_factor_meter_to_scene_unit(Scene *scene)
 {
-  /* Returns the factor used to convert the scene unit length to meter */
+  /* Returns the factor used to convert the scene unit length to meter. */
 
   char scene_unit = scene->unit.length_unit;
   if (scene->unit.system == USER_UNIT_METRIC) {
@@ -62,34 +62,35 @@ static float lookup_factor_meter_to_scene_unit(Scene *scene)
   return 1.0;
 }
 
-float get_scene_unit_scale_factor(bool asExport, Scene *scene)
+float get_scene_unit_scale_factor(bool as_export, Scene *scene)
 {
-  /* Returns the scale factor needed to convert from the set scene unit to meters */
+  /* Returns the scale factor needed to convert from the set scene unit to meters. */
   float scene_unit_scale = scene->unit.scale_length;
   scene_unit_scale = lookup_factor_meter_to_scene_unit(scene) / scene_unit_scale;
-  return asExport ? (1.0 / scene_unit_scale) : (scene_unit_scale);
+  return as_export ? (1.0 / scene_unit_scale) : (scene_unit_scale);
 }
 
-static void calculate_io_scale_factor(bool asExport, Scene *scene, PointerRNA *ptr)
+static void calculate_io_scale_factor(bool as_export, Scene *scene, PointerRNA *ptr)
 {
-  /* Calulates the scale factor for io depending on file unit selection, scene unit type and scale
+  /* Calulates the scale factor for io depending on file unit selection, scene unit type and scale.
    */
 
   int unit = RNA_enum_get(ptr, "file_unit_type");
 
-  if (unit == IO_UNIT_TYPE_CUSTOM)
+  if (unit == IO_UNIT_TYPE_CUSTOM) {
     return;
+  }
 
   // determine the io scale factor
   float scale_factor = 1.0;
   if (unit == IO_UNIT_TYPE_SCENE_LENGTH) {
     // using scene unit
-    scale_factor = get_scene_unit_scale_factor(asExport, scene);
+    scale_factor = get_scene_unit_scale_factor(as_export, scene);
   }
   else {
     // using file unit
-    scale_factor = asExport ? (scale_factor / io_units_factor[unit].factor) :
-                              (scale_factor * io_units_factor[unit].factor);
+    scale_factor = as_export ? (scale_factor / io_units_factor[unit].factor) :
+                               (scale_factor * io_units_factor[unit].factor);
   }
 
   RNA_float_set(ptr, "global_scale", scale_factor);
