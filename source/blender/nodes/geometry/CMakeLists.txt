@@ -40,6 +40,7 @@ set(SRC
   nodes/node_geo_blur_attribute.cc
   nodes/node_geo_boolean.cc
   nodes/node_geo_bounding_box.cc
+  nodes/node_geo_bundle.cc
   nodes/node_geo_collection_info.cc
   nodes/node_geo_common.cc
   nodes/node_geo_convex_hull.cc
@@ -222,6 +223,7 @@ set(SRC
   nodes/node_geo_transform_geometry.cc
   nodes/node_geo_translate_instances.cc
   nodes/node_geo_triangulate.cc
+  nodes/node_geo_unbundle.cc
   nodes/node_geo_uv_pack_islands.cc
   nodes/node_geo_uv_unwrap.cc
   nodes/node_geo_viewer.cc
