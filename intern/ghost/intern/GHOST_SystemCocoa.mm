@@ -1250,13 +1250,28 @@ GHOST_TSuccess GHOST_SystemCocoa::handleWindowEvent(GHOST_TEventType eventType,
 }
 
 /**
+ * Get the true pixel size of an NSImage object.
+ * \param image: NSImage to obtain the size of.
+ * \return Contained image size in pixels.
+ */
+static NSSize getNSImagePixelSize(NSImage *image)
+{
+  /* Assuming the NSImage instance only contains one single image. */
+  @autoreleasepool {
+    NSImageRep *imageRepresentation = [[image representations] firstObject];
+    return NSMakeSize(imageRepresentation.pixelsWide, imageRepresentation.pixelsHigh);
+  }
+}
+
+/**
  * Convert an NSImage to an ImBuf.
- * \param image: NSImage to convert. Ownership is not transfered.
+ * \param image: NSImage to convert.
  * \return Pointer to the resulting allocated ImBuf. Caller must free.
  */
 static ImBuf *NSImageToImBuf(NSImage *image)
 {
-  ImBuf *ibuf = IMB_allocImBuf(image.size.width, image.size.height, 32, IB_rect);
+  const NSSize imageSize = getNSImagePixelSize(image);
+  ImBuf *ibuf = IMB_allocImBuf(imageSize.width, imageSize.height, 32, IB_rect);
 
   if (!ibuf) {
     return nullptr;
@@ -1279,10 +1294,11 @@ static ImBuf *NSImageToImBuf(NSImage *image)
 
     uint8_t *ibuf_data = ibuf->byte_buffer.data;
     uint8_t *bmp_data = (uint8_t *)bitmapImage.bitmapData;
+
     /* Vertical Flip. */
-    for (int y = 0; y < image.size.height; y++) {
-      const int row_byte_count = 4 * image.size.width;
-      const int ibuf_off = (image.size.height - y - 1) * row_byte_count;
+    for (int y = 0; y < imageSize.height; y++) {
+      const int row_byte_count = 4 * imageSize.width;
+      const int ibuf_off = (imageSize.height - y - 1) * row_byte_count;
       const int bmp_off = y * row_byte_count;
       memcpy(ibuf_data + ibuf_off, bmp_data + bmp_off, row_byte_count);
     }
@@ -1354,7 +1370,6 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
 
               strArray->strings[i] = temp_buff;
             }
-            printf("Dropped filename\n");
 
             eventData = static_cast<GHOST_TDragnDropDataPtr>(strArray);
             break;
@@ -1383,7 +1398,6 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
             eventData = (GHOST_TDragnDropDataPtr)ibuf;
 
             [droppedImg release];
-            printf("Bitmap Dropped!\n");
             break;
           }
           default:
@@ -2024,6 +2038,30 @@ void GHOST_SystemCocoa::putClipboard(const char *buffer, bool selection) const
   }
 }
 
+static NSURL *NSPasteboardGetImageFile()
+{
+  /* The body of this function is not wrapped in an autoreleasepool for its result to be available
+   * to its callers.
+   *
+   * As such, callers must wrap calls to this function and usages of its result in an
+   * @autoreleasepool block.
+   */
+  NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+  NSDictionary *pasteboardFilteringOptions = @{
+    NSPasteboardURLReadingFileURLsOnlyKey : @YES,
+    NSPasteboardURLReadingContentsConformToTypesKey : [NSImage imageTypes]
+  };
+
+  NSArray *pasteboardMatches = [pasteboard readObjectsForClasses:@[ [NSURL class] ]
+                                                         options:pasteboardFilteringOptions];
+
+  if (!pasteboardMatches || !pasteboardMatches.count) {
+    return Nil;
+  }
+
+  return [pasteboardMatches firstObject];
+}
+
 GHOST_TSuccess GHOST_SystemCocoa::hasClipboardImage() const
 {
   @autoreleasepool {
@@ -2033,10 +2071,14 @@ GHOST_TSuccess GHOST_SystemCocoa::hasClipboardImage() const
 
     NSPasteboardType availableType = [pasteboard availableTypeFromArray:supportedTypes];
 
-    /* If the clipboard contains a file path (FileURL), discard it. As the associated
-     * image data of copied image files do not contain the actual image, but a generic
-     * image file icon and legacy garbage bitmap data. */
-    if (!availableType || [availableType isEqualToString:NSPasteboardTypeFileURL]) {
+    if (!availableType) {
+      return GHOST_kFailure;
+    }
+
+    /* If we got a file, ensure it's an image file. */
+    if ([pasteboard availableTypeFromArray:@[ NSPasteboardTypeFileURL ]] &&
+        NSPasteboardGetImageFile() == Nil)
+    {
       return GHOST_kFailure;
     }
   }
@@ -2052,23 +2094,33 @@ uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
 
   @autoreleasepool {
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
-    NSImage *clipboardImage = [[[NSImage alloc] initWithPasteboard:pasteboard] autorelease];
+
+    NSImage *clipboardImage = Nil;
+    if (NSURL *pasteboardImageFile = NSPasteboardGetImageFile(); pasteboardImageFile != Nil) {
+      /* Image file. */
+      clipboardImage = [[[NSImage alloc] initWithContentsOfURL:pasteboardImageFile] autorelease];
+    }
+    else {
+      /* Raw image data. */
+      clipboardImage = [[[NSImage alloc] initWithPasteboard:pasteboard] autorelease];
+    }
 
     if (!clipboardImage) {
       return nullptr;
     }
 
     ImBuf *ibuf = NSImageToImBuf(clipboardImage);
+    const NSSize clipboardImageSize = getNSImagePixelSize(clipboardImage);
 
     if (ibuf) {
-      const uint64_t byteCount = clipboardImage.size.width * clipboardImage.size.height * 4;
+      const uint64_t byteCount = clipboardImageSize.width * clipboardImageSize.height * 4;
       uint *rgba = (uint *)malloc(byteCount);
 
       memcpy(rgba, ibuf->byte_buffer.data, byteCount);
       IMB_freeImBuf(ibuf);
 
-      *r_width = clipboardImage.size.width;
-      *r_height = clipboardImage.size.height;
+      *r_width = clipboardImageSize.width;
+      *r_height = clipboardImageSize.height;
 
       return rgba;
     }
