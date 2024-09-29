@@ -13,7 +13,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
@@ -286,7 +286,7 @@ bool SVGImporter::read(StringRefNull filepath)
   constexpr float svg_dpi = 96.0f;
 
   char abs_filepath[FILE_MAX];
-  BLI_strncpy(abs_filepath, filepath.c_str(), sizeof(abs_filepath));
+  STRNCPY(abs_filepath, filepath.c_str());
   BLI_path_abs(abs_filepath, BKE_main_blendfile_path_from_global());
 
   NSVGimage *svg_data = nullptr;

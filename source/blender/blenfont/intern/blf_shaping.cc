@@ -246,10 +246,8 @@ bool ShapingData::process(FontBLF *font, GlyphCacheBLF *gc, ResultBLF *r_info)
 
   GlyphBLF *g_prev = NULL;
   int cwidth = std::max(gc->fixed_width, 1);
-  size_t glyph_index = 0;
   int pen_x = this->width * 64;
   int max_width = pen_x;
-  bool finished = false;
 
   this->segment.gc = (!gc || this->segment.font != font) ?
                          blf_glyph_cache_acquire(this->segment.font) :

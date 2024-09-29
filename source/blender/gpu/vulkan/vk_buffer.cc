@@ -71,7 +71,7 @@ bool VKBuffer::create(size_t size_in_bytes,
    * Vulkan doesn't allow empty buffers but some areas (DrawManager Instance data, PyGPU) create
    * them.
    */
-  create_info.size = max_ii(size_in_bytes, 1);
+  create_info.size = max_ulul(size_in_bytes, 1);
   create_info.usage = buffer_usage;
   /* We use the same command queue for the compute and graphics pipeline, so it is safe to use
    * exclusive resource handling. */
@@ -111,7 +111,7 @@ void VKBuffer::flush() const
 {
   const VKDevice &device = VKBackend::get().device;
   VmaAllocator allocator = device.mem_allocator_get();
-  vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));
+  vmaFlushAllocation(allocator, allocation_, 0, max_ulul(size_in_bytes(), 1));
 }
 
 void VKBuffer::clear(VKContext &context, uint32_t clear_value)
@@ -127,6 +127,7 @@ void VKBuffer::read(VKContext &context, void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot read a non-mapped buffer.");
   context.rendering_end();
+  context.descriptor_set_get().upload_descriptor_sets();
   context.render_graph.submit_buffer_for_read(vk_buffer_);
   memcpy(data, mapped_memory_, size_in_bytes_);
 }
@@ -173,6 +174,19 @@ bool VKBuffer::free()
   vk_buffer_ = VK_NULL_HANDLE;
 
   return true;
+}
+
+void VKBuffer::free_immediately(VKDevice &device)
+{
+  BLI_assert(vk_buffer_ != VK_NULL_HANDLE);
+  BLI_assert(allocation_ != VK_NULL_HANDLE);
+  if (is_mapped()) {
+    unmap();
+  }
+  device.resources.remove_buffer(vk_buffer_);
+  vmaDestroyBuffer(device.mem_allocator_get(), vk_buffer_, allocation_);
+  allocation_ = VK_NULL_HANDLE;
+  vk_buffer_ = VK_NULL_HANDLE;
 }
 
 }  // namespace blender::gpu
