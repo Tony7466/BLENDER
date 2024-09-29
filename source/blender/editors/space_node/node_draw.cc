@@ -3153,7 +3153,8 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
             NODE_GROUP_OUTPUT,
             GEO_NODE_SIMULATION_OUTPUT,
             GEO_NODE_REPEAT_OUTPUT,
-            GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT)))
+            GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT,
+            GEO_NODE_CLOSURE_OUTPUT)))
   {
     std::optional<NodeExtraInfoRow> row = node_get_execution_time_label_row(
         tree_draw_ctx, snode, node);

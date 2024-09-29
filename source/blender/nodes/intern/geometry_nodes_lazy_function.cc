@@ -5930,6 +5930,13 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
     }
   }
 
+  /* TODO: Support closure zones in evaluation. */
+  for (const std::unique_ptr<bNodeTreeZone> &zone : tree_zones->zones) {
+    if (zone->output_node->type == GEO_NODE_CLOSURE_OUTPUT) {
+      return nullptr;
+    }
+  }
+
   std::unique_ptr<GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
       btree.runtime->geometry_nodes_lazy_function_graph_info;
 

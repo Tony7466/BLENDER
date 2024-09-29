@@ -599,6 +599,7 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeRandomValue")
         node_add_menu.add_repeat_zone(layout, label="Repeat Zone")
         node_add_menu.add_foreach_geometry_element_zone(layout, label="For Each Geometry Element")
+        node_add_menu.add_closure_zone(layout, label="Closure Zone")
         node_add_menu.add_node_type(layout, "GeometryNodeSwitch")
         node_add_menu.add_node_type(layout, "GeometryNodeCombineBundle")
         node_add_menu.add_node_type(layout, "GeometryNodeSeparateBundle")
