@@ -10,6 +10,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("A");
   b.add_input<decl::Geometry>("B");
+  b.add_input<decl::Extend>("", "__extend__");
   b.add_output<decl::Bundle>("Bundle");
 }
 
@@ -22,7 +23,7 @@ class LazyFunctionForCombineBundle : public LazyFunction {
       : node_(node)
   {
     debug_name_ = "Bundle";
-    for (const int i : node.input_sockets().index_range()) {
+    for (const int i : node.input_sockets().index_range().drop_back(1)) {
       const bNodeSocket &bsocket = node.input_socket(i);
       lf_graph_info.mapping.lf_index_by_bsocket[bsocket.index_in_tree()] =
           inputs_.append_and_get_index_as(

@@ -4622,11 +4622,11 @@ struct GeometryNodesLazyFunctionBuilder {
         break;
       }
       case GEO_NODE_COMBINE_BUNDLE: {
-        this->build_bundle_node(bnode, graph_params);
+        this->build_combine_bundle_node(bnode, graph_params);
         break;
       }
       case GEO_NODE_SEPARATE_BUNDLE: {
-        this->build_unbundle_node(bnode, graph_params);
+        this->build_separate_bundle_node(bnode, graph_params);
         break;
       }
       default: {
@@ -5311,14 +5311,14 @@ struct GeometryNodesLazyFunctionBuilder {
     }
   }
 
-  void build_bundle_node(const bNode &bnode, BuildGraphParams &graph_params)
+  void build_combine_bundle_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
     std::unique_ptr<LazyFunction> lazy_function = get_combine_bundle_lazy_function(
         bnode, *lf_graph_info_);
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 
-    for (const int i : bnode.input_sockets().index_range()) {
+    for (const int i : bnode.input_sockets().index_range().drop_back(1)) {
       const bNodeSocket &bsocket = bnode.input_socket(i);
       lf::InputSocket &lf_socket = lf_node.input(i);
       graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
@@ -5332,7 +5332,7 @@ struct GeometryNodesLazyFunctionBuilder {
     }
   }
 
-  void build_unbundle_node(const bNode &bnode, BuildGraphParams &graph_params)
+  void build_separate_bundle_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
     std::unique_ptr<LazyFunction> lazy_function = get_separate_bundle_lazy_function(
         bnode, *lf_graph_info_);
@@ -5345,7 +5345,7 @@ struct GeometryNodesLazyFunctionBuilder {
       graph_params.lf_inputs_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
-    for (const int i : bnode.output_sockets().index_range()) {
+    for (const int i : bnode.output_sockets().index_range().drop_back(1)) {
       const bNodeSocket &bsocket = bnode.output_socket(i);
       lf::OutputSocket &lf_socket = lf_node.output(i);
       graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);

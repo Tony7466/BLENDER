@@ -11,6 +11,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bundle>("Bundle");
   b.add_output<decl::Geometry>("A");
   b.add_output<decl::Geometry>("B");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 class LazyFunctionForSeparateBundle : public LazyFunction {
@@ -28,7 +29,7 @@ class LazyFunctionForSeparateBundle : public LazyFunction {
           inputs_.append_and_get_index_as(
               bsocket.name, *bsocket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
     }
-    for (const int i : node.output_sockets().index_range()) {
+    for (const int i : node.output_sockets().index_range().drop_back(1)) {
       const bNodeSocket &bsocket = node.output_socket(i);
       lf_graph_info.mapping.lf_index_by_bsocket[bsocket.index_in_tree()] =
           outputs_.append_and_get_index_as(bsocket.name,
