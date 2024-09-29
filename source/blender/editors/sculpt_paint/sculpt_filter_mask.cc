@@ -661,9 +661,9 @@ static bool decrease_contrast_mask_bmesh(const Depsgraph &depsgraph,
 
 static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 {
+  const Scene &scene = *CTX_data_scene(C);
   Object &ob = *CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  const Scene *scene = CTX_data_scene(C);
   const FilterType filter_type = FilterType(RNA_enum_get(op->ptr, "filter_type"));
 
   const View3D *v3d = CTX_wm_view3d(C);
@@ -672,7 +672,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, &ob);
+  MultiresModifierData *mmd = BKE_sculpt_multires_active(&scene, &ob);
   BKE_sculpt_mask_layers_ensure(CTX_data_depsgraph_pointer(C), CTX_data_main(C), &ob, mmd);
 
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
@@ -682,7 +682,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
-  undo::push_begin(ob, op);
+  undo::push_begin(scene, ob, op);
 
   int iterations = RNA_int_get(op->ptr, "iterations");
 
@@ -780,12 +780,10 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::ContrastIncrease: {
             Array<bool> node_changed(node_mask.min_array_size(), false);
-            threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+            node_mask.foreach_index(GrainSize(1), [&](const int i) {
               FilterLocalData &tls = all_tls.local();
-              node_mask.slice(range).foreach_index([&](const int i) {
-                node_changed[i] = increase_contrast_mask_mesh(
-                    *depsgraph, ob, hide_vert, nodes[i], tls, mask.span);
-              });
+              node_changed[i] = increase_contrast_mask_mesh(
+                  *depsgraph, ob, hide_vert, nodes[i], tls, mask.span);
             });
             IndexMaskMemory memory;
             pbvh.tag_masks_changed(IndexMask::from_bools(node_changed, memory));
@@ -793,12 +791,10 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::ContrastDecrease: {
             Array<bool> node_changed(node_mask.min_array_size(), false);
-            threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+            node_mask.foreach_index(GrainSize(1), [&](const int i) {
               FilterLocalData &tls = all_tls.local();
-              node_mask.slice(range).foreach_index([&](const int i) {
-                node_changed[i] = decrease_contrast_mask_mesh(
-                    *depsgraph, ob, hide_vert, nodes[i], tls, mask.span);
-              });
+              node_changed[i] = decrease_contrast_mask_mesh(
+                  *depsgraph, ob, hide_vert, nodes[i], tls, mask.span);
             });
             IndexMaskMemory memory;
             pbvh.tag_masks_changed(IndexMask::from_bools(node_changed, memory));
@@ -855,11 +851,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::ContrastIncrease: {
             Array<bool> node_changed(node_mask.min_array_size(), false);
-            threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+            node_mask.foreach_index(GrainSize(1), [&](const int i) {
               FilterLocalData &tls = all_tls.local();
-              node_mask.slice(range).foreach_index([&](const int i) {
-                node_changed[i] = increase_contrast_mask_grids(*depsgraph, ob, nodes[i], tls);
-              });
+              node_changed[i] = increase_contrast_mask_grids(*depsgraph, ob, nodes[i], tls);
             });
             IndexMaskMemory memory;
             pbvh.tag_masks_changed(IndexMask::from_bools(node_changed, memory));
@@ -867,11 +861,9 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::ContrastDecrease: {
             Array<bool> node_changed(node_mask.min_array_size(), false);
-            threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+            node_mask.foreach_index(GrainSize(1), [&](const int i) {
               FilterLocalData &tls = all_tls.local();
-              node_mask.slice(range).foreach_index([&](const int i) {
-                node_changed[i] = decrease_contrast_mask_grids(*depsgraph, ob, nodes[i], tls);
-              });
+              node_changed[i] = decrease_contrast_mask_grids(*depsgraph, ob, nodes[i], tls);
             });
             IndexMaskMemory memory;
             pbvh.tag_masks_changed(IndexMask::from_bools(node_changed, memory));
@@ -933,12 +925,10 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::ContrastIncrease: {
             Array<bool> node_changed(node_mask.min_array_size(), false);
-            threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+            node_mask.foreach_index(GrainSize(1), [&](const int i) {
               FilterLocalData &tls = all_tls.local();
-              node_mask.slice(range).foreach_index([&](const int i) {
-                node_changed[i] = increase_contrast_mask_bmesh(
-                    *depsgraph, ob, mask_offset, nodes[i], tls);
-              });
+              node_changed[i] = increase_contrast_mask_bmesh(
+                  *depsgraph, ob, mask_offset, nodes[i], tls);
             });
             IndexMaskMemory memory;
             pbvh.tag_masks_changed(IndexMask::from_bools(node_changed, memory));
@@ -946,12 +936,10 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
           }
           case FilterType::ContrastDecrease: {
             Array<bool> node_changed(node_mask.min_array_size(), false);
-            threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+            node_mask.foreach_index(GrainSize(1), [&](const int i) {
               FilterLocalData &tls = all_tls.local();
-              node_mask.slice(range).foreach_index([&](const int i) {
-                node_changed[i] = decrease_contrast_mask_bmesh(
-                    *depsgraph, ob, mask_offset, nodes[i], tls);
-              });
+              node_changed[i] = decrease_contrast_mask_bmesh(
+                  *depsgraph, ob, mask_offset, nodes[i], tls);
             });
             IndexMaskMemory memory;
             pbvh.tag_masks_changed(IndexMask::from_bools(node_changed, memory));

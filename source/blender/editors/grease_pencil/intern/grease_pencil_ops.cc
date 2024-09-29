@@ -42,7 +42,7 @@ bool editable_grease_pencil_poll(bContext *C)
   if (!ED_operator_object_active_editable_ex(C, object)) {
     return false;
   }
-  if ((object->mode & OB_MODE_EDIT) == 0) {
+  if (!ELEM(object->mode, OB_MODE_EDIT, OB_MODE_SCULPT_GPENCIL_LEGACY)) {
     return false;
   }
   return true;
@@ -244,6 +244,7 @@ void ED_operatortypes_grease_pencil()
   ED_operatortypes_grease_pencil_interpolate();
   ED_operatortypes_grease_pencil_lineart();
   ED_operatortypes_grease_pencil_trace();
+  ED_operatortypes_grease_pencil_bake_animation();
 }
 
 void ED_operatormacros_grease_pencil()

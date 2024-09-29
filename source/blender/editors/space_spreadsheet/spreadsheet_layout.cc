@@ -111,6 +111,13 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     0,
                                     nullptr);
+      UI_but_func_tooltip_set(
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("{}"), *((int *)argN));
+          },
+          MEM_cnew<int>(__func__, value),
+          MEM_freeN);
       /* Right-align Integers. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
       UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
@@ -157,6 +164,13 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     0,
                                     nullptr);
+      UI_but_func_tooltip_set(
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("{:f}"), *((float *)argN));
+          },
+          MEM_cnew<float>(__func__, value),
+          MEM_freeN);
       /* Right-align Floats. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
       UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
@@ -204,7 +218,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
     }
     else if (data.type().is<bke::InstanceReference>()) {
       const bke::InstanceReference value = data.get<bke::InstanceReference>(real_index);
-      const StringRefNull name = value.name().is_empty() ? "Geometry" : value.name();
+      const StringRefNull name = value.name().is_empty() ? IFACE_("Geometry") : value.name();
       const int icon = get_instance_reference_icon(value);
       uiDefIconTextBut(params.block,
                        UI_BTYPE_LABEL,
@@ -259,6 +273,14 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     0,
                                     nullptr);
+
+      UI_but_func_tooltip_set(
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("{:f}"), *((float *)argN));
+          },
+          MEM_cnew<float>(__func__, value),
+          MEM_freeN);
       /* Right-align Floats. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
       UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
@@ -287,6 +309,13 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     0,
                                     nullptr);
+      UI_but_func_tooltip_set(
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("{}"), *((int *)argN));
+          },
+          MEM_cnew<int>(__func__, value),
+          MEM_freeN);
       /* Right-align Floats. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
       UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);

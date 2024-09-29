@@ -33,7 +33,7 @@
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
@@ -1583,6 +1583,9 @@ static GHOST_WindowHandle playanim_window_open(
   GHOST_GPUSettings gpusettings = {0};
   const eGPUBackendType gpu_backend = GPU_backend_type_selection_get();
   gpusettings.context_type = wm_ghost_drawing_context_type(gpu_backend);
+  gpusettings.preferred_device.index = U.gpu_preferred_index;
+  gpusettings.preferred_device.vendor_id = U.gpu_preferred_vendor_id;
+  gpusettings.preferred_device.device_id = U.gpu_preferred_device_id;
 
   {
     bool screen_size_valid = false;

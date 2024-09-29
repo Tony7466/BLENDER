@@ -547,7 +547,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "DNA_screen_types.h"
 #  include "DNA_userdef_types.h"
 
-#  include "BLI_path_util.h"
+#  include "BLI_path_utils.hh"
 #  include "BLI_string.h"
 
 #  include "BKE_anim_data.hh"
@@ -3494,6 +3494,8 @@ static StructRNA *rna_viewer_path_elem_refine(PointerRNA *ptr)
       return &RNA_ViewerNodeViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE:
       return &RNA_RepeatZoneViewerPathElem;
+    case VIEWER_PATH_ELEM_TYPE_FOREACH_GEOMETRY_ELEMENT_ZONE:
+      return &RNA_ForeachGeometryElementZoneViewerPathElem;
   }
   BLI_assert_unreachable();
   return nullptr;
@@ -5016,6 +5018,32 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Opacity", "Canvas grid opacity");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
+  prop = RNA_def_property(srna, "gpencil_grid_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, nullptr, "overlay.gpencil_grid_color");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Grid Color", "Canvas grid color");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "gpencil_grid_scale", PROP_FLOAT, PROP_XYZ);
+  RNA_def_property_float_sdna(prop, nullptr, "overlay.gpencil_grid_scale");
+  RNA_def_property_array(prop, 2);
+  RNA_def_property_ui_text(prop, "Scale", "Canvas grid scale");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "gpencil_grid_offset", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, nullptr, "overlay.gpencil_grid_offset");
+  RNA_def_property_array(prop, 2);
+  RNA_def_property_ui_text(prop, "Offset", "Canvas grid offset");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "gpencil_grid_subdivisions", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "overlay.gpencil_grid_subdivisions");
+  RNA_def_property_range(prop, 1, 100);
+  RNA_def_property_ui_text(prop, "Subdivisions", "Canvas grid subdivisions");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
   /* Paper opacity factor */
   prop = RNA_def_property(srna, "gpencil_fade_objects", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "overlay.gpencil_paper_opacity");
@@ -6157,7 +6185,7 @@ static void rna_def_space_sequencer(BlenderRNA *brna)
       prop,
       "Display Channel",
       "The channel number shown in the image preview. 0 is the result of all strips combined");
-  RNA_def_property_range(prop, -5, MAXSEQ);
+  RNA_def_property_range(prop, -5, SEQ_MAX_CHANNELS);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
 
   prop = RNA_def_property(srna, "preview_channels", PROP_ENUM, PROP_NONE);
@@ -8366,6 +8394,11 @@ static const EnumPropertyItem viewer_path_elem_type_items[] = {
     {VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE, "SIMULATION_ZONE", ICON_NONE, "Simulation Zone", ""},
     {VIEWER_PATH_ELEM_TYPE_VIEWER_NODE, "VIEWER_NODE", ICON_NONE, "Viewer Node", ""},
     {VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE, "REPEAT_ZONE", ICON_NONE, "Repeat", ""},
+    {VIEWER_PATH_ELEM_TYPE_FOREACH_GEOMETRY_ELEMENT_ZONE,
+     "FOREACH_GEOMETRY_ELEMENT_ZONE",
+     ICON_NONE,
+     "For Each Geometry Element",
+     ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -8444,6 +8477,17 @@ static void rna_def_repeat_zone_viewer_path_elem(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Repeat Output Node ID", "");
 }
 
+static void rna_def_foreach_geometry_element_zone_viewer_path_elem(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "ForeachGeometryElementZoneViewerPathElem", "ViewerPathElem");
+
+  prop = RNA_def_property(srna, "zone_output_node_id", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Zone Output Node ID", "");
+}
+
 static void rna_def_viewer_node_viewer_path_elem(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -8466,6 +8510,7 @@ static void rna_def_viewer_path(BlenderRNA *brna)
   rna_def_group_node_viewer_path_elem(brna);
   rna_def_simulation_zone_viewer_path_elem(brna);
   rna_def_repeat_zone_viewer_path_elem(brna);
+  rna_def_foreach_geometry_element_zone_viewer_path_elem(brna);
   rna_def_viewer_node_viewer_path_elem(brna);
 
   srna = RNA_def_struct(brna, "ViewerPath", nullptr);

@@ -35,13 +35,6 @@ struct LocalData {
   Vector<float> new_masks;
 };
 
-BLI_NOINLINE static void invert_mask(const MutableSpan<float> masks)
-{
-  for (float &mask : masks) {
-    mask = 1.0f - mask;
-  }
-}
-
 BLI_NOINLINE static void apply_factors(const float strength,
                                        const Span<float> current_masks,
                                        const Span<float> factors,
@@ -103,7 +96,7 @@ static void calc_faces(const Depsgraph &depsgraph,
   tls.current_masks = tls.new_masks;
   const MutableSpan<float> current_masks = tls.current_masks;
   if (strength > 0.0f) {
-    invert_mask(current_masks);
+    mask::invert_mask(current_masks);
   }
   apply_factors(strength, current_masks, factors, new_masks);
   clamp_mask(new_masks);
@@ -151,7 +144,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   tls.current_masks = tls.new_masks;
   const MutableSpan<float> current_masks = tls.current_masks;
   if (strength > 0.0f) {
-    invert_mask(current_masks);
+    mask::invert_mask(current_masks);
   }
   apply_factors(strength, current_masks, factors, new_masks);
   clamp_mask(new_masks);
@@ -199,7 +192,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   tls.current_masks = tls.new_masks;
   const MutableSpan<float> current_masks = tls.current_masks;
   if (strength > 0.0f) {
-    invert_mask(current_masks);
+    mask::invert_mask(current_masks);
   }
   apply_factors(strength, current_masks, factors, new_masks);
   clamp_mask(new_masks);
@@ -232,21 +225,19 @@ void do_mask_brush(const Depsgraph &depsgraph,
       bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
           ".sculpt_mask", bke::AttrDomain::Point);
 
-      threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+      node_mask.foreach_index(GrainSize(1), [&](const int i) {
         LocalData &tls = all_tls.local();
-        node_mask.slice(range).foreach_index([&](const int i) {
-          calc_faces(depsgraph,
-                     brush,
-                     bstrength,
-                     positions,
-                     vert_normals,
-                     nodes[i],
-                     object,
-                     mesh,
-                     tls,
-                     mask.span);
-          bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
-        });
+        calc_faces(depsgraph,
+                   brush,
+                   bstrength,
+                   positions,
+                   vert_normals,
+                   nodes[i],
+                   object,
+                   mesh,
+                   tls,
+                   mask.span);
+        bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
       });
       mask.finish();
       break;
@@ -256,12 +247,10 @@ void do_mask_brush(const Depsgraph &depsgraph,
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       MutableSpan<float> masks = subdiv_ccg.masks;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+      node_mask.foreach_index(GrainSize(1), [&](const int i) {
         LocalData &tls = all_tls.local();
-        node_mask.slice(range).foreach_index([&](const int i) {
-          calc_grids(depsgraph, object, brush, bstrength, nodes[i], tls);
-          bke::pbvh::node_update_mask_grids(key, masks, nodes[i]);
-        });
+        calc_grids(depsgraph, object, brush, bstrength, nodes[i], tls);
+        bke::pbvh::node_update_mask_grids(key, masks, nodes[i]);
       });
       break;
     }
@@ -269,12 +258,10 @@ void do_mask_brush(const Depsgraph &depsgraph,
       const int mask_offset = CustomData_get_offset_named(
           &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
       MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
-      threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+      node_mask.foreach_index(GrainSize(1), [&](const int i) {
         LocalData &tls = all_tls.local();
-        node_mask.slice(range).foreach_index([&](const int i) {
-          calc_bmesh(depsgraph, object, brush, bstrength, nodes[i], tls);
-          bke::pbvh::node_update_mask_bmesh(mask_offset, nodes[i]);
-        });
+        calc_bmesh(depsgraph, object, brush, bstrength, nodes[i], tls);
+        bke::pbvh::node_update_mask_bmesh(mask_offset, nodes[i]);
       });
       break;
     }
