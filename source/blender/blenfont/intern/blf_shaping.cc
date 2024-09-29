@@ -37,36 +37,6 @@
 
 /* Harley: Disable OpenType features "liga" and "clig" if letter-spacing. */
 
-/* Codepoints that require shaping, but not necessarily reordering. */
-static bool blf_codepoint_isShaped(uint32_t c)
-{
-  /* Hebrew, Arabic, N'Ko, Arabic Extended, Devanagari .. Tai Tham, Balinese..Ol Chiki, CJK
-   * Javanese..Tai Viet, Meetei Mayek, Ligatures, Tengwar, Arabic Presentation Forms, Emoji. */
-  return (c >= 0x00590 && c <= 0x006FF) || (c >= 0x007C0 && c <= 0x007FF) ||
-         (c >= 0x00870 && c <= 0x008FF) || (c >= 0x00900 && c <= 0x01AAF) ||
-         (c >= 0x01B00 && c <= 0x01C7F) || (c >= 0x02E80 && c <= 0x09FFF) ||
-         (c >= 0x0A980 && c <= 0x0AADF) || (c >= 0x0ABC0 && c <= 0x0ABFF) ||
-         (c >= 0x0F900 && c <= 0x0FAFF) || (c >= 0x0FB00 && c <= 0x0FDFF) ||
-         (c >= 0x16080 && c <= 0x160FF) || (c >= 0x1EE00 && c <= 0x1EEFF) ||
-         (c >= 0x1F600 && c <= 0x1F64F);
-}
-
-static bool blf_text_isComplex(const char *str, const size_t str_len)
-{
-  if (str_len == 0 || !str[0]) {
-    return false;
-  }
-
-  size_t i = 0;
-  while (i < str_len && str[i]) {
-    uint c = BLI_str_utf8_as_unicode_step_safe(str, str_len, &i);
-    if (BLI_char_isRTL_utf32((char32_t)c) || blf_codepoint_isShaped(c)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 typedef struct ShapingData {
   /* For the entire string. */
   size_t char_count = 0;
@@ -258,7 +228,7 @@ bool ShapingData::process(FontBLF *font, GlyphCacheBLF *gc, ResultBLF *r_info)
     char32_t codepoint = this->visual_str[this->segment.hb_glyph_info[i].cluster];
 
     this->segment.glyphs[i] = blf_glyph_ensure(
-        this->segment.font, this->segment.gc, codepoint, glyph_id, 0);
+        this->segment.font, this->segment.gc, codepoint, glyph_id);
 
     GlyphBLF *g = this->segment.glyphs[i];
     rcti *bounds = &this->segment.bounds[i];

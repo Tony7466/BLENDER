@@ -188,7 +188,7 @@ void blf_glyph_cache_clear(FontBLF *font);
  * Create (or load from cache) a fully-rendered bitmap glyph.
  */
 GlyphBLF *blf_glyph_ensure(
-    FontBLF *font, GlyphCacheBLF *gc, uint charcode, uint glyph_index, uint8_t subpixel = 0);
+    FontBLF *font, GlyphCacheBLF *gc, uint charcode, uint glyph_index = 0, uint8_t subpixel = 0);
 
 #ifdef BLF_SUBPIXEL_AA
 GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, int32_t pen_x);

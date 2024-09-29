@@ -423,7 +423,7 @@ BLI_INLINE GlyphBLF *blf_glyph_from_utf8_and_step(FontBLF *font,
   /* Invalid unicode sequences return the byte value, stepping forward one.
    * This allows `latin1` to display (which is sometimes used for file-paths). */
   BLI_assert(charcode != BLI_UTF8_ERR);
-  GlyphBLF *g = blf_glyph_ensure(font, gc, charcode, 0, 0);
+  GlyphBLF *g = blf_glyph_ensure(font, gc, charcode);
   if (g && pen_x && !(font->flags & BLF_MONOSPACED)) {
     *pen_x += blf_kerning(font, g_prev, g);
 

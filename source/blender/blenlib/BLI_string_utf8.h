@@ -155,6 +155,16 @@ bool BLI_char_isRTL_utf32(const char32_t c) ATTR_WARN_UNUSED_RESULT;
 bool BLI_char_isRTL_utf8(const char *c) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
 
 /**
+ * \return if the single character (usually) requires shaping, but not necessarily reordering.
+ */
+bool BLI_char_isComplex_utf32(const char32_t c);
+
+/**
+ * \return if the string probably requires shaping (using Harfbuzz).
+ */
+bool BLI_str_isComplex_or_RTL_utf8(const char *str, const size_t str_len);
+
+/**
  * \return the `wchar_t` length in UTF-8.
  */
 size_t BLI_wstrlen_utf8(const wchar_t *src) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
