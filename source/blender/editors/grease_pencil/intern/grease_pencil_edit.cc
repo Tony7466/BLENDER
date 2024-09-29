@@ -2293,7 +2293,7 @@ Vector<IndexRange> find_curve_ranges(const Span<bool> span)
   for (const int i : span.index_range().drop_front(1)) {
     if (span[i - 1] == value && span[i] != value) {
       ranges.append(IndexRange::from_end_size(i, length));
-      length = 0;
+      length = 1;
       value = !value;
     }
     else if (span[i] == value) {
@@ -2326,35 +2326,20 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
     return curves;
   }
 
-  int curr_dst_point_id = 0;
   Array<int> dst_to_src_point(
       curves.points_num()); /* idk if I need this, just copying delete for now*/
   Vector<int> dst_curve_counts;
   Vector<int> dst_to_src_curve;
-  Vector<bool> dst_cyclic;
-
-  int range_counter;
 
   for (const int curve_i : curves.curves_range()) {
     const IndexRange points = points_by_curve[curve_i]; /*point where source curve_i begins*/
-    const Span<bool> curve_i_points_to_split = points_to_split.as_span().slice(
-        points); /*specifically, how does slicing a span work?*/
-    const bool curve_cyclic = src_cyclic[curve_i];
+    const Span<bool> curve_i_points_to_split = points_to_split.as_span().slice(points);
 
-    /* I think problem below is I'm feeding in only the points to split, should feed whole curve
-     * masked? idk, wait, it looks like a slice of the total points, just representing the curve.
-     * should be right? count total_split, should be 2*/
     const Vector<IndexRange> new_curve_ranges = find_curve_ranges(curve_i_points_to_split);
 
-    range_counter = new_curve_ranges.size();        /* I don't think I need this, it's just 4 me*/
-    bool myquicktest = new_curve_ranges.is_empty(); /* same as last line*/
     if (new_curve_ranges.is_empty()) {
       continue;
     }
-
-    const bool is_last_segment_selected = curve_cyclic && new_curve_ranges.first().first() == 0 &&
-                                          new_curve_ranges.last().last() == points.size() - 1;
-    const bool is_cyclic = new_curve_ranges.size() == 1 && is_last_segment_selected;
 
     IndexRange range_ids = new_curve_ranges.index_range();
 
@@ -2362,14 +2347,9 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
       const IndexRange range = new_curve_ranges[range_i];
 
       int count = range.size();
-      for (const int src_point : range.shift(points.first())) {
-        dst_to_src_point[curr_dst_point_id++] = src_point;
-      }
 
-      dst_curve_counts.append(
-          count); /* this might be all I need, can drop the working logic above maybe?*/
+      dst_curve_counts.append(count);
       dst_to_src_curve.append(curve_i);
-      dst_cyclic.append(is_cyclic);
     }
   }
 
@@ -2387,8 +2367,6 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
 
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
-  /* okay I'm guessing there's a size mismatch between the two above. Can I check them out somehow?
-   * Do I even have dst_curves declared in this fucntion? I do, 2369.*/
 
   /*gather_attributes(src_attributes,
                     bke::AttrDomain::Curve,
@@ -2396,7 +2374,6 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
                     {},
                     dst_to_src_curve,
                     dst_attributes); */
-  array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
 
   copy_attributes(
       src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, dst_attributes);
