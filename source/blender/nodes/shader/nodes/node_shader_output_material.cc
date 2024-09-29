@@ -55,7 +55,12 @@ NODE_SHADER_MATERIALX_BEGIN
                             {{"bsdf", bsdf}, {"edf", edf}, {"opacity", opacity}});
     }
   }
-  return create_node("surfacematerial", NodeItem::Type::Material, {{"surfaceshader", surface}});
+
+  NodeItem displacement = get_input_link("Displacement", NodeItem::Type::DisplacementShader);
+
+  return create_node("surfacematerial",
+                     NodeItem::Type::Material,
+                     {{"surfaceshader", surface}, {"displacementshader", displacement}});
 }
 #endif
 NODE_SHADER_MATERIALX_END
