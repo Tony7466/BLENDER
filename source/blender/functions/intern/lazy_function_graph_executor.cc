@@ -130,6 +130,45 @@ struct OutputState {
   void *value = nullptr;
 };
 
+struct DynamicInputState : public InputState {
+  const CPPType *type = nullptr;
+};
+
+struct DynamicOutputState : public OutputState {
+  const CPPType *type = nullptr;
+};
+
+struct DynamicsState {
+  std::mutex mutex;
+
+  Map<Slot, DynamicInputState *> input_states;
+  Map<Slot, DynamicOutputState *> output_states;
+
+  DynamicInputState *get_input(const Slot slot)
+  {
+    std::lock_guard lock{this->mutex};
+    return this->input_states.lookup(slot);
+  }
+
+  DynamicOutputState *get_output(const Slot slot)
+  {
+    std::lock_guard lock{this->mutex};
+    return this->output_states.lookup(slot);
+  }
+
+  void add_input(const Slot slot, DynamicInputState *state)
+  {
+    std::lock_guard lock{this->mutex};
+    this->input_states.add_new(slot, state);
+  }
+
+  void add_output(const Slot slot, DynamicOutputState *state)
+  {
+    std::lock_guard lock{this->mutex};
+    this->output_states.add_new(slot, state);
+  }
+};
+
 struct NodeState {
   /**
    * Needs to be locked when any data in this state is accessed that is not explicitly marked as
@@ -184,6 +223,8 @@ struct NodeState {
    * Custom storage of the node.
    */
   void *storage = nullptr;
+
+  DynamicsState *dynamics = nullptr;
 };
 
 /**
@@ -327,6 +368,8 @@ class Executor {
    * Set to false when the first execution ends.
    */
   bool is_first_execution_ = true;
+
+  Map<int, int> dynamic_outputs_by_main_output_;
 
   friend GraphExecutorLFParams;
 
@@ -474,6 +517,11 @@ class Executor {
       const InputSocket &input_socket = node.input(i);
       this->destruct_input_value_if_exists(input_state, input_socket.type());
     }
+    if (node_state.dynamics) {
+      for (DynamicInputState *input_state : node_state.dynamics->input_states.values()) {
+        this->destruct_input_value_if_exists(*input_state, *input_state->type);
+      }
+    }
     std::destroy_at(&node_state);
   }
 
@@ -483,26 +531,38 @@ class Executor {
   void schedule_for_new_output_usages(CurrentTask &current_task, const LocalData &local_data)
   {
     for (const int graph_output_index : self_.graph_outputs_.index_range()) {
-      if (params_->output_was_set(graph_output_index)) {
-        continue;
+      const int dynamic_num = dynamic_outputs_by_main_output_.lookup_default(graph_output_index,
+                                                                             0);
+      this->schedule_for_new_output_usage(current_task, local_data, Slot(graph_output_index));
+      for (const int i : IndexRange(dynamic_num)) {
+        this->schedule_for_new_output_usage(current_task, local_data, Slot(graph_output_index, i));
       }
-      const ValueUsage output_usage = params_->get_output_usage(graph_output_index);
-      if (output_usage == ValueUsage::Maybe) {
-        continue;
-      }
-      const InputSocket &socket = *self_.graph_outputs_[graph_output_index];
-      const Node &node = socket.node();
-      NodeState &node_state = *node_states_[node.index_in_graph()];
-      this->with_locked_node(
-          node, node_state, current_task, local_data, [&](LockedNode &locked_node) {
-            if (output_usage == ValueUsage::Used) {
-              this->set_input_required(locked_node, socket);
-            }
-            else {
-              this->set_input_unused(locked_node, socket);
-            }
-          });
     }
+  }
+
+  void schedule_for_new_output_usage(CurrentTask &current_task,
+                                     const LocalData &local_data,
+                                     const Slot graph_output_slot)
+  {
+    if (params_->output_was_set(graph_output_slot)) {
+      return;
+    }
+    const ValueUsage output_usage = params_->get_output_usage(graph_output_slot);
+    if (output_usage == ValueUsage::Maybe) {
+      return;
+    }
+    const InputSocket &socket = *self_.graph_outputs_[graph_output_slot.main_index()];
+    const Node &node = socket.node();
+    NodeState &node_state = *node_states_[node.index_in_graph()];
+    this->with_locked_node(
+        node, node_state, current_task, local_data, [&](LockedNode &locked_node) {
+          if (output_usage == ValueUsage::Used) {
+            this->set_input_required(locked_node, socket);
+          }
+          else {
+            this->set_input_unused(locked_node, socket);
+          }
+        });
   }
 
   void set_defaulted_graph_outputs(const LocalData &local_data)
@@ -1403,6 +1463,18 @@ class GraphExecutorLFParams final : public Params {
   {
     executor_.set_input_unused_during_execution(
         node_, node_state_, slot.main_index(), current_task_, this->get_local_data());
+  }
+
+  int get_dynamic_inputs_num_impl(const int main_input) const
+  {
+    /* TODO */
+    return 0;
+  }
+
+  std::optional<IndexRange> try_add_dynamic_outputs_impl(const int main_output, const int amount)
+  {
+    /* TODO */
+    return std::nullopt;
   }
 
   bool try_enable_multi_threading_impl() override

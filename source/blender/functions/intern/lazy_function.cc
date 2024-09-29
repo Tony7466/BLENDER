@@ -70,6 +70,17 @@ bool Params::try_enable_multi_threading_impl()
   return false;
 }
 
+int Params::get_dynamic_inputs_num_impl(const int /*main_input*/) const
+{
+  return 0;
+}
+
+std::optional<IndexRange> Params::try_add_dynamic_outputs_impl(
+    const int /*main_output*/, const Span<const CPPType *> /*types*/)
+{
+  return std::nullopt;
+}
+
 destruct_ptr<LocalUserData> UserData::get_local(LinearAllocator<> & /*allocator*/)
 {
   return {};

@@ -129,14 +129,40 @@ struct Context {
 class Slot {
  private:
   int main_index_;
+  int dynamic_index_;
 
  public:
-  Slot(const int main_index) : main_index_(main_index) {}
+  Slot(const int main_index, const int dynamic_index = -1)
+      : main_index_(main_index), dynamic_index_(dynamic_index)
+  {
+  }
+
+  bool is_main() const
+  {
+    return dynamic_index_ == -1;
+  }
+
+  bool is_dynamic() const
+  {
+    return !this->is_main();
+  }
 
   int main_index() const
   {
     return main_index_;
   }
+
+  int dynamic_index() const
+  {
+    return dynamic_index_;
+  }
+
+  uint64_t hash() const
+  {
+    return get_default_hash(main_index_, dynamic_index_);
+  }
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(Slot, main_index_, dynamic_index_)
 };
 
 /**
@@ -216,6 +242,9 @@ class Params {
    */
   bool try_enable_multi_threading();
 
+  int get_dynamic_inputs_num(int main_input) const;
+  std::optional<IndexRange> try_add_dynamic_outputs(int main_output, Span<const CPPType *> types);
+
  private:
   void assert_valid_thread() const;
 
@@ -235,6 +264,10 @@ class Params {
   virtual ValueUsage get_output_usage_impl(Slot slot) const = 0;
   virtual void set_input_unused_impl(Slot slot) = 0;
   virtual bool try_enable_multi_threading_impl();
+
+  virtual int get_dynamic_inputs_num_impl(int main_input) const;
+  virtual std::optional<IndexRange> try_add_dynamic_outputs_impl(int main_output,
+                                                                 Span<const CPPType *> types);
 };
 
 /**
@@ -507,6 +540,19 @@ inline void Params::assert_valid_thread() const
     BLI_assert_unreachable();
   }
 #endif
+}
+
+inline int Params::get_dynamic_inputs_num(const int main_input) const
+{
+  BLI_assert(this->is_valid_input_slot(main_input));
+  return this->get_dynamic_inputs_num_impl(main_input);
+}
+
+inline std::optional<IndexRange> Params::try_add_dynamic_outputs(const int main_output,
+                                                                 const Span<const CPPType *> types)
+{
+  BLI_assert(this->is_valid_output_slot(main_output));
+  return this->try_add_dynamic_outputs_impl(main_output, types);
 }
 
 inline bool Params::is_valid_input_slot(const Slot slot) const

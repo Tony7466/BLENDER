@@ -25,7 +25,7 @@ class LazyFunctionForUnbundle : public LazyFunction {
       const bNodeSocket &bsocket = node.input_socket(i);
       lf_graph_info.mapping.lf_index_by_bsocket[bsocket.index_in_tree()] =
           inputs_.append_and_get_index_as(
-              bsocket.name, *bsocket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
+              bsocket.name, *bsocket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
     }
     for (const int i : node.output_sockets().index_range()) {
       const bNodeSocket &bsocket = node.output_socket(i);
@@ -37,8 +37,23 @@ class LazyFunctionForUnbundle : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const final
   {
-    params.set_output(0, GeometrySet());
-    params.set_output(1, GeometrySet());
+    const int outputs_num = node_.output_sockets().size();
+    const int bundle_param = 0;
+
+    BLI_assert(params.get_dynamic_inputs_num(bundle_param) == outputs_num);
+
+    for (const int i : IndexRange(outputs_num)) {
+      const lf::Slot input_slot{bundle_param, i};
+      const lf::Slot output_slot{i};
+      if (params.get_output_usage(output_slot) != lf::ValueUsage::Used) {
+        continue;
+      }
+      if (GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(
+              input_slot))
+      {
+        params.set_output(output_slot, std::move(*geometry));
+      }
+    }
   }
 };
 
