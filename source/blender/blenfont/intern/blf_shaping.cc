@@ -8,8 +8,6 @@
  * Complex text shaping. RTL languages, ligatures, etc.
  */
 
-#include <cstring>
-
 #include <fribidi/fribidi.h>
 #include <harfbuzz/hb-ft.h>
 #include <harfbuzz/hb-ot.h>
