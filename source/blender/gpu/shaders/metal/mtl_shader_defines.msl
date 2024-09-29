@@ -118,75 +118,26 @@ constexpr constexp_uvec3 __internal_workgroupsize_get()
  *
  * NOTE: We cannot hoist the address space into the template declaration, so these must be declared
  * for each relevant address space. */
+#define ATOMIC_OP_EX(qualifier, glsl_op, mtl_op) \
+  template<typename T> T atomic##glsl_op(qualifier T &mem, T data) \
+  { \
+    return atomic_##mtl_op##_explicit((qualifier _atomic<T> *)&mem, data, memory_order_relaxed); \
+  }
 
-/* Thread-group memory. */
-template<typename T> T atomicMax(threadgroup T &mem, T data)
-{
-  return atomic_fetch_max_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicMin(threadgroup T &mem, T data)
-{
-  return atomic_fetch_min_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicAdd(threadgroup T &mem, T data)
-{
-  return atomic_fetch_add_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicSub(threadgroup T &mem, T data)
-{
-  return atomic_fetch_sub_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicAnd(threadgroup T &mem, T data)
-{
-  return atomic_fetch_and_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicOr(threadgroup T &mem, T data)
-{
-  return atomic_fetch_or_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicXor(threadgroup T &mem, T data)
-{
-  return atomic_fetch_xor_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicExchange(threadgroup T &mem, T data)
-{
-  return atomic_exchange_explicit((threadgroup _atomic<T> *)&mem, data, memory_order_relaxed);
-}
+#define ATOMIC_OP(glsl_op, mtl_op) \
+  ATOMIC_OP_EX(threadgroup, glsl_op, mtl_op) \
+  ATOMIC_OP_EX(device, glsl_op, mtl_op)
 
-/* Device memory. */
-template<typename T> T atomicMax(device T &mem, T data)
-{
-  return atomic_fetch_max_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicMin(device T &mem, T data)
-{
-  return atomic_fetch_min_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicAdd(device T &mem, T data)
-{
-  return atomic_fetch_add_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicSub(device T &mem, T data)
-{
-  return atomic_fetch_sub_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicAnd(device T &mem, T data)
-{
-  return atomic_fetch_and_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicOr(device T &mem, T data)
-{
-  return atomic_fetch_or_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicXor(device T &mem, T data)
-{
-  return atomic_fetch_xor_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
-template<typename T> T atomicExchange(device T &mem, T data)
-{
-  return atomic_exchange_explicit((device _atomic<T> *)&mem, data, memory_order_relaxed);
-}
+ATOMIC_OP(Max, fetch_max)
+ATOMIC_OP(Min, fetch_min)
+ATOMIC_OP(Add, fetch_add)
+ATOMIC_OP(Sub, fetch_sub)
+ATOMIC_OP(And, fetch_and)
+ATOMIC_OP(Or, fetch_or)
+ATOMIC_OP(Xor, fetch_xor)
+ATOMIC_OP(Exchange, exchange)
 
+#undef ATOMIC_OP
 /* Used to replace 'out' in function parameters with thread-local reference
  * shortened to avoid expanding the GLSL source string. */
 #define THD thread
