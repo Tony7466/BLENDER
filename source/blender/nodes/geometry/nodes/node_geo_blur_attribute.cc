@@ -5,6 +5,7 @@
 #include "BLI_array.hh"
 #include "BLI_generic_array.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_index_mask_expression.hh"
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
@@ -228,6 +229,7 @@ template<typename T>
 static Span<T> blur_on_mesh_exec(const Span<float> neighbor_weights,
                                  const GroupedSpan<int> neighbors_map,
                                  const int iterations,
+                                 const IndexMask &points_mask,
                                  const MutableSpan<T> buffer_a,
                                  const MutableSpan<T> buffer_b)
 {
@@ -239,17 +241,15 @@ static Span<T> blur_on_mesh_exec(const Span<float> neighbor_weights,
   for ([[maybe_unused]] const int64_t iteration : IndexRange(iterations)) {
     std::swap(src, dst);
     bke::attribute_math::DefaultMixer<T> mixer{dst, IndexMask(0)};
-    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
-      for (const int64_t index : range) {
-        const Span<int> neighbors = neighbors_map[index];
-        const float neighbor_weight = neighbor_weights[index];
-        mixer.set(index, src[index], 1.0f);
-        for (const int neighbor : neighbors) {
-          mixer.mix_in(index, src[neighbor], neighbor_weight);
-        }
+    points_mask.foreach_index(GrainSize(1024), [&](const int index) {
+      const Span<int> neighbors = neighbors_map[index];
+      const float neighbor_weight = neighbor_weights[index];
+      mixer.set(index, src[index], 1.0f);
+      for (const int neighbor : neighbors) {
+        mixer.mix_in(index, src[neighbor], neighbor_weight);
       }
-      mixer.finalize(range);
     });
+    mixer.finalize(points_mask);
   }
 
   return dst;
@@ -271,6 +271,7 @@ template<typename Func> static void to_static_type_for_blur(const CPPType &type,
 static GSpan blur_on_mesh(const Mesh &mesh,
                           const AttrDomain domain,
                           const int iterations,
+                          const IndexMask &points_mask,
                           const Span<float> neighbor_weights,
                           const GMutableSpan buffer_a,
                           const GMutableSpan buffer_b)
@@ -283,65 +284,67 @@ static GSpan blur_on_mesh(const Mesh &mesh,
   GSpan result_buffer;
   to_static_type_for_blur(buffer_a.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    result_buffer = blur_on_mesh_exec<T>(
-        neighbor_weights, neighbors_map, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
+    result_buffer = blur_on_mesh_exec<T>(neighbor_weights,
+                                         neighbors_map,
+                                         iterations,
+                                         points_mask,
+                                         buffer_a.typed<T>(),
+                                         buffer_b.typed<T>());
   });
   return result_buffer;
 }
 
 template<typename T>
-static Span<T> blur_on_curve_exec(const bke::CurvesGeometry &curves,
-                                  const Span<float> neighbor_weights,
+static Span<T> blur_on_curve_exec(const Span<float> neighbor_weights,
                                   const int iterations,
+                                  const OffsetIndices<int> points_by_curve,
+                                  const IndexMask &points_mask,
+                                  const IndexMask &both_in_point_mask,
+                                  const IndexMask &prev_in_point_mask,
+                                  const IndexMask &next_in_point_mask,
+                                  const IndexMask &self_in_point_mask,
+                                  const IndexMask &first_in_last_mask,
+                                  const IndexMask &last_in_first_mask,
                                   const MutableSpan<T> buffer_a,
                                   const MutableSpan<T> buffer_b)
 {
   MutableSpan<T> src = buffer_b;
   MutableSpan<T> dst = buffer_a;
 
-  const OffsetIndices points_by_curve = curves.points_by_curve();
-  const VArray<bool> cyclic = curves.cyclic();
-
   for ([[maybe_unused]] const int iteration : IndexRange(iterations)) {
     std::swap(src, dst);
     bke::attribute_math::DefaultMixer<T> mixer{dst, IndexMask(0)};
-    threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        const IndexRange points = points_by_curve[curve_i];
-        if (points.size() == 1) {
-          /* No mixing possible. */
-          const int point_i = points[0];
-          mixer.set(point_i, src[point_i], 1.0f);
-          continue;
-        }
-        /* Inner points. */
-        for (const int point_i : points.drop_front(1).drop_back(1)) {
-          const float neighbor_weight = neighbor_weights[point_i];
-          mixer.set(point_i, src[point_i], 1.0f);
-          mixer.mix_in(point_i, src[point_i - 1], neighbor_weight);
-          mixer.mix_in(point_i, src[point_i + 1], neighbor_weight);
-        }
-        const int first_i = points[0];
-        const float first_neighbor_weight = neighbor_weights[first_i];
-        const int last_i = points.last();
-        const float last_neighbor_weight = neighbor_weights[last_i];
 
-        /* First point. */
-        mixer.set(first_i, src[first_i], 1.0f);
-        mixer.mix_in(first_i, src[first_i + 1], first_neighbor_weight);
-        /* Last point. */
-        mixer.set(last_i, src[last_i], 1.0f);
-        mixer.mix_in(last_i, src[last_i - 1], last_neighbor_weight);
-
-        if (cyclic[curve_i]) {
-          /* First point. */
-          mixer.mix_in(first_i, src[last_i], first_neighbor_weight);
-          /* Last point. */
-          mixer.mix_in(last_i, src[first_i], last_neighbor_weight);
-        }
-      }
-      mixer.finalize(points_by_curve[range]);
+    both_in_point_mask.foreach_index(GrainSize(4096), [&](const int point_i) {
+      mixer.set(point_i, src[point_i], 1.0f);
+      mixer.mix_in(point_i, src[point_i - 1], neighbor_weights[point_i]);
+      mixer.mix_in(point_i, src[point_i + 1], neighbor_weights[point_i]);
     });
+
+    prev_in_point_mask.foreach_index(GrainSize(4096), [&](const int point_i) {
+      mixer.set(point_i, src[point_i], 1.0f);
+      mixer.mix_in(point_i, src[point_i - 1], neighbor_weights[point_i]);
+    });
+
+    next_in_point_mask.foreach_index(GrainSize(4096), [&](const int point_i) {
+      mixer.set(point_i, src[point_i], 1.0f);
+      mixer.mix_in(point_i, src[point_i + 1], neighbor_weights[point_i]);
+    });
+
+    self_in_point_mask.foreach_index(
+        GrainSize(4096), [&](const int point_i) { mixer.set(point_i, src[point_i], 1.0f); });
+
+    first_in_last_mask.foreach_index(GrainSize(4096), [&](const int curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      mixer.mix_in(points.last(), src[points.first()], neighbor_weights[points.last()]);
+    });
+
+    last_in_first_mask.foreach_index(GrainSize(4096), [&](const int curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      mixer.mix_in(points.first(), src[points.last()], neighbor_weights[points.first()]);
+    });
+
+    mixer.finalize(points_mask);
   }
 
   return dst;
@@ -349,15 +352,67 @@ static Span<T> blur_on_curve_exec(const bke::CurvesGeometry &curves,
 
 static GSpan blur_on_curves(const bke::CurvesGeometry &curves,
                             const int iterations,
+                            const IndexMask &points_mask,
                             const Span<float> neighbor_weights,
                             const GMutableSpan buffer_a,
                             const GMutableSpan buffer_b)
 {
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
+
+  IndexMaskMemory memory;
+
+  Array<int> curve_index(curves.points_num() + 2);
+  offset_indices::build_reverse_map(points_by_curve,
+                                    curve_index.as_mutable_span().drop_front(1).drop_back(1));
+  constexpr int never_mixed_in = -1;
+  curve_index.first() = never_mixed_in;
+  curve_index.last() = never_mixed_in;
+  BLI_assert(!curve_index.as_span().drop_front(1).drop_back(1).contains(never_mixed_in));
+
+  const IndexMask prev_same = IndexMask::from_predicate(
+      points_mask, GrainSize(4096), memory, [&](const int point_i) {
+        const int point_in_map = point_i + 1;
+        return curve_index[point_in_map - 1] == curve_index[point_in_map];
+      });
+  const IndexMask next_same = IndexMask::from_predicate(
+      points_mask, GrainSize(4096), memory, [&](const int point_i) {
+        const int point_in_map = point_i + 1;
+        return curve_index[point_in_map] == curve_index[point_in_map + 1];
+      });
+
+  const IndexMask both_in_point_mask = IndexMask::from_intersection(prev_same, next_same, memory);
+  const IndexMask prev_in_point_mask = IndexMask::from_difference(prev_same, next_same, memory);
+  const IndexMask next_in_point_mask = IndexMask::from_difference(next_same, prev_same, memory);
+  index_mask::ExprBuilder builder;
+  const index_mask::Expr &sub_expr = builder.subtract(&points_mask, {&prev_same, &next_same});
+  const IndexMask self_in_point_mask = index_mask::evaluate_expression(sub_expr, memory);
+
+  const IndexMask cyclic_curves_mask = IndexMask::from_bools(cyclic, memory);
+  const IndexMask first_in_last_mask = IndexMask::from_predicate(
+      cyclic_curves_mask, GrainSize(4096), memory, [&](const int curve_i) {
+        return neighbor_weights[points_by_curve[curve_i].last()] != 0.0f;
+      });
+  const IndexMask last_in_first_mask = IndexMask::from_predicate(
+      cyclic_curves_mask, GrainSize(4096), memory, [&](const int curve_i) {
+        return neighbor_weights[points_by_curve[curve_i].first()] != 0.0f;
+      });
+
   GSpan result_buffer;
   to_static_type_for_blur(buffer_a.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    result_buffer = blur_on_curve_exec<T>(
-        curves, neighbor_weights, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
+    result_buffer = blur_on_curve_exec<T>(neighbor_weights,
+                                          iterations,
+                                          points_by_curve,
+                                          points_mask,
+                                          both_in_point_mask,
+                                          prev_in_point_mask,
+                                          next_in_point_mask,
+                                          self_in_point_mask,
+                                          first_in_last_mask,
+                                          last_in_first_mask,
+                                          buffer_a.typed<T>(),
+                                          buffer_b.typed<T>());
   });
   return result_buffer;
 }
@@ -402,13 +457,27 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     VArraySpan<float> neighbor_weights = evaluator.get_evaluated<float>(1);
     GArray<> buffer_b(*type_, domain_size);
 
+    IndexMaskMemory memory;
+    const IndexMask points_mask = IndexMask::from_predicate(
+        IndexMask(domain_size), GrainSize(4096), memory, [&](const int index) {
+          return neighbor_weights[index] != 0.0f;
+        });
+    const IndexMask keepd_values = points_mask.complement(IndexMask(domain_size), memory);
+    array_utils::copy(
+        GVArray::ForSpan(buffer_a.as_span()), keepd_values, buffer_b.as_mutable_span());
+
     GSpan result_buffer = buffer_a.as_span();
     switch (context.type()) {
       case GeometryComponent::Type::Mesh:
         if (ELEM(context.domain(), AttrDomain::Point, AttrDomain::Edge, AttrDomain::Face)) {
           if (const Mesh *mesh = context.mesh()) {
-            result_buffer = blur_on_mesh(
-                *mesh, context.domain(), iterations_, neighbor_weights, buffer_a, buffer_b);
+            result_buffer = blur_on_mesh(*mesh,
+                                         context.domain(),
+                                         iterations_,
+                                         points_mask,
+                                         neighbor_weights,
+                                         buffer_a,
+                                         buffer_b);
           }
         }
         break;
@@ -417,7 +486,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         if (context.domain() == AttrDomain::Point) {
           if (const bke::CurvesGeometry *curves = context.curves_or_strokes()) {
             result_buffer = blur_on_curves(
-                *curves, iterations_, neighbor_weights, buffer_a, buffer_b);
+                *curves, iterations_, points_mask, neighbor_weights, buffer_a, buffer_b);
           }
         }
         break;
