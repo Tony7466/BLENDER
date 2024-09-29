@@ -29,43 +29,43 @@ BasicParams::BasicParams(const LazyFunction &fn,
 {
 }
 
-void *BasicParams::try_get_input_data_ptr_impl(const int index) const
+void *BasicParams::try_get_input_data_ptr_impl(const Slot slot) const
 {
-  return inputs_[index].get();
+  return inputs_[slot.main_index()].get();
 }
 
-void *BasicParams::try_get_input_data_ptr_or_request_impl(const int index)
+void *BasicParams::try_get_input_data_ptr_or_request_impl(const Slot slot)
 {
-  void *value = inputs_[index].get();
+  void *value = inputs_[slot.main_index()].get();
   if (value == nullptr) {
-    input_usages_[index] = ValueUsage::Used;
+    input_usages_[slot.main_index()] = ValueUsage::Used;
   }
   return value;
 }
 
-void *BasicParams::get_output_data_ptr_impl(const int index)
+void *BasicParams::get_output_data_ptr_impl(const Slot slot)
 {
-  return outputs_[index].get();
+  return outputs_[slot.main_index()].get();
 }
 
-void BasicParams::output_set_impl(const int index)
+void BasicParams::output_set_impl(const Slot slot)
 {
-  set_outputs_[index] = true;
+  set_outputs_[slot.main_index()] = true;
 }
 
-bool BasicParams::output_was_set_impl(const int index) const
+bool BasicParams::output_was_set_impl(const Slot slot) const
 {
-  return set_outputs_[index];
+  return set_outputs_[slot.main_index()];
 }
 
-ValueUsage BasicParams::get_output_usage_impl(const int index) const
+ValueUsage BasicParams::get_output_usage_impl(const Slot slot) const
 {
-  return output_usages_[index];
+  return output_usages_[slot.main_index()];
 }
 
-void BasicParams::set_input_unused_impl(const int index)
+void BasicParams::set_input_unused_impl(const Slot slot)
 {
-  input_usages_[index] = ValueUsage::Unused;
+  input_usages_[slot.main_index()] = ValueUsage::Unused;
 }
 
 bool BasicParams::try_enable_multi_threading_impl()
@@ -92,39 +92,39 @@ RemappedParams::RemappedParams(const LazyFunction &fn,
 {
 }
 
-void *RemappedParams::try_get_input_data_ptr_impl(const int index) const
+void *RemappedParams::try_get_input_data_ptr_impl(const Slot slot) const
 {
-  return base_params_.try_get_input_data_ptr(input_map_[index]);
+  return base_params_.try_get_input_data_ptr(input_map_[slot.main_index()]);
 }
 
-void *RemappedParams::try_get_input_data_ptr_or_request_impl(const int index)
+void *RemappedParams::try_get_input_data_ptr_or_request_impl(const Slot slot)
 {
-  return base_params_.try_get_input_data_ptr_or_request(input_map_[index]);
+  return base_params_.try_get_input_data_ptr_or_request(input_map_[slot.main_index()]);
 }
 
-void *RemappedParams::get_output_data_ptr_impl(const int index)
+void *RemappedParams::get_output_data_ptr_impl(const Slot slot)
 {
-  return base_params_.get_output_data_ptr(output_map_[index]);
+  return base_params_.get_output_data_ptr(output_map_[slot.main_index()]);
 }
 
-void RemappedParams::output_set_impl(const int index)
+void RemappedParams::output_set_impl(const Slot slot)
 {
-  return base_params_.output_set(output_map_[index]);
+  return base_params_.output_set(output_map_[slot.main_index()]);
 }
 
-bool RemappedParams::output_was_set_impl(const int index) const
+bool RemappedParams::output_was_set_impl(const Slot slot) const
 {
-  return base_params_.output_was_set(output_map_[index]);
+  return base_params_.output_was_set(output_map_[slot.main_index()]);
 }
 
-lf::ValueUsage RemappedParams::get_output_usage_impl(const int index) const
+lf::ValueUsage RemappedParams::get_output_usage_impl(const Slot slot) const
 {
-  return base_params_.get_output_usage(output_map_[index]);
+  return base_params_.get_output_usage(output_map_[slot.main_index()]);
 }
 
-void RemappedParams::set_input_unused_impl(const int index)
+void RemappedParams::set_input_unused_impl(const Slot slot)
 {
-  return base_params_.set_input_unused(input_map_[index]);
+  return base_params_.set_input_unused(input_map_[slot.main_index()]);
 }
 
 bool RemappedParams::try_enable_multi_threading_impl()

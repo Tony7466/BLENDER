@@ -1342,43 +1342,43 @@ class GraphExecutorLFParams final : public Params {
     return executor_.get_local_data();
   }
 
-  void *try_get_input_data_ptr_impl(const int index) const override
+  void *try_get_input_data_ptr_impl(const Slot slot) const override
   {
-    const InputState &input_state = node_state_.inputs[index];
+    const InputState &input_state = node_state_.inputs[slot.main_index()];
     if (input_state.was_ready_for_execution) {
       return input_state.value;
     }
     return nullptr;
   }
 
-  void *try_get_input_data_ptr_or_request_impl(const int index) override
+  void *try_get_input_data_ptr_or_request_impl(const Slot slot) override
   {
-    const InputState &input_state = node_state_.inputs[index];
+    const InputState &input_state = node_state_.inputs[slot.main_index()];
     if (input_state.was_ready_for_execution) {
       return input_state.value;
     }
     return executor_.set_input_required_during_execution(
-        node_, node_state_, index, current_task_, this->get_local_data());
+        node_, node_state_, slot.main_index(), current_task_, this->get_local_data());
   }
 
-  void *get_output_data_ptr_impl(const int index) override
+  void *get_output_data_ptr_impl(const Slot slot) override
   {
-    OutputState &output_state = node_state_.outputs[index];
+    OutputState &output_state = node_state_.outputs[slot.main_index()];
     BLI_assert(!output_state.has_been_computed);
     if (output_state.value == nullptr) {
       LinearAllocator<> &allocator = *this->get_local_data().allocator;
-      const CPPType &type = node_.output(index).type();
+      const CPPType &type = node_.output(slot.main_index()).type();
       output_state.value = allocator.allocate(type.size(), type.alignment());
     }
     return output_state.value;
   }
 
-  void output_set_impl(const int index) override
+  void output_set_impl(const Slot slot) override
   {
-    OutputState &output_state = node_state_.outputs[index];
+    OutputState &output_state = node_state_.outputs[slot.main_index()];
     BLI_assert(!output_state.has_been_computed);
     BLI_assert(output_state.value != nullptr);
-    const OutputSocket &output_socket = node_.output(index);
+    const OutputSocket &output_socket = node_.output(slot.main_index());
     executor_.forward_value_to_linked_inputs(output_socket,
                                              {output_socket.type(), output_state.value},
                                              current_task_,
@@ -1387,22 +1387,22 @@ class GraphExecutorLFParams final : public Params {
     output_state.has_been_computed = true;
   }
 
-  bool output_was_set_impl(const int index) const override
+  bool output_was_set_impl(const Slot slot) const override
   {
-    const OutputState &output_state = node_state_.outputs[index];
+    const OutputState &output_state = node_state_.outputs[slot.main_index()];
     return output_state.has_been_computed;
   }
 
-  ValueUsage get_output_usage_impl(const int index) const override
+  ValueUsage get_output_usage_impl(const Slot slot) const override
   {
-    const OutputState &output_state = node_state_.outputs[index];
+    const OutputState &output_state = node_state_.outputs[slot.main_index()];
     return output_state.usage_for_execution;
   }
 
-  void set_input_unused_impl(const int index) override
+  void set_input_unused_impl(const Slot slot) override
   {
     executor_.set_input_unused_during_execution(
-        node_, node_state_, index, current_task_, this->get_local_data());
+        node_, node_state_, slot.main_index(), current_task_, this->get_local_data());
   }
 
   bool try_enable_multi_threading_impl() override

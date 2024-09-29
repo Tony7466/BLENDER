@@ -126,6 +126,19 @@ struct Context {
   }
 };
 
+class Slot {
+ private:
+  int main_index_;
+
+ public:
+  Slot(const int main_index) : main_index_(main_index) {}
+
+  int main_index() const
+  {
+    return main_index_;
+  }
+};
+
 /**
  * Defines the calling convention for a lazy-function. During execution, a lazy-function retrieves
  * its inputs and sets the outputs through #Params.
@@ -149,13 +162,13 @@ class Params {
    *
    * The #LazyFunction must leave returned object in an initialized state, but can move from it.
    */
-  void *try_get_input_data_ptr(int index) const;
+  void *try_get_input_data_ptr(Slot slot) const;
 
   /**
    * Same as #try_get_input_data_ptr, but if the data is not yet available, request it. This makes
    * sure that the data will be available in a future execution of the #LazyFunction.
    */
-  void *try_get_input_data_ptr_or_request(int index);
+  void *try_get_input_data_ptr_or_request(Slot slot);
 
   /**
    * Get a pointer to where the output value should be stored.
@@ -163,39 +176,39 @@ class Params {
    * The #LazyFunction is responsible for initializing the value.
    * After the output has been initialized to its final value, #output_set has to be called.
    */
-  void *get_output_data_ptr(int index);
+  void *get_output_data_ptr(Slot slot);
 
   /**
    * Call this after the output value is initialized. After this is called, the value must not be
    * touched anymore. It may be moved or destructed immediately.
    */
-  void output_set(int index);
+  void output_set(Slot slot);
 
   /**
    * Allows the #LazyFunction to check whether an output was computed already without keeping
    * track of it itself.
    */
-  bool output_was_set(int index) const;
+  bool output_was_set(Slot slot) const;
 
   /**
    * Can be used to detect which outputs have to be computed.
    */
-  ValueUsage get_output_usage(int index) const;
+  ValueUsage get_output_usage(Slot slot) const;
 
   /**
    * Tell the caller of the #LazyFunction that a specific input will definitely not be used.
    * Only an input that was not #ValueUsage::Used can become unused.
    */
-  void set_input_unused(int index);
+  void set_input_unused(Slot slot);
 
   /**
    * Typed utility methods that wrap the methods above.
    */
-  template<typename T> T extract_input(int index);
-  template<typename T> T &get_input(int index) const;
-  template<typename T> T *try_get_input_data_ptr(int index) const;
-  template<typename T> T *try_get_input_data_ptr_or_request(int index);
-  template<typename T> void set_output(int index, T &&value);
+  template<typename T> T extract_input(Slot slot);
+  template<typename T> T &get_input(Slot slot) const;
+  template<typename T> T *try_get_input_data_ptr(Slot slot) const;
+  template<typename T> T *try_get_input_data_ptr_or_request(Slot slot);
+  template<typename T> void set_output(Slot slot, T &&value);
 
   /**
    * Returns true when the lazy-function is now allowed to use multi-threading when interacting
@@ -206,18 +219,21 @@ class Params {
  private:
   void assert_valid_thread() const;
 
+  bool is_valid_input_slot(const Slot slot) const;
+  bool is_valid_output_slot(const Slot slot) const;
+
   /**
    * Methods that need to be implemented by subclasses. Those are separate from the non-virtual
    * methods above to make it easy to insert additional debugging logic on top of the
    * implementations.
    */
-  virtual void *try_get_input_data_ptr_impl(int index) const = 0;
-  virtual void *try_get_input_data_ptr_or_request_impl(int index) = 0;
-  virtual void *get_output_data_ptr_impl(int index) = 0;
-  virtual void output_set_impl(int index) = 0;
-  virtual bool output_was_set_impl(int index) const = 0;
-  virtual ValueUsage get_output_usage_impl(int index) const = 0;
-  virtual void set_input_unused_impl(int index) = 0;
+  virtual void *try_get_input_data_ptr_impl(Slot slot) const = 0;
+  virtual void *try_get_input_data_ptr_or_request_impl(Slot slot) = 0;
+  virtual void *get_output_data_ptr_impl(Slot slot) = 0;
+  virtual void output_set_impl(Slot slot) = 0;
+  virtual bool output_was_set_impl(Slot slot) const = 0;
+  virtual ValueUsage get_output_usage_impl(Slot slot) const = 0;
+  virtual void set_input_unused_impl(Slot slot) = 0;
   virtual bool try_enable_multi_threading_impl();
 };
 
@@ -386,87 +402,87 @@ inline Params::Params(const LazyFunction &fn,
 {
 }
 
-inline void *Params::try_get_input_data_ptr(const int index) const
+inline void *Params::try_get_input_data_ptr(const Slot slot) const
 {
-  BLI_assert(index >= 0 && index < fn_.inputs().size());
-  return this->try_get_input_data_ptr_impl(index);
+  BLI_assert(this->is_valid_input_slot(slot));
+  return this->try_get_input_data_ptr_impl(slot);
 }
 
-inline void *Params::try_get_input_data_ptr_or_request(const int index)
+inline void *Params::try_get_input_data_ptr_or_request(const Slot slot)
 {
-  BLI_assert(index >= 0 && index < fn_.inputs().size());
+  BLI_assert(this->is_valid_input_slot(slot));
   this->assert_valid_thread();
-  return this->try_get_input_data_ptr_or_request_impl(index);
+  return this->try_get_input_data_ptr_or_request_impl(slot);
 }
 
-inline void *Params::get_output_data_ptr(const int index)
+inline void *Params::get_output_data_ptr(const Slot slot)
 {
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  BLI_assert(this->is_valid_output_slot(slot));
   this->assert_valid_thread();
-  return this->get_output_data_ptr_impl(index);
+  return this->get_output_data_ptr_impl(slot);
 }
 
-inline void Params::output_set(const int index)
+inline void Params::output_set(const Slot slot)
 {
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
+  BLI_assert(this->is_valid_output_slot(slot));
   this->assert_valid_thread();
-  this->output_set_impl(index);
+  this->output_set_impl(slot);
 }
 
-inline bool Params::output_was_set(const int index) const
+inline bool Params::output_was_set(const Slot slot) const
 {
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
-  return this->output_was_set_impl(index);
+  BLI_assert(this->is_valid_output_slot(slot));
+  return this->output_was_set_impl(slot);
 }
 
-inline ValueUsage Params::get_output_usage(const int index) const
+inline ValueUsage Params::get_output_usage(const Slot slot) const
 {
-  BLI_assert(index >= 0 && index < fn_.outputs().size());
-  return this->get_output_usage_impl(index);
+  BLI_assert(this->is_valid_output_slot(slot));
+  return this->get_output_usage_impl(slot);
 }
 
-inline void Params::set_input_unused(const int index)
+inline void Params::set_input_unused(const Slot slot)
 {
-  BLI_assert(index >= 0 && index < fn_.inputs().size());
+  BLI_assert(this->is_valid_input_slot(slot));
   this->assert_valid_thread();
-  this->set_input_unused_impl(index);
+  this->set_input_unused_impl(slot);
 }
 
-template<typename T> inline T Params::extract_input(const int index)
+template<typename T> inline T Params::extract_input(const Slot slot)
 {
   this->assert_valid_thread();
-  void *data = this->try_get_input_data_ptr(index);
+  void *data = this->try_get_input_data_ptr(slot);
   BLI_assert(data != nullptr);
   T return_value = std::move(*static_cast<T *>(data));
   return return_value;
 }
 
-template<typename T> inline T &Params::get_input(const int index) const
+template<typename T> inline T &Params::get_input(const Slot slot) const
 {
-  void *data = this->try_get_input_data_ptr(index);
+  void *data = this->try_get_input_data_ptr(slot);
   BLI_assert(data != nullptr);
   return *static_cast<T *>(data);
 }
 
-template<typename T> inline T *Params::try_get_input_data_ptr(const int index) const
+template<typename T> inline T *Params::try_get_input_data_ptr(const Slot slot) const
 {
   this->assert_valid_thread();
-  return static_cast<T *>(this->try_get_input_data_ptr(index));
+  return static_cast<T *>(this->try_get_input_data_ptr(slot));
 }
 
-template<typename T> inline T *Params::try_get_input_data_ptr_or_request(const int index)
+template<typename T> inline T *Params::try_get_input_data_ptr_or_request(const Slot slot)
 {
   this->assert_valid_thread();
-  return static_cast<T *>(this->try_get_input_data_ptr_or_request(index));
+  return static_cast<T *>(this->try_get_input_data_ptr_or_request(slot));
 }
 
-template<typename T> inline void Params::set_output(const int index, T &&value)
+template<typename T> inline void Params::set_output(const Slot slot, T &&value)
 {
   using DecayT = std::decay_t<T>;
   this->assert_valid_thread();
-  void *data = this->get_output_data_ptr(index);
+  void *data = this->get_output_data_ptr(slot);
   new (data) DecayT(std::forward<T>(value));
-  this->output_set(index);
+  this->output_set(slot);
 }
 
 inline bool Params::try_enable_multi_threading()
@@ -491,6 +507,16 @@ inline void Params::assert_valid_thread() const
     BLI_assert_unreachable();
   }
 #endif
+}
+
+inline bool Params::is_valid_input_slot(const Slot slot) const
+{
+  return slot.main_index() >= 0 && slot.main_index() < fn_.inputs().size();
+}
+
+inline bool Params::is_valid_output_slot(const Slot slot) const
+{
+  return slot.main_index() >= 0 && slot.main_index() < fn_.outputs().size();
 }
 
 /** \} */
