@@ -402,7 +402,6 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
       const IndexRange range = ranges_to_keep[range_i];
 
       int count = range.size();
-      /*maybe the following is what I'm missing? seems like it just deletes points*/
       for (const int src_point : range.shift(points.first())) {
         dst_to_src_point[curr_dst_point_id++] = src_point;
       }
@@ -2326,14 +2325,17 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
     return curves;
   }
 
+  int cur_dst_point_id = 0;
   Array<int> dst_to_src_point(
       curves.points_num()); /* idk if I need this, just copying delete for now*/
   Vector<int> dst_curve_counts;
   Vector<int> dst_to_src_curve;
+  Vector<bool> dst_cyclic;
 
   for (const int curve_i : curves.curves_range()) {
     const IndexRange points = points_by_curve[curve_i]; /*point where source curve_i begins*/
     const Span<bool> curve_i_points_to_split = points_to_split.as_span().slice(points);
+    const bool curve_cyclic = src_cyclic[curve_i];
 
     const Vector<IndexRange> new_curve_ranges = find_curve_ranges(curve_i_points_to_split);
 
@@ -2341,15 +2343,30 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
       continue;
     }
 
-    IndexRange range_ids = new_curve_ranges.index_range();
+    const bool is_last_segment_selected = curve_cyclic && new_curve_ranges.first().first() == 0 &&
+                                          new_curve_ranges.last().last() == points.size() - 1;
+    const bool is_curve_self_joined = is_last_segment_selected && new_curve_ranges.size() != 1;
+    const bool is_cyclic = new_curve_ranges.size() == 1 && is_last_segment_selected;
 
+    IndexRange range_ids = new_curve_ranges.index_range();
+    /* Skip the first range if it is joined to the end of the last range. */
     for (const int range_i : new_curve_ranges.index_range()) {
       const IndexRange range = new_curve_ranges[range_i];
 
       int count = range.size();
 
+      /* hol up what am I actually doing here? this deals with points, seems like I don't need
+       * it
+      if (is_curve_self_joined && range_i == range_ids.last()) {
+        const IndexRange first_range = new_curve_ranges[range_ids.first()];
+        for (const int src_point : first_range.shift(points.first())) {
+          dst_to_src_point[curr_dst_point_id++] = src_point;
+        }
+      } */
+
       dst_curve_counts.append(count);
       dst_to_src_curve.append(curve_i);
+      dst_cyclic.append(is_cyclic);
     }
   }
 
@@ -2368,13 +2385,16 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
-  /*gather_attributes(src_attributes,
+  /* Transfer curve attributes. */
+  gather_attributes(src_attributes,
                     bke::AttrDomain::Curve,
                     bke::AttrDomain::Curve,
                     {},
                     dst_to_src_curve,
-                    dst_attributes); */
+                    dst_attributes);
+  array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
 
+  /* Points havent' changed, just copy attributes over*/
   copy_attributes(
       src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, dst_attributes);
 
