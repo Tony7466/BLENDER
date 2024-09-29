@@ -18,10 +18,10 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "bpy_utils_units.h"
+#include "bpy_utils_units.hh"
 
-#include "../generic/py_capi_utils.h"
-#include "../generic/python_compat.h"
+#include "../generic/py_capi_utils.hh"
+#include "../generic/python_compat.hh"
 
 #include "BKE_unit.hh"
 
@@ -54,6 +54,7 @@ static const char *bpyunits_ucategories_items[] = {
     "TEMPERATURE",
     "WAVELENGTH",
     "COLOR_TEMPERATURE",
+    "FREQUENCY",
     nullptr,
 };
 

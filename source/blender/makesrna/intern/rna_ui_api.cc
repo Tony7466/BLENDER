@@ -576,6 +576,72 @@ static void rna_uiTemplateAnyID(uiLayout *layout,
   uiTemplateAnyID(layout, ptr, propname, proptypename, name);
 }
 
+static void rna_uiTemplateAction(uiLayout *layout,
+                                 bContext *C,
+                                 ID *id,
+                                 const char *newop,
+                                 const char *unlinkop,
+                                 const char *name,
+                                 const char *text_ctxt,
+                                 const bool translate)
+{
+  name = rna_translate_ui_text(name, text_ctxt, nullptr, nullptr, translate);
+  uiTemplateAction(layout, C, id, newop, unlinkop, name);
+}
+
+static void rna_uiTemplateSearch(uiLayout *layout,
+                                 const bContext *C,
+                                 PointerRNA *ptr,
+                                 const char *propname,
+                                 PointerRNA *searchptr,
+                                 const char *searchpropname,
+                                 const char *newop,
+                                 const char *unlinkop,
+                                 const char *name,
+                                 const char *text_ctxt,
+                                 bool translate)
+{
+  PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
+
+  if (!prop) {
+    RNA_warning("property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
+    return;
+  }
+
+  /* Get translated name (label). */
+  name = rna_translate_ui_text(name, text_ctxt, nullptr, prop, translate);
+
+  uiTemplateSearch(layout, C, ptr, propname, searchptr, searchpropname, newop, unlinkop, name);
+}
+
+static void rna_uiTemplateSearchPreview(uiLayout *layout,
+                                        bContext *C,
+                                        PointerRNA *ptr,
+                                        const char *propname,
+                                        PointerRNA *searchptr,
+                                        const char *searchpropname,
+                                        const char *newop,
+                                        const char *unlinkop,
+                                        const char *name,
+                                        const char *text_ctxt,
+                                        bool translate,
+                                        const int rows,
+                                        const int cols)
+{
+  PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
+
+  if (!prop) {
+    RNA_warning("property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
+    return;
+  }
+
+  /* Get translated name (label). */
+  name = rna_translate_ui_text(name, text_ctxt, nullptr, prop, translate);
+
+  uiTemplateSearchPreview(
+      layout, C, ptr, propname, searchptr, searchpropname, newop, unlinkop, rows, cols, name);
+}
+
 void rna_uiTemplateList(uiLayout *layout,
                         bContext *C,
                         const char *listtype_name,
@@ -1716,26 +1782,15 @@ void RNA_api_ui_layout(StructRNA *srna)
                "",
                "Optionally limit the items which can be selected");
 
-  func = RNA_def_function(srna, "template_search", "uiTemplateSearch");
+  func = RNA_def_function(srna, "template_action", "rna_uiTemplateAction");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
-  api_ui_item_rna_common(func);
-  parm = RNA_def_pointer(
-      func, "search_data", "AnyType", "", "Data from which to take collection to search in");
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
-  parm = RNA_def_string(
-      func, "search_property", nullptr, 0, "", "Identifier of search collection property");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_string(
-      func, "new", nullptr, 0, "", "Operator identifier to create a new item for the collection");
-  RNA_def_string(func,
-                 "unlink",
-                 nullptr,
-                 0,
-                 "",
-                 "Operator identifier to unlink or delete the active "
-                 "item from the collection");
+  parm = RNA_def_pointer(func, "id", "ID", "", "The data-block for which to select an Action");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  RNA_def_string(func, "new", nullptr, 0, "", "Operator identifier to create a new ID block");
+  RNA_def_string(func, "unlink", nullptr, 0, "", "Operator identifier to unlink the ID block");
+  api_ui_item_common_text(func);
 
-  func = RNA_def_function(srna, "template_search_preview", "uiTemplateSearchPreview");
+  func = RNA_def_function(srna, "template_search", "rna_uiTemplateSearch");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   api_ui_item_rna_common(func);
   parm = RNA_def_pointer(
@@ -1753,6 +1808,27 @@ void RNA_api_ui_layout(StructRNA *srna)
                  "",
                  "Operator identifier to unlink or delete the active "
                  "item from the collection");
+  api_ui_item_common_text(func);
+
+  func = RNA_def_function(srna, "template_search_preview", "rna_uiTemplateSearchPreview");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  api_ui_item_rna_common(func);
+  parm = RNA_def_pointer(
+      func, "search_data", "AnyType", "", "Data from which to take collection to search in");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  parm = RNA_def_string(
+      func, "search_property", nullptr, 0, "", "Identifier of search collection property");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_string(
+      func, "new", nullptr, 0, "", "Operator identifier to create a new item for the collection");
+  RNA_def_string(func,
+                 "unlink",
+                 nullptr,
+                 0,
+                 "",
+                 "Operator identifier to unlink or delete the active "
+                 "item from the collection");
+  api_ui_item_common_text(func);
   RNA_def_int(
       func, "rows", 0, 0, INT_MAX, "Number of thumbnail preview rows to display", "", 0, INT_MAX);
   RNA_def_int(func,
@@ -2010,8 +2086,9 @@ void RNA_api_ui_layout(StructRNA *srna)
       nullptr,
       0,
       "",
-      "Identifier of this list widget (mandatory when using default \"" UI_UL_DEFAULT_CLASS_NAME
-      "\" class). "
+      "Identifier of this list widget. Necessary to tell apart different list widgets. Mandatory "
+      "when using default \"" UI_UL_DEFAULT_CLASS_NAME
+      "\" class. "
       "If this not an empty string, the uilist gets a custom ID, otherwise it takes the "
       "name of the class used to define the uilist (for example, if the "
       "class name is \"OBJECT_UL_vgroups\", and list_id is not set by the "

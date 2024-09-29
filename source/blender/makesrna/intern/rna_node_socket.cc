@@ -271,11 +271,7 @@ static void rna_NodeSocket_type_set(PointerRNA *ptr, int value)
   blender::bke::node_find_node(ntree, sock, &node, nullptr);
   if (node->type != NODE_CUSTOM) {
     /* Can't change the socket type on built-in nodes like this. */
-    if (!node->is_reroute()) {
-      /* TODO: Refactor reroute node to avoid direct change of the socket type in built-in node and
-       * use proper node method for this. */
-      return;
-    }
+    return;
   }
   blender::bke::node_modify_socket_type_static(ntree, node, sock, value, 0);
 }
@@ -1620,6 +1616,10 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
      "NodeTreeInterfaceSocketFloatColorTemperature",
      SOCK_FLOAT,
      PROP_COLOR_TEMPERATURE},
+    {"NodeSocketFloatFrequency",
+     "NodeTreeInterfaceSocketFloatFrequency",
+     SOCK_FLOAT,
+     PROP_FREQUENCY},
     {"NodeSocketInt", "NodeTreeInterfaceSocketInt", SOCK_INT, PROP_NONE},
     {"NodeSocketIntUnsigned", "NodeTreeInterfaceSocketIntUnsigned", SOCK_INT, PROP_UNSIGNED},
     {"NodeSocketIntPercentage", "NodeTreeInterfaceSocketIntPercentage", SOCK_INT, PROP_PERCENTAGE},

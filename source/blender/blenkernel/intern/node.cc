@@ -37,7 +37,7 @@
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_math_rotation_types.hh"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
@@ -85,6 +85,7 @@
 #include "NOD_composite.hh"
 #include "NOD_geo_bake.hh"
 #include "NOD_geo_capture_attribute.hh"
+#include "NOD_geo_foreach_geometry_element.hh"
 #include "NOD_geo_index_switch.hh"
 #include "NOD_geo_menu_switch.hh"
 #include "NOD_geo_repeat.hh"
@@ -545,6 +546,8 @@ static StringRef get_legacy_socket_subtype_idname(StringRef idname, const void *
         return "NodeSocketFloatWavelength";
       case PROP_COLOR_TEMPERATURE:
         return "NodeSocketFloatColorTemperature";
+      case PROP_FREQUENCY:
+        return "NodeSocketFloatFrequency";
     }
   }
   if (idname == "NodeSocketInt") {
@@ -903,6 +906,11 @@ void node_tree_blend_write(BlendWriter *writer, bNodeTree *ntree)
     if (node->type == GEO_NODE_MENU_SWITCH) {
       nodes::MenuSwitchItemsAccessor::blend_write(writer, *node);
     }
+    if (node->type == GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT) {
+      nodes::ForeachGeometryElementInputItemsAccessor::blend_write(writer, *node);
+      nodes::ForeachGeometryElementGenerationItemsAccessor::blend_write(writer, *node);
+      nodes::ForeachGeometryElementMainItemsAccessor::blend_write(writer, *node);
+    }
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -1172,6 +1180,12 @@ void node_tree_blend_read_data(BlendDataReader *reader, ID *owner_id, bNodeTree 
         }
         case GEO_NODE_REPEAT_OUTPUT: {
           nodes::RepeatItemsAccessor::blend_read_data(reader, *node);
+          break;
+        }
+        case GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT: {
+          nodes::ForeachGeometryElementInputItemsAccessor::blend_read_data(reader, *node);
+          nodes::ForeachGeometryElementMainItemsAccessor::blend_read_data(reader, *node);
+          nodes::ForeachGeometryElementGenerationItemsAccessor::blend_read_data(reader, *node);
           break;
         }
         case GEO_NODE_INDEX_SWITCH: {
@@ -2132,6 +2146,8 @@ const char *node_static_socket_type(const int type, const int subtype)
           return "NodeSocketFloatWavelength";
         case PROP_COLOR_TEMPERATURE:
           return "NodeSocketFloatColorTemperature";
+        case PROP_FREQUENCY:
+          return "NodeSocketFloatFrequency";
         case PROP_NONE:
         default:
           return "NodeSocketFloat";
@@ -2226,6 +2242,8 @@ const char *node_static_socket_interface_type_new(const int type, const int subt
           return "NodeTreeInterfaceSocketFloatWavelength";
         case PROP_COLOR_TEMPERATURE:
           return "NodeTreeInterfaceSocketFloatColorTemperature";
+        case PROP_FREQUENCY:
+          return "NodeTreeInterfaceSocketFloatFrequency";
         case PROP_NONE:
         default:
           return "NodeTreeInterfaceSocketFloat";
@@ -4292,16 +4310,16 @@ static void node_type_base_defaults(bNodeType *ntype)
 /* allow this node for any tree type */
 static bool node_poll_default(const bNodeType * /*ntype*/,
                               const bNodeTree * /*ntree*/,
-                              const char ** /*disabled_hint*/)
+                              const char ** /*r_disabled_hint*/)
 {
   return true;
 }
 
 static bool node_poll_instance_default(const bNode *node,
                                        const bNodeTree *ntree,
-                                       const char **disabled_hint)
+                                       const char **r_disabled_hint)
 {
-  return node->typeinfo->poll(node->typeinfo, ntree, disabled_hint);
+  return node->typeinfo->poll(node->typeinfo, ntree, r_disabled_hint);
 }
 
 void node_type_base(bNodeType *ntype, const int type, const char *name, const short nclass)

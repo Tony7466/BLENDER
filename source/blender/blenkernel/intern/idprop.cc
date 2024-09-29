@@ -536,6 +536,8 @@ static IDProperty *IDP_CopyID(const IDProperty *prop, const int flag)
 void IDP_AssignID(IDProperty *prop, ID *id, const int flag)
 {
   BLI_assert(prop->type == IDP_ID);
+  /* Do not assign embedded IDs to IDProperties. */
+  BLI_assert(!id || (id->flag & ID_FLAG_EMBEDDED_DATA) == 0);
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0 && IDP_Id(prop) != nullptr) {
     id_us_min(IDP_Id(prop));
@@ -1463,6 +1465,10 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
         BLO_read_int32_array(
             reader, ui_data_int->default_array_len, (int **)&ui_data_int->default_array);
       }
+      else {
+        ui_data_int->default_array = nullptr;
+        ui_data_int->default_array_len = 0;
+      }
       BLO_read_struct_array(reader,
                             IDPropertyUIDataEnumItem,
                             size_t(ui_data_int->enum_items_num),
@@ -1482,6 +1488,10 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
         BLO_read_int8_array(
             reader, ui_data_bool->default_array_len, (int8_t **)&ui_data_bool->default_array);
       }
+      else {
+        ui_data_bool->default_array = nullptr;
+        ui_data_bool->default_array_len = 0;
+      }
       break;
     }
     case IDP_UI_DATA_TYPE_FLOAT: {
@@ -1490,6 +1500,10 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
       if (prop->type == IDP_ARRAY) {
         BLO_read_double_array(
             reader, ui_data_float->default_array_len, (double **)&ui_data_float->default_array);
+      }
+      else {
+        ui_data_float->default_array = nullptr;
+        ui_data_float->default_array_len = 0;
       }
       break;
     }

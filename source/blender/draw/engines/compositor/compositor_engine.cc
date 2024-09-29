@@ -121,8 +121,8 @@ class Context : public realtime_compositor::Context {
                                  DRW_context_state_get()->region,
                                  DRW_context_state_get()->v3d,
                                  DRW_context_state_get()->rv3d,
-                                 &camera_border,
-                                 false);
+                                 false,
+                                 &camera_border);
 
     rcti camera_region;
     BLI_rcti_rctf_copy_floor(&camera_region, &camera_border);
@@ -133,9 +133,12 @@ class Context : public realtime_compositor::Context {
     return visible_camera_region;
   }
 
-  GPUTexture *get_output_texture() override
+  realtime_compositor::Result get_output_result() override
   {
-    return DRW_viewport_texture_list_get()->color;
+    realtime_compositor::Result result = this->create_result(
+        realtime_compositor::ResultType::Color, realtime_compositor::ResultPrecision::Half);
+    result.wrap_external(DRW_viewport_texture_list_get()->color);
+    return result;
   }
 
   realtime_compositor::Result get_viewer_output_result(realtime_compositor::Domain /*domain*/,

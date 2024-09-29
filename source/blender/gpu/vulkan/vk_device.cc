@@ -35,12 +35,11 @@ void VKDevice::reinit()
 
 void VKDevice::deinit()
 {
-  VK_ALLOCATION_CALLBACKS
   if (!is_initialized()) {
     return;
   }
 
-  dummy_buffer_.free();
+  dummy_buffer.free();
   samplers_.free();
 
   {
@@ -51,8 +50,8 @@ void VKDevice::deinit()
     }
     thread_data_.clear();
   }
+  pipelines.write_to_disk();
   pipelines.free_data();
-  vkDestroyPipelineCache(vk_device_, vk_pipeline_cache_, vk_allocation_callbacks);
   descriptor_set_layouts_.deinit();
   vmaDestroyAllocator(mem_allocator_);
   mem_allocator_ = VK_NULL_HANDLE;
@@ -92,9 +91,11 @@ void VKDevice::init(void *ghost_context)
   init_functions();
   init_debug_callbacks();
   init_memory_allocator();
-  init_pipeline_cache();
+  pipelines.init();
+  pipelines.read_from_disk();
 
   samplers_.init();
+  init_dummy_buffer();
 
   debug::object_label(vk_handle(), "LogicalDevice");
   debug::object_label(queue_get(), "GenericQueue");
@@ -125,7 +126,15 @@ void VKDevice::init_debug_callbacks()
 void VKDevice::init_physical_device_properties()
 {
   BLI_assert(vk_physical_device_ != VK_NULL_HANDLE);
-  vkGetPhysicalDeviceProperties(vk_physical_device_, &vk_physical_device_properties_);
+
+  VkPhysicalDeviceProperties2 vk_physical_device_properties = {};
+  vk_physical_device_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+  vk_physical_device_driver_properties_.sType =
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
+  vk_physical_device_properties.pNext = &vk_physical_device_driver_properties_;
+
+  vkGetPhysicalDeviceProperties2(vk_physical_device_, &vk_physical_device_properties);
+  vk_physical_device_properties_ = vk_physical_device_properties.properties;
 }
 
 void VKDevice::init_physical_device_memory_properties()
@@ -183,24 +192,16 @@ void VKDevice::init_memory_allocator()
   vmaCreateAllocator(&info, &mem_allocator_);
 }
 
-void VKDevice::init_pipeline_cache()
+void VKDevice::init_dummy_buffer()
 {
-  VK_ALLOCATION_CALLBACKS;
-  VkPipelineCacheCreateInfo create_info = {};
-  create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-  vkCreatePipelineCache(vk_device_, &create_info, vk_allocation_callbacks, &vk_pipeline_cache_);
-}
-
-void VKDevice::init_dummy_buffer(VKContext &context)
-{
-  if (dummy_buffer_.is_allocated()) {
-    return;
-  }
-
-  dummy_buffer_.create(sizeof(float4x4),
-                       GPU_USAGE_DEVICE_ONLY,
-                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  dummy_buffer_.clear(context, 0);
+  dummy_buffer.create(sizeof(float4x4),
+                      GPU_USAGE_DEVICE_ONLY,
+                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+  debug::object_label(dummy_buffer.vk_handle(), "DummyBuffer");
+  /* Default dummy buffer. Set the 4th element to 1 to fix missing orcos. */
+  float data[16] = {
+      0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  dummy_buffer.update(static_cast<void *>(data));
 }
 
 void VKDevice::init_glsl_patch()
@@ -314,33 +315,8 @@ std::string VKDevice::vendor_name() const
 
 std::string VKDevice::driver_version() const
 {
-  /*
-   * NOTE: this depends on the driver type and is currently incorrect. Idea is to use a default per
-   * OS.
-   */
-  const uint32_t driver_version = vk_physical_device_properties_.driverVersion;
-  switch (vk_physical_device_properties_.vendorID) {
-    case PCI_ID_NVIDIA:
-      return std::to_string((driver_version >> 22) & 0x3FF) + "." +
-             std::to_string((driver_version >> 14) & 0xFF) + "." +
-             std::to_string((driver_version >> 6) & 0xFF) + "." +
-             std::to_string(driver_version & 0x3F);
-    case PCI_ID_INTEL: {
-      const uint32_t major = VK_VERSION_MAJOR(driver_version);
-      /* When using Mesa driver we should use VK_VERSION_*. */
-      if (major > 30) {
-        return std::to_string((driver_version >> 14) & 0x3FFFF) + "." +
-               std::to_string(driver_version & 0x3FFF);
-      }
-      break;
-    }
-    default:
-      break;
-  }
-
-  return std::to_string(VK_VERSION_MAJOR(driver_version)) + "." +
-         std::to_string(VK_VERSION_MINOR(driver_version)) + "." +
-         std::to_string(VK_VERSION_PATCH(driver_version));
+  return StringRefNull(vk_physical_device_driver_properties_.driverName) + " " +
+         StringRefNull(vk_physical_device_driver_properties_.driverInfo);
 }
 
 /** \} */
@@ -355,14 +331,14 @@ VKThreadData::VKThreadData(VKDevice &device,
                            render_graph::VKResourceStateTracker &resources)
     : thread_id(thread_id), render_graph(std::move(command_buffer), resources)
 {
-  for (VKResourcePool &resource_pool : swap_chain_resources) {
+  for (VKResourcePool &resource_pool : resource_pools) {
     resource_pool.init(device);
   }
 }
 
 void VKThreadData::deinit(VKDevice &device)
 {
-  for (VKResourcePool &resource_pool : swap_chain_resources) {
+  for (VKResourcePool &resource_pool : resource_pools) {
     resource_pool.deinit(device);
   }
 }
@@ -409,11 +385,19 @@ VKDiscardPool &VKDevice::discard_pool_for_current_thread()
 void VKDevice::context_register(VKContext &context)
 {
   contexts_.append(std::reference_wrapper(context));
+  current_thread_data().num_contexts += 1;
 }
 
 void VKDevice::context_unregister(VKContext &context)
 {
   contexts_.remove(contexts_.first_index_of(std::reference_wrapper(context)));
+
+  auto &thread_data = current_thread_data();
+  thread_data.num_contexts -= 1;
+  BLI_assert(thread_data.num_contexts >= 0);
+  if (thread_data.num_contexts == 0) {
+    discard_pool_for_current_thread().destroy_discarded_resources(*this);
+  }
 }
 Span<std::reference_wrapper<VKContext>> VKDevice::contexts_get() const
 {
