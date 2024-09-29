@@ -224,7 +224,7 @@ class GHOST_SystemCocoa : public GHOST_System {
   /**
    * Returns GHOST_kSuccess if the clipboard contains an image.
    */
-  GHOST_TSuccess hasClipboardImage() const;
+  GHOST_TSuccess hasClipboardImage() const override;
 
   /**
    * Get image data from the Clipboard
@@ -232,7 +232,7 @@ class GHOST_SystemCocoa : public GHOST_System {
    * \param r_height: the returned image height in pixels.
    * \return pointer uint array in RGBA byte order. Caller must free.
    */
-  uint *getClipboardImage(int *r_width, int *r_height) const;
+  uint *getClipboardImage(int *r_width, int *r_height) const override;
 
   /**
    * Put image data to the Clipboard
@@ -240,7 +240,7 @@ class GHOST_SystemCocoa : public GHOST_System {
    * \param width: the image width in pixels.
    * \param height: the image height in pixels.
    */
-  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const;
+  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const override;
 
   /**
    * Handles a window event. Called by GHOST_WindowCocoa window delegate
