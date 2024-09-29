@@ -4621,11 +4621,11 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_menu_switch_node(bnode, graph_params);
         break;
       }
-      case GEO_NODE_BUNDLE: {
+      case GEO_NODE_COMBINE_BUNDLE: {
         this->build_bundle_node(bnode, graph_params);
         break;
       }
-      case GEO_NODE_UNBUNDLE: {
+      case GEO_NODE_SEPARATE_BUNDLE: {
         this->build_unbundle_node(bnode, graph_params);
         break;
       }
@@ -5313,7 +5313,8 @@ struct GeometryNodesLazyFunctionBuilder {
 
   void build_bundle_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
-    std::unique_ptr<LazyFunction> lazy_function = get_bundle_lazy_function(bnode, *lf_graph_info_);
+    std::unique_ptr<LazyFunction> lazy_function = get_combine_bundle_lazy_function(
+        bnode, *lf_graph_info_);
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 
@@ -5333,8 +5334,8 @@ struct GeometryNodesLazyFunctionBuilder {
 
   void build_unbundle_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
-    std::unique_ptr<LazyFunction> lazy_function = get_unbundle_lazy_function(bnode,
-                                                                             *lf_graph_info_);
+    std::unique_ptr<LazyFunction> lazy_function = get_separate_bundle_lazy_function(
+        bnode, *lf_graph_info_);
     lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
     scope_.add(std::move(lazy_function));
 
