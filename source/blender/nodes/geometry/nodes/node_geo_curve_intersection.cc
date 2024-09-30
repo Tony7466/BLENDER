@@ -12,6 +12,7 @@
 #include "BLI_bounds.hh"
 #include "BLI_kdopbvh.h"
 #include "BLI_math_geom.h"
+#include "BLI_noise.hh"
 #include "BLI_task.hh"
 
 #include "UI_interface.hh"
@@ -84,6 +85,7 @@ struct IntersectionData {
   Vector<float> factor;
   Vector<float3> direction;
   Vector<bool> duplicate;
+  Vector<int> id;
 };
 using ThreadLocalData = threading::EnumerableThreadSpecific<IntersectionData>;
 
@@ -101,6 +103,7 @@ static void add_intersection_data(IntersectionData &data,
   data.factor.append(math::safe_divide(length, curve_length));
   data.direction.append(direction);
   data.duplicate.append(duplicate);
+  data.id.append(noise::hash(noise::hash_float(length), curve_id, int(duplicate)));
 }
 
 static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionData &r_data)
@@ -113,6 +116,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     BLI_assert(local_data.factor.size() == local_size);
     BLI_assert(local_data.direction.size() == local_size);
     BLI_assert(local_data.duplicate.size() == local_size);
+    BLI_assert(local_data.id.size() == local_size);
     total_intersections += local_size;
   }
   const int64_t start_index = r_data.position.size();
@@ -123,6 +127,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
   r_data.factor.reserve(new_size);
   r_data.direction.reserve(new_size);
   r_data.duplicate.reserve(new_size);
+  r_data.id.reserve(new_size);
 
   for (IntersectionData &local_data : thread_storage) {
     r_data.position.extend(local_data.position);
@@ -131,6 +136,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     r_data.factor.extend(local_data.factor);
     r_data.direction.extend(local_data.direction);
     r_data.duplicate.extend(local_data.duplicate);
+    r_data.id.extend(local_data.id);
   }
 }
 
@@ -447,6 +453,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     point_attributes.add<bool>("duplicate",
                                AttrDomain::Point,
                                bke::AttributeInitVArray(VArray<bool>::ForSpan(r_data.duplicate)));
+
+    point_attributes.add<int>(
+        "id", bke::AttrDomain::Point, bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.id)));
   });
 
   params.set_output("Points", std::move(geometry_set));
