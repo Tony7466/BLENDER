@@ -1378,7 +1378,7 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define GEO_NODE_WARNING 2147
 #define GEO_NODE_FOREACH_GEOMETRY_ELEMENT_INPUT 2148
 #define GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT 2149
-#define GEO_NODE_INPUT_BODY_MASS 2150
+#define GEO_NODE_MERGE_LAYERS 2150
 #define GEO_NODE_SET_RIGID_BODY_MASS 2151
 #define GEO_NODE_SET_RIGID_BODY_INERTIA 2152
 #define GEO_NODE_SET_RIGID_BODY_VELOCITY 2153
@@ -1399,6 +1399,7 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define GEO_NODE_INPUT_SHAPE_BOUNDS 2168
 #define GEO_NODE_POINTS_TO_RIGID_BODIES 2169
 #define GEO_NODE_INPUT_BODY_MOTION_STATE 2170
+#define GEO_NODE_INPUT_BODY_MASS 2171
 
 /** \} */
 
