@@ -30,10 +30,6 @@ class PatchMap;
 
 // Wrapper around implementation, which defines API which we are capable to
 // provide over the implementation.
-//
-// TODO(sergey):  It is almost the same as C-API object, so ideally need to
-// merge them somehow, but how to do this and keep files with all the templates
-// and such separate?
 class EvalOutputAPI {
  public:
   // Anonymous forward declaration of actual evaluator implementation.
