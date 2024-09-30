@@ -2289,7 +2289,6 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   }
 
   ColorPaint4f paintcol = vpaint_get_current_col(scene, *scene.toolsettings->vpaint, false);
-
   const bool affect_alpha = RNA_boolean_get(op->ptr, "use_alpha");
 
   /* Ensure valid sculpt state. */
