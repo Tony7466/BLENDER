@@ -50,6 +50,8 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
+#include "ANIM_action.hh"
+#include "ANIM_action_legacy.hh"
 #include "ANIM_animdata.hh"
 
 #include "WM_api.hh"
@@ -93,14 +95,43 @@ static void sequencer_copy_animation_listbase(Scene *scene_src,
   BLI_gset_free(fcurves_src, nullptr);
 }
 
+static void sequencer_copy_animation_vector(Scene *scene_src,
+                                            Sequence *seq_dst,
+                                            blender::Vector<FCurve *> &clipboard_dst,
+                                            bAction &fcurves_src_action,
+                                            blender::animrig::slot_handle_t slot_handle)
+{
+  /* Add curves for strips inside meta strip. */
+  if (seq_dst->type == SEQ_TYPE_META) {
+    LISTBASE_FOREACH (Sequence *, meta_child, &seq_dst->seqbase) {
+      sequencer_copy_animation_vector(
+          scene_src, meta_child, clipboard_dst, fcurves_src_action, slot_handle);
+    }
+  }
+
+  GSet *fcurves_src = SEQ_fcurves_by_strip_get_from_span(
+      seq_dst,
+      blender::animrig::legacy::fcurves_for_action_slot(&fcurves_src_action, slot_handle));
+  if (fcurves_src == nullptr) {
+    return;
+  }
+
+  GSET_FOREACH_BEGIN (FCurve *, fcu_src, fcurves_src) {
+    clipboard_dst.append(BKE_fcurve_copy(fcu_src));
+  }
+  GSET_FOREACH_END();
+
+  BLI_gset_free(fcurves_src, nullptr);
+}
+
 static void sequencer_copy_animation(Scene *scene_src,
-                                     ListBase *fcurves_dst,
+                                     blender::Vector<FCurve *> &fcurves_dst,
                                      ListBase *drivers_dst,
                                      Sequence *seq_dst)
 {
-  if (SEQ_animation_curves_exist(scene_src)) {
-    sequencer_copy_animation_listbase(
-        scene_src, seq_dst, fcurves_dst, &scene_src->adt->action->curves);
+  if (SEQ_animation_keyframes_exist(scene_src)) {
+    sequencer_copy_animation_vector(
+        scene_src, seq_dst, fcurves_dst, *scene_src->adt->action, scene_src->adt->slot_handle);
   }
   if (SEQ_animation_drivers_exist(scene_src)) {
     sequencer_copy_animation_listbase(scene_src, seq_dst, drivers_dst, &scene_src->adt->drivers);
@@ -153,19 +184,42 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
     }
   }
 
-  ListBase fcurves_dst = {nullptr, nullptr};
+  blender::Vector<FCurve *> fcurves_dst = {};
   ListBase drivers_dst = {nullptr, nullptr};
   LISTBASE_FOREACH (Sequence *, seq_dst, &scene_dst->ed->seqbase) {
     /* Copy animation curves from seq_dst (if any). */
-    sequencer_copy_animation(scene_src, &fcurves_dst, &drivers_dst, seq_dst);
+    sequencer_copy_animation(scene_src, fcurves_dst, &drivers_dst, seq_dst);
   }
 
-  if (!BLI_listbase_is_empty(&fcurves_dst) || !BLI_listbase_is_empty(&drivers_dst)) {
-    BLI_assert(scene_dst->adt == nullptr);
+  BLI_assert(scene_dst->adt == nullptr);
+
+  if (!fcurves_dst.is_empty()) {
     scene_dst->adt = BKE_animdata_ensure_id(&scene_dst->id);
     scene_dst->adt->action = reinterpret_cast<bAction *>(copy_buffer.id_create(
         ID_AC, scene_name, nullptr, {PartialWriteContext::IDAddOperations::SET_FAKE_USER}));
-    BLI_movelisttolist(&scene_dst->adt->action->curves, &fcurves_dst);
+
+    if (scene_src->adt->action->wrap().is_action_legacy()) {
+      for (FCurve *fcurve : fcurves_dst) {
+        BLI_addtail(&scene_dst->adt->action->curves, fcurve);
+      }
+    }
+    else {
+      blender::animrig::Action &action = scene_dst->adt->action->wrap();
+      action.layer_keystrip_ensure();
+      blender::animrig::Slot *slot = blender::animrig::assign_action_ensure_slot_for_keying(
+          action, scene_dst->id);
+      blender::animrig::ChannelBag &bag = action.layer(0)
+                                              ->strip(0)
+                                              ->data<blender::animrig::StripKeyframeData>(action)
+                                              .channelbag_for_slot_ensure(*slot);
+      for (FCurve *fcurve : fcurves_dst) {
+        bag.fcurve_append(*fcurve);
+      }
+    }
+  }
+
+  if (!BLI_listbase_is_empty(&drivers_dst)) {
+    scene_dst->adt = BKE_animdata_ensure_id(&scene_dst->id);
     BLI_movelisttolist(&scene_dst->adt->drivers, &drivers_dst);
   }
 
@@ -272,7 +326,7 @@ int sequencer_clipboard_copy_exec(bContext *C, wmOperator *op)
 
 static bool sequencer_paste_animation(Main *bmain_dst, Scene *scene_dst, Scene *scene_src)
 {
-  if (!SEQ_animation_curves_exist(scene_src) && !SEQ_animation_drivers_exist(scene_src)) {
+  if (!SEQ_animation_keyframes_exist(scene_src) && !SEQ_animation_drivers_exist(scene_src)) {
     return false;
   }
 
@@ -282,12 +336,22 @@ static bool sequencer_paste_animation(Main *bmain_dst, Scene *scene_dst, Scene *
     act_dst = scene_dst->adt->action;
   }
   else {
-    /* get action to add F-Curve+keyframe to */
+    /* Get/create action to add F-Curves+keyframes to. */
     act_dst = blender::animrig::id_action_ensure(bmain_dst, &scene_dst->id);
+    blender::animrig::assign_action(act_dst, scene_dst->id);
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &scene_src->adt->action->curves) {
-    BLI_addtail(&act_dst->curves, BKE_fcurve_copy(fcu));
+  /* For layered actions, ensure we also have an attached slot. */
+  if (!blender::animrig::legacy::action_treat_as_legacy(*act_dst)) {
+    blender::animrig::assign_action_ensure_slot_for_keying(act_dst->wrap(), scene_dst->id);
+  }
+
+  for (FCurve *fcu : blender::animrig::legacy::fcurves_for_assigned_action(scene_src->adt)) {
+    blender::animrig::action_fcurve_attach(act_dst->wrap(),
+                                           scene_dst->adt->slot_handle,
+                                           *BKE_fcurve_copy(fcu),
+                                           fcu->grp ? std::optional(fcu->grp->name) :
+                                                      std::nullopt);
   }
   LISTBASE_FOREACH (FCurve *, fcu, &scene_src->adt->drivers) {
     BLI_addtail(&scene_dst->adt->drivers, BKE_fcurve_copy(fcu));

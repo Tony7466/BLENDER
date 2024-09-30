@@ -22,10 +22,10 @@
 
 #include "SEQ_animation.hh"
 
-bool SEQ_animation_curves_exist(Scene *scene)
+bool SEQ_animation_keyframes_exist(Scene *scene)
 {
   return scene->adt != nullptr && scene->adt->action != nullptr &&
-         !BLI_listbase_is_empty(&scene->adt->action->curves);
+         scene->adt->action->wrap().has_keyframes(scene->adt->slot_handle);
 }
 
 bool SEQ_animation_drivers_exist(Scene *scene)
@@ -64,11 +64,30 @@ GSet *SEQ_fcurves_by_strip_get(const Sequence *seq, ListBase *fcurve_base)
   return fcurves;
 }
 
+GSet *SEQ_fcurves_by_strip_get_from_span(const Sequence *seq, blender::Span<FCurve *> fcurve_span)
+{
+  char rna_path[SEQ_RNAPATH_MAXSTR];
+  size_t rna_path_len = sequencer_rna_path_prefix(rna_path, seq->name + 2);
+
+  /* Only allocate `fcurves` if it's needed as it's possible there is no animation for `seq`. */
+  GSet *fcurves = nullptr;
+  for (FCurve *fcurve : fcurve_span) {
+    if (STREQLEN(fcurve->rna_path, rna_path, rna_path_len)) {
+      if (fcurves == nullptr) {
+        fcurves = BLI_gset_ptr_new(__func__);
+      }
+      BLI_gset_add(fcurves, fcurve);
+    }
+  }
+
+  return fcurves;
+}
+
 #undef SEQ_RNAPATH_MAXSTR
 
 void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs)
 {
-  if (!SEQ_animation_curves_exist(scene) || ofs == 0) {
+  if (!SEQ_animation_keyframes_exist(scene) || ofs == 0) {
     return;
   }
   GSet *fcurves = SEQ_fcurves_by_strip_get(seq, &scene->adt->action->curves);
@@ -101,7 +120,7 @@ void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs)
 
 void SEQ_free_animdata(Scene *scene, Sequence *seq)
 {
-  if (!SEQ_animation_curves_exist(scene)) {
+  if (!SEQ_animation_keyframes_exist(scene)) {
     return;
   }
   GSet *fcurves = SEQ_fcurves_by_strip_get(seq, &scene->adt->action->curves);
@@ -119,9 +138,20 @@ void SEQ_free_animdata(Scene *scene, Sequence *seq)
 
 void SEQ_animation_backup_original(Scene *scene, SeqAnimationBackup *backup)
 {
-  if (SEQ_animation_curves_exist(scene)) {
-    BLI_movelisttolist(&backup->curves, &scene->adt->action->curves);
+  if (SEQ_animation_keyframes_exist(scene)) {
+    assert_baklava_phase_1_invariants(scene->adt->action->wrap());
+
+    if (scene->adt->action->wrap().is_action_legacy()) {
+      BLI_movelisttolist(&backup->curves, &scene->adt->action->curves);
+    }
+    else if (blender::animrig::ChannelBag *channel_bag =
+                 blender::animrig::channelbag_for_action_slot(scene->adt->action->wrap(),
+                                                              scene->adt->slot_handle))
+    {
+      blender::animrig::channelbag_fcurves_move(backup->channel_bag, *channel_bag);
+    }
   }
+
   if (SEQ_animation_drivers_exist(scene)) {
     BLI_movelisttolist(&backup->drivers, &scene->adt->drivers);
   }
@@ -129,9 +159,23 @@ void SEQ_animation_backup_original(Scene *scene, SeqAnimationBackup *backup)
 
 void SEQ_animation_restore_original(Scene *scene, SeqAnimationBackup *backup)
 {
-  if (!BLI_listbase_is_empty(&backup->curves)) {
-    BLI_movelisttolist(&scene->adt->action->curves, &backup->curves);
+  assert_baklava_phase_1_invariants(scene->adt->action->wrap());
+
+  if (!BLI_listbase_is_empty(&backup->curves) || !backup->channel_bag.fcurves().is_empty()) {
+    if (scene->adt->action->wrap().is_action_legacy()) {
+      BLI_movelisttolist(&scene->adt->action->curves, &backup->curves);
+    }
+    else {
+      blender::animrig::ChannelBag *channel_bag = blender::animrig::channelbag_for_action_slot(
+          scene->adt->action->wrap(), scene->adt->slot_handle);
+      /* The channel bag should exist if we got here, because otherwise the
+       * backup channel bag would have been empty. */
+      BLI_assert(channel_bag != nullptr);
+
+      blender::animrig::channelbag_fcurves_move(*channel_bag, backup->channel_bag);
+    }
   }
+
   if (!BLI_listbase_is_empty(&backup->drivers)) {
     BLI_movelisttolist(&scene->adt->drivers, &backup->drivers);
   }

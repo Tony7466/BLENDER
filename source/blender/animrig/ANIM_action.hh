@@ -1431,6 +1431,16 @@ void action_fcurve_move(Action &action_dst,
                         FCurve &fcurve);
 
 /**
+ * Moves all F-Curves from one ChannelBag to the other.
+ *
+ * If the F-Curves belonged to channel groups, the group membership also carries
+ * over to the destination ChannelBag. If groups with the same names don't
+ * exist, they are created.
+ * \see blender::animrig::action_fcurve_detach
+ */
+void channelbag_fcurves_move(ChannelBag &channelbag_dst, ChannelBag &channelbag_src);
+
+/**
  * Find an appropriate user of the given Action + Slot for keyframing purposes.
  *
  * (NOTE: although this function exists for handling situations caused by the
