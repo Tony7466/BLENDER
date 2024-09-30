@@ -95,6 +95,9 @@ static void sequencer_copy_animation_listbase(Scene *scene_src,
   BLI_gset_free(fcurves_src, nullptr);
 }
 
+/* This is effectively just a copy of `sequencer_copy_animation_listbase()`
+ * above, except that it copies from an action's animation to a vector rather
+ * than between two listbases. */
 static void sequencer_copy_animation_to_vector(Scene *scene_src,
                                                Sequence *seq_dst,
                                                blender::Vector<FCurve *> &clipboard_dst,
