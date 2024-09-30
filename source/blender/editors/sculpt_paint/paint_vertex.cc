@@ -652,15 +652,9 @@ bool vertex_paint_poll_ignore_tool(bContext *C)
   return vertex_paint_poll_ex(C, false);
 }
 
-static bool vpaint_get_current_col(Scene &scene,
-                                   VPaint &vp,
-                                   bool secondary,
-                                   ColorPaint4f *r_paintcol)
+static ColorPaint4f vpaint_get_current_col(Scene &scene, VPaint &vp, bool secondary)
 {
   const Brush *brush = BKE_paint_brush_for_read(&vp.paint);
-  if (brush == nullptr) {
-    return false;
-  }
   float color[4];
   const float *brush_color = secondary ? BKE_brush_secondary_color_get(&scene, brush) :
                                          BKE_brush_color_get(&scene, brush);
@@ -668,8 +662,7 @@ static bool vpaint_get_current_col(Scene &scene,
 
   color[3] = 1.0f; /* alpha isn't used, could even be removed to speedup paint a little */
 
-  *r_paintcol = ColorPaint4f(color);
-  return true;
+  return ColorPaint4f(color);
 }
 
 /* wpaint has 'wpaint_blend' */
@@ -960,8 +953,8 @@ static std::unique_ptr<VPaintData> vpaint_init_vpaint(bContext *C,
                                   brush.falloff_angle,
                                   (brush.flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 
-  vpaint_get_current_col(
-      scene, vp, (RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_INVERT), &vpd->paintcol);
+  vpd->paintcol = vpaint_get_current_col(
+      scene, vp, (RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_INVERT));
 
   vpd->is_texbrush = !(brush.vertex_brush_type == VPAINT_BRUSH_TYPE_BLUR) && brush.mtex.tex;
 
@@ -2295,10 +2288,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ColorPaint4f paintcol;
-  if (!vpaint_get_current_col(scene, *scene.toolsettings->vpaint, false, &paintcol)) {
-    return OPERATOR_CANCELLED;
-  }
+  ColorPaint4f paintcol = vpaint_get_current_col(scene, *scene.toolsettings->vpaint, false);
 
   const bool affect_alpha = RNA_boolean_get(op->ptr, "use_alpha");
 
