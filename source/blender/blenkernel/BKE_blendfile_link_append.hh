@@ -23,6 +23,8 @@ struct LibraryLink_Params;
 struct MainLibraryWeakReferenceMap;
 struct ReportList;
 
+/* TODO: Rename file to `BKE_blendfile_import.hh`. */
+/* TODO: Replace `BlendfileLinkAppend` prefix by `blender::bke::blendfile::import` namespace. */
 /* TODO: Move these enums to scoped enum classes. */
 
 /** Actions to apply to an item (i.e. linked ID). */

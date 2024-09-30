@@ -354,9 +354,9 @@ void BKE_blendfile_link_append_context_init_done(BlendfileLinkAppendContext *lap
 {
   BLI_assert(lapp_context->process_stage == BlendfileLinkAppendContext::ProcessStage::Init);
 
-  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_LinkAppendContext, lapp_context);
+  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_BlendImportContext, lapp_context);
   PointerRNA *pointers[1] = {&ctx_ptr};
-  BKE_callback_exec(lapp_context->params->bmain, pointers, 1, BKE_CB_EVT_LINKAPPEND_PRE);
+  BKE_callback_exec(lapp_context->params->bmain, pointers, 1, BKE_CB_EVT_BLENDIMPORT_PRE);
 }
 
 void BKE_blendfile_link_append_context_finalize(BlendfileLinkAppendContext *lapp_context)
@@ -367,9 +367,9 @@ void BKE_blendfile_link_append_context_finalize(BlendfileLinkAppendContext *lapp
                   BlendfileLinkAppendContext::ProcessStage::Instantiating));
   lapp_context->process_stage = BlendfileLinkAppendContext::ProcessStage::Done;
 
-  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_LinkAppendContext, lapp_context);
+  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_BlendImportContext, lapp_context);
   PointerRNA *pointers[1] = {&ctx_ptr};
-  BKE_callback_exec(lapp_context->params->bmain, pointers, 1, BKE_CB_EVT_LINKAPPEND_POST);
+  BKE_callback_exec(lapp_context->params->bmain, pointers, 1, BKE_CB_EVT_BLENDIMPORT_POST);
 }
 
 /** \} */
