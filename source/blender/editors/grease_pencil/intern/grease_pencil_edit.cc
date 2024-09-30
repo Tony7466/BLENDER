@@ -2221,24 +2221,19 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
 
   /*Return if splitting everything or nothing.*/
   /*see if total split is 0 or equals the total number of points.*/
-  if (total_split == 0) {
-    return curves;
-  }
-  /* can I use an or condition somehow to combine this with the one above?*/
-  if (total_split == curves.points_num()) {
+  if (total_split == 0 || total_split == curves.points_num()) {
     return curves;
   }
 
   int curr_dst_point_id = 0;
-  Array<int> dst_to_src_point(
-      curves.points_num()); /* idk if I need this, just copying delete for now*/
+  Array<int> dst_to_src_point(curves.points_num());
   Vector<int> dst_curve_counts;
   Vector<int> dst_to_src_curve;
   Vector<bool> dst_cyclic;
 
   for (const int curve_i : curves.curves_range()) {
 
-    const IndexRange points = points_by_curve[curve_i]; /*point where source curve_i begins*/
+    const IndexRange points = points_by_curve[curve_i];
     const Span<bool> curve_i_points_to_split = points_to_split.as_span().slice(points);
     const bool curve_cyclic = src_cyclic[curve_i];
 
@@ -2269,6 +2264,7 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
       if (is_curve_self_joined && range_i == range_ids.last()) {
 
         const IndexRange first_range = new_curve_ranges[range_ids.first()];
+
         count += new_curve_ranges[range_ids.first()].size();
 
         for (const int src_point : first_range.shift(points.first())) {
@@ -2281,21 +2277,6 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
       dst_cyclic.append(is_cyclic);
     }
   }
-
-  fmt::print("\ndst_curve_counts:\n");
-  for (auto i : dst_curve_counts) {
-    std::cout << i << ", ";
-  }
-
-  fmt::print("\ndst_to_src_curve:\n");
-  for (auto i : dst_to_src_curve) {
-    std::cout << i << ", ";
-  }
-  fmt::print("\ndst_to_src_point:\n");
-  for (int i : dst_to_src_point) {
-    std::cout << i << ", ";
-  }
-  fmt::print("\n");
 
   const int total_curves = dst_to_src_curve.size();
 
@@ -2321,9 +2302,7 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
                     dst_attributes);
   array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
 
-  /* Points havent' changed, just copy attributes over
-  copy_attributes(
-      src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, dst_attributes);*/
+  /* Transfer point attributes*/
   gather_attributes(src_attributes,
                     bke::AttrDomain::Point,
                     bke::AttrDomain::Point,
@@ -2332,7 +2311,6 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
                     dst_attributes);
 
   dst_curves.update_curve_types();
-  std::cout << "\n\n ##########Simple_split() finished ###########";
   return dst_curves;
 };
 
@@ -2353,9 +2331,6 @@ static int grease_pencil_split_exec(bContext *C, wmOperator *op)
       return;
     };
 
-    /* do I need a check of some sort to ensure were're in point selection mode or doesn't it
-     * matter?*/
-
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     curves = split_points_simpler(curves, points_to_split);
 
@@ -2363,14 +2338,6 @@ static int grease_pencil_split_exec(bContext *C, wmOperator *op)
     changed = true;
   });
 
-  /* if not anything selected, return operator cancelled*/
-
-  /*Iterate through all the drawings at current scene frame?*/
-  /* at each drawing, get selected points*/
-  /* use those points to index into the Curves Geometry and update the tables? Use a new table
-   * and then copy it back to the source? how does old way do it?
-
-  BKE_report(op->reports, RPT_ERROR, "LOL it doesn't work yet");*/
   WM_cursor_wait(false);
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
