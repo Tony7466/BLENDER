@@ -637,6 +637,8 @@ ccl_device_inline float fast_ierff(float x)
 /* Fast inverse cube root for positive x, with two Newton iterations to improve accuracy. */
 ccl_device_inline float fast_inv_cbrtf(float x)
 {
+  util_assert(x >= 0.0f);
+
   /* Constant is roughly cbrt(2^127), but tweaked a bit to balance the error across the entire
    * range. The exact value is not critical. */
   float y = __int_as_float(0x54a24242 - __float_as_int(x) / 3);

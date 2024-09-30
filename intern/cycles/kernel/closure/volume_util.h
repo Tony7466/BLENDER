@@ -115,23 +115,23 @@ ccl_device float phase_draine_sample_cos(float g, float alpha, float rand)
 ccl_device float3
 phase_draine_sample(float3 D, float g, float alpha, float2 rand, ccl_private float *pdf)
 {
-  float cos_theta;
+  /* Check special cases. */
+  if (fabsf(g) < 1e-3f && alpha > 0.999f) {
+    return phase_rayleigh_sample(D, rand, pdf);
+  }
+  else if (fabsf(alpha) < 1e-3f) {
+    return phase_henyey_greenstein_sample(D, g, rand, pdf);
+  }
 
-  if (fabsf(g) < 1e-3f || fabsf(alpha) < 1e-3f) {
-    cos_theta = 1 - 2 * rand.x;
-    *pdf = M_1_4PI_F;
-  }
-  else {
-    cos_theta = phase_draine_sample_cos(g, alpha, rand.x);
-    *pdf = phase_draine(cos_theta, g, alpha);
-  }
+  const float cos_theta = phase_draine_sample_cos(g, alpha, rand.x);
+  *pdf = phase_draine(cos_theta, g, alpha);
 
   return phase_sample_direction(D, cos_theta, rand.y);
 }
 
-ccl_device float phase_fournier_forand_delta(float n, float sin2_theta_2)
+ccl_device float phase_fournier_forand_delta(float n, float sin_htheta_sqr)
 {
-  float u = 4 * sin2_theta_2;
+  float u = 4 * sin_htheta_sqr;
   return u / (3 * sqr(n - 1));
 }
 
@@ -149,18 +149,19 @@ ccl_device_inline float3 phase_fournier_forand_coeffs(float B, float IOR)
  * fraction, B = b_b / b.
  * See https://doi.org/10.1117/12.366488 for details. */
 ccl_device_inline float phase_fournier_forand_impl(
-    float cos_theta, float delta, float pow_delta_v, float v, float sin2_theta_2, float pf_coeff)
+    float cos_theta, float delta, float pow_delta_v, float v, float sin_htheta_sqr, float pf_coeff)
 {
   const float m_delta = 1 - delta, m_pow_delta_v = 1 - pow_delta_v;
 
   float pf;
   if (fabsf(m_delta) < 1e-3f) {
     /* Special case (first-order Taylor expansion) to avoid singularity at delta near 1.0 */
-    pf = v * ((v - 1) - (v + 1) / sin2_theta_2) * (1 / (8 * M_PI_F));
-    pf += v * (v + 1) * m_delta * (2 * (v - 1) - (2 * v + 1) / sin2_theta_2) * (1 / (24 * M_PI_F));
+    pf = v * ((v - 1) - (v + 1) / sin_htheta_sqr) * (1 / (8 * M_PI_F));
+    pf += v * (v + 1) * m_delta * (2 * (v - 1) - (2 * v + 1) / sin_htheta_sqr) *
+          (1 / (24 * M_PI_F));
   }
   else {
-    pf = (v * m_delta - m_pow_delta_v + (delta * m_pow_delta_v - v * m_delta) / sin2_theta_2) /
+    pf = (v * m_delta - m_pow_delta_v + (delta * m_pow_delta_v - v * m_delta) / sin_htheta_sqr) /
          (M_4PI_F * sqr(m_delta) * pow_delta_v);
   }
   pf += pf_coeff * (3 * sqr(cos_theta) - 1);
@@ -175,10 +176,10 @@ ccl_device float phase_fournier_forand(float cos_theta, float3 coeffs)
 
   const float n = coeffs.x, v = coeffs.y;
   const float pf_coeff = coeffs.z * (1.0f / (16.0f * M_PI_F));
-  const float sin2_theta_2 = 0.5f * (1.0f - cos_theta);
-  const float delta = phase_fournier_forand_delta(n, sin2_theta_2);
+  const float sin_htheta_sqr = 0.5f * (1 - cos_theta); /* sin^2(theta / 2)*/
+  const float delta = phase_fournier_forand_delta(n, sin_htheta_sqr);
 
-  return phase_fournier_forand_impl(cos_theta, delta, powf(delta, v), v, sin2_theta_2, pf_coeff);
+  return phase_fournier_forand_impl(cos_theta, delta, powf(delta, v), v, sin_htheta_sqr, pf_coeff);
 }
 
 ccl_device float phase_fournier_forand_newton(float rand, float3 coeffs)
@@ -187,10 +188,10 @@ ccl_device float phase_fournier_forand_newton(float rand, float3 coeffs)
   const float cdf_coeff = coeffs.z * (1.0f / 8.0f);
   const float pf_coeff = coeffs.z * (1.0f / (16.0f * M_PI_F));
 
-  float cos_theta = 0.64278760968f;  // Initial guess: 50 degrees
+  float cos_theta = 0.64278760968f; /* Initial guess: 50 degrees */
   for (int it = 0; it < 20; it++) {
-    const float sin2_theta_2 = 0.5f * (1 - cos_theta);
-    const float delta = phase_fournier_forand_delta(n, sin2_theta_2);
+    const float sin_htheta_sqr = 0.5f * (1 - cos_theta); /* sin^2(theta / 2)*/
+    const float delta = phase_fournier_forand_delta(n, sin_htheta_sqr);
     const float pow_delta_v = powf(delta, v);
     const float m_delta = 1 - delta, m_pow_delta_v = 1 - pow_delta_v;
 
@@ -198,14 +199,14 @@ ccl_device float phase_fournier_forand_newton(float rand, float3 coeffs)
     float cdf;
     if (fabsf(m_delta) < 1e-3f) {
       /* Special case (first-order Taylor expansion) to avoid singularity at delta near 1.0 */
-      cdf = 1 + v * (1 - sin2_theta_2) * (1 - 0.5f * (v + 1) * m_delta);
+      cdf = 1 + v * (1 - sin_htheta_sqr) * (1 - 0.5f * (v + 1) * m_delta);
     }
     else {
-      cdf = (1 - pow_delta_v * delta - m_pow_delta_v * sin2_theta_2) / (m_delta * pow_delta_v);
+      cdf = (1 - pow_delta_v * delta - m_pow_delta_v * sin_htheta_sqr) / (m_delta * pow_delta_v);
     }
     cdf += cdf_coeff * cos_theta * (1 - sqr(cos_theta));
     const float pf = phase_fournier_forand_impl(
-        cos_theta, delta, pow_delta_v, v, sin2_theta_2, pf_coeff);
+        cos_theta, delta, pow_delta_v, v, sin_htheta_sqr, pf_coeff);
 
     /* Perform Newton iteration step */
     float new_cos_theta = cos_theta + M_1_2PI_F * (cdf - rand) / pf;

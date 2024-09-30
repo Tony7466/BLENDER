@@ -102,6 +102,8 @@ ccl_device bool volume_phase_equal(ccl_private const ShaderClosure *c1,
   return false;
 }
 
+/* Approximate phase functions as Henyey-Greenstein for volume guiding.
+ * TODO: This is not ideal, we should use RIS guiding for non-HG phase functions. */
 ccl_device float volume_phase_get_g(ccl_private const ShaderVolumeClosure *svc)
 {
   switch (svc->type) {
