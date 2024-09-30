@@ -2054,6 +2054,9 @@ uint gpu::MTLTexture::gl_bindcode_get() const
 bool gpu::MTLTexture::init_internal()
 {
   this->prepare_internal();
+  if (type_ == GPU_TEXTURE_3D && d_ > GPU_max_texture_3d_size()) {
+    return false;
+  }
   return true;
 }
 
