@@ -12,14 +12,17 @@
 #include "BLI_index_range.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.hh"
 
+#include "DNA_array_utils.hh"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -3723,3 +3726,438 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_reset_uvs);
   WM_operatortype_append(GREASE_PENCIL_OT_texture_gradient);
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Joint Objects Operator
+ * \{ */
+
+/* TODO use this from BKE once committed elsewhere */
+static void BKE_grease_pencil_copy_layer_parameters(const blender::bke::greasepencil::Layer &src,
+                                                    blender::bke::greasepencil::Layer &dst)
+{
+  using namespace blender::bke::greasepencil;
+  dst.as_node().flag = src.as_node().flag;
+  copy_v3_v3_uchar(dst.as_node().color, src.as_node().color);
+
+  dst.blend_mode = src.blend_mode;
+  dst.opacity = src.opacity;
+
+  LISTBASE_FOREACH (GreasePencilLayerMask *, src_mask, &src.masks) {
+    LayerMask *new_mask = MEM_new<LayerMask>(__func__, *reinterpret_cast<LayerMask *>(src_mask));
+    BLI_addtail(&dst.masks, reinterpret_cast<GreasePencilLayerMask *>(new_mask));
+  }
+  dst.active_mask_index = src.active_mask_index;
+
+  dst.parent = src.parent;
+  dst.set_parent_bone_name(src.parsubstr);
+  copy_m4_m4(dst.parentinv, src.parentinv);
+
+  copy_v3_v3(dst.translation, src.translation);
+  copy_v3_v3(dst.rotation, src.rotation);
+  copy_v3_v3(dst.scale, src.scale);
+
+  dst.set_view_layer_name(src.viewlayername);
+}
+
+static void BKE_grease_pencil_copy_layer_group_parameters(
+    const blender::bke::greasepencil::LayerGroup &src, blender::bke::greasepencil::LayerGroup &dst)
+{
+  using namespace blender::bke::greasepencil;
+  dst.base.type = src.base.type;
+  dst.base.flag |= src.base.flag;
+  dst.base.color[0] = src.base.color[0];
+  dst.base.color[1] = src.base.color[1];
+  dst.base.color[2] = src.base.color[2];
+  dst.color_tag = src.color_tag;
+}
+
+namespace blender::ed::greasepencil {
+
+/* Note: the `duplicate_layer` API would be nicer, but only supports duplicating groups from the
+ * same datablock. */
+static bke::greasepencil::Layer &copy_layer(GreasePencil &grease_pencil_dst,
+                                            bke::greasepencil::LayerGroup &group_dst,
+                                            const bke::greasepencil::Layer &layer_src)
+{
+  using namespace blender::bke::greasepencil;
+
+  Layer &layer_dst = grease_pencil_dst.add_layer(group_dst, layer_src.name());
+  BKE_grease_pencil_copy_layer_parameters(layer_src, layer_dst);
+
+  layer_dst.frames_for_write() = layer_src.frames();
+  layer_dst.tag_frames_map_changed();
+
+  return layer_dst;
+}
+
+static bke::greasepencil::LayerGroup &copy_layer_group_recursive(
+    GreasePencil &grease_pencil_dst,
+    bke::greasepencil::LayerGroup &parent_dst,
+    const bke::greasepencil::LayerGroup &group_src,
+    Map<StringRefNull, StringRefNull> &layer_name_map);
+
+static void copy_layer_group_content(GreasePencil &grease_pencil_dst,
+                                     bke::greasepencil::LayerGroup &group_dst,
+                                     const bke::greasepencil::LayerGroup &group_src,
+                                     Map<StringRefNull, StringRefNull> &layer_name_map)
+{
+  using namespace blender::bke::greasepencil;
+
+  for (const bke::greasepencil::TreeNode *node : group_src.nodes()) {
+    if (node->is_group()) {
+      copy_layer_group_recursive(grease_pencil_dst, group_dst, node->as_group(), layer_name_map);
+    }
+    if (node->is_layer()) {
+      Layer &layer_dst = copy_layer(grease_pencil_dst, group_dst, node->as_layer());
+      layer_name_map.add_new(node->as_layer().name(), layer_dst.name());
+    }
+  }
+}
+
+static bke::greasepencil::LayerGroup &copy_layer_group_recursive(
+    GreasePencil &grease_pencil_dst,
+    bke::greasepencil::LayerGroup &parent_dst,
+    const bke::greasepencil::LayerGroup &group_src,
+    Map<StringRefNull, StringRefNull> &layer_name_map)
+{
+  bke::greasepencil::LayerGroup &group_dst = grease_pencil_dst.add_layer_group(
+      parent_dst, group_src.base.name);
+  BKE_grease_pencil_copy_layer_group_parameters(group_src, group_dst);
+
+  copy_layer_group_content(grease_pencil_dst, group_dst, group_src, layer_name_map);
+  return group_dst;
+}
+
+static Array<int> add_materials_to_map(const GreasePencil &grease_pencil, VectorSet<Material *> &materials) {
+  Array<int> material_index_map(grease_pencil.material_array_num);
+  for (const int i : material_index_map.index_range()) {
+    Material *material = grease_pencil.material_array[i];
+    material_index_map[i] = materials.index_of_or_add(material);
+  }
+  return material_index_map;
+}
+
+static void remap_material_indices(bke::greasepencil::Drawing &drawing, const Span<int> material_index_map)
+{
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  /* Validate material indices and add missing materials. */
+  bke::SpanAttributeWriter<int> material_writer =
+      attributes.lookup_or_add_for_write_span<int>("material_index", bke::AttrDomain::Curve);
+  threading::parallel_for(curves.curves_range(), 1024, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      material_writer.span[curve_i] = material_index_map[material_writer.span[curve_i]];
+    }
+  });
+  material_writer.finish();
+}
+
+static void join_object_with_active(Object &ob_src, Object &ob_dst, VectorSet<Material *> &materials)
+{
+  using namespace blender::bke::greasepencil;
+
+  /* Skip if the datablock is already used by the active object. */
+  if (ob_src.data == ob_dst.data) {
+    return;
+  }
+
+  BLI_assert(ob_src.type == OB_GREASE_PENCIL);
+  BLI_assert(ob_dst.type == OB_GREASE_PENCIL);
+  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(ob_src.data);
+  GreasePencil &grease_pencil_dst = *static_cast<GreasePencil *>(ob_dst.data);
+  /* Number of existing layers that don't need to be updated. */
+  const int orig_layers_num = grease_pencil_dst.layers().size();
+
+  Array<int> material_index_map = add_materials_to_map(grease_pencil_src, materials);
+
+  /* Concatenate drawing arrays. Existing drawings in dst keep their position, new drawings are
+   * mapped to the new index range. */
+  const int new_drawing_array_num = grease_pencil_dst.drawing_array_num +
+                                    grease_pencil_src.drawing_array_num;
+  GreasePencilDrawingBase **new_drawing_array = static_cast<GreasePencilDrawingBase **>(
+      MEM_malloc_arrayN(new_drawing_array_num, sizeof(GreasePencilDrawingBase *), __func__));
+  MutableSpan<GreasePencilDrawingBase *> new_drawings = {new_drawing_array, new_drawing_array_num};
+  const IndexRange new_drawings_dst = IndexRange::from_begin_size(
+      0, grease_pencil_dst.drawing_array_num);
+  const IndexRange new_drawings_src = IndexRange::from_begin_size(
+      grease_pencil_dst.drawing_array_num, grease_pencil_src.drawing_array_num);
+
+  new_drawings.slice(new_drawings_dst).copy_from(grease_pencil_dst.drawings());
+  new_drawings.slice(new_drawings_src).copy_from(grease_pencil_src.drawings());
+
+  MEM_SAFE_FREE(grease_pencil_dst.drawing_array);
+  grease_pencil_dst.drawing_array = new_drawing_array;
+  grease_pencil_dst.drawing_array_num = new_drawing_array_num;
+
+  /* Maps original names of source layers to new unique layer names. */
+  Map<StringRefNull, StringRefNull> layer_name_map;
+  /* Only copy the content of the root group, not the root node itself. */
+  copy_layer_group_content(grease_pencil_dst,
+                           grease_pencil_dst.root_group(),
+                           grease_pencil_src.root_group(),
+                           layer_name_map);
+
+  /* Fix names, indices and transforms to keep relationships valid. */
+  for (const int layer_index : grease_pencil_dst.layers().index_range()) {
+    Layer &layer = *grease_pencil_dst.layers_for_write()[layer_index];
+    const bool is_orig_layer = (layer_index < orig_layers_num);
+    const float4x4 old_layer_to_world = (is_orig_layer ? layer.to_world_space(ob_dst) :
+                                                         layer.to_world_space(ob_src));
+
+    /* Update newly added layers. */
+    if (!is_orig_layer) {
+      /* Update name references for masks. */
+      LISTBASE_FOREACH (GreasePencilLayerMask *, dst_mask, &layer.masks) {
+        const StringRefNull *new_mask_name = layer_name_map.lookup_ptr(dst_mask->layer_name);
+        if (new_mask_name) {
+          MEM_SAFE_FREE(dst_mask->layer_name);
+          dst_mask->layer_name = BLI_strdup(new_mask_name->c_str());
+        }
+      }
+      /* Shift drawing indices to match the new drawings array. */
+      for (const int key : layer.frames_for_write().keys()) {
+        int &drawing_index = layer.frames_for_write().lookup(key).drawing_index;
+        drawing_index = new_drawings_src[drawing_index];
+      }
+    }
+
+    /* Layer parent object may become invalid. This can be an original layer pointing at the joined
+     * object which gets destroyed, or a new layer that points at the target object which is now
+     * its owner. */
+    if (ELEM(layer.parent, &ob_dst, &ob_src)) {
+      layer.parent = nullptr;
+    }
+
+    /* Apply relative object transform to new drawings to keep world-space positions unchanged.
+     * Be careful where the matrix is computed: changing the parent pointer (above) can affect
+     * this! */
+    const float4x4 new_layer_to_world = layer.to_world_space(ob_dst);
+    for (const int key : layer.frames_for_write().keys()) {
+      const int drawing_index = layer.frames_for_write().lookup(key).drawing_index;
+      GreasePencilDrawingBase *drawing_base = grease_pencil_dst.drawings()[drawing_index];
+      if (drawing_base->type != GP_DRAWING) {
+        continue;
+      }
+      Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+      bke::CurvesGeometry &curves = drawing.strokes_for_write();
+      curves.transform(math::invert(new_layer_to_world) * old_layer_to_world);
+
+      if (!is_orig_layer) {
+        remap_material_indices(drawing, material_index_map);
+      }
+    }
+  }
+}
+
+}  // namespace blender::ed::greasepencil
+
+int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  Object *ob_active = CTX_data_active_object(C);
+
+  /* Ensure we're in right mode and that the active object is correct. */
+  if (!ob_active || ob_active->type != OB_GREASE_PENCIL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bool ok = false;
+  CTX_DATA_BEGIN (C, Object *, ob_iter, selected_editable_objects) {
+    if (ob_iter == ob_active) {
+      ok = true;
+      break;
+    }
+  }
+  CTX_DATA_END;
+  /* Active object must always selected. */
+  if (ok == false) {
+    BKE_report(op->reports, RPT_WARNING, "Active object is not a selected grease pencil");
+    return OPERATOR_CANCELLED;
+  }
+
+  Object *ob_dst = ob_active;
+  GreasePencil *grease_pencil_dst = static_cast<GreasePencil *>(ob_dst->data);
+
+  blender::VectorSet<Material *> materials;
+  blender::Array<int> material_index_map = blender::ed::greasepencil::add_materials_to_map(*grease_pencil_dst, materials);
+  /* Reassign material indices in the original layers, in case materials are deduplicated. */
+  for (GreasePencilDrawingBase *drawing_base : grease_pencil_dst->drawings()) {
+    if (drawing_base->type != GP_DRAWING) {
+      continue;
+    }
+    blender::bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+    blender::ed::greasepencil::remap_material_indices(drawing, material_index_map);
+  }
+
+  /* Loop and join all data. */
+  CTX_DATA_BEGIN (C, Object *, ob_iter, selected_editable_objects) {
+    if (ob_iter->type != OB_GREASE_PENCIL || ob_iter == ob_active) {
+      continue;
+    }
+
+    blender::ed::greasepencil::join_object_with_active(*ob_iter, *ob_dst, materials);
+
+    //     /* we assume that each datablock is not already used in active object */
+    //     if (ob_active->data != ob_iter->data) {
+    //       Object *ob_src = ob_iter;
+    //       bGPdata *gpd_src = static_cast<bGPdata *>(ob_iter->data);
+
+    //       /* copy vertex groups to the base one's */
+    //       int old_idx = 0;
+    //       LISTBASE_FOREACH (bDeformGroup *, dg, &gpd_src->vertex_group_names) {
+    //         bDeformGroup *vgroup = static_cast<bDeformGroup *>(MEM_dupallocN(dg));
+    //         int idx = BLI_listbase_count(&gpd_dst->vertex_group_names);
+    //         BKE_object_defgroup_unique_name(vgroup, ob_active);
+    //         BLI_addtail(&gpd_dst->vertex_group_names, vgroup);
+    //         /* update vertex groups in strokes in original data */
+    //         LISTBASE_FOREACH (bGPDlayer *, gpl_src, &gpd->layers) {
+    //           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_src->frames) {
+    //             LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+    //               MDeformVert *dvert;
+    //               int i;
+    //               if (gps->dvert == nullptr) {
+    //                 continue;
+    //               }
+    //               for (i = 0, dvert = gps->dvert; i < gps->totpoints; i++, dvert++) {
+    //                 if ((dvert->dw != nullptr) && (dvert->dw->def_nr == old_idx)) {
+    //                   dvert->dw->def_nr = idx;
+    //                 }
+    //               }
+    //             }
+    //           }
+    //         }
+    //         old_idx++;
+    //       }
+    //       if (!BLI_listbase_is_empty(&gpd_dst->vertex_group_names) &&
+    //           gpd_dst->vertex_group_active_index == 0)
+    //       {
+    //         gpd_dst->vertex_group_active_index = 1;
+    //       }
+
+    //       /* add missing materials reading source materials and checking in destination object
+    //       */ short *totcol = BKE_object_material_len_p(ob_src);
+
+    //       for (short i = 0; i < *totcol; i++) {
+    //         Material *tmp_ma = BKE_gpencil_material(ob_src, i + 1);
+    //         BKE_gpencil_object_material_ensure(bmain, ob_dst, tmp_ma);
+    //       }
+
+    //       /* Duplicate #bGPDlayers. */
+    //       GHash *names_map = BLI_ghash_str_new("joined_gp_layers_map");
+
+    //       float imat[3][3], bmat[3][3];
+    //       float offset_global[3];
+    //       float offset_local[3];
+
+    //       sub_v3_v3v3(offset_global, ob_active->loc, ob_iter->object_to_world().location());
+    //       copy_m3_m4(bmat, ob_active->object_to_world().ptr());
+
+    //       /* Inverse transform for all selected curves in this object,
+    //        * See #object_join_exec for detailed comment on why the safe version is used. */
+    //       invert_m3_m3_safe_ortho(imat, bmat);
+    //       mul_m3_v3(imat, offset_global);
+    //       mul_v3_m3v3(offset_local, imat, offset_global);
+
+    //       LISTBASE_FOREACH (bGPDlayer *, gpl_src, &gpd_src->layers) {
+    //         bGPDlayer *gpl_new = BKE_gpencil_layer_duplicate(gpl_src, true, true);
+    //         float diff_mat[4][4];
+    //         float inverse_diff_mat[4][4];
+
+    //         /* recalculate all stroke points */
+    //         BKE_gpencil_layer_transform_matrix_get(depsgraph, ob_iter, gpl_src, diff_mat);
+    //         invert_m4_m4_safe_ortho(inverse_diff_mat, diff_mat);
+
+    //         Material *ma_src = nullptr;
+    //         LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_new->frames) {
+    //           LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+
+    //             /* Reassign material. Look old material and try to find in destination. */
+    //             ma_src = BKE_gpencil_material(ob_src, gps->mat_nr + 1);
+    //             gps->mat_nr = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma_src);
+
+    //             bGPDspoint *pt;
+    //             int i;
+    //             for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+    //               float mpt[3];
+    //               mul_v3_m4v3(mpt, inverse_diff_mat, &pt->x);
+    //               sub_v3_v3(mpt, offset_local);
+    //               mul_v3_m4v3(&pt->x, diff_mat, mpt);
+    //             }
+    //           }
+    //         }
+
+    //         /* be sure name is unique in new object */
+    //         BLI_uniquename(&gpd_dst->layers,
+    //                        gpl_new,
+    //                        DATA_("GP_Layer"),
+    //                        '.',
+    //                        offsetof(bGPDlayer, info),
+    //                        sizeof(gpl_new->info));
+    //         BLI_ghash_insert(names_map, BLI_strdup(gpl_src->info), gpl_new->info);
+
+    //         /* add to destination datablock */
+    //         BLI_addtail(&gpd_dst->layers, gpl_new);
+    //       }
+
+    //       /* Fix all the animation data */
+    //       BKE_fcurves_main_cb(bmain, [&](ID *id, FCurve *fcu) {
+    //         gpencil_joined_fix_animdata_cb(id, fcu, gpd_src, gpd_dst, names_map);
+    //       });
+    //       BLI_ghash_free(names_map, MEM_freeN, nullptr);
+
+    //       /* Only copy over animdata now, after all the remapping has been done,
+    //        * so that we don't have to worry about ambiguities re which datablock
+    //        * a layer came from!
+    //        */
+    //       if (ob_iter->adt) {
+    //         if (ob_active->adt == nullptr) {
+    //           /* no animdata, so just use a copy of the whole thing */
+    //           ob_active->adt = BKE_animdata_copy(bmain, ob_iter->adt, 0);
+    //         }
+    //         else {
+    //           /* merge in data - we'll fix the drivers manually */
+    //           BKE_animdata_merge_copy(
+    //               bmain, &ob_active->id, &ob_iter->id, ADT_MERGECOPY_KEEP_DST, false);
+    //         }
+    //       }
+
+    //       if (gpd_src->adt) {
+    //         if (gpd_dst->adt == nullptr) {
+    //           /* no animdata, so just use a copy of the whole thing */
+    //           gpd_dst->adt = BKE_animdata_copy(bmain, gpd_src->adt, 0);
+    //         }
+    //         else {
+    //           /* merge in data - we'll fix the drivers manually */
+    //           BKE_animdata_merge_copy(
+    //               bmain, &gpd_dst->id, &gpd_src->id, ADT_MERGECOPY_KEEP_DST, false);
+    //         }
+    //       }
+    //       DEG_id_tag_update(&gpd_src->id,
+    //                         ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
+    //     }
+
+    /* Free the old object. */
+    blender::ed::object::base_free_and_unlink(bmain, scene, ob_iter);
+  }
+  CTX_DATA_END;
+
+  /* Transfer material pointers. The material indices are updated for each drawing separately. */
+  if (!materials.is_empty()) {
+    grease_pencil_dst->material_array_num = materials.size();
+    grease_pencil_dst->material_array = MEM_cnew_array<Material *>(
+        grease_pencil_dst->material_array_num, __func__);
+    blender::uninitialized_copy_n(
+        materials.data(), grease_pencil_dst->material_array_num, grease_pencil_dst->material_array);
+  }
+
+  DEG_id_tag_update(&grease_pencil_dst->id, ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain); /* because we removed object(s) */
+
+  WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
+  WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
+
+  return OPERATOR_FINISHED;
+}
+
+/** \} */
