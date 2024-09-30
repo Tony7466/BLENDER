@@ -29,6 +29,7 @@
 #include "BKE_main.hh"
 #include "BKE_nla.hh"
 #include "BKE_preview_image.hh"
+#include "BKE_report.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -228,13 +229,13 @@ bool Action::is_action_layered() const
 
 blender::Span<const Layer *> Action::layers() const
 {
+  return blender::Span<const Layer *>{reinterpret_cast<Layer **>(this->layer_array),
+                                      this->layer_array_num};
+}
+blender::Span<Layer *> Action::layers()
+{
   return blender::Span<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
                                 this->layer_array_num};
-}
-blender::MutableSpan<Layer *> Action::layers()
-{
-  return blender::MutableSpan<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
-                                       this->layer_array_num};
 }
 const Layer *Action::layer(const int64_t index) const
 {
@@ -245,10 +246,15 @@ Layer *Action::layer(const int64_t index)
   return &this->layer_array[index]->wrap();
 }
 
-Layer &Action::layer_add(const StringRefNull name)
+Layer &Action::layer_add(const std::optional<StringRefNull> name)
 {
   Layer &new_layer = ActionLayer_alloc();
-  STRNCPY_UTF8(new_layer.name, name.c_str());
+  if (name.has_value()) {
+    STRNCPY_UTF8(new_layer.name, name.value().c_str());
+  }
+  else {
+    STRNCPY_UTF8(new_layer.name, layer_default_name);
+  }
 
   grow_array_and_append<::ActionLayer *>(&this->layer_array, &this->layer_array_num, &new_layer);
   this->layer_active_index = this->layer_array_num - 1;
@@ -333,10 +339,9 @@ blender::Span<const Slot *> Action::slots() const
 {
   return blender::Span<Slot *>{reinterpret_cast<Slot **>(this->slot_array), this->slot_array_num};
 }
-blender::MutableSpan<Slot *> Action::slots()
+blender::Span<Slot *> Action::slots()
 {
-  return blender::MutableSpan<Slot *>{reinterpret_cast<Slot **>(this->slot_array),
-                                      this->slot_array_num};
+  return blender::Span<Slot *>{reinterpret_cast<Slot **>(this->slot_array), this->slot_array_num};
 }
 const Slot *Action::slot(const int64_t index) const
 {
@@ -645,12 +650,12 @@ Span<const StripKeyframeData *> Action::strip_keyframe_data() const
       reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
       this->strip_keyframe_data_array_num};
 }
-MutableSpan<StripKeyframeData *> Action::strip_keyframe_data()
+Span<StripKeyframeData *> Action::strip_keyframe_data()
 {
   /* The reinterpret cast is needed because `strip_keyframe_data_array` is for
    * pointers to the C type `ActionStripKeyframeData`, but we want the C++
    * wrapper type `StripKeyframeData`. */
-  return MutableSpan<StripKeyframeData *>{
+  return Span<StripKeyframeData *>{
       reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
       this->strip_keyframe_data_array_num};
 }
@@ -897,10 +902,10 @@ blender::Span<const Strip *> Layer::strips() const
   return blender::Span<Strip *>{reinterpret_cast<Strip **>(this->strip_array),
                                 this->strip_array_num};
 }
-blender::MutableSpan<Strip *> Layer::strips()
+blender::Span<Strip *> Layer::strips()
 {
-  return blender::MutableSpan<Strip *>{reinterpret_cast<Strip **>(this->strip_array),
-                                       this->strip_array_num};
+  return blender::Span<Strip *>{reinterpret_cast<Strip **>(this->strip_array),
+                                this->strip_array_num};
 }
 const Strip *Layer::strip(const int64_t index) const
 {
@@ -1155,36 +1160,41 @@ bool assign_action(bAction *action, ID &animated_id)
   if (!adt) {
     return false;
   }
-  assign_action(action, {animated_id, *adt});
-  return true;
+  return assign_action(action, {animated_id, *adt});
 }
 
-void assign_action(bAction *action, const OwnedAnimData owned_adt)
+bool assign_action(bAction *action, const OwnedAnimData owned_adt)
 {
-  generic_assign_action(owned_adt.owner_id,
-                        action,
-                        owned_adt.adt.action,
-                        owned_adt.adt.slot_handle,
-                        owned_adt.adt.slot_name);
+  if (!BKE_animdata_action_editable(&owned_adt.adt)) {
+    /* Cannot remove, otherwise things turn to custard. */
+    BKE_report(nullptr, RPT_ERROR, "Cannot change action, as it is still being edited in NLA");
+    return false;
+  }
+
+  return generic_assign_action(owned_adt.owner_id,
+                               action,
+                               owned_adt.adt.action,
+                               owned_adt.adt.slot_handle,
+                               owned_adt.adt.slot_name);
 }
 
-void assign_tmpaction(bAction *action, const OwnedAnimData owned_adt)
+bool assign_tmpaction(bAction *action, const OwnedAnimData owned_adt)
 {
-  generic_assign_action(owned_adt.owner_id,
-                        action,
-                        owned_adt.adt.tmpact,
-                        owned_adt.adt.tmp_slot_handle,
-                        owned_adt.adt.tmp_slot_name);
+  return generic_assign_action(owned_adt.owner_id,
+                               action,
+                               owned_adt.adt.tmpact,
+                               owned_adt.adt.tmp_slot_handle,
+                               owned_adt.adt.tmp_slot_name);
 }
 
-void unassign_action(ID &animated_id)
+bool unassign_action(ID &animated_id)
 {
-  assign_action(nullptr, animated_id);
+  return assign_action(nullptr, animated_id);
 }
 
-void unassign_action(OwnedAnimData owned_adt)
+bool unassign_action(OwnedAnimData owned_adt)
 {
-  assign_action(nullptr, owned_adt);
+  return assign_action(nullptr, owned_adt);
 }
 
 Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id)
@@ -1220,8 +1230,14 @@ Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id)
     slot = &action.slot_add_for_id(animated_id);
   }
 
-  assign_action(&action, animated_id);
+  if (!assign_action(&action, animated_id)) {
+    return nullptr;
+  }
+
   if (assign_action_slot(slot, animated_id) != ActionSlotAssignmentResult::OK) {
+    /* This should never happen, as a few lines above a new slot is created for
+     * this ID if the found one wasn't deemed suitable. */
+    BLI_assert_unreachable();
     return nullptr;
   }
 
@@ -1241,7 +1257,7 @@ static bool is_id_using_action_slot(const ID &animated_id,
   return !looped_until_end;
 }
 
-void generic_assign_action(ID &animated_id,
+bool generic_assign_action(ID &animated_id,
                            bAction *action_to_assign,
                            bAction *&action_ptr_ref,
                            slot_handle_t &slot_handle_ref,
@@ -1249,8 +1265,24 @@ void generic_assign_action(ID &animated_id,
 {
   BLI_assert(slot_name);
 
+  if (action_to_assign && legacy::action_treat_as_legacy(*action_to_assign)) {
+    /* Check that the Action is suitable for this ID type.
+     * This is only necessary for legacy Actions. */
+    if (!BKE_animdata_action_ensure_idroot(&animated_id, action_to_assign)) {
+      BKE_reportf(
+          nullptr,
+          RPT_ERROR,
+          "Could not set action '%s' to animate ID '%s', as it does not have suitably rooted "
+          "paths for this purpose",
+          action_to_assign->id.name + 2,
+          animated_id.name);
+      return false;
+    }
+  }
+
   /* Un-assign any previously-assigned Action first. */
   if (action_ptr_ref) {
+#ifdef WITH_ANIM_BAKLAVA
     /* Un-assign the slot. This will always succeed, so no need to check the result. */
     if (slot_handle_ref != Slot::unassigned) {
       const ActionSlotAssignmentResult result = generic_assign_action_slot(
@@ -1258,6 +1290,9 @@ void generic_assign_action(ID &animated_id,
       BLI_assert(result == ActionSlotAssignmentResult::OK);
       UNUSED_VARS_NDEBUG(result);
     }
+#else
+    UNUSED_VARS(slot_handle_ref);
+#endif /* WITH_ANIM_BAKLAVA */
 
     /* Un-assign the Action itself. */
     id_us_min(&action_ptr_ref->id);
@@ -1266,20 +1301,24 @@ void generic_assign_action(ID &animated_id,
 
   if (!action_to_assign) {
     /* Un-assigning was the point, so the work is done. */
-    return;
+    return true;
   }
 
   /* Assign the new Action. */
   action_ptr_ref = action_to_assign;
   id_us_plus(&action_ptr_ref->id);
 
-  /* Assign the slot. Since the slot is guaranteed to be usable (or nullptr) and from the assigned
-   * Action, this call is guaranteed to succeed. */
+#ifdef WITH_ANIM_BAKLAVA
+  /* Assign the slot. Legacy Actions do not have slots, so for those `slot` will always be
+   * `nullptr`, which is perfectly acceptable for generic_assign_action_slot(). */
   Slot *slot = action_to_assign->wrap().find_suitable_slot_for(animated_id);
   const ActionSlotAssignmentResult result = generic_assign_action_slot(
       slot, animated_id, action_ptr_ref, slot_handle_ref, slot_name);
   BLI_assert(result == ActionSlotAssignmentResult::OK);
   UNUSED_VARS_NDEBUG(result);
+#endif
+
+  return true;
 }
 
 ActionSlotAssignmentResult generic_assign_action_slot(Slot *slot_to_assign,
@@ -1298,7 +1337,7 @@ ActionSlotAssignmentResult generic_assign_action_slot(Slot *slot_to_assign,
 
   /* Check that the slot can actually be assigned. */
   if (slot_to_assign) {
-    if (!action.slots().as_span().contains(slot_to_assign)) {
+    if (!action.slots().contains(slot_to_assign)) {
       return ActionSlotAssignmentResult::SlotNotFromAction;
     }
 
@@ -1544,10 +1583,10 @@ blender::Span<const ChannelBag *> StripKeyframeData::channelbags() const
   return blender::Span<ChannelBag *>{reinterpret_cast<ChannelBag **>(this->channelbag_array),
                                      this->channelbag_array_num};
 }
-blender::MutableSpan<ChannelBag *> StripKeyframeData::channelbags()
+blender::Span<ChannelBag *> StripKeyframeData::channelbags()
 {
-  return blender::MutableSpan<ChannelBag *>{
-      reinterpret_cast<ChannelBag **>(this->channelbag_array), this->channelbag_array_num};
+  return blender::Span<ChannelBag *>{reinterpret_cast<ChannelBag **>(this->channelbag_array),
+                                     this->channelbag_array_num};
 }
 const ChannelBag *StripKeyframeData::channelbag(const int64_t index) const
 {
@@ -1716,21 +1755,39 @@ static void fcurve_ptr_destructor(FCurve **fcurve_ptr)
 
 bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
 {
-  if (!fcurve_detach(fcurve_to_remove)) {
+  if (!this->fcurve_detach(fcurve_to_remove)) {
     return false;
   }
   BKE_fcurve_free(&fcurve_to_remove);
   return true;
 }
 
+void ChannelBag::fcurve_remove_by_index(const int64_t fcurve_index)
+{
+  /* Grab the pointer before it's detached, so we can free it after. */
+  FCurve *fcurve_to_remove = this->fcurve(fcurve_index);
+
+  this->fcurve_detach_by_index(fcurve_index);
+
+  BKE_fcurve_free(fcurve_to_remove);
+}
+
 static void fcurve_ptr_noop_destructor(FCurve ** /*fcurve_ptr*/) {}
 
 bool ChannelBag::fcurve_detach(FCurve &fcurve_to_detach)
 {
-  const int64_t fcurve_index = this->fcurves().as_span().first_index_try(&fcurve_to_detach);
+  const int64_t fcurve_index = this->fcurves().first_index_try(&fcurve_to_detach);
   if (fcurve_index < 0) {
     return false;
   }
+  this->fcurve_detach_by_index(fcurve_index);
+  return true;
+}
+
+void ChannelBag::fcurve_detach_by_index(const int64_t fcurve_index)
+{
+  BLI_assert(fcurve_index >= 0);
+  BLI_assert(fcurve_index < this->fcurve_array_num);
 
   const int group_index = this->channel_group_containing_index(fcurve_index);
   if (group_index != -1) {
@@ -1738,7 +1795,7 @@ bool ChannelBag::fcurve_detach(FCurve &fcurve_to_detach)
 
     group->fcurve_range_length -= 1;
     if (group->fcurve_range_length <= 0) {
-      const int group_index = this->channel_groups().as_span().first_index_try(group);
+      const int group_index = this->channel_groups().first_index_try(group);
       this->channel_group_remove_raw(group_index);
     }
   }
@@ -1754,15 +1811,13 @@ bool ChannelBag::fcurve_detach(FCurve &fcurve_to_detach)
   /* As an optimization, this function could call `DEG_relations_tag_update(bmain)` to prune any
    * relationships that are now no longer necessary. This is not needed for correctness of the
    * depsgraph evaluation results though. */
-
-  return true;
 }
 
 void ChannelBag::fcurve_move(FCurve &fcurve, int to_fcurve_index)
 {
   BLI_assert(to_fcurve_index >= 0 && to_fcurve_index < this->fcurves().size());
 
-  const int fcurve_index = this->fcurves().as_span().first_index_try(&fcurve);
+  const int fcurve_index = this->fcurves().first_index_try(&fcurve);
   BLI_assert_msg(fcurve_index >= 0, "FCurve not in this channel bag.");
 
   array_shift_range(
@@ -1876,9 +1931,9 @@ blender::Span<const FCurve *> ChannelBag::fcurves() const
 {
   return blender::Span<FCurve *>{this->fcurve_array, this->fcurve_array_num};
 }
-blender::MutableSpan<FCurve *> ChannelBag::fcurves()
+blender::Span<FCurve *> ChannelBag::fcurves()
 {
-  return blender::MutableSpan<FCurve *>{this->fcurve_array, this->fcurve_array_num};
+  return blender::Span<FCurve *>{this->fcurve_array, this->fcurve_array_num};
 }
 const FCurve *ChannelBag::fcurve(const int64_t index) const
 {
@@ -1893,9 +1948,9 @@ blender::Span<const bActionGroup *> ChannelBag::channel_groups() const
 {
   return blender::Span<bActionGroup *>{this->group_array, this->group_array_num};
 }
-blender::MutableSpan<bActionGroup *> ChannelBag::channel_groups()
+blender::Span<bActionGroup *> ChannelBag::channel_groups()
 {
-  return blender::MutableSpan<bActionGroup *>{this->group_array, this->group_array_num};
+  return blender::Span<bActionGroup *>{this->group_array, this->group_array_num};
 }
 const bActionGroup *ChannelBag::channel_group(const int64_t index) const
 {
@@ -2004,7 +2059,7 @@ bActionGroup &ChannelBag::channel_group_ensure(StringRefNull name)
 
 bool ChannelBag::channel_group_remove(bActionGroup &group)
 {
-  const int group_index = this->channel_groups().as_span().first_index_try(&group);
+  const int group_index = this->channel_groups().first_index_try(&group);
   if (group_index == -1) {
     return false;
   }
@@ -2031,7 +2086,7 @@ void ChannelBag::channel_group_move(bActionGroup &group, const int to_group_inde
 {
   BLI_assert(to_group_index >= 0 && to_group_index < this->channel_groups().size());
 
-  const int group_index = this->channel_groups().as_span().first_index_try(&group);
+  const int group_index = this->channel_groups().first_index_try(&group);
   BLI_assert_msg(group_index >= 0, "Group not in this channel bag.");
 
   /* Shallow copy, to track which fcurves should be moved in the second step. */
@@ -2509,11 +2564,11 @@ void channelbag_fcurves_move(ChannelBag &channelbag_dst, ChannelBag &channelbag_
 
 bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to_group)
 {
-  if (this->channel_groups().as_span().first_index_try(&to_group) == -1) {
+  if (this->channel_groups().first_index_try(&to_group) == -1) {
     return false;
   }
 
-  const int fcurve_index = this->fcurves().as_span().first_index_try(&fcurve);
+  const int fcurve_index = this->fcurves().first_index_try(&fcurve);
   if (fcurve_index == -1) {
     return false;
   }
@@ -2526,7 +2581,7 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to
   if (fcurve.grp != nullptr) {
     fcurve.grp->fcurve_range_length--;
     if (fcurve.grp->fcurve_range_length == 0) {
-      const int group_index = this->channel_groups().as_span().first_index_try(fcurve.grp);
+      const int group_index = this->channel_groups().first_index_try(fcurve.grp);
       this->channel_group_remove_raw(group_index);
     }
     this->restore_channel_group_invariants();
@@ -2546,7 +2601,7 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to
 
 bool ChannelBag::fcurve_ungroup(FCurve &fcurve)
 {
-  const int fcurve_index = this->fcurves().as_span().first_index_try(&fcurve);
+  const int fcurve_index = this->fcurves().first_index_try(&fcurve);
   if (fcurve_index == -1) {
     return false;
   }
@@ -2565,7 +2620,7 @@ bool ChannelBag::fcurve_ungroup(FCurve &fcurve)
 
   old_group->fcurve_range_length--;
   if (old_group->fcurve_range_length == 0) {
-    const int old_group_index = this->channel_groups().as_span().first_index_try(old_group);
+    const int old_group_index = this->channel_groups().first_index_try(old_group);
     this->channel_group_remove_raw(old_group_index);
   }
 
@@ -2728,7 +2783,7 @@ static void clone_slot(Slot &from, Slot &to)
 
 void move_slot(Main &bmain, Slot &source_slot, Action &from_action, Action &to_action)
 {
-  BLI_assert(from_action.slots().as_span().contains(&source_slot));
+  BLI_assert(from_action.slots().contains(&source_slot));
   BLI_assert(&from_action != &to_action);
 
   /* No merging of strips or layers is handled. All data is put into the assumed single strip. */
@@ -2762,11 +2817,19 @@ void move_slot(Main &bmain, Slot &source_slot, Action &from_action, Action &to_a
       if (action_ptr_ref != &from_action) {
         return true;
       }
-      generic_assign_action(*user, &to_action, action_ptr_ref, slot_handle_ref, slot_name);
-      const ActionSlotAssignmentResult result = generic_assign_action_slot(
-          &target_slot, *user, action_ptr_ref, slot_handle_ref, slot_name);
-      BLI_assert(result == ActionSlotAssignmentResult::OK);
-      UNUSED_VARS_NDEBUG(result);
+
+      { /* Assign the Action. */
+        const bool assign_ok = generic_assign_action(
+            *user, &to_action, action_ptr_ref, slot_handle_ref, slot_name);
+        BLI_assert_msg(assign_ok, "Expecting slotted Actions to always be assignable");
+        UNUSED_VARS_NDEBUG(assign_ok);
+      }
+      { /* Assign the Slot. */
+        const ActionSlotAssignmentResult result = generic_assign_action_slot(
+            &target_slot, *user, action_ptr_ref, slot_handle_ref, slot_name);
+        BLI_assert(result == ActionSlotAssignmentResult::OK);
+        UNUSED_VARS_NDEBUG(result);
+      }
       return true;
     };
     foreach_action_slot_use_with_references(*user, assign_other_action);
