@@ -26,6 +26,10 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   # BEGIN ICON_GEOM_NAMES
   brush.gpencil_draw.erase
   brush.gpencil_draw.fill
+  brush.paint_texture.soften
+  brush.paint_texture.smear
+  brush.paint_texture.fill
+  brush.paint_texture.mask
   brush.paint_vertex.average
   brush.paint_vertex.blur
   brush.paint_vertex.replace
