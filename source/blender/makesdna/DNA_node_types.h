@@ -1893,6 +1893,11 @@ typedef struct NodeGeometryDuplicateElements {
   int8_t domain;
 } NodeGeometryDuplicateElements;
 
+typedef struct NodeGeometryMergeLayers {
+  /** #MergeLayerMode. */
+  int8_t mode;
+} NodeGeometryMergeLayers;
+
 typedef struct NodeGeometrySeparateGeometry {
   /** #AttrDomain. */
   int8_t domain;
