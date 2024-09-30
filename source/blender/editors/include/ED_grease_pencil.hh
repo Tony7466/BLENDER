@@ -85,6 +85,8 @@ blender::bke::AttrDomain ED_grease_pencil_edit_selection_domain_get(
     const ToolSettings *tool_settings);
 blender::bke::AttrDomain ED_grease_pencil_sculpt_selection_domain_get(
     const ToolSettings *tool_settings);
+blender::bke::AttrDomain ED_grease_pencil_vertex_selection_domain_get(
+    const ToolSettings *tool_settings);
 blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings,
                                                                const Object *object);
 /**
@@ -92,6 +94,7 @@ blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSetting
  */
 bool ED_grease_pencil_edit_segment_selection_enabled(const ToolSettings *tool_settings);
 bool ED_grease_pencil_sculpt_segment_selection_enabled(const ToolSettings *tool_settings);
+bool ED_grease_pencil_vertex_segment_selection_enabled(const ToolSettings *tool_settings);
 bool ED_grease_pencil_segment_selection_enabled(const ToolSettings *tool_settings,
                                                 const Object *object);
 
@@ -515,6 +518,9 @@ bool add_armature_vertex_groups(Object &object, const Object &armature);
 /** Create vertex groups for the bones in the armature and use the bone envelopes to assign
  * weights. */
 void add_armature_envelope_weights(Scene &scene, Object &object, const Object &ob_armature);
+/** Create vertex groups for the bones in the armature and use a simple distance based algorithm to
+ * assign automatic weights. */
+void add_armature_automatic_weights(Scene &scene, Object &object, const Object &ob_armature);
 
 void clipboard_free();
 const bke::CurvesGeometry &clipboard_curves();
