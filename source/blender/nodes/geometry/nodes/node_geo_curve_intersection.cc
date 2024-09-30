@@ -426,27 +426,27 @@ static void node_geo_exec(GeoNodeExecParams params)
     point_positions.span.copy_from(r_data.position);
     point_positions.finish();
 
-    point_attributes.add<int>("Curve Index",
+    point_attributes.add<int>("curve_index",
                               bke::AttrDomain::Point,
                               bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.curve_id)));
 
     point_attributes.add<float>(
-        "Factor",
+        "factor",
         AttrDomain::Point,
         blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.factor)));
 
     point_attributes.add<float>(
-        "Length",
+        "length",
         AttrDomain::Point,
         blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.length)));
 
     point_attributes.add<float3>(
-        "Direction",
+        "direction",
         AttrDomain::Point,
         bke::AttributeInitVArray(VArray<float3>::ForSpan(r_data.direction)));
 
     point_attributes.add<bool>(
-        "First Curve",
+        "first_curve",
         AttrDomain::Point,
         bke::AttributeInitVArray(VArray<bool>::ForSpan(r_data.first_curve)));
   });
