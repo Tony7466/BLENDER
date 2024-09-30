@@ -423,17 +423,17 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
 
 def has_geometry_visibility(ob):
     return ob and (
-            (ob.type in {
-                'MESH',
-                'CURVE',
-                'SURFACE',
-                'FONT',
-                'META',
-                'LIGHT',
-                'VOLUME',
-                'POINTCLOUD',
-                'CURVES',
-            }) or (ob.instance_type == 'COLLECTION' and ob.instance_collection))
+        (ob.type in {
+            'MESH',
+            'CURVE',
+            'SURFACE',
+            'FONT',
+            'META',
+            'LIGHT',
+            'VOLUME',
+            'POINTCLOUD',
+            'CURVES',
+        }) or (ob.instance_type == 'COLLECTION' and ob.instance_collection))
 
 
 class OBJECT_PT_shading(ObjectButtonsPanel, Panel):
@@ -445,7 +445,7 @@ class OBJECT_PT_shading(ObjectButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        if not context.engine in cls.COMPAT_ENGINES:
+        if context.engine not in cls.COMPAT_ENGINES:
             return False
 
         return has_geometry_visibility(context.object)

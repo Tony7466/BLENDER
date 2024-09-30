@@ -88,8 +88,8 @@ float light_power_get(LightData light, LightingType type)
 
 bool light_linking_affects_receiver(uvec2 light_set_membership, uchar receiver_light_set)
 {
-    uint light_sets = (receiver_light_set > 32u) ? light_set_membership.x : light_set_membership.y;
-    return ((light_sets & (1u << (receiver_light_set & 0x1Fu))) != 0u);
+  uint light_sets = (receiver_light_set > 32u) ? light_set_membership.x : light_set_membership.y;
+  return ((light_sets & (1u << (receiver_light_set & 0x1Fu))) != 0u);
 }
 
 void light_eval_single_closure(LightData light,
@@ -124,7 +124,7 @@ void light_eval_single(uint l_idx,
   LightData light = light_buf[l_idx];
 
   if (!light_linking_affects_receiver(light.light_set_membership, receiver_light_set)) {
-      return;
+    return;
   }
 
 #if defined(SPECIALIZED_SHADOW_PARAMS)
@@ -182,8 +182,13 @@ void light_eval_single(uint l_idx,
   }
 }
 
-void light_eval_transmission(
-    inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz, float thickness, uchar receiver_light_set)
+void light_eval_transmission(inout ClosureLightStack stack,
+                             vec3 P,
+                             vec3 Ng,
+                             vec3 V,
+                             float vPz,
+                             float thickness,
+                             uchar receiver_light_set)
 {
 #ifdef SKIP_LIGHT_EVAL
   return;
@@ -200,7 +205,8 @@ void light_eval_transmission(
   LIGHT_FOREACH_END
 }
 
-void light_eval_reflection(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz, uchar receiver_light_set)
+void light_eval_reflection(
+    inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz, uchar receiver_light_set)
 {
 #ifdef SKIP_LIGHT_EVAL
   return;
