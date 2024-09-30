@@ -64,6 +64,8 @@ GSet *SEQ_fcurves_by_strip_get(const Sequence *seq, ListBase *fcurve_base)
   return fcurves;
 }
 
+/* Copy of `SEQ_fcurves_by_strip_get()` above, except it gets the fcurves from a
+ * span rather than a listbase. */
 GSet *SEQ_fcurves_by_strip_get_from_span(const Sequence *seq, blender::Span<FCurve *> fcurve_span)
 {
   char rna_path[SEQ_RNAPATH_MAXSTR];
