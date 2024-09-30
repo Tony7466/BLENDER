@@ -1,2 +1,3 @@
 Referenced by issue #52635, Crash during path tracing, particle system (master)
 Referenced by pull request #128342, Cycles: Cleanup, simplify and expand math/vectorization build flags
+Referenced by commit f96f3c33af64bb2c422a438b19e203b84a03e21d, Cycles: Add some more math optimizations
