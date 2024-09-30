@@ -18,7 +18,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   static auto fn = mf::build::SI1_SO<float4x4, float>(
-      "Matrix Determinant", [](float4x4 matrix) { return math::determinant(matrix); });
+      "Matrix Determinant", [](const float4x4 &matrix) { return math::determinant(matrix); });
   builder.set_matching_fn(fn);
 }
 
@@ -29,7 +29,7 @@ static void node_register()
       &ntype, FN_NODE_MATRIX_DETERMINANT, "Matrix Determinant", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
