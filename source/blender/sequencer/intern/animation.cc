@@ -64,27 +64,6 @@ GSet *SEQ_fcurves_by_strip_get(const Sequence *seq, ListBase *fcurve_base)
   return fcurves;
 }
 
-/* Copy of `SEQ_fcurves_by_strip_get()` above, except it gets the fcurves from a
- * span rather than a listbase. */
-GSet *SEQ_fcurves_by_strip_get_from_span(const Sequence *seq, blender::Span<FCurve *> fcurve_span)
-{
-  char rna_path[SEQ_RNAPATH_MAXSTR];
-  size_t rna_path_len = sequencer_rna_path_prefix(rna_path, seq->name + 2);
-
-  /* Only allocate `fcurves` if it's needed as it's possible there is no animation for `seq`. */
-  GSet *fcurves = nullptr;
-  for (FCurve *fcurve : fcurve_span) {
-    if (STREQLEN(fcurve->rna_path, rna_path, rna_path_len)) {
-      if (fcurves == nullptr) {
-        fcurves = BLI_gset_ptr_new(__func__);
-      }
-      BLI_gset_add(fcurves, fcurve);
-    }
-  }
-
-  return fcurves;
-}
-
 #undef SEQ_RNAPATH_MAXSTR
 
 void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs)

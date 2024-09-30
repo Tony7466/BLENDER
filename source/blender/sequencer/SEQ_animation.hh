@@ -24,7 +24,6 @@ bool SEQ_animation_drivers_exist(Scene *scene);
 void SEQ_free_animdata(Scene *scene, Sequence *seq);
 void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs);
 GSet *SEQ_fcurves_by_strip_get(const Sequence *seq, ListBase *fcurve_base);
-GSet *SEQ_fcurves_by_strip_get_from_span(const Sequence *seq, blender::Span<FCurve *> fcurve_span);
 struct SeqAnimationBackup {
   ListBase curves;
   blender::animrig::ChannelBag channel_bag;

@@ -98,28 +98,31 @@ static void sequencer_copy_animation_listbase(Scene *scene_src,
 /* This is effectively just a copy of `sequencer_copy_animation_listbase()`
  * above, except that it copies from an action's animation to a vector rather
  * than between two listbases. */
-static void sequencer_copy_animation_to_vector(Scene *scene_src,
-                                               Sequence *seq_dst,
-                                               blender::Vector<FCurve *> &clipboard_dst,
-                                               bAction &fcurves_src_action,
-                                               blender::animrig::slot_handle_t slot_handle)
+static void sequencer_copy_animation_to_vector(
+    Scene *scene_src,
+    Sequence *seq_dst,
+    blender::Vector<FCurve *> &clipboard_dst,
+    bAction &fcurves_src_action,
+    blender::animrig::slot_handle_t fcurves_src_slot_handle)
 {
   /* Add curves for strips inside meta strip. */
   if (seq_dst->type == SEQ_TYPE_META) {
     LISTBASE_FOREACH (Sequence *, meta_child, &seq_dst->seqbase) {
       sequencer_copy_animation_to_vector(
-          scene_src, meta_child, clipboard_dst, fcurves_src_action, slot_handle);
+          scene_src, meta_child, clipboard_dst, fcurves_src_action, fcurves_src_slot_handle);
     }
   }
 
-  GSet *fcurves_src = SEQ_fcurves_by_strip_get_from_span(
-      seq_dst,
-      blender::animrig::legacy::fcurves_for_action_slot(&fcurves_src_action, slot_handle));
-  if (fcurves_src == nullptr) {
+  blender::Vector<FCurve *> fcurves_src = blender::animrig::fcurve_find_in_action_slot_filtered(
+      &fcurves_src_action,
+      fcurves_src_slot_handle,
+      "sequence_editor.sequences_all[",
+      seq_dst->name + 2);
+  if (fcurves_src.is_empty()) {
     return;
   }
 
-  GSET_FOREACH_BEGIN (FCurve *, fcu_src, fcurves_src) {
+  for (FCurve *fcu_src : fcurves_src) {
     FCurve *fcu_copy = BKE_fcurve_copy(fcu_src);
 
     /* Handling groups properly requires more work, so for now just ignore them. */
@@ -127,9 +130,6 @@ static void sequencer_copy_animation_to_vector(Scene *scene_src,
 
     clipboard_dst.append(fcu_copy);
   }
-  GSET_FOREACH_END();
-
-  BLI_gset_free(fcurves_src, nullptr);
 }
 
 static void sequencer_copy_animation(Scene *scene_src,
