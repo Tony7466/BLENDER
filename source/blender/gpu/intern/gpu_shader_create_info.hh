@@ -1038,7 +1038,7 @@ struct ShaderCreateInfo {
    * \{ */
 
   /* WARNING: Recursive. */
-  void finalize(const bool recursive = false);
+  void finalize();
 
   std::string check_error() const;
   bool is_vulkan_compatible() const;
