@@ -443,7 +443,7 @@ static void node_declare(NodeDeclarationBuilder &b)
     b.add_input<decl::Extend>("", "__extend__main");
     b.add_output<decl::Extend>("", "__extend__main").align_with_previous();
 
-    auto &panel = b.add_panel("Generated Geometry");
+    auto &panel = b.add_panel("Generated");
 
     int previous_geometry_index = -1;
     for (const int i : IndexRange(storage.generation_items.items_num)) {
