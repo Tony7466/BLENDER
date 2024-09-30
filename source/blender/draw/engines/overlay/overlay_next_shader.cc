@@ -133,7 +133,7 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
                                        [](gpu::shader::ShaderCreateInfo &info) {
                                          info.additional_infos_.clear();
                                          info.additional_info("overlay_viewer_attribute_common",
-                                                              "draw_pointcloud",
+                                                              "draw_pointcloud_new",
                                                               "draw_view",
                                                               "draw_modelmat_new");
                                        });
@@ -146,7 +146,7 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
       "overlay_viewer_attribute_curves", [](gpu::shader::ShaderCreateInfo &info) {
         info.additional_infos_.clear();
         info.additional_info(
-            "overlay_viewer_attribute_common", "draw_hair", "draw_view", "draw_modelmat_new");
+            "overlay_viewer_attribute_common", "draw_hair_new", "draw_view", "draw_modelmat_new");
       });
 
   armature_degrees_of_freedom = shader(
