@@ -19,7 +19,7 @@ shader node_scatter_volume(string phase = "Henyey-Greenstein",
     scatter = fournier_forand(B, IOR);
   }
   else if (phase == "Draine") {
-    scatter = draine(AnisotropyAlpha);
+    scatter = draine(Anisotropy, Alpha);
   }
   else if (phase == "Rayleigh") {
     scatter = rayleigh();
