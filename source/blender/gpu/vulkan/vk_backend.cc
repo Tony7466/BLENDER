@@ -466,10 +466,12 @@ void VKBackend::render_end()
   thread_data.rendering_depth -= 1;
   BLI_assert_msg(thread_data.rendering_depth >= 0, "Unbalanced `GPU_render_begin/end`");
 
-  if (G.background) {
+  if (G.background || !BLI_thread_is_main()) {
+    /* When **not** running on the main thread (or doing background rendering) we assume that there
+     * is no swap chain in play. The rendering happen on a single thread and when rendering ended
+     * all the resources have been used and are in a state that they can be discarded or
+     * destroyed.*/
     if (thread_data.rendering_depth == 0) {
-      thread_data.resource_pool_next();
-
       VKResourcePool &resource_pool = thread_data.resource_pool_get();
       resource_pool.discard_pool.destroy_discarded_resources(device);
       resource_pool.reset();
