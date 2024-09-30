@@ -2408,6 +2408,49 @@ static void draw_manage_panel(const bContext *C,
   }
 }
 
+static void draw_warnings(const bContext *C,
+                          const NodesModifierData &nmd,
+                          uiLayout *layout,
+                          PointerRNA *md_ptr)
+{
+  using namespace geo_log;
+  GeoTreeLog *tree_log = get_root_tree_log(nmd);
+  if (!tree_log) {
+    return;
+  }
+  tree_log->ensure_node_warnings(nmd.node_group);
+  const int warnings_num = tree_log->all_warnings.size();
+  if (warnings_num == 0) {
+    return;
+  }
+  PanelLayout panel = uiLayoutPanelProp(C, layout, md_ptr, "open_warnings_panel");
+  uiItemL(panel.header, fmt::format(IFACE_("Warnings ({})"), warnings_num).c_str(), ICON_NONE);
+  if (!panel.body) {
+    return;
+  }
+  Vector<const NodeWarning *> warnings(tree_log->all_warnings.size());
+  for (const int i : warnings.index_range()) {
+    warnings[i] = &tree_log->all_warnings[i];
+  }
+  std::sort(warnings.begin(), warnings.end(), [](const NodeWarning *a, const NodeWarning *b) {
+    const int severity_a = node_warning_type_severity(a->type);
+    const int severity_b = node_warning_type_severity(b->type);
+    if (severity_a > severity_b) {
+      return true;
+    }
+    if (severity_a < severity_b) {
+      return false;
+    }
+    return BLI_strcasecmp_natural(a->message.c_str(), b->message.c_str()) < 0;
+  });
+
+  uiLayout *col = uiLayoutColumn(panel.body, false);
+  for (const NodeWarning *warning : warnings) {
+    const int icon = node_warning_type_icon(warning->type);
+    uiItemL(col, warning->message.c_str(), icon);
+  }
+}
+
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -2431,20 +2474,9 @@ static void panel_draw(const bContext *C, Panel *panel)
     draw_interface_panel_content(C, layout, ptr, *nmd, nmd->node_group->tree_interface.root_panel);
   }
 
-  /* Draw node warnings. */
-  geo_log::GeoTreeLog *tree_log = get_root_tree_log(*nmd);
-  if (tree_log != nullptr) {
-    tree_log->ensure_node_warnings(nmd->node_group);
-    for (const geo_log::NodeWarning &warning : tree_log->all_warnings) {
-      if (warning.type != geo_log::NodeWarningType::Info) {
-        uiItemL(layout,
-                warning.message.c_str(),
-                warning.type == geo_log::NodeWarningType::Warning ? ICON_ERROR : ICON_CANCEL);
-      }
-    }
-  }
-
   modifier_panel_end(layout, ptr);
+
+  draw_warnings(C, *nmd, layout, ptr);
 
   if (has_output_attribute(*nmd)) {
     if (uiLayout *panel_layout = uiLayoutPanelProp(

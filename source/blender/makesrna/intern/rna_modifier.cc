@@ -8119,6 +8119,7 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   rna_def_modifier_panel_open_prop(srna, "open_bake_panel", 2);
   rna_def_modifier_panel_open_prop(srna, "open_named_attributes_panel", 3);
   rna_def_modifier_panel_open_prop(srna, "open_bake_data_blocks_panel", 4);
+  rna_def_modifier_panel_open_prop(srna, "open_warnings_panel", 5);
 
   RNA_define_lib_overridable(false);
 }
