@@ -226,8 +226,13 @@ static bool grease_pencil_layer_move_poll(bContext *C)
 
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  const TreeNode &active_node = *grease_pencil.get_active_node();
-  const LayerGroup *parent = active_node.parent_group();
+  const TreeNode *active_node = grease_pencil.get_active_node();
+
+  if (active_node == nullptr) {
+    return false;
+  }
+
+  const LayerGroup *parent = active_node->parent_group();
 
   if (parent == nullptr || parent->num_direct_nodes() < 2) {
     return false;
@@ -339,6 +344,7 @@ static int grease_pencil_layer_group_add_exec(bContext *C, wmOperator *op)
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
