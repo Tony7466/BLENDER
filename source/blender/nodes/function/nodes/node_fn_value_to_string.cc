@@ -16,20 +16,15 @@
 
 namespace blender::nodes::node_fn_value_to_string_cc {
 
-enum class ValuetoStringDataType {
-  Float = 0,
-  Integer = 1,
-};
-
 static void node_declare(NodeDeclarationBuilder &b)
 {
   if (const bNode *node = b.node_or_null()) {
-    switch (ValuetoStringDataType(node->custom1)) {
-      case ValuetoStringDataType::Float:
+    switch (node->custom1) {
+      case SOCK_FLOAT:
         b.add_input<decl::Float>("Value");
         b.add_input<decl::Int>("Decimals").min(0);
         break;
-      case ValuetoStringDataType::Integer:
+      case SOCK_INT:
         b.add_input<decl::Int>("Value");
         break;
     }
@@ -50,10 +45,10 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto int_to_str_fn = mf::build::SI1_SO<int, std::string>(
       "Value To String", [](int a) { return std::to_string(a); });
 
-  switch (ValuetoStringDataType(bnode.custom1)) {
-    case ValuetoStringDataType::Float:
+  switch (bnode.custom1) {
+    case SOCK_FLOAT:
       return &float_to_str_fn;
-    case ValuetoStringDataType::Integer:
+    case SOCK_INT:
       return &int_to_str_fn;
   }
 
@@ -69,7 +64,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = int8_t(ValuetoStringDataType::Float);
+  node->custom1 = SOCK_FLOAT;
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
@@ -79,7 +74,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     if (socket_type == SOCK_INT) {
       params.add_item(IFACE_("Value"), [](LinkSearchOpParams &params) {
         bNode &node = params.add_node("FunctionNodeValueToString");
-        node.custom1 = int8_t(ValuetoStringDataType::Integer);
+        node.custom1 = SOCK_INT;
         params.update_and_connect_available_socket(node, "Value");
       });
       params.add_item(IFACE_("Decimals"), [](LinkSearchOpParams &params) {
@@ -91,7 +86,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       if (params.node_tree().typeinfo->validate_link(socket_type, SOCK_FLOAT)) {
         params.add_item(IFACE_("Value"), [](LinkSearchOpParams &params) {
           bNode &node = params.add_node("FunctionNodeValueToString");
-          node.custom1 = int8_t(ValuetoStringDataType::Float);
+          node.custom1 = SOCK_FLOAT;
           params.update_and_connect_available_socket(node, "Value");
         });
       }
@@ -115,8 +110,8 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem data_types[] = {
-      {int(ValuetoStringDataType::Float), "FLOAT", 0, "Float", "Floating-point value"},
-      {int(ValuetoStringDataType::Integer), "INT", 0, "Integer", "32-bit integer"},
+      {SOCK_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
+      {SOCK_INT, "INT", 0, "Integer", "32-bit integer"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -126,7 +121,7 @@ static void node_rna(StructRNA *srna)
                     "",
                     data_types,
                     NOD_inline_enum_accessors(custom1),
-                    int(ValuetoStringDataType::Float));
+                    SOCK_FLOAT);
 }
 
 static void node_register()
