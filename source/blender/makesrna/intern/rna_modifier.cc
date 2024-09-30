@@ -239,7 +239,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
     {eModifierType_GreasePencilArray,
      "GREASE_PENCIL_ARRAY",
      ICON_MOD_ARRAY,
-     "Array strokes",
+     "Array",
      "Duplicate strokes into an array"},
     {eModifierType_GreasePencilBuild,
      "GREASE_PENCIL_BUILD",
@@ -253,13 +253,13 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Grease Pencil length modifier"},
     {eModifierType_GreasePencilLineart,
      "LINEART",
-     ICON_GREASEPENCIL,
+     ICON_MOD_LINEART,
      "Line Art",
      "Generate Line Art from scene geometries"},
     {eModifierType_GreasePencilMirror,
      "GREASE_PENCIL_MIRROR",
      ICON_MOD_MIRROR,
-     "Mirror strokes",
+     "Mirror",
      "Duplicate strokes like a mirror"},
     {eModifierType_GreasePencilMultiply,
      "GREASE_PENCIL_MULTIPLY",
@@ -273,8 +273,8 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "Simplify stroke reducing number of points"},
     {eModifierType_GreasePencilSubdiv,
      "GREASE_PENCIL_SUBDIV",
-     ICON_MOD_SUBSURF,
-     "Subdivide strokes",
+     ICON_MOD_SMOOTH,
+     "Subdivide",
      "Grease Pencil subdivide modifier"},
     {eModifierType_GreasePencilEnvelope,
      "GREASE_PENCIL_ENVELOPE",
@@ -285,7 +285,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      "GREASE_PENCIL_OUTLINE",
      ICON_MOD_OUTLINE,
      "Outline",
-     "Convert stroke to perimeter"},
+     "Convert stroke to outline"},
 
     RNA_ENUM_ITEM_HEADING(N_("Deform"), nullptr),
     {eModifierType_Armature,
@@ -939,6 +939,12 @@ static void rna_Modifier_dependency_update(Main *bmain, Scene *scene, PointerRNA
 {
   rna_Modifier_update(bmain, scene, ptr);
   DEG_relations_tag_update(bmain);
+}
+
+static void rna_NodesModifier_bake_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  rna_Modifier_update(bmain, scene, ptr);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ptr->owner_id);
 }
 
 static void rna_Modifier_is_active_set(PointerRNA *ptr, bool value)
@@ -3063,7 +3069,7 @@ static void rna_def_modifier_decimate(BlenderRNA *brna)
   prop = RNA_def_property(srna, "angle_limit", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "angle");
   RNA_def_property_range(prop, 0, DEG2RAD(180));
-  RNA_def_property_ui_range(prop, 0, DEG2RAD(180), 10, 2);
+  RNA_def_property_ui_range(prop, 0, DEG2RAD(180), 10, 4);
   RNA_def_property_ui_text(prop, "Angle Limit", "Only dissolve angles below this (planar only)");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -4943,7 +4949,7 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "angle_limit", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "bevel_angle");
   RNA_def_property_range(prop, 0.0f, DEG2RADF(180.0f));
-  RNA_def_property_ui_range(prop, 0.0f, DEG2RADF(180.0f), 10, 2);
+  RNA_def_property_ui_range(prop, 0.0f, DEG2RADF(180.0f), 10, 4);
   RNA_def_property_ui_text(prop, "Angle", "Angle above which to bevel edges");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
@@ -7868,6 +7874,39 @@ static void rna_def_modifier_nodes_bake_data_blocks(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, nullptr, "active_data_block");
 }
 
+static EnumPropertyItem bake_target_in_node_items[] = {
+    {NODES_MODIFIER_BAKE_TARGET_INHERIT,
+     "INHERIT",
+     0,
+     "Inherit from Modifier",
+     "Use setting from the modifier"},
+    {NODES_MODIFIER_BAKE_TARGET_PACKED,
+     "PACKED",
+     0,
+     "Packed",
+     "Pack the baked data into the .blend file"},
+    {NODES_MODIFIER_BAKE_TARGET_DISK,
+     "DISK",
+     0,
+     "Disk",
+     "Store the baked data in a directory on disk"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static EnumPropertyItem bake_target_in_modifier_items[] = {
+    {NODES_MODIFIER_BAKE_TARGET_PACKED,
+     "PACKED",
+     0,
+     "Packed",
+     "Pack the baked data into the .blend file"},
+    {NODES_MODIFIER_BAKE_TARGET_DISK,
+     "DISK",
+     0,
+     "Disk",
+     "Store the baked data in a directory on disk"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
 {
   rna_def_modifier_nodes_bake_data_blocks(brna);
@@ -7888,33 +7927,38 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_ui_text(prop, "Directory", "Location on disk where the bake data is stored");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
 
   prop = RNA_def_property(srna, "frame_start", PROP_INT, PROP_TIME);
   RNA_def_property_ui_text(prop, "Start Frame", "Frame where the baking starts");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
 
   prop = RNA_def_property(srna, "frame_end", PROP_INT, PROP_TIME);
   RNA_def_property_ui_text(prop, "End Frame", "Frame where the baking ends");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
 
   prop = RNA_def_property(srna, "use_custom_simulation_frame_range", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, nullptr, "flag", NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE);
   RNA_def_property_ui_text(
       prop, "Custom Simulation Frame Range", "Override the simulation frame range from the scene");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
 
   prop = RNA_def_property(srna, "use_custom_path", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODES_MODIFIER_BAKE_CUSTOM_PATH);
   RNA_def_property_ui_text(
       prop, "Custom Path", "Specify a path where the baked data should be stored manually");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
+
+  prop = RNA_def_property(srna, "bake_target", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, bake_target_in_node_items);
+  RNA_def_property_ui_text(prop, "Bake Target", "Where to store the baked data");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
 
   prop = RNA_def_property(srna, "bake_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, bake_mode_items);
   RNA_def_property_ui_text(prop, "Bake Mode", "");
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
 
   prop = RNA_def_property(srna, "bake_id", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop,
@@ -8034,7 +8078,12 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   prop = RNA_def_property(srna, "bake_directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_ui_text(
       prop, "Simulation Bake Directory", "Location on disk where the bake data is stored");
-  RNA_def_property_update(prop, 0, nullptr);
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
+
+  prop = RNA_def_property(srna, "bake_target", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, bake_target_in_modifier_items);
+  RNA_def_property_ui_text(prop, "Bake Target", "Where to store the baked data");
+  RNA_def_property_update(prop, 0, "rna_NodesModifier_bake_update");
 
   prop = RNA_def_property(srna, "bakes", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "NodesModifierBake");
@@ -9356,7 +9405,7 @@ static void rna_def_modifier_grease_pencil_noise(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "factor");
   RNA_def_property_range(prop, 0.0, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 2);
-  RNA_def_property_ui_text(prop, "Offset Factor", "Amount of noise to apply");
+  RNA_def_property_ui_text(prop, "Position Factor", "Amount of noise to apply");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "factor_strength", PROP_FLOAT, PROP_FACTOR);

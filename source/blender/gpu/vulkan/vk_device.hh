@@ -82,6 +82,12 @@ class VKThreadData : public NonCopyable, NonMovable {
    */
   int32_t rendering_depth = 0;
 
+  /**
+   * Number of contexts registered in the current thread.
+   * Discarded resources are destroyed when all contexts are unregistered.
+   */
+  int32_t num_contexts = 0;
+
   VKThreadData(VKDevice &device,
                pthread_t thread_id,
                std::unique_ptr<render_graph::VKCommandBufferInterface> command_buffer,
@@ -139,6 +145,7 @@ class VKDevice : public NonCopyable {
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceProperties vk_physical_device_properties_ = {};
+  VkPhysicalDeviceDriverProperties vk_physical_device_driver_properties_ = {};
   VkPhysicalDeviceMemoryProperties vk_physical_device_memory_properties_ = {};
   /** Features support. */
   VkPhysicalDeviceFeatures vk_physical_device_features_ = {};
@@ -243,7 +250,7 @@ class VKDevice : public NonCopyable {
     return debugging_tools_;
   }
 
-  VKSamplers &samplers()
+  const VKSamplers &samplers() const
   {
     return samplers_;
   }
