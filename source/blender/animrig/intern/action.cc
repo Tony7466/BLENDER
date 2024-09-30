@@ -229,8 +229,8 @@ bool Action::is_action_layered() const
 
 blender::Span<const Layer *> Action::layers() const
 {
-  return blender::Span<Layer *>{reinterpret_cast<Layer **>(this->layer_array),
-                                this->layer_array_num};
+  return blender::Span<const Layer *>{reinterpret_cast<Layer **>(this->layer_array),
+                                      this->layer_array_num};
 }
 blender::Span<Layer *> Action::layers()
 {
