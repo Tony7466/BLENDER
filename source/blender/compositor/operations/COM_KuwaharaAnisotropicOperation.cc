@@ -261,12 +261,20 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
       /* Compute the sector weight based on the weight function introduced in section "3.3.1
        * Single-scale Filtering" of the multi-scale paper. Use a threshold of 0.02 to avoid zero
        * division and avoid artifacts in homogeneous regions as demonstrated in the paper. */
-      float weight = max(1e-9f, 1.0f / pow(max(0.02f, standard_deviation), get_sharpness()));
+      float weight = 1.0f / pow(max(0.02f, standard_deviation), get_sharpness());
 
       sum_of_weights += weight;
       weighted_sum += color_mean * weight;
     }
-    weighted_sum /= sum_of_weights;
+
+    /* Fallback to the original color if all sector weights are zero due to very high standard
+     * deviation and sharpness. */
+    if (sum_of_weights == 0.0f) {
+      weighted_sum = center_color;
+    }
+    else {
+      weighted_sum /= sum_of_weights;
+    }
 
     copy_v4_v4(it.out, weighted_sum);
   }

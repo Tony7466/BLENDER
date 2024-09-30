@@ -244,12 +244,20 @@ void main()
     /* Compute the sector weight based on the weight function introduced in section "3.3.1
      * Single-scale Filtering" of the multi-scale paper. Use a threshold of 0.02 to avoid zero
      * division and avoid artifacts in homogeneous regions as demonstrated in the paper. */
-    float weight = max(1e-9f, 1.0 / pow(max(0.02, standard_deviation), sharpness));
+    float weight = 1.0 / pow(max(0.02, standard_deviation), sharpness);
 
     sum_of_weights += weight;
     weighted_sum += color_mean * weight;
   }
-  weighted_sum /= sum_of_weights;
+
+  /* Fallback to the original color if all sector weights are zero due to very high standard
+   * deviation and sharpness. */
+  if (sum_of_weights == 0.0) {
+    weighted_sum = center_color;
+  }
+  else {
+    weighted_sum /= sum_of_weights;
+  }
 
   imageStore(output_img, texel, weighted_sum);
 }
