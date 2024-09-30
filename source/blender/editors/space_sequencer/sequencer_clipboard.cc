@@ -204,14 +204,27 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   /* Copy over the fcurves. */
   if (!fcurves_dst.is_empty()) {
     scene_dst->adt = BKE_animdata_ensure_id(&scene_dst->id);
-    scene_dst->adt->action = reinterpret_cast<bAction *>(copy_buffer.id_create(
-        ID_AC, scene_name, nullptr, {PartialWriteContext::IDAddOperations::SET_FAKE_USER}));
+    blender::animrig::Action &action_dst =
+        reinterpret_cast<bAction *>(
+            copy_buffer.id_create(
+                ID_AC, scene_name, nullptr, {PartialWriteContext::IDAddOperations::SET_FAKE_USER}))
+            ->wrap();
 
-    blender::animrig::Action &action_dst = scene_dst->adt->action->wrap();
-
-    /* If we're copying from a layered action, use this action as layered as well. */
-    if (!blender::animrig::legacy::action_treat_as_legacy(*scene_src->adt->action)) {
-      blender::animrig::assign_action_ensure_slot_for_keying(action_dst, scene_dst->id);
+    /* Assign the `dst_action` as either legacy or layered, depending on what
+     * the source action we're copying from is. */
+    if (blender::animrig::legacy::action_treat_as_legacy(*scene_src->adt->action)) {
+      const bool success = blender::animrig::assign_action(&action_dst, scene_dst->id);
+      if (!success) {
+        return false;
+      }
+    }
+    else {
+      /* If we're copying from a layered action, also ensure a connected slot. */
+      blender::animrig::Slot *slot = blender::animrig::assign_action_ensure_slot_for_keying(
+          action_dst, scene_dst->id);
+      if (slot == nullptr) {
+        return false;
+      }
     }
 
     for (FCurve *fcurve : fcurves_dst) {
@@ -336,20 +349,16 @@ static bool sequencer_paste_animation(Main *bmain_dst, Scene *scene_dst, Scene *
     return false;
   }
 
-  bAction *act_dst;
+  bAction *act_dst = blender::animrig::id_action_ensure(bmain_dst, &scene_dst->id);
 
-  if (scene_dst->adt != nullptr && scene_dst->adt->action != nullptr) {
-    act_dst = scene_dst->adt->action;
-  }
-  else {
-    /* Get/create action to add F-Curves+keyframes to. */
-    act_dst = blender::animrig::id_action_ensure(bmain_dst, &scene_dst->id);
-    blender::animrig::assign_action(act_dst, scene_dst->id);
-  }
-
-  /* For layered actions, ensure we also have an attached slot. */
+  /* For layered actions ensure we have an attached slot. */
   if (!blender::animrig::legacy::action_treat_as_legacy(*act_dst)) {
-    blender::animrig::assign_action_ensure_slot_for_keying(act_dst->wrap(), scene_dst->id);
+    const blender::animrig::Slot *slot = blender::animrig::assign_action_ensure_slot_for_keying(
+        act_dst->wrap(), scene_dst->id);
+    BLI_assert(slot != nullptr);
+    if (slot == nullptr) {
+      return false;
+    }
   }
 
   for (FCurve *fcu : blender::animrig::legacy::fcurves_for_assigned_action(scene_src->adt)) {
