@@ -221,6 +221,43 @@ class USDExportTest(AbstractUSDTest):
         self.assertEqual(opacity_input.HasConnectedSource(), True, "Alpha input should be connected")
         self.assertAlmostEqual(opacity_thresh_input.Get(), 0.2, 2, "Opacity threshold input should be 0.2")
 
+    def test_export_material_subsets(self):
+        """Validate multiple materials assigned to the same mesh work correctly."""
+
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_multi.blend"))
+
+        # Ensure the simulation zone data is baked for all relevant frames...
+        for frame in range(1, 5):
+            bpy.context.scene.frame_set(frame)
+        bpy.context.scene.frame_set(1)
+
+        export_path = self.tempdir / "usd_materials_multi.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(export_path), export_animation=True, evaluation_mode="RENDER")
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        stage = Usd.Stage.Open(str(export_path))
+
+        # The static mesh should have 4 materials each assigned to 4 faces (16 faces total)
+        static_mesh_prim = UsdGeom.Mesh(stage.GetPrimAtPath("/root/static_mesh/static_mesh"))
+        geom_subsets = UsdGeom.Subset.GetGeomSubsets(static_mesh_prim)
+        self.assertEqual(len(geom_subsets), 4)
+
+        unique_face_indices = set()
+        for subset in geom_subsets:
+            face_indices = subset.GetIndicesAttr().Get()
+            self.assertEqual(len(face_indices), 4)
+            unique_face_indices.update(face_indices)
+        self.assertEqual(len(unique_face_indices), 16)
+
+        # The dynamic mesh varies over time (currently blocked, see #124554 and #118754)
+        #  - Frame 1: 1 face and 1 material [mat2]
+        #  - Frame 2: 2 faces and 2 materials [mat2, mat3]
+        #  - Frame 3: 4 faces and 3 materials [mat2, mat3, mat2, mat1]
+        #  - Frame 4: 4 faces and 2 materials [mat2, mat3, mat2, mat3]
+        dynamic_mesh_prim = UsdGeom.Mesh(stage.GetPrimAtPath("/root/dynamic_mesh/dynamic_mesh"))
+        geom_subsets = UsdGeom.Subset.GetGeomSubsets(dynamic_mesh_prim)
+        self.assertEqual(len(geom_subsets), 0)
+
     def check_primvar(self, prim, pv_name, pv_typeName, pv_interp, elements_len):
         pv = UsdGeom.PrimvarsAPI(prim).GetPrimvar(pv_name)
         self.assertTrue(pv.HasValue())
@@ -270,8 +307,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "f_int8", "VtArray<unsigned char>", "uniform", 1)
         self.check_primvar(prim, "f_int32", "VtArray<int>", "uniform", 1)
         self.check_primvar(prim, "f_float", "VtArray<float>", "uniform", 1)
-        self.check_primvar_missing(prim, "f_color")
-        self.check_primvar_missing(prim, "f_byte_color")
+        self.check_primvar(prim, "f_color", "VtArray<GfVec4f>", "uniform", 1)
+        self.check_primvar(prim, "f_byte_color", "VtArray<GfVec4f>", "uniform", 1)
         self.check_primvar(prim, "f_vec2", "VtArray<GfVec2f>", "uniform", 1)
         self.check_primvar(prim, "f_vec3", "VtArray<GfVec3f>", "uniform", 1)
         self.check_primvar(prim, "f_quat", "VtArray<GfQuatf>", "uniform", 1)
@@ -294,8 +331,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "p_int8", "VtArray<unsigned char>", "vertex", 24)
         self.check_primvar(prim, "p_int32", "VtArray<int>", "vertex", 24)
         self.check_primvar(prim, "p_float", "VtArray<float>", "vertex", 24)
-        self.check_primvar_missing(prim, "p_color")
-        self.check_primvar_missing(prim, "p_byte_color")
+        self.check_primvar(prim, "p_color", "VtArray<GfVec4f>", "vertex", 24)
+        self.check_primvar(prim, "p_byte_color", "VtArray<GfVec4f>", "vertex", 24)
         self.check_primvar(prim, "p_vec2", "VtArray<GfVec2f>", "vertex", 24)
         self.check_primvar(prim, "p_vec3", "VtArray<GfVec3f>", "vertex", 24)
         self.check_primvar(prim, "p_quat", "VtArray<GfQuatf>", "vertex", 24)
@@ -305,8 +342,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "sp_int8", "VtArray<unsigned char>", "uniform", 2)
         self.check_primvar(prim, "sp_int32", "VtArray<int>", "uniform", 2)
         self.check_primvar(prim, "sp_float", "VtArray<float>", "uniform", 2)
-        self.check_primvar_missing(prim, "sp_color")
-        self.check_primvar_missing(prim, "sp_byte_color")
+        self.check_primvar(prim, "sp_color", "VtArray<GfVec4f>", "uniform", 2)
+        self.check_primvar(prim, "sp_byte_color", "VtArray<GfVec4f>", "uniform", 2)
         self.check_primvar(prim, "sp_vec2", "VtArray<GfVec2f>", "uniform", 2)
         self.check_primvar(prim, "sp_vec3", "VtArray<GfVec3f>", "uniform", 2)
         self.check_primvar(prim, "sp_quat", "VtArray<GfQuatf>", "uniform", 2)
@@ -318,8 +355,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "p_int8", "VtArray<unsigned char>", "varying", 10)
         self.check_primvar(prim, "p_int32", "VtArray<int>", "varying", 10)
         self.check_primvar(prim, "p_float", "VtArray<float>", "varying", 10)
-        self.check_primvar_missing(prim, "p_color")
-        self.check_primvar_missing(prim, "p_byte_color")
+        self.check_primvar(prim, "p_color", "VtArray<GfVec4f>", "varying", 10)
+        self.check_primvar(prim, "p_byte_color", "VtArray<GfVec4f>", "varying", 10)
         self.check_primvar(prim, "p_vec2", "VtArray<GfVec2f>", "varying", 10)
         self.check_primvar(prim, "p_vec3", "VtArray<GfVec3f>", "varying", 10)
         self.check_primvar(prim, "p_quat", "VtArray<GfQuatf>", "varying", 10)
@@ -329,8 +366,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "sp_int8", "VtArray<unsigned char>", "uniform", 3)
         self.check_primvar(prim, "sp_int32", "VtArray<int>", "uniform", 3)
         self.check_primvar(prim, "sp_float", "VtArray<float>", "uniform", 3)
-        self.check_primvar_missing(prim, "sp_color")
-        self.check_primvar_missing(prim, "sp_byte_color")
+        self.check_primvar(prim, "sp_color", "VtArray<GfVec4f>", "uniform", 3)
+        self.check_primvar(prim, "sp_byte_color", "VtArray<GfVec4f>", "uniform", 3)
         self.check_primvar(prim, "sp_vec2", "VtArray<GfVec2f>", "uniform", 3)
         self.check_primvar(prim, "sp_vec3", "VtArray<GfVec3f>", "uniform", 3)
         self.check_primvar(prim, "sp_quat", "VtArray<GfQuatf>", "uniform", 3)
@@ -348,6 +385,7 @@ class USDExportTest(AbstractUSDTest):
         self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
 
         stage = Usd.Stage.Open(str(export_path))
+        sparse_frames = [4.0, 5.0, 8.0, 9.0, 12.0, 13.0]
 
         #
         # Validate Mesh data
@@ -355,8 +393,6 @@ class USDExportTest(AbstractUSDTest):
         mesh1 = UsdGeom.Mesh(stage.GetPrimAtPath("/root/mesh1/mesh1"))
         mesh2 = UsdGeom.Mesh(stage.GetPrimAtPath("/root/mesh2/mesh2"))
         mesh3 = UsdGeom.Mesh(stage.GetPrimAtPath("/root/mesh3/mesh3"))
-
-        sparse_frames = [4.0, 5.0, 8.0, 9.0, 12.0, 13.0]
 
         # Positions (should be sparsely written)
         self.assertEqual(mesh1.GetPointsAttr().GetTimeSamples(), sparse_frames)
@@ -370,6 +406,40 @@ class USDExportTest(AbstractUSDTest):
         self.assertEqual(UsdGeom.PrimvarsAPI(mesh1).GetPrimvar("test").GetTimeSamples(), [])
         self.assertEqual(UsdGeom.PrimvarsAPI(mesh2).GetPrimvar("test").GetTimeSamples(), [])
         self.assertEqual(UsdGeom.PrimvarsAPI(mesh3).GetPrimvar("test").GetTimeSamples(), sparse_frames)
+
+        #
+        # Validate PointCloud data
+        #
+        points1 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud1/PointCloud"))
+        points2 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud2/PointCloud"))
+        points3 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud3/PointCloud"))
+        points4 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud4/PointCloud"))
+
+        # Positions (should be sparsely written)
+        self.assertEqual(points1.GetPointsAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(points2.GetPointsAttr().GetTimeSamples(), [])
+        self.assertEqual(points3.GetPointsAttr().GetTimeSamples(), [])
+        self.assertEqual(points4.GetPointsAttr().GetTimeSamples(), [])
+        # Velocity (should be sparsely written)
+        self.assertEqual(points1.GetVelocitiesAttr().GetTimeSamples(), [])
+        self.assertEqual(points2.GetVelocitiesAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(points3.GetVelocitiesAttr().GetTimeSamples(), [])
+        self.assertEqual(points4.GetVelocitiesAttr().GetTimeSamples(), [])
+        # Radius (should be sparsely written)
+        self.assertEqual(points1.GetWidthsAttr().GetTimeSamples(), [])
+        self.assertEqual(points2.GetWidthsAttr().GetTimeSamples(), [])
+        self.assertEqual(points3.GetWidthsAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(points4.GetWidthsAttr().GetTimeSamples(), [])
+        # Regular primvar (should be sparsely written)
+        self.assertEqual(UsdGeom.PrimvarsAPI(points1).GetPrimvar("test").GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.PrimvarsAPI(points2).GetPrimvar("test").GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.PrimvarsAPI(points3).GetPrimvar("test").GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.PrimvarsAPI(points4).GetPrimvar("test").GetTimeSamples(), sparse_frames)
+        # Extents of the point cloud (should be sparsely written)
+        self.assertEqual(UsdGeom.Boundable(points1).GetExtentAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(UsdGeom.Boundable(points2).GetExtentAttr().GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.Boundable(points3).GetExtentAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(UsdGeom.Boundable(points4).GetExtentAttr().GetTimeSamples(), [])
 
     def test_export_mesh_subd(self):
         """Test exporting Subdivision Surface attributes and values"""
