@@ -11,6 +11,7 @@
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_threads.h"
 
 #include "BKE_global.hh"
 
@@ -93,7 +94,7 @@ bool ShaderCreateInfo::is_vulkan_compatible() const
 
 /** \} */
 
-void ShaderCreateInfo::finalize()
+void ShaderCreateInfo::finalize(const bool recursive)
 {
   if (finalized_) {
     return;
@@ -110,8 +111,13 @@ void ShaderCreateInfo::finalize()
     const ShaderCreateInfo &info = *reinterpret_cast<const ShaderCreateInfo *>(
         gpu_shader_create_info_get(info_name.c_str()));
 
-    /* Recursive. */
-    const_cast<ShaderCreateInfo &>(info).finalize();
+    if (recursive) {
+      BLI_assert(BLI_thread_is_main());
+      const_cast<ShaderCreateInfo &>(info).finalize(recursive);
+    }
+    else {
+      BLI_assert(info.finalized_);
+    }
 
     interface_names_size_ += info.interface_names_size_;
 
@@ -570,6 +576,10 @@ void gpu_shader_create_info_init()
       info->additional_info("draw_debug_print");
     }
 #endif
+  }
+
+  for (ShaderCreateInfo *info : g_create_infos->values()) {
+    info->finalize(true);
   }
 
   /* TEST */
