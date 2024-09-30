@@ -5287,9 +5287,6 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    int remaining = BM_iter_mesh_count_flag(BM_FACES_OF_MESH, em->bm, BM_ELEM_TAG, true);
-    BKE_reportf(op->reports, RPT_INFO, "%d triangles remain.", remaining);
-
     BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
     EDBMUpdate_Params params{};
