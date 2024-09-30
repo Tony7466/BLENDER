@@ -2183,6 +2183,31 @@ static void GREASE_PENCIL_OT_separate(wmOperatorType *ot)
 /** \name Split Operator
  * \{ */
 
+Vector<IndexRange> find_curve_ranges(const Span<bool> span)
+{
+  if (span.is_empty()) {
+    return Vector<IndexRange>();
+  }
+  Vector<IndexRange> ranges;
+  int length = 1;
+  bool value = span.first();
+  for (const int i : span.index_range().drop_front(1)) {
+    if (span[i - 1] == value && span[i] != value) {
+      ranges.append(IndexRange::from_end_size(i, length));
+      length = 1;
+      value = !value;
+    }
+    else if (span[i] == value) {
+      length++;
+    }
+  }
+  if (length > 0) {
+    ranges.append(IndexRange::from_end_size(span.size(), length));
+  }
+
+  return ranges;
+}
+
 static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curves,
                                                 const IndexMask &mask)
 {
