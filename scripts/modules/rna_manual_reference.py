@@ -2528,6 +2528,7 @@ url_manual_mapping = (
     ("bpy.types.ffmpegsettings.format*", "render/output/properties/output.html#bpy-types-ffmpegsettings-format"),
     ("bpy.types.fluideffectorsettings*", "physics/fluid/type/effector.html#bpy-types-fluideffectorsettings"),
     ("bpy.types.followtrackconstraint*", "animation/constraints/motion_tracking/follow_track.html#bpy-types-followtrackconstraint"),
+    ("bpy.types.functionnodehashvalue*", "modeling/geometry_nodes/utilities/math/hash_value.html#bpy-types-functionnodeshashvalue"),
     ("bpy.types.functionnodeinputbool*", "modeling/geometry_nodes/input/constant/boolean.html#bpy-types-functionnodeinputbool"),
     ("bpy.types.geometrynodecurvestar*", "modeling/geometry_nodes/curve/primitives/star.html#bpy-types-geometrynodecurvestar"),
     ("bpy.types.geometrynodefillcurve*", "modeling/geometry_nodes/curve/operations/fill_curve.html#bpy-types-geometrynodefillcurve"),
