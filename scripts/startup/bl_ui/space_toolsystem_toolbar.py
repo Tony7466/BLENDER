@@ -3859,9 +3859,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'SCULPT': [
             _brush_tool,
+            _defs_sculpt.paint,
             _defs_sculpt.mask,
             _defs_sculpt.draw_face_sets,
-            _defs_sculpt.paint,
             lambda context: (
                 (
                     _defs_sculpt.dyntopo_density,
