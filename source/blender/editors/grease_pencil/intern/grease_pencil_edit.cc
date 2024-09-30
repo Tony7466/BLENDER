@@ -65,6 +65,10 @@
 #include "UI_resources.hh"
 #include <limits>
 
+#include <fmt/core.h>
+#include <iostream>
+#include <stdio.h>
+
 namespace blender::ed::greasepencil {
 
 /* -------------------------------------------------------------------- */
@@ -2302,12 +2306,15 @@ Vector<IndexRange> find_curve_ranges(const Span<bool> span)
   if (length > 0) {
     ranges.append(IndexRange::from_end_size(span.size(), length));
   }
+
   return ranges;
 }
 
 static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curves,
                                                 const IndexMask &mask)
 {
+  fmt::print("\n\nsplit_points_simpler()\n");
+
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
 
@@ -2325,7 +2332,7 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
     return curves;
   }
 
-  int cur_dst_point_id = 0;
+  int curr_dst_point_id = 0;
   Array<int> dst_to_src_point(
       curves.points_num()); /* idk if I need this, just copying delete for now*/
   Vector<int> dst_curve_counts;
@@ -2333,6 +2340,7 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
   Vector<bool> dst_cyclic;
 
   for (const int curve_i : curves.curves_range()) {
+
     const IndexRange points = points_by_curve[curve_i]; /*point where source curve_i begins*/
     const Span<bool> curve_i_points_to_split = points_to_split.as_span().slice(points);
     const bool curve_cyclic = src_cyclic[curve_i];
@@ -2349,26 +2357,78 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
     const bool is_cyclic = new_curve_ranges.size() == 1 && is_last_segment_selected;
 
     IndexRange range_ids = new_curve_ranges.index_range();
+
     /* Skip the first range if it is joined to the end of the last range. */
-    for (const int range_i : new_curve_ranges.index_range()) {
+    for (const int range_i : new_curve_ranges.index_range().drop_front(is_curve_self_joined)) {
+
       const IndexRange range = new_curve_ranges[range_i];
 
       int count = range.size();
+      std::cout << "\npoints.first(): " << points.first() << "\n";
+      std::cout << "\n\nrange_" << range_i << ":";
+      for (const int point : range) {
+        std::cout << point << ", ";
+      }
+      std::cout << "\n\nrange_" << range_i << " offset: " << count;
+      std::cout << "\nshifted range_i:";
+      for (const int src_point : range.shift(points.first())) {
+        std::cout << src_point << ", ";
+      }
 
+      std::cout << "\nshifted range_" << range_i << " loop, range length: " << count;
+      std::cout << "\ndst_point_index : src_point";
+
+      for (const int src_point : range.shift(points.first())) {
+        std::cout << "\n" << curr_dst_point_id << " : " << src_point;
+        dst_to_src_point[curr_dst_point_id++] = src_point;
+      }
       /* hol up what am I actually doing here? this deals with points, seems like I don't need
-       * it
+       * it*/
+      /* lmaoooo I definitely needed it*/
       if (is_curve_self_joined && range_i == range_ids.last()) {
+        std::cout << "\n\ncurrent (range_" << range_i << ") offset: " << count;
+        std::cout << "\nadding " << new_curve_ranges[range_ids.first()].size();
+        count += new_curve_ranges[range_ids.first()].size();
+        std::cout << "new range_" << range_i << " offset:" << count;
+
         const IndexRange first_range = new_curve_ranges[range_ids.first()];
+        std::cout << "\ncurve is self joined.";
+        std::cout << "\nfirst_range: ";
+        for (const int point : first_range) {
+          std::cout << point << ", ";
+        }
+        std::cout << "\nfirst_range shifted by points.first(): \n";
         for (const int src_point : first_range.shift(points.first())) {
+          std::cout << src_point << ", ";
+        }
+        std::cout << "\ndst_point_index : src_point";
+        for (const int src_point : first_range.shift(points.first())) {
+          std::cout << "\n" << curr_dst_point_id << " : " << src_point;
+
           dst_to_src_point[curr_dst_point_id++] = src_point;
         }
-      } */
+      }
 
       dst_curve_counts.append(count);
       dst_to_src_curve.append(curve_i);
       dst_cyclic.append(is_cyclic);
     }
   }
+
+  fmt::print("\ndst_curve_counts:\n");
+  for (auto i : dst_curve_counts) {
+    std::cout << i << ", ";
+  }
+
+  fmt::print("\ndst_to_src_curve:\n");
+  for (auto i : dst_to_src_curve) {
+    std::cout << i << ", ";
+  }
+  fmt::print("\ndst_to_src_point:\n");
+  for (int i : dst_to_src_point) {
+    std::cout << i << ", ";
+  }
+  fmt::print("\n");
 
   const int total_curves = dst_to_src_curve.size();
 
@@ -2385,7 +2445,7 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
-  /* Transfer curve attributes. */
+  /* Transfer curve attributes.*/
   gather_attributes(src_attributes,
                     bke::AttrDomain::Curve,
                     bke::AttrDomain::Curve,
@@ -2394,12 +2454,18 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
                     dst_attributes);
   array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
 
-  /* Points havent' changed, just copy attributes over*/
+  /* Points havent' changed, just copy attributes over
   copy_attributes(
-      src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, dst_attributes);
+      src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, dst_attributes);*/
+  gather_attributes(src_attributes,
+                    bke::AttrDomain::Point,
+                    bke::AttrDomain::Point,
+                    {},
+                    dst_to_src_point,
+                    dst_attributes);
 
   dst_curves.update_curve_types();
-
+  std::cout << "\n\n ##########Simple_split() finished ###########";
   return dst_curves;
 };
 
