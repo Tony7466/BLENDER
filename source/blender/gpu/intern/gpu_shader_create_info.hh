@@ -624,7 +624,7 @@ struct ShaderCreateInfo {
 
  public:
   ShaderCreateInfo(const char *name) : name_(name){};
-  virtual ~ShaderCreateInfo(){};
+  ~ShaderCreateInfo(){};
 
   using Self = ShaderCreateInfo;
 
