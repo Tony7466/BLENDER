@@ -12,6 +12,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <string>
 
 namespace blender::nodes::node_fn_value_to_string_cc {
 
@@ -46,11 +47,8 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
         return stream.str();
       });
 
-  static auto int_to_str_fn = mf::build::SI1_SO<int, std::string>("Value To String", [](int a) {
-    std::stringstream stream;
-    stream << a;
-    return stream.str();
-  });
+  static auto int_to_str_fn = mf::build::SI1_SO<int, std::string>(
+      "Value To String", [](int a) { return std::to_string(a); });
 
   switch (ValuetoStringDataType(bnode.custom1)) {
     case ValuetoStringDataType::Float:
