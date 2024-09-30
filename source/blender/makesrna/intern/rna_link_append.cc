@@ -25,7 +25,7 @@
 #  include "BLI_bit_span.hh"
 #  include "BLI_string_utils.hh"
 
-void rna_LinkAppendContextLibrary_path_get(PointerRNA *ptr, char *value)
+void rna_LinkAppendContextLibrary_filepath_get(PointerRNA *ptr, char *value)
 {
   BlendfileLinkAppendContextLibrary *ctx_lib = static_cast<BlendfileLinkAppendContextLibrary *>(
       ptr->data);
@@ -33,14 +33,14 @@ void rna_LinkAppendContextLibrary_path_get(PointerRNA *ptr, char *value)
   BLI_strncpy(value, ctx_lib->path.c_str(), str_len + 1);
 }
 
-int rna_LinkAppendContextLibrary_path_len(PointerRNA *ptr)
+int rna_LinkAppendContextLibrary_filepath_len(PointerRNA *ptr)
 {
   BlendfileLinkAppendContextLibrary *ctx_lib = static_cast<BlendfileLinkAppendContextLibrary *>(
       ptr->data);
   return int(ctx_lib->path.length());
 }
 
-void rna_LinkAppendContextItem_id_name_get(PointerRNA *ptr, char *value)
+void rna_LinkAppendContextItem_name_get(PointerRNA *ptr, char *value)
 {
   BlendfileLinkAppendContextItem *ctx_item = static_cast<BlendfileLinkAppendContextItem *>(
       ptr->data);
@@ -48,7 +48,7 @@ void rna_LinkAppendContextItem_id_name_get(PointerRNA *ptr, char *value)
   BLI_strncpy(value, ctx_item->name.c_str(), str_len + 1);
 }
 
-int rna_LinkAppendContextItem_id_name_len(PointerRNA *ptr)
+int rna_LinkAppendContextItem_name_len(PointerRNA *ptr)
 {
   BlendfileLinkAppendContextItem *ctx_item = static_cast<BlendfileLinkAppendContextItem *>(
       ptr->data);
@@ -145,7 +145,7 @@ int rna_LinkAppendContextItem_link_info_get(PointerRNA *ptr)
   return int(ctx_item->tag);
 }
 
-PointerRNA rna_LinkAppendContextItem_linked_appended_id_get(PointerRNA *ptr)
+PointerRNA rna_LinkAppendContextItem_id_get(PointerRNA *ptr)
 {
   BlendfileLinkAppendContextItem *ctx_item = static_cast<BlendfileLinkAppendContextItem *>(
       ptr->data);
@@ -221,7 +221,7 @@ int rna_LinkAppendContext_items_len(PointerRNA *ptr)
   return int(ctx->items.size());
 }
 
-int rna_LinkAppendContext_flags_get(PointerRNA *ptr)
+int rna_LinkAppendContext_options_get(PointerRNA *ptr)
 {
   BlendfileLinkAppendContext *ctx = static_cast<BlendfileLinkAppendContext *>(ptr->data);
   return int(ctx->params->flag);
@@ -248,11 +248,11 @@ static void rna_def_link_append_library(BlenderRNA *brna)
 
   RNA_define_verify_sdna(false); /* not in sdna */
 
-  prop = RNA_def_property(srna, "path", PROP_STRING, PROP_FILEPATH);
+  prop = RNA_def_property(srna, "filepath", PROP_STRING, PROP_FILEPATH);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_string_funcs(prop,
-                                "rna_LinkAppendContextLibrary_path_get",
-                                "rna_LinkAppendContextLibrary_path_len",
+                                "rna_LinkAppendContextLibrary_filepath_get",
+                                "rna_LinkAppendContextLibrary_filepath_len",
                                 nullptr);
 
   RNA_define_verify_sdna(true); /* not in sdna */
@@ -282,12 +282,12 @@ static void rna_def_link_append_item(BlenderRNA *brna)
 
   RNA_define_verify_sdna(false); /* not in sdna */
 
-  prop = RNA_def_property(srna, "id_name", PROP_STRING, PROP_NONE);
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "ID Name", "ID name of the item");
   RNA_def_property_string_funcs(prop,
-                                "rna_LinkAppendContextItem_id_name_get",
-                                "rna_LinkAppendContextItem_id_name_len",
+                                "rna_LinkAppendContextItem_name_get",
+                                "rna_LinkAppendContextItem_name_len",
                                 nullptr);
 
   prop = RNA_def_property(srna, "id_type", PROP_ENUM, PROP_NONE);
@@ -371,7 +371,7 @@ static void rna_def_link_append_item(BlenderRNA *brna)
       prop, "Link Info", "Various status info about an item after it has been linked");
   RNA_def_property_enum_funcs(prop, "rna_LinkAppendContextItem_link_info_get", nullptr, nullptr);
 
-  prop = RNA_def_property(srna, "linked_appended_id", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "id", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "ID");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
@@ -379,7 +379,7 @@ static void rna_def_link_append_item(BlenderRNA *brna)
                            "The linked or appended ID. None until it has been linked. May be the "
                            "same as `reusable_local_id`");
   RNA_def_property_pointer_funcs(
-      prop, "rna_LinkAppendContextItem_linked_appended_id_get", nullptr, nullptr, nullptr);
+      prop, "rna_LinkAppendContextItem_id_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "source_library", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Library");
@@ -439,7 +439,8 @@ static void rna_def_link_append_context(BlenderRNA *brna)
 
   RNA_define_verify_sdna(false); /* not in sdna */
 
-  prop = RNA_def_property(srna, "items_array", PROP_COLLECTION, PROP_NONE);
+  /* XXX Cannot use `items` here as this is a reserved Python dict method name. */
+  prop = RNA_def_property(srna, "elements", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "LinkAppendContextItem");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_collection_funcs(prop,
@@ -453,7 +454,7 @@ static void rna_def_link_append_context(BlenderRNA *brna)
                                     nullptr);
   rna_def_link_append_items(brna, prop);
 
-  static const EnumPropertyItem link_append_flag_items[] = {
+  static const EnumPropertyItem link_append_options_items[] = {
       {FILE_LINK, "LINK", 0, "", "Link data instead of appending it"},
       {FILE_RELPATH,
        "MAKE_PATHS_RELATIVE",
@@ -515,12 +516,12 @@ static void rna_def_link_append_context(BlenderRNA *brna)
        "Instantiate collections as empties, instead of linking them into current view layer"},
       {0, nullptr, 0, nullptr, nullptr},
   };
-  prop = RNA_def_property(srna, "flags", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, link_append_flag_items);
+  prop = RNA_def_property(srna, "options", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, link_append_options_items);
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "", "Options for this link/append operation");
-  RNA_def_property_enum_funcs(prop, "rna_LinkAppendContext_flags_get", nullptr, nullptr);
+  RNA_def_property_enum_funcs(prop, "rna_LinkAppendContext_options_get", nullptr, nullptr);
 
   /* NOTE: Only stages currently exposed to handlers are listed here. */
   static const EnumPropertyItem link_append_process_stage_items[] = {
@@ -538,7 +539,6 @@ static void rna_def_link_append_context(BlenderRNA *brna)
   };
   prop = RNA_def_property(srna, "process_stage", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, link_append_process_stage_items);
-  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "", "Current stage of the link/append process");
   RNA_def_property_enum_funcs(prop, "rna_LinkAppendContext_process_stage_get", nullptr, nullptr);
