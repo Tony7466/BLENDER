@@ -13,6 +13,8 @@
  * - utility_tx
  */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
+
 #pragma BLENDER_REQUIRE(eevee_shadow_tracing_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
@@ -88,8 +90,7 @@ float light_power_get(LightData light, LightingType type)
 
 bool light_linking_affects_receiver(uvec2 light_set_membership, uchar receiver_light_set)
 {
-  uint light_sets = (receiver_light_set > 32u) ? light_set_membership.x : light_set_membership.y;
-  return ((light_sets & (1u << (receiver_light_set & 0x1Fu))) != 0u);
+  return bitmask64_test(light_set_membership.yx, receiver_light_set);
 }
 
 void light_eval_single_closure(LightData light,

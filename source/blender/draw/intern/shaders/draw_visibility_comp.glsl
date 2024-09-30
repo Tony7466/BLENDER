@@ -7,11 +7,16 @@
  */
 /* TODO(fclem): This could be augmented by a 2 pass occlusion culling system. */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
+
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
 
-shared uint shared_result;
+bool shadow_linking_affects_caster(uvec2 shadow_set_membership, uchar blocker_shadow_set)
+{
+  return bitmask64_test(shadow_set_membership.yx, blocker_shadow_set);
+}
 
 void mask_visibility_bit(uint view_id)
 {
@@ -42,6 +47,14 @@ void main()
                                            bounds._inner_sphere_radius);
 
     for (drw_view_id = 0u; drw_view_id < uint(view_len); drw_view_id++) {
+#ifdef EEVEE_SHAODW_LINKING
+      if (!shadow_linking_affects_caster(render_view_buf[drw_view_id].shadow_set_membership.yx,
+                                         blocker_shadow_set_get(gl_GlobalInvocationID.x)))
+      {
+        /* Object doesn't cast shadow from this light. */
+        mask_visibility_bit(drw_view_id);
+      }
+#endif
       if (drw_view_culling.bound_sphere.w == -1.0) {
         /* View disabled. */
         mask_visibility_bit(drw_view_id);

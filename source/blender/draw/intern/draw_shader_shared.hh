@@ -186,6 +186,18 @@ struct ObjectInfos {
 };
 BLI_STATIC_ASSERT_ALIGN(ObjectInfos, 16)
 
+#ifdef OBINFO_LIB
+uint receiver_light_set_get(uint object_id)
+{
+  return floatBitsToUint(drw_infos[object_id].infos.y) & 0xFFu;
+}
+
+uint blocker_shadow_set_get(uint object_id)
+{
+  return (floatBitsToUint(drw_infos[object_id].infos.y) >> 8u) & 0xFFu;
+}
+#endif
+
 struct ObjectBounds {
   /**
    * Uploaded as vertex (0, 4, 3, 1) of the bbox in local space, matching XYZ axis order.
