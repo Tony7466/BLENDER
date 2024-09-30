@@ -51,6 +51,8 @@ namespace blender::draw {
 #define EDIT_CURVES_NURBS_CONTROL_POINT (1u)
 #define EDIT_CURVES_BEZIER_HANDLE (1u << 1)
 #define EDIT_CURVES_ACTIVE_HANDLE (1u << 2)
+/* Bezier curve control point lying on the curve.
+ * The one between left and right handles. */
 #define EDIT_CURVES_BEZIER_KNOT (1u << 3)
 #define EDIT_CURVES_HANDLE_TYPES_SHIFT (4u)
 

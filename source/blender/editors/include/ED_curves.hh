@@ -88,9 +88,9 @@ using SelectionRangeFn = FunctionRef<void(
  *  curves.handle_positions_left() belong to  ".selection_handle_left",
  *  curves.handle_positions_right() belong to ".selection_handle_right".
  */
-void foreach_selectable_point_range(const eHandleDisplay handle_display,
-                                    const bke::CurvesGeometry &curves,
+void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
+                                    eHandleDisplay handle_display,
                                     SelectionRangeFn range_consumer);
 
 /**
@@ -98,9 +98,9 @@ void foreach_selectable_point_range(const eHandleDisplay handle_display,
  * positions directly. Further positions can be referenced by using `curves.points_by_curve()`
  * in a callback function.
  */
-void foreach_selectable_curve_range(const eHandleDisplay handle_display,
-                                    const bke::CurvesGeometry &curves,
+void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
+                                    eHandleDisplay handle_display,
                                     SelectionRangeFn range_consumer);
 
 bool object_has_editable_curves(const Main &bmain, const Object &object);

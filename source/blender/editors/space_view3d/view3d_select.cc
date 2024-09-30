@@ -3131,16 +3131,16 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
 
           if (selection_domain == bke::AttrDomain::Point) {
             ed::curves::foreach_selectable_point_range(
-                (eHandleDisplay)vc.v3d->overlay.handle_display,
                 curves,
                 deformation,
+                eHandleDisplay(vc.v3d->overlay.handle_display),
                 range_consumer);
           }
           else if (selection_domain == bke::AttrDomain::Curve) {
             ed::curves::foreach_selectable_curve_range(
-                (eHandleDisplay)vc.v3d->overlay.handle_display,
                 curves,
                 deformation,
+                eHandleDisplay(vc.v3d->overlay.handle_display),
                 range_consumer);
           };
         }
@@ -3293,16 +3293,16 @@ static bool ed_grease_pencil_select_pick(bContext *C,
 
           if (selection_domain == bke::AttrDomain::Point) {
             ed::curves::foreach_selectable_point_range(
-                (eHandleDisplay)vc.v3d->overlay.handle_display,
                 curves,
                 deformation,
+                eHandleDisplay(vc.v3d->overlay.handle_display),
                 range_consumer);
           }
           else if (selection_domain == bke::AttrDomain::Curve) {
             ed::curves::foreach_selectable_curve_range(
-                (eHandleDisplay)vc.v3d->overlay.handle_display,
                 curves,
                 deformation,
+                eHandleDisplay(vc.v3d->overlay.handle_display),
                 range_consumer);
           };
         }
