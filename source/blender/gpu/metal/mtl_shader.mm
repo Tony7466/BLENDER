@@ -10,8 +10,8 @@
 
 #include "DNA_userdef_types.h"
 
-#include "BLI_time.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 
 #include <algorithm>
 #include <fstream>
@@ -1901,7 +1901,7 @@ void MTLParallelShaderCompiler::create_compile_threads()
                                   max_mtlcompiler_threads);
   }
 #endif
-  
+
   /* GPU settings for context creation. */
   GHOST_GPUSettings gpuSettings = {0};
   gpuSettings.context_type = GHOST_kDrawingContextTypeMetal;
@@ -1916,15 +1916,16 @@ void MTLParallelShaderCompiler::create_compile_threads()
   for (int i = 0; i < max_mtlcompiler_threads; i++) {
 
     /* Grab the system handle.  */
-    GHOST_SystemHandle ghost_system = reinterpret_cast<GHOST_SystemHandle>(GPU_backend_ghost_system_get());
+    GHOST_SystemHandle ghost_system = reinterpret_cast<GHOST_SystemHandle>(
+        GPU_backend_ghost_system_get());
     BLI_assert(ghost_system);
-    
+
     /* Create a Ghost GPU Context using the system handle. */
     GHOST_ContextHandle ghost_gpu_context = GHOST_CreateGPUContext(ghost_system, gpuSettings);
-    
+
     /* Create a GPU context for the compile thread to use. */
     GPUContext *per_thread_context = GPU_context_create(nullptr, ghost_gpu_context);
-   
+
     /* Restore the main thread context.
      * (required as the above context creation also makes it active). */
     GPU_context_active_set(main_thread_context);
