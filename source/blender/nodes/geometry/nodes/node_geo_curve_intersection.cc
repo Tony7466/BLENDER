@@ -83,7 +83,7 @@ struct IntersectionData {
   Vector<float> length;
   Vector<float> factor;
   Vector<float3> direction;
-  Vector<bool> first_curve;
+  Vector<bool> duplicate;
 };
 using ThreadLocalData = threading::EnumerableThreadSpecific<IntersectionData>;
 
@@ -93,14 +93,14 @@ static void add_intersection_data(IntersectionData &data,
                                   const int curve_id,
                                   const float length,
                                   const float curve_length,
-                                  const bool first_curve)
+                                  const bool duplicate)
 {
   data.position.append(position);
   data.curve_id.append(curve_id);
   data.length.append(length);
   data.factor.append(math::safe_divide(length, curve_length));
   data.direction.append(direction);
-  data.first_curve.append(first_curve);
+  data.duplicate.append(duplicate);
 }
 
 static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionData &r_data)
@@ -112,7 +112,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     BLI_assert(local_data.length.size() == local_size);
     BLI_assert(local_data.factor.size() == local_size);
     BLI_assert(local_data.direction.size() == local_size);
-    BLI_assert(local_data.first_curve.size() == local_size);
+    BLI_assert(local_data.duplicate.size() == local_size);
     total_intersections += local_size;
   }
   const int64_t start_index = r_data.position.size();
@@ -122,7 +122,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
   r_data.length.reserve(new_size);
   r_data.factor.reserve(new_size);
   r_data.direction.reserve(new_size);
-  r_data.first_curve.reserve(new_size);
+  r_data.duplicate.reserve(new_size);
 
   for (IntersectionData &local_data : thread_storage) {
     r_data.position.extend(local_data.position);
@@ -130,7 +130,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     r_data.length.extend(local_data.length);
     r_data.factor.extend(local_data.factor);
     r_data.direction.extend(local_data.direction);
-    r_data.first_curve.extend(local_data.first_curve);
+    r_data.duplicate.extend(local_data.duplicate);
   }
 }
 
@@ -284,7 +284,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
           const float len_at_isect = math::interpolate(len_start, len_end, lambda);
           const float3 dir_of_isect = math::normalize(b - a);
           add_intersection_data(
-              r_data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, true);
+              r_data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, false);
         }
       };
 
@@ -344,7 +344,6 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
 
               if (isectinfo.intersects && isectinfo.lambda_ab != 1.0f &&
                   isectinfo.lambda_cd != 1.0f) {
-                const bool first_curve = ab.curve_index <= cd.curve_index;
                 add_intersection_data(
                     data,
                     isectinfo.closest_ab,
@@ -352,7 +351,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                     ab.curve_index,
                     math::interpolate(ab.len_start, ab.len_end, isectinfo.lambda_ab),
                     ab.curve_length,
-                    first_curve);
+                    false);
                 add_intersection_data(
                     data,
                     isectinfo.closest_cd,
@@ -360,7 +359,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                     cd.curve_index,
                     math::interpolate(cd.len_start, cd.len_end, isectinfo.lambda_cd),
                     cd.curve_length,
-                    !first_curve);
+                    true);
               }
             }
           });
@@ -445,10 +444,9 @@ static void node_geo_exec(GeoNodeExecParams params)
         AttrDomain::Point,
         bke::AttributeInitVArray(VArray<float3>::ForSpan(r_data.direction)));
 
-    point_attributes.add<bool>(
-        "first_curve",
-        AttrDomain::Point,
-        bke::AttributeInitVArray(VArray<bool>::ForSpan(r_data.first_curve)));
+    point_attributes.add<bool>("duplicate",
+                               AttrDomain::Point,
+                               bke::AttributeInitVArray(VArray<bool>::ForSpan(r_data.duplicate)));
   });
 
   params.set_output("Points", std::move(geometry_set));
