@@ -18,16 +18,14 @@ namespace blender::nodes::node_fn_value_to_string_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  if (const bNode *node = b.node_or_null()) {
-    switch (node->custom1) {
-      case SOCK_FLOAT:
-        b.add_input<decl::Float>("Value");
-        b.add_input<decl::Int>("Decimals").min(0);
-        break;
-      case SOCK_INT:
-        b.add_input<decl::Int>("Value");
-        break;
-    }
+  const bNode *node = b.node_or_null();
+
+  if (node != nullptr) {
+    const eNodeSocketDatatype data_type = eNodeSocketDatatype(node->custom1);
+    b.add_input(data_type, "Value");
+
+    auto &decimals = b.add_input<decl::Int>("Decimals").min(0);
+    decimals.available(data_type == SOCK_FLOAT);
   }
 
   b.add_output<decl::String>("String");
