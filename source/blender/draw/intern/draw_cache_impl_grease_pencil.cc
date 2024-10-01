@@ -1221,8 +1221,12 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       s_vert.u_stroke = u_stroke;
       copy_v2_v2(s_vert.uv_fill, texture_matrix * float4(pos, 1.0f));
 
-      copy_v4_v4(c_vert.vcol, mix_tint(float4(vertex_colors[point_i]), tint_color));
-      copy_v4_v4(c_vert.fcol, mix_tint(float4(stroke_fill_colors[curve_i]), tint_color));
+      copy_v4_v4(c_vert.vcol,
+                 tint_color.w > 0.0f ? mix_tint(float4(vertex_colors[point_i]), tint_color) :
+                                       vertex_colors[point_i]);
+      copy_v4_v4(c_vert.fcol,
+                 tint_color.w > 0.0f ? mix_tint(float4(stroke_fill_colors[curve_i]), tint_color) :
+                                       stroke_fill_colors[curve_i]);
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + fill_opacities[curve_i];
 
       int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;
