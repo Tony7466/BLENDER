@@ -110,9 +110,10 @@ void SEQ_animation_backup_original(Scene *scene, SeqAnimationBackup *backup)
 
 void SEQ_animation_restore_original(Scene *scene, SeqAnimationBackup *backup)
 {
-  assert_baklava_phase_1_invariants(scene->adt->action->wrap());
-
   if (!BLI_listbase_is_empty(&backup->curves) || !backup->channel_bag.fcurves().is_empty()) {
+    BLI_assert(scene->adt != nullptr && scene->adt->action != nullptr);
+    assert_baklava_phase_1_invariants(scene->adt->action->wrap());
+
     if (scene->adt->action->wrap().is_action_legacy()) {
       BLI_movelisttolist(&scene->adt->action->curves, &backup->curves);
     }
@@ -128,6 +129,7 @@ void SEQ_animation_restore_original(Scene *scene, SeqAnimationBackup *backup)
   }
 
   if (!BLI_listbase_is_empty(&backup->drivers)) {
+    BLI_assert(scene->adt != nullptr);
     BLI_movelisttolist(&scene->adt->drivers, &backup->drivers);
   }
 }
