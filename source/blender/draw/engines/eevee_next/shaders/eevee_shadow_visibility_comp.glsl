@@ -3,13 +3,22 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Compute visibility of each resource bounds for a given view.
+ * Compute visibility of each resource bounds for a given shadow view.
+ * Checks for shadow linking properties and issue one draw call for each view.
  */
-/* TODO(fclem): This could be augmented by a 2 pass occlusion culling system. */
+/* TODO(fclem): Could reject bounding boxes that are covering only invalid tiles. */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
+#pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
+
+bool shadow_linking_affects_caster(uint view_id, uint resource_id)
+{
+  return bitmask64_test(render_view_buf[view_id].shadow_set_membership,
+                        blocker_shadow_set_get(drw_infos[resource_id]));
+}
 
 void mask_visibility_bit(uint view_id)
 {
@@ -40,7 +49,11 @@ void main()
                                            bounds._inner_sphere_radius);
 
     for (drw_view_id = 0u; drw_view_id < uint(view_len); drw_view_id++) {
-      if (drw_view_culling.bound_sphere.w == -1.0) {
+      if (shadow_linking_affects_caster(drw_view_id, gl_GlobalInvocationID.x) == false) {
+        /* Object doesn't cast shadow from this light. */
+        mask_visibility_bit(drw_view_id);
+      }
+      else if (drw_view_culling.bound_sphere.w == -1.0) {
         /* View disabled. */
         mask_visibility_bit(drw_view_id);
       }
