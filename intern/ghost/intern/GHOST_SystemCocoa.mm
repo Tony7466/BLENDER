@@ -2040,26 +2040,26 @@ void GHOST_SystemCocoa::putClipboard(const char *buffer, bool selection) const
 
 static NSURL *NSPasteboardGetImageFile()
 {
-  /* The body of this function is not wrapped in an autoreleasepool for its result to be available
-   * to its callers.
-   *
-   * As such, callers must wrap calls to this function and usages of its result in an
-   * @autoreleasepool block.
-   */
-  NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
-  NSDictionary *pasteboardFilteringOptions = @{
-    NSPasteboardURLReadingFileURLsOnlyKey : @YES,
-    NSPasteboardURLReadingContentsConformToTypesKey : [NSImage imageTypes]
-  };
+  NSURL *pasteboardImageFile = Nil;
 
-  NSArray *pasteboardMatches = [pasteboard readObjectsForClasses:@[ [NSURL class] ]
-                                                         options:pasteboardFilteringOptions];
+  @autoreleasepool {
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    NSDictionary *pasteboardFilteringOptions = @{
+      NSPasteboardURLReadingFileURLsOnlyKey : @YES,
+      NSPasteboardURLReadingContentsConformToTypesKey : [NSImage imageTypes]
+    };
 
-  if (!pasteboardMatches || !pasteboardMatches.count) {
-    return Nil;
+    NSArray *pasteboardMatches = [pasteboard readObjectsForClasses:@[ [NSURL class] ]
+                                                           options:pasteboardFilteringOptions];
+
+    if (!pasteboardMatches || !pasteboardMatches.count) {
+      return Nil;
+    }
+
+    pasteboardImageFile = [[pasteboardMatches firstObject] copy];
   }
 
-  return [pasteboardMatches firstObject];
+  return [pasteboardImageFile autorelease];
 }
 
 GHOST_TSuccess GHOST_SystemCocoa::hasClipboardImage() const
