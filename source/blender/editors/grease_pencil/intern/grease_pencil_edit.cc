@@ -3852,6 +3852,26 @@ static void remap_material_indices(bke::greasepencil::Drawing &drawing, const Sp
   material_writer.finish();
 }
 
+static Map<StringRefNull, StringRefNull> add_vertex_groups(Object &object, GreasePencil &grease_pencil, const ListBase &vertex_group_names){
+  Map<StringRefNull, StringRefNull> vertex_group_map;
+  LISTBASE_FOREACH (bDeformGroup *, dg, &vertex_group_names) {
+    bDeformGroup *vgroup = static_cast<bDeformGroup *>(MEM_dupallocN(dg));
+    BKE_object_defgroup_unique_name(vgroup, &object);
+    BLI_addtail(&grease_pencil.vertex_group_names, vgroup);
+    vertex_group_map.add_new(dg->name, vgroup->name);
+  }
+  return vertex_group_map;
+}
+
+static void remap_vertex_groups(bke::greasepencil::Drawing &drawing, const Map<StringRefNull, StringRefNull> &vertex_group_map) {
+  LISTBASE_FOREACH (bDeformGroup *, dg, &drawing.strokes_for_write().vertex_group_names) {
+    BLI_strncpy(dg->name, vertex_group_map.lookup(dg->name).c_str(), sizeof(dg->name));
+  }
+
+  /* Indices in vertex weights remain valid, they are local to the drawing's vertex groups.
+   * Only the names of the groups change. */
+}
+
 static void join_object_with_active(Object &ob_src, Object &ob_dst, VectorSet<Material *> &materials)
 {
   using namespace blender::bke::greasepencil;
@@ -3868,7 +3888,8 @@ static void join_object_with_active(Object &ob_src, Object &ob_dst, VectorSet<Ma
   /* Number of existing layers that don't need to be updated. */
   const int orig_layers_num = grease_pencil_dst.layers().size();
 
-  Array<int> material_index_map = add_materials_to_map(grease_pencil_src, materials);
+  const Map<StringRefNull, StringRefNull> vertex_group_map = add_vertex_groups(ob_dst, grease_pencil_dst, grease_pencil_src.vertex_group_names);
+  const Array<int> material_index_map = add_materials_to_map(grease_pencil_src, materials);
 
   /* Concatenate drawing arrays. Existing drawings in dst keep their position, new drawings are
    * mapped to the new index range. */
@@ -3943,6 +3964,7 @@ static void join_object_with_active(Object &ob_src, Object &ob_dst, VectorSet<Ma
       curves.transform(math::invert(new_layer_to_world) * old_layer_to_world);
 
       if (!is_orig_layer) {
+        remap_vertex_groups(drawing, vertex_group_map);
         remap_material_indices(drawing, material_index_map);
       }
     }
@@ -3997,145 +4019,6 @@ int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op)
     }
 
     blender::ed::greasepencil::join_object_with_active(*ob_iter, *ob_dst, materials);
-
-    //     /* we assume that each datablock is not already used in active object */
-    //     if (ob_active->data != ob_iter->data) {
-    //       Object *ob_src = ob_iter;
-    //       bGPdata *gpd_src = static_cast<bGPdata *>(ob_iter->data);
-
-    //       /* copy vertex groups to the base one's */
-    //       int old_idx = 0;
-    //       LISTBASE_FOREACH (bDeformGroup *, dg, &gpd_src->vertex_group_names) {
-    //         bDeformGroup *vgroup = static_cast<bDeformGroup *>(MEM_dupallocN(dg));
-    //         int idx = BLI_listbase_count(&gpd_dst->vertex_group_names);
-    //         BKE_object_defgroup_unique_name(vgroup, ob_active);
-    //         BLI_addtail(&gpd_dst->vertex_group_names, vgroup);
-    //         /* update vertex groups in strokes in original data */
-    //         LISTBASE_FOREACH (bGPDlayer *, gpl_src, &gpd->layers) {
-    //           LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_src->frames) {
-    //             LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-    //               MDeformVert *dvert;
-    //               int i;
-    //               if (gps->dvert == nullptr) {
-    //                 continue;
-    //               }
-    //               for (i = 0, dvert = gps->dvert; i < gps->totpoints; i++, dvert++) {
-    //                 if ((dvert->dw != nullptr) && (dvert->dw->def_nr == old_idx)) {
-    //                   dvert->dw->def_nr = idx;
-    //                 }
-    //               }
-    //             }
-    //           }
-    //         }
-    //         old_idx++;
-    //       }
-    //       if (!BLI_listbase_is_empty(&gpd_dst->vertex_group_names) &&
-    //           gpd_dst->vertex_group_active_index == 0)
-    //       {
-    //         gpd_dst->vertex_group_active_index = 1;
-    //       }
-
-    //       /* add missing materials reading source materials and checking in destination object
-    //       */ short *totcol = BKE_object_material_len_p(ob_src);
-
-    //       for (short i = 0; i < *totcol; i++) {
-    //         Material *tmp_ma = BKE_gpencil_material(ob_src, i + 1);
-    //         BKE_gpencil_object_material_ensure(bmain, ob_dst, tmp_ma);
-    //       }
-
-    //       /* Duplicate #bGPDlayers. */
-    //       GHash *names_map = BLI_ghash_str_new("joined_gp_layers_map");
-
-    //       float imat[3][3], bmat[3][3];
-    //       float offset_global[3];
-    //       float offset_local[3];
-
-    //       sub_v3_v3v3(offset_global, ob_active->loc, ob_iter->object_to_world().location());
-    //       copy_m3_m4(bmat, ob_active->object_to_world().ptr());
-
-    //       /* Inverse transform for all selected curves in this object,
-    //        * See #object_join_exec for detailed comment on why the safe version is used. */
-    //       invert_m3_m3_safe_ortho(imat, bmat);
-    //       mul_m3_v3(imat, offset_global);
-    //       mul_v3_m3v3(offset_local, imat, offset_global);
-
-    //       LISTBASE_FOREACH (bGPDlayer *, gpl_src, &gpd_src->layers) {
-    //         bGPDlayer *gpl_new = BKE_gpencil_layer_duplicate(gpl_src, true, true);
-    //         float diff_mat[4][4];
-    //         float inverse_diff_mat[4][4];
-
-    //         /* recalculate all stroke points */
-    //         BKE_gpencil_layer_transform_matrix_get(depsgraph, ob_iter, gpl_src, diff_mat);
-    //         invert_m4_m4_safe_ortho(inverse_diff_mat, diff_mat);
-
-    //         Material *ma_src = nullptr;
-    //         LISTBASE_FOREACH (bGPDframe *, gpf, &gpl_new->frames) {
-    //           LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-
-    //             /* Reassign material. Look old material and try to find in destination. */
-    //             ma_src = BKE_gpencil_material(ob_src, gps->mat_nr + 1);
-    //             gps->mat_nr = BKE_gpencil_object_material_ensure(bmain, ob_dst, ma_src);
-
-    //             bGPDspoint *pt;
-    //             int i;
-    //             for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-    //               float mpt[3];
-    //               mul_v3_m4v3(mpt, inverse_diff_mat, &pt->x);
-    //               sub_v3_v3(mpt, offset_local);
-    //               mul_v3_m4v3(&pt->x, diff_mat, mpt);
-    //             }
-    //           }
-    //         }
-
-    //         /* be sure name is unique in new object */
-    //         BLI_uniquename(&gpd_dst->layers,
-    //                        gpl_new,
-    //                        DATA_("GP_Layer"),
-    //                        '.',
-    //                        offsetof(bGPDlayer, info),
-    //                        sizeof(gpl_new->info));
-    //         BLI_ghash_insert(names_map, BLI_strdup(gpl_src->info), gpl_new->info);
-
-    //         /* add to destination datablock */
-    //         BLI_addtail(&gpd_dst->layers, gpl_new);
-    //       }
-
-    //       /* Fix all the animation data */
-    //       BKE_fcurves_main_cb(bmain, [&](ID *id, FCurve *fcu) {
-    //         gpencil_joined_fix_animdata_cb(id, fcu, gpd_src, gpd_dst, names_map);
-    //       });
-    //       BLI_ghash_free(names_map, MEM_freeN, nullptr);
-
-    //       /* Only copy over animdata now, after all the remapping has been done,
-    //        * so that we don't have to worry about ambiguities re which datablock
-    //        * a layer came from!
-    //        */
-    //       if (ob_iter->adt) {
-    //         if (ob_active->adt == nullptr) {
-    //           /* no animdata, so just use a copy of the whole thing */
-    //           ob_active->adt = BKE_animdata_copy(bmain, ob_iter->adt, 0);
-    //         }
-    //         else {
-    //           /* merge in data - we'll fix the drivers manually */
-    //           BKE_animdata_merge_copy(
-    //               bmain, &ob_active->id, &ob_iter->id, ADT_MERGECOPY_KEEP_DST, false);
-    //         }
-    //       }
-
-    //       if (gpd_src->adt) {
-    //         if (gpd_dst->adt == nullptr) {
-    //           /* no animdata, so just use a copy of the whole thing */
-    //           gpd_dst->adt = BKE_animdata_copy(bmain, gpd_src->adt, 0);
-    //         }
-    //         else {
-    //           /* merge in data - we'll fix the drivers manually */
-    //           BKE_animdata_merge_copy(
-    //               bmain, &gpd_dst->id, &gpd_src->id, ADT_MERGECOPY_KEEP_DST, false);
-    //         }
-    //       }
-    //       DEG_id_tag_update(&gpd_src->id,
-    //                         ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
-    //     }
 
     /* Free the old object. */
     blender::ed::object::base_free_and_unlink(bmain, scene, ob_iter);
