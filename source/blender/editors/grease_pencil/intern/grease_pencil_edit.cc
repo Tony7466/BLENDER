@@ -4144,15 +4144,13 @@ int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op)
 
   /* Transfer material pointers. The material indices are updated for each drawing separately. */
   if (!materials.is_empty()) {
-    grease_pencil_dst->material_array_num = materials.size();
-    grease_pencil_dst->material_array = MEM_cnew_array<Material *>(
-        grease_pencil_dst->material_array_num, __func__);
-    blender::uninitialized_copy_n(
-        materials.data(), grease_pencil_dst->material_array_num, grease_pencil_dst->material_array);
+    /* Old C API, needs a const_cast but doesn't actually change anything. */
+    Material **materials_ptr = const_cast<Material **>(materials.data());
+    BKE_object_material_array_assign(bmain, DEG_get_original_object(ob_dst), &materials_ptr, materials.size(), false);
   }
 
   DEG_id_tag_update(&grease_pencil_dst->id, ID_RECALC_GEOMETRY);
-  DEG_relations_tag_update(bmain); /* because we removed object(s) */
+  DEG_relations_tag_update(bmain);
 
   WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
