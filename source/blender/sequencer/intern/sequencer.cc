@@ -664,8 +664,13 @@ static void seqbase_dupli_recursive(const Scene *scene_src,
       if (seq->type == SEQ_TYPE_META) {
         /* Always include meta all strip children. */
         int dupe_flag_recursive = dupe_flag | SEQ_DUPE_ALL;
-        SEQ_sequence_base_dupli_recursive(
-            scene_src, scene_dst, &seqn->seqbase, &seq->seqbase, dupe_flag_recursive, flag);
+        seqbase_dupli_recursive(scene_src,
+                                scene_dst,
+                                &seqn->seqbase,
+                                &seq->seqbase,
+                                dupe_flag_recursive,
+                                flag,
+                                strip_map);
       }
     }
   }
