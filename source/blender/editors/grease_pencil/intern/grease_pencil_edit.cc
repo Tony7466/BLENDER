@@ -36,6 +36,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_curves_utils.hh"
+#include "BKE_customdata.hh"
 #include "BKE_deform.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_grease_pencil.hh"
@@ -3893,6 +3894,13 @@ static void join_object_with_active(Main &bmain,
                            grease_pencil_dst.root_group(),
                            grease_pencil_src.root_group(),
                            layer_name_map);
+
+  /* Copy custom attributes for new layers. */
+  CustomData_copy_data(&grease_pencil_src.layers_data,
+                       &grease_pencil_dst.layers_data,
+                       0,
+                       orig_layers_num,
+                       grease_pencil_src.layers().size());
 
   /* Fix names, indices and transforms to keep relationships valid. */
   for (const int layer_index : grease_pencil_dst.layers().index_range()) {
