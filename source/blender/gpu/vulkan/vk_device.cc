@@ -478,8 +478,8 @@ void VKDevice::debug_print()
     /* NOTE: Assumption that this is always called form the main thread. This could be solved by
      * keeping track of the main thread inside the thread data.*/
     const bool is_main = pthread_equal(thread_data->thread_id, pthread_self());
-    os << "ThreadData (thread_id:" << pthread_getunique_np(thread_data->thread_id) << (is_main ? " main-thread" : "")
-       << ")\n";
+    os << "ThreadData (thread_id:" << pthread_getunique_np(thread_data->thread_id)
+       << (is_main ? " main-thread" : "") << ")\n";
     os << " Rendering_depth: " << thread_data->rendering_depth << "\n";
     os << " Number of contexts: " << thread_data->num_contexts << "\n";
     for (int resource_pool_index : IndexRange(thread_data->resource_pools.size())) {
