@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.types import Menu
+from bpy.types import Menu, Panel
 
 
 class BrushAssetShelf:
@@ -35,7 +35,7 @@ class BrushAssetShelf:
             return False
         brush_type_items = bpy.types.Brush.bl_rna.properties[cls.tool_prop].enum_items
 
-        return brush_type_items[asset_brush_type].identifier == tool.brush_type
+        return brush_type_items[tool.brush_type].value == asset_brush_type
 
     @classmethod
     def asset_poll(cls, asset):
@@ -45,12 +45,13 @@ class BrushAssetShelf:
             return False
 
         context = bpy.context
+        prefs = context.preferences
 
         is_asset_shelf_region = context.region and context.region.type == 'ASSET_SHELF'
-        # Show all brushes in the permanent asset shelf region. Otherwise filter out brushes that
+        # Show all brushes in the popup asset shelves. Otherwise filter out brushes that
         # are incompatible with the tool.
-        if not is_asset_shelf_region and not cls.brush_type_poll(context, asset):
-            return False
+        if is_asset_shelf_region and prefs.view.use_filter_brushes_by_tool:
+            return cls.brush_type_poll(context, asset)
 
         return True
 
@@ -110,6 +111,25 @@ class BrushAssetShelf:
             icon='BRUSH_DATA' if not preview_icon_id else 'NONE',
             icon_value=preview_icon_id,
         )
+
+
+class VIEW3D_PT_brush_asset_shelf_filter(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Filter"
+    bl_parent_id = "ASSETSHELF_PT_display"
+
+    @classmethod
+    def poll(cls, context):
+        if context.asset_shelf is None:
+            return False
+        return context.asset_shelf.bl_idname == BrushAssetShelf.get_shelf_name_from_context(context)
+
+    def draw(self, context):
+        layout = self.layout
+        prefs = context.preferences
+
+        layout.prop(prefs.view, "use_filter_brushes_by_tool", text="By Active Tool")
 
 
 class UnifiedPaintPanel:
@@ -1825,6 +1845,7 @@ def brush_basic_grease_pencil_vertex_settings(layout, context, brush, *, compact
 
 
 classes = (
+    VIEW3D_PT_brush_asset_shelf_filter,
     VIEW3D_MT_tools_projectpaint_clone,
 )
 
