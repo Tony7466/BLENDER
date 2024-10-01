@@ -38,6 +38,7 @@
 #endif
 
 #define FACE_OUT (1 << 0)
+#define FACE_INPUT (1 << 2)
 
 /** Computes error of a proposed merge quad.  Quads with the lowerst error are merged first.
  *
@@ -362,9 +363,6 @@ static BMFace *join_edge(BMEdge *edge, BMesh *bm)
   if (face_new) {
     /* Tag the face so the selection can be extended to include the new face. */
     BMO_face_flag_enable(bm, face_new, FACE_OUT);
-    /* The combined face is not a tri and should not be counted as a
-     * remaining triangle for statistics purposes.  Unset the tag. */
-    face_new->head.hflag &= ~BM_ELEM_TAG;
   }
 
   return face_new;
@@ -385,12 +383,8 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 
   /* Go through every face in the input slot. Mark triangles for processing. */
   BMO_ITER (face, &slot_iter, op->slots_in, "faces", BM_FACE) {
-
-    /* Flag only the triangles.  This flag serves two functions.
-     * First, it marks the faces that are to be processed.
-     * Second, it is used later in the UI to print the number of triangles remaining. */
     if (face->len == 3) {
-      face->head.hflag |= BM_ELEM_TAG;
+      BMO_face_flag_enable(bm, face, FACE_INPUT);
     }
   }
 
@@ -399,8 +393,8 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 
     /* If the edge is manifold, has a tagged input tri on both sides, and is NOT delmit ...
      * then it's a candidate to merge.*/
-    if (BM_edge_face_pair(edge, &f_a, &f_b) && (f_a->head.hflag & BM_ELEM_TAG) &&
-        (f_b->head.hflag & BM_ELEM_TAG) && !bm_edge_is_delimit(edge, &delimit_data))
+    if (BM_edge_face_pair(edge, &f_a, &f_b) && BMO_face_flag_test(bm, f_a, FACE_INPUT) &&
+        BMO_face_flag_test(bm, f_b, FACE_INPUT) && !bm_edge_is_delimit(edge, &delimit_data))
     {
       /* Compute the error that would result from a merge */
       const BMVert *verts[4];

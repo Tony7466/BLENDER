@@ -5265,8 +5265,6 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 
     BM_custom_loop_normals_to_vector_layer(em->bm);
 
-    BM_mesh_elem_hflag_disable_all(em->bm, BM_FACE, BM_ELEM_TAG, false);
-
     if (!EDBM_op_call_and_selectf(
             em,
             op,
