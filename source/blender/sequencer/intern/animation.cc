@@ -91,13 +91,15 @@ void SEQ_free_animdata(Scene *scene, Sequence *seq)
 void SEQ_animation_backup_original(Scene *scene, SeqAnimationBackup *backup)
 {
   if (SEQ_animation_keyframes_exist(scene)) {
-    assert_baklava_phase_1_invariants(scene->adt->action->wrap());
+    animrig::Action &action = scene->adt->action->wrap();
 
-    if (scene->adt->action->wrap().is_action_legacy()) {
+    assert_baklava_phase_1_invariants(action);
+
+    if (action.is_action_legacy()) {
       BLI_movelisttolist(&backup->curves, &scene->adt->action->curves);
     }
     else if (animrig::ChannelBag *channel_bag = animrig::channelbag_for_action_slot(
-                 scene->adt->action->wrap(), scene->adt->slot_handle))
+                 action, scene->adt->slot_handle))
     {
       animrig::channelbag_fcurves_move(backup->channel_bag, *channel_bag);
     }
@@ -112,14 +114,17 @@ void SEQ_animation_restore_original(Scene *scene, SeqAnimationBackup *backup)
 {
   if (!BLI_listbase_is_empty(&backup->curves) || !backup->channel_bag.fcurves().is_empty()) {
     BLI_assert(scene->adt != nullptr && scene->adt->action != nullptr);
-    assert_baklava_phase_1_invariants(scene->adt->action->wrap());
 
-    if (scene->adt->action->wrap().is_action_legacy()) {
+    animrig::Action &action = scene->adt->action->wrap();
+
+    assert_baklava_phase_1_invariants(action);
+
+    if (action.is_action_legacy()) {
       BLI_movelisttolist(&scene->adt->action->curves, &backup->curves);
     }
     else {
       animrig::ChannelBag *channel_bag = animrig::channelbag_for_action_slot(
-          scene->adt->action->wrap(), scene->adt->slot_handle);
+          action, scene->adt->slot_handle);
       /* The channel bag should exist if we got here, because otherwise the
        * backup channel bag would have been empty. */
       BLI_assert(channel_bag != nullptr);

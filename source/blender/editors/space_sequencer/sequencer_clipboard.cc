@@ -114,10 +114,6 @@ static void sequencer_copy_animation_to_vector(Scene *scene_src,
         return SEQ_fcurve_matches(*seq_dst, fcurve);
       });
 
-  if (fcurves_src.is_empty()) {
-    return;
-  }
-
   for (FCurve *fcu_src : fcurves_src) {
     FCurve *fcu_copy = BKE_fcurve_copy(fcu_src);
 
