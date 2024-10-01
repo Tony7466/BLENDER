@@ -31,10 +31,10 @@
  * diagnostic value seems worthwhile given the small performance penalty during debug.
  */
 #ifndef NDEBUG
-#  define _DEBUG_ONLY_MONITOR_ERROR(val) \
+#  define ASSERT_VALID_ERROR_METRIC(val) \
     BLI_assert(!isnan(val) && !isinf(val) && val >= 0 && val <= 2 * M_PI)
 #else
-#  define _DEBUG_ONLY_MONITOR_ERROR(val)
+#  define ASSERT_VALID_ERROR_METRIC(val)
 #endif
 
 #define FACE_OUT (1 << 0)
@@ -72,7 +72,7 @@ static float quad_calc_error(const float v1[3],
 
     diff = (angle_a + angle_b) / float(M_PI * 2);
 
-    _DEBUG_ONLY_MONITOR_ERROR(diff);
+    ASSERT_VALID_ERROR_METRIC(diff);
 
     error += diff;
   }
@@ -99,7 +99,7 @@ static float quad_calc_error(const float v1[3],
             fabsf(angle_normalized_v3v3(edge_vecs[3], edge_vecs[0]) - float(M_PI_2))) /
            float(M_PI * 2);
 
-    _DEBUG_ONLY_MONITOR_ERROR(diff);
+    ASSERT_VALID_ERROR_METRIC(diff);
 
     error += diff;
   }
@@ -118,12 +118,12 @@ static float quad_calc_error(const float v1[3],
     /* Note use of ternary operator to guard against divide by zero. */
     diff = area_max ? (1.0f - (area_min / area_max)) : 1.0f;
 
-    _DEBUG_ONLY_MONITOR_ERROR(diff);
+    ASSERT_VALID_ERROR_METRIC(diff);
 
     error += diff;
   }
 
-  _DEBUG_ONLY_MONITOR_ERROR(error);
+  ASSERT_VALID_ERROR_METRIC(error);
 
   return error;
 }
