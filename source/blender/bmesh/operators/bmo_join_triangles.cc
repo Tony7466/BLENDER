@@ -26,11 +26,11 @@
 #include "intern/bmesh_operators_private.hh" /* own include */
 
 /* This macro was is used to keep track of our math for the error values and ensure it's not
- * getting out of control. It's left in, in _DEBUG builds only, as guardrails, but it really isn't
+ * getting out of control. It's left in, in debug builds only, as guardrails, but it really isn't
  * worth bothering with the asserts in release builds. This COULD be removed outright, but the
  * diagnostic value seems worthwhile given the small performance penalty during debug.
  */
-#ifdef _DEBUG
+#ifndef NDEBUG
 #  define _DEBUG_ONLY_MONITOR_ERROR(val) \
     BLI_assert(!isnan(val) && !isinf(val) && val >= 0 && val <= 2 * M_PI)
 #else
