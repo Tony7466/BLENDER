@@ -113,11 +113,11 @@ static void sequencer_copy_animation_to_vector(
     }
   }
 
-  blender::Vector<FCurve *> fcurves_src = blender::animrig::fcurve_find_in_action_slot_filtered(
-      &fcurves_src_action,
-      fcurves_src_slot_handle,
-      "sequence_editor.sequences_all[",
-      seq_dst->name + 2);
+  blender::Vector<FCurve *> fcurves_src = blender::animrig::fcurves_in_action_slot_filtered(
+      &fcurves_src_action, fcurves_src_slot_handle, [&](const FCurve &fcurve) {
+        return SEQ_fcurve_matches(*seq_dst, fcurve);
+      });
+
   if (fcurves_src.is_empty()) {
     return;
   }

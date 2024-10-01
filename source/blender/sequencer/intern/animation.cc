@@ -45,6 +45,12 @@ static size_t sequencer_rna_path_prefix(char str[SEQ_RNAPATH_MAXSTR], const char
       str, SEQ_RNAPATH_MAXSTR, "sequence_editor.sequences_all[\"%s\"]", name_esc);
 }
 
+bool SEQ_fcurve_matches(const Sequence &seq, const FCurve &fcurve)
+{
+  return blender::animrig::fcurve_matches_collection_path(
+      fcurve, "sequence_editor.sequences_all[", seq.name + 2);
+}
+
 GSet *SEQ_fcurves_by_strip_get(const Sequence *seq, ListBase *fcurve_base)
 {
   char rna_path[SEQ_RNAPATH_MAXSTR];
