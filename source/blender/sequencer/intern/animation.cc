@@ -22,6 +22,8 @@
 
 #include "SEQ_animation.hh"
 
+using namespace blender;
+
 bool SEQ_animation_keyframes_exist(Scene *scene)
 {
   return scene->adt != nullptr && scene->adt->action != nullptr &&
@@ -33,56 +35,23 @@ bool SEQ_animation_drivers_exist(Scene *scene)
   return scene->adt != nullptr && !BLI_listbase_is_empty(&scene->adt->drivers);
 }
 
-/* r_prefix + [" + escaped_name + "] + \0 */
-#define SEQ_RNAPATH_MAXSTR ((30 + 2 + (SEQ_NAME_MAXSTR * 2) + 2) + 1)
-
-static size_t sequencer_rna_path_prefix(char str[SEQ_RNAPATH_MAXSTR], const char *name)
-{
-  char name_esc[SEQ_NAME_MAXSTR * 2];
-
-  BLI_str_escape(name_esc, name, sizeof(name_esc));
-  return BLI_snprintf_rlen(
-      str, SEQ_RNAPATH_MAXSTR, "sequence_editor.sequences_all[\"%s\"]", name_esc);
-}
-
 bool SEQ_fcurve_matches(const Sequence &seq, const FCurve &fcurve)
 {
-  return blender::animrig::fcurve_matches_collection_path(
+  return animrig::fcurve_matches_collection_path(
       fcurve, "sequence_editor.sequences_all[", seq.name + 2);
 }
-
-GSet *SEQ_fcurves_by_strip_get(const Sequence *seq, ListBase *fcurve_base)
-{
-  char rna_path[SEQ_RNAPATH_MAXSTR];
-  size_t rna_path_len = sequencer_rna_path_prefix(rna_path, seq->name + 2);
-
-  /* Only allocate `fcurves` if it's needed as it's possible there is no animation for `seq`. */
-  GSet *fcurves = nullptr;
-  LISTBASE_FOREACH (FCurve *, fcurve, fcurve_base) {
-    if (STREQLEN(fcurve->rna_path, rna_path, rna_path_len)) {
-      if (fcurves == nullptr) {
-        fcurves = BLI_gset_ptr_new(__func__);
-      }
-      BLI_gset_add(fcurves, fcurve);
-    }
-  }
-
-  return fcurves;
-}
-
-#undef SEQ_RNAPATH_MAXSTR
 
 void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs)
 {
   if (!SEQ_animation_keyframes_exist(scene) || ofs == 0) {
     return;
   }
-  GSet *fcurves = SEQ_fcurves_by_strip_get(seq, &scene->adt->action->curves);
-  if (fcurves == nullptr) {
-    return;
-  }
 
-  GSET_FOREACH_BEGIN (FCurve *, fcu, fcurves) {
+  Vector<FCurve *> fcurves = animrig::fcurves_in_listbase_filtered(
+      scene->adt->action->curves,
+      [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
+
+  for (FCurve *fcu : fcurves) {
     uint i;
     if (fcu->bezt) {
       for (i = 0; i < fcu->totvert; i++) {
@@ -99,8 +68,6 @@ void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs)
       }
     }
   }
-  GSET_FOREACH_END();
-  BLI_gset_free(fcurves, nullptr);
 
   DEG_id_tag_update(&scene->adt->action->id, ID_RECALC_ANIMATION);
 }
@@ -110,17 +77,15 @@ void SEQ_free_animdata(Scene *scene, Sequence *seq)
   if (!SEQ_animation_keyframes_exist(scene)) {
     return;
   }
-  GSet *fcurves = SEQ_fcurves_by_strip_get(seq, &scene->adt->action->curves);
-  if (fcurves == nullptr) {
-    return;
-  }
 
-  GSET_FOREACH_BEGIN (FCurve *, fcu, fcurves) {
+  Vector<FCurve *> fcurves = animrig::fcurves_in_listbase_filtered(
+      scene->adt->action->curves,
+      [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
+
+  for (FCurve *fcu : fcurves) {
     BLI_remlink(&scene->adt->action->curves, fcu);
     BKE_fcurve_free(fcu);
   }
-  GSET_FOREACH_END();
-  BLI_gset_free(fcurves, nullptr);
 }
 
 void SEQ_animation_backup_original(Scene *scene, SeqAnimationBackup *backup)
@@ -131,11 +96,10 @@ void SEQ_animation_backup_original(Scene *scene, SeqAnimationBackup *backup)
     if (scene->adt->action->wrap().is_action_legacy()) {
       BLI_movelisttolist(&backup->curves, &scene->adt->action->curves);
     }
-    else if (blender::animrig::ChannelBag *channel_bag =
-                 blender::animrig::channelbag_for_action_slot(scene->adt->action->wrap(),
-                                                              scene->adt->slot_handle))
+    else if (animrig::ChannelBag *channel_bag = animrig::channelbag_for_action_slot(
+                 scene->adt->action->wrap(), scene->adt->slot_handle))
     {
-      blender::animrig::channelbag_fcurves_move(backup->channel_bag, *channel_bag);
+      animrig::channelbag_fcurves_move(backup->channel_bag, *channel_bag);
     }
   }
 
@@ -153,13 +117,13 @@ void SEQ_animation_restore_original(Scene *scene, SeqAnimationBackup *backup)
       BLI_movelisttolist(&scene->adt->action->curves, &backup->curves);
     }
     else {
-      blender::animrig::ChannelBag *channel_bag = blender::animrig::channelbag_for_action_slot(
+      animrig::ChannelBag *channel_bag = animrig::channelbag_for_action_slot(
           scene->adt->action->wrap(), scene->adt->slot_handle);
       /* The channel bag should exist if we got here, because otherwise the
        * backup channel bag would have been empty. */
       BLI_assert(channel_bag != nullptr);
 
-      blender::animrig::channelbag_fcurves_move(*channel_bag, backup->channel_bag);
+      animrig::channelbag_fcurves_move(*channel_bag, backup->channel_bag);
     }
   }
 
@@ -176,17 +140,13 @@ static void seq_animation_duplicate(Scene *scene, Sequence *seq, ListBase *dst, 
     }
   }
 
-  GSet *fcurves = SEQ_fcurves_by_strip_get(seq, src);
-  if (fcurves == nullptr) {
-    return;
-  }
+  Vector<FCurve *> fcurves = animrig::fcurves_in_listbase_filtered(
+      *src, [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
 
-  GSET_FOREACH_BEGIN (const FCurve *, fcu, fcurves) {
+  for (const FCurve *fcu : fcurves) {
     FCurve *fcu_cpy = BKE_fcurve_copy(fcu);
     BLI_addtail(dst, fcu_cpy);
   }
-  GSET_FOREACH_END();
-  BLI_gset_free(fcurves, nullptr);
 }
 
 void SEQ_animation_duplicate_backup_to_scene(Scene *scene,

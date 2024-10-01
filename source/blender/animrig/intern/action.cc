@@ -2342,6 +2342,20 @@ Vector<FCurve *> fcurves_in_action_slot_filtered(bAction *act,
   return found;
 }
 
+Vector<FCurve *> fcurves_in_listbase_filtered(ListBase /* FCurve * */ fcurves,
+                                              FunctionRef<bool(const FCurve &fcurve)> predicate)
+{
+  Vector<FCurve *> found;
+
+  LISTBASE_FOREACH (FCurve *, fcurve, &fcurves) {
+    if (predicate(*fcurve)) {
+      found.append(fcurve);
+    }
+  }
+
+  return found;
+}
+
 FCurve *action_fcurve_ensure(Main *bmain,
                              bAction *act,
                              const char group[],

@@ -1399,6 +1399,13 @@ Vector<FCurve *> fcurves_in_action_slot_filtered(
     bAction *act, slot_handle_t slot_handle, FunctionRef<bool(const FCurve &fcurve)> predicate);
 
 /**
+ * Return the F-Curves in the given listbase for which `predicate` returns
+ * true.
+ */
+Vector<FCurve *> fcurves_in_listbase_filtered(ListBase /* FCurve * */ fcurves,
+                                              FunctionRef<bool(const FCurve &fcurve)> predicate);
+
+/**
  * Remove the given FCurve from the action by searching for it in all channelbags.
  * This assumes that an FCurve can only exist in an action once.
  *

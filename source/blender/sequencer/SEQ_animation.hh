@@ -27,7 +27,6 @@ void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs);
  * Return whether the fcurve targets the given sequence.
  */
 bool SEQ_fcurve_matches(const Sequence &seq, const FCurve &fcurve);
-GSet *SEQ_fcurves_by_strip_get(const Sequence *seq, ListBase *fcurve_base);
 struct SeqAnimationBackup {
   ListBase curves;
   blender::animrig::ChannelBag channel_bag;
