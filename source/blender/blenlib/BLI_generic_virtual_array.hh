@@ -293,6 +293,7 @@ class GMutableVArraySpan : public GMutableSpan, NonCopyable, NonMovable {
   const GVMutableArray &varray() const;
 
   void save();
+  void save(const IndexMask &selection);
   void disable_not_applied_warning();
 };
 

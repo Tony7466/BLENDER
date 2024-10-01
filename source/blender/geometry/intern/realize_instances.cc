@@ -2659,6 +2659,9 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   using BodyAttribute = bke::PhysicsBodyAttribute;
   using ConstraintAttribute = bke::PhysicsConstraintAttribute;
 
+  const bool has_moved_physics = options.move_physics_world_data &&
+                                 all_physics_info.world_data_task >= 0;
+
   if (tasks.is_empty()) {
     return;
   }
@@ -2674,7 +2677,11 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
       bodies_num, constraints_num, shapes_num);
 
   /* Move physics data ahead of copying attributes. */
-  if (options.move_physics_world_data && all_physics_info.world_data_task >= 0) {
+  IndexMaskMemory memory;
+  IndexMask copied_bodies = dst_physics->bodies_range();
+  IndexMask copied_constraints = dst_physics->constraints_range();
+  IndexMask copied_shapes = dst_physics->shapes_range();
+  if (has_moved_physics) {
     BLI_assert(tasks.index_range().contains(all_physics_info.world_data_task));
     const RealizePhysicsTask &task = tasks[all_physics_info.world_data_task];
     const bke::PhysicsWorldState &state = task.physics_info->physics->state();
@@ -2686,6 +2693,15 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
                                                  state.constraints_range(),
                                                  task.start_indices.body,
                                                  task.start_indices.constraint);
+
+    copied_bodies = IndexMask::from_difference(
+        dst_physics->bodies_range(), state.bodies_range().shift(task.start_indices.body), memory);
+    copied_constraints = IndexMask::from_difference(
+        dst_physics->constraints_range(),
+        state.constraints_range().shift(task.start_indices.constraint),
+        memory);
+    copied_shapes = IndexMask::from_difference(
+        dst_physics->shapes_range(), state.shapes_range().shift(task.start_indices.shape), memory);
   }
 
   r_realized_geometry.replace_physics(dst_physics);
@@ -2757,16 +2773,29 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
 
   /* Tag modified attributes. */
   for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
-    dst_attribute.finish();
+    switch (dst_attribute.domain) {
+      case AttrDomain::Point:
+        dst_attribute.finish(copied_bodies);
+        break;
+      case AttrDomain::Edge:
+        dst_attribute.finish(copied_constraints);
+        break;
+      case AttrDomain::Instance:
+        dst_attribute.finish(copied_shapes);
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
   }
   dst_physics->state_for_write().tag_shapes_changed();
-  body_shapes.finish();
-  position.finish();
-  rotation.finish();
-  velocity.finish();
-  angular_velocity.finish();
-  constraint_body1.finish();
-  constraint_body2.finish();
+  body_shapes.finish(copied_bodies);
+  position.finish(copied_bodies);
+  rotation.finish(copied_bodies);
+  velocity.finish(copied_bodies);
+  angular_velocity.finish(copied_bodies);
+  constraint_body1.finish(copied_constraints);
+  constraint_body2.finish(copied_constraints);
 }
 
 /** \} */

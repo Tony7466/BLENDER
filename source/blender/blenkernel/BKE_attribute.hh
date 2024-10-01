@@ -292,6 +292,21 @@ template<typename T> struct SpanAttributeWriter {
       this->tag_modified_fn();
     }
   }
+
+  /**
+   * Has to be called when done writing to the attribute. This makes sure that the data is copied
+   * to the underlying attribute if it was not stored as an array. Furthermore, this may invalidate
+   * other data depending on the modified attribute.
+   */
+  void finish(const IndexMask &selection)
+  {
+    if (this->span.varray()) {
+      this->span.save(selection);
+    }
+    if (this->tag_modified_fn) {
+      this->tag_modified_fn();
+    }
+  }
 };
 
 /**
@@ -380,6 +395,16 @@ struct GSpanAttributeWriter {
   {
     if (this->span.varray()) {
       this->span.save();
+    }
+    if (this->tag_modified_fn) {
+      this->tag_modified_fn();
+    }
+  }
+
+  void finish(const IndexMask &selection)
+  {
+    if (this->span.varray()) {
+      this->span.save(selection);
     }
     if (this->tag_modified_fn) {
       this->tag_modified_fn();

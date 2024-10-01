@@ -449,6 +449,23 @@ void GMutableVArraySpan::save()
   varray_.set_all(owned_data_);
 }
 
+void GMutableVArraySpan::save(const IndexMask &selection)
+{
+  save_has_been_called_ = true;
+  if (data_ != owned_data_) {
+    return;
+  }
+  if (selection.size() == this->varray_.size()) {
+    varray_.set_all(owned_data_);
+  }
+  else {
+    selection.foreach_index([&](const int64_t index) {
+      void *element = static_cast<char *>(owned_data_) + type_->size() * index;
+      varray_.set_by_copy(index, element);
+    });
+  }
+}
+
 void GMutableVArraySpan::disable_not_applied_warning()
 {
   show_not_saved_warning_ = false;

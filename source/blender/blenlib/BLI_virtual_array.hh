@@ -1189,6 +1189,22 @@ template<typename T> class MutableVArraySpan final : public MutableSpan<T> {
     varray_.set_all(owned_data_);
   }
 
+  /* Write back all values from a temporary allocated array to the underlying virtual array. */
+  void save(const IndexMask &selection)
+  {
+    save_has_been_called_ = true;
+    if (this->data_ != owned_data_.data()) {
+      return;
+    }
+    if (selection.size() == varray_.size()) {
+      varray_.set_all(owned_data_);
+    }
+    else {
+      selection.foreach_index(
+          [&](const int64_t index) { varray_.set(index, owned_data_[index]); });
+    }
+  }
+
   void disable_not_applied_warning()
   {
     show_not_saved_warning_ = false;
