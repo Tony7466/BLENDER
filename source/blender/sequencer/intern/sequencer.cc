@@ -331,7 +331,7 @@ static void seq_new_fix_links_recursive(Sequence *seq,
     }
   }
 
-  else if (seq->type == SEQ_TYPE_META) {
+  if (seq->type == SEQ_TYPE_META) {
     LISTBASE_FOREACH (Sequence *, seqn, &seq->seqbase) {
       seq_new_fix_links_recursive(seqn, strip_map);
     }
