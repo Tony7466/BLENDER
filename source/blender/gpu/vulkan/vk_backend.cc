@@ -468,9 +468,12 @@ void VKBackend::render_end()
 
   if (G.background || !BLI_thread_is_main()) {
     /* When **not** running on the main thread (or doing background rendering) we assume that there
-     * is no swap chain in play. The rendering happen on a single thread and when rendering ended
-     * all the resources have been used and are in a state that they can be discarded or
-     * destroyed.*/
+     * is no swap chain in play. Rendering happens on a single thread and when finished all the
+     * resources have been used and are in a state that they can be discarded. It can still be that
+     * a non-main thread discards a resource that is in use by another thread. We move discarded
+     * resources to a device global discard pool (`device.orphaned_data`). The next time the main
+     * thread goes to the next swap chain image the device global discard pool will be added to the
+     * discard pool of the new swap chain image.*/
     if (thread_data.rendering_depth == 0) {
       VKResourcePool &resource_pool = thread_data.resource_pool_get();
       resource_pool.discard_pool.destroy_discarded_resources(device);
