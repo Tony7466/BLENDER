@@ -65,10 +65,6 @@
 #include "UI_resources.hh"
 #include <limits>
 
-#include <fmt/core.h>
-#include <iostream>
-#include <stdio.h>
-
 namespace blender::ed::greasepencil {
 
 /* -------------------------------------------------------------------- */
