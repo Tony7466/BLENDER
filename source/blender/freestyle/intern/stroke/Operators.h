@@ -23,10 +23,6 @@
 #include "../view_map/Interface1D.h"
 #include "../view_map/ViewMap.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 /** Class defining the operators used in a style module.

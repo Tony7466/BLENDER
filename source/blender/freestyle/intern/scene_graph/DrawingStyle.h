@@ -9,10 +9,6 @@
  * \brief Class to define the drawing style of a node
  */
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 class DrawingStyle {

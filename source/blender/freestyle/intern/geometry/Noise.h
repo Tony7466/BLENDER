@@ -13,10 +13,6 @@
 
 #include "../system/FreestyleConfig.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 using namespace std;
 
 namespace Freestyle {

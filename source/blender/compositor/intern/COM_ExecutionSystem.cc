@@ -13,10 +13,6 @@
 
 #include "COM_profiler.hh"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace blender::compositor {
 
 ExecutionSystem::ExecutionSystem(RenderData *rd,

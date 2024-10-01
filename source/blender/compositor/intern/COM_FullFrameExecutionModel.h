@@ -9,10 +9,6 @@
 #include "COM_Enums.h"
 #include "COM_ExecutionModel.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace blender::compositor {
 
 /* Forward declarations. */

@@ -13,10 +13,6 @@
 
 #include "../geometry/Geom.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 #include "DNA_material_types.h"  // for MAX_MTEX
 struct bNodeTree;
 

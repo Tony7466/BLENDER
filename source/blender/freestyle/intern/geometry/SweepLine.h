@@ -12,10 +12,6 @@
 #include <list>
 #include <vector>
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 /** Class to define the intersection between two segments. */

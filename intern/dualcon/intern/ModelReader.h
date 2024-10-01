@@ -7,10 +7,6 @@
 
 #include "GeoCommon.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 /*
  * Virtual class for input file readers
  *

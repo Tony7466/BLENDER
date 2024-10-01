@@ -18,10 +18,6 @@
 #include "../view_map/FEdgeXDetector.h"
 #include "../view_map/ViewMapBuilder.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 struct Depsgraph;
 struct Render;
 struct ViewLayer;

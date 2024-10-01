@@ -20,10 +20,6 @@
 #include "../system/FreestyleConfig.h"
 #include "../system/StringUtils.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 extern "C" {
 struct MTex;
 struct bNodeTree;

@@ -9,10 +9,6 @@
  * \brief Class defining a singleton used as timestamp
  */
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 #include "BLI_sys_types.h"
 
 namespace Freestyle {

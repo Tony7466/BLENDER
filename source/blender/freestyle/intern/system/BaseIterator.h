@@ -11,10 +11,6 @@
 
 #include <iterator>
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 // use for iterators definitions

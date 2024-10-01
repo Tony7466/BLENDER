@@ -13,10 +13,6 @@
 
 #include "../scene_graph/LineRep.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 class StrokeTesselator {

@@ -9,10 +9,6 @@
  * \brief Identification system
  */
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 /** Class used to tag any object by an id.

@@ -21,15 +21,11 @@
 /* This is used by `GHOST_C-api.h` too, cannot use C++ conventions. */
 // NOLINTBEGIN: modernize-use-using
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#else
-/* Convenience unsigned abbreviations (#WITH_CXX_GUARDEDALLOC defines these). */
+/* Convenience unsigned abbreviations. */
 typedef unsigned int uint;
 typedef unsigned short ushort;
 typedef unsigned long ulong;
 typedef unsigned char uchar;
-#endif
 
 #define GHOST_DECLARE_HANDLE(name) \
   typedef struct name##__ { \

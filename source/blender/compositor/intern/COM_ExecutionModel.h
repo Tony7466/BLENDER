@@ -8,10 +8,6 @@
 
 #include "DNA_vec_types.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace blender::compositor {
 
 class CompositorContext;

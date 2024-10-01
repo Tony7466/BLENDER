@@ -18,10 +18,6 @@
 #include "../view_map/Functions1D.h"
 #include "../view_map/Interface1D.h"
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 //

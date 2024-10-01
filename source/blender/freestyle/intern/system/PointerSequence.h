@@ -48,10 +48,6 @@
 
 #include <algorithm>
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace Freestyle {
 
 template<typename C, typename T> class PointerSequence : public C {

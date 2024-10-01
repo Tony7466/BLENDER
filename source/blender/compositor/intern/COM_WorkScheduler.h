@@ -4,10 +4,6 @@
 
 #pragma once
 
-#ifdef WITH_CXX_GUARDEDALLOC
-#  include "MEM_guardedalloc.h"
-#endif
-
 namespace blender::compositor {
 
 struct WorkPackage;
