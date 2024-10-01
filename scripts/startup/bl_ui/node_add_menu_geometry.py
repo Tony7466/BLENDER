@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import bpy
 from bpy.types import Menu
 from bl_ui import node_add_menu
 from bpy.app.translations import (
@@ -654,6 +653,7 @@ class NODE_MT_category_utilities_matrix(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "FunctionNodeCombineMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeCombineTransform")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrixDeterminant", label="Determinant")
         node_add_menu.add_node_type(layout, "FunctionNodeInvertMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeMatrixMultiply")
         node_add_menu.add_node_type(layout, "FunctionNodeProjectPoint")
