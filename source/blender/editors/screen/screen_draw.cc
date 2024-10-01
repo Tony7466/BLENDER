@@ -174,14 +174,14 @@ void ED_screen_draw_edges(wmWindow *win)
 
   if (region) {
     /* Find active area from active region. */
-    const int pos[2] = {region->winrct.xmin, region->winrct.ymin};
+    const int pos[2] = {BLI_rcti_cent_x(&region->winrct), BLI_rcti_cent_y(&region->winrct)};
     active_area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, pos);
   }
 
   if (!active_area) {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       AZone *zone = ED_area_actionzone_find_xy(area, win->eventstate->xy);
-      /* Get area from action zone, if not scrollbar. */
+      /* Get area from action zone, if not scroll-bar. */
       if (zone && zone->type != AZONE_REGION_SCROLL) {
         active_area = area;
         break;
@@ -271,6 +271,39 @@ void ED_screen_draw_edges(wmWindow *win)
   if (U.pixelsize <= 1.0f) {
     GPU_scissor_test(false);
   }
+}
+
+void screen_draw_move_highlight(bScreen *screen, eScreenAxis dir_axis)
+{
+  rctf rect = {SHRT_MAX, SHRT_MIN, SHRT_MAX, SHRT_MIN};
+
+  LISTBASE_FOREACH (const ScrEdge *, edge, &screen->edgebase) {
+    if (edge->v1->editflag && edge->v2->editflag) {
+      if (dir_axis == SCREEN_AXIS_H) {
+        rect.xmin = std::min({rect.xmin, float(edge->v1->vec.x), float(edge->v2->vec.x)});
+        rect.xmax = std::max({rect.xmax, float(edge->v1->vec.x), float(edge->v2->vec.x)});
+        rect.ymin = rect.ymax = float(edge->v1->vec.y);
+      }
+      else {
+        rect.ymin = std::min({rect.ymin, float(edge->v1->vec.y), float(edge->v2->vec.y)});
+        rect.ymax = std::max({rect.ymax, float(edge->v1->vec.y), float(edge->v2->vec.y)});
+        rect.xmin = rect.xmax = float(edge->v1->vec.x);
+      }
+    };
+  }
+
+  if (dir_axis == SCREEN_AXIS_H) {
+    BLI_rctf_pad(&rect, 0.0f, 2.5f * U.pixelsize);
+  }
+  else {
+    BLI_rctf_pad(&rect, 2.5f * U.pixelsize, 0.0f);
+  }
+
+  float inner[4] = {1.0f, 1.0f, 1.0f, 0.7f};
+  float outline[4] = {0.0f, 0.0f, 0.0f, 0.8f};
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  UI_draw_roundbox_4fv_ex(
+      &rect, inner, nullptr, 1.0f, outline, 2.0f * U.pixelsize, 2.5f * U.pixelsize);
 }
 
 static void screen_draw_area_drag_tip(int x, int y, const ScrArea *source, const std::string &hint)
