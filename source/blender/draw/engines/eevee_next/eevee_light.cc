@@ -19,6 +19,12 @@
 
 namespace blender::eevee {
 
+/* Convert by putting the least significant bits in the first component. */
+static uint2 uint64_to_uint2(uint64_t data)
+{
+  return {data, data >> 32u};
+}
+
 /* -------------------------------------------------------------------- */
 /** \name LightData
  * \{ */
@@ -50,7 +56,7 @@ void Light::sync(ShadowModule &shadows,
                  float4x4 object_to_world,
                  char visibility_flag,
                  const ::Light *la,
-                 const LightLinking *light_linking,
+                 const LightLinking *light_linking /* = nullptr */,
                  float threshold)
 {
   using namespace blender::math;
@@ -101,15 +107,13 @@ void Light::sync(ShadowModule &shadows,
   }
 
   if (light_linking) {
-    this->light_set_membership.x = light_linking->runtime.light_set_membership;
-    this->light_set_membership.y = light_linking->runtime.light_set_membership >> 32;
-    this->shadow_set_membership.x = light_linking->runtime.shadow_set_membership;
-    this->shadow_set_membership.y = light_linking->runtime.shadow_set_membership >> 32;
+    this->light_set_membership = uint64_to_uint2(light_linking->runtime.light_set_membership);
+    this->shadow_set_membership = uint64_to_uint2(light_linking->runtime.shadow_set_membership);
   }
   else {
     /* Set all bits if light linking is not used. */
-    this->light_set_membership = {~0u, ~0u};
-    this->shadow_set_membership = {~0u, ~0u};
+    this->light_set_membership = uint64_to_uint2(~uint64_t(0));
+    this->shadow_set_membership = uint64_to_uint2(~uint64_t(0));
   }
 
   this->initialized = true;

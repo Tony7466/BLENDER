@@ -28,14 +28,18 @@ ShadowTechnique ShadowModule::shadow_technique = ShadowTechnique::ATOMIC_RASTER;
 void ShadowTileMap::sync_orthographic(const float4x4 &object_mat_,
                                       int2 origin_offset,
                                       int clipmap_level,
-                                      eShadowProjectionType projection_type_)
+                                      eShadowProjectionType projection_type_,
+                                      uint2 shadow_set_membership_)
 {
-  if ((projection_type != projection_type_) || (level != clipmap_level)) {
+  if ((projection_type != projection_type_) || (level != clipmap_level) ||
+      (shadow_set_membership_ != shadow_set_membership))
+  {
     set_dirty();
   }
   projection_type = projection_type_;
   level = clipmap_level;
   light_type = eLightType::LIGHT_SUN;
+  shadow_set_membership = shadow_set_membership_;
 
   grid_shift = origin_offset - grid_offset;
   grid_offset = origin_offset;
@@ -63,16 +67,23 @@ void ShadowTileMap::sync_orthographic(const float4x4 &object_mat_,
                                           1.0f);
 }
 
-void ShadowTileMap::sync_cubeface(
-    eLightType light_type_, const float4x4 &object_mat_, float near_, float far_, eCubeFace face)
+void ShadowTileMap::sync_cubeface(eLightType light_type_,
+                                  const float4x4 &object_mat_,
+                                  float near_,
+                                  float far_,
+                                  eCubeFace face,
+                                  uint2 shadow_set_membership_)
 {
-  if (projection_type != SHADOW_PROJECTION_CUBEFACE || (cubeface != face)) {
+  if (projection_type != SHADOW_PROJECTION_CUBEFACE || (cubeface != face) ||
+      (shadow_set_membership_ != shadow_set_membership))
+  {
     set_dirty();
   }
   projection_type = SHADOW_PROJECTION_CUBEFACE;
   cubeface = face;
   grid_offset = int2(0);
   light_type = light_type_;
+  shadow_set_membership = shadow_set_membership_;
 
   if ((clip_near != near_) || (clip_far != far_)) {
     set_dirty();
@@ -237,7 +248,8 @@ void ShadowPunctual::end_sync(Light &light)
   float far = int_as_float(light.clip_far);
   for (int i : tilemaps_.index_range()) {
     eCubeFace face = eCubeFace(Z_NEG + i);
-    tilemaps_[face]->sync_cubeface(light.type, object_to_world, near, far, face);
+    tilemaps_[face]->sync_cubeface(
+        light.type, object_to_world, near, far, face, light.shadow_set_membership);
   }
 
   light.local.tilemaps_count = tilemaps_needed;
@@ -372,7 +384,8 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
     /* Equal spacing between cascades layers since we want uniform shadow density. */
     int2 level_offset = origin_offset +
                         shadow_cascade_grid_offset(light.sun.clipmap_base_offset_pos, i);
-    tilemap->sync_orthographic(object_mat, level_offset, level, SHADOW_PROJECTION_CASCADE);
+    tilemap->sync_orthographic(
+        object_mat, level_offset, level, SHADOW_PROJECTION_CASCADE, light.shadow_set_membership);
 
     /* Add shadow tile-maps grouped by lights to the GPU buffer. */
     shadows_.tilemap_pool.tilemaps_data.append(*tilemap);
@@ -429,7 +442,8 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light, const Camera
     float2 light_space_camera_position = camera.position() * float2x3(object_mat.view<2, 3>());
     int2 level_offset = int2(math::round(light_space_camera_position / tile_size));
 
-    tilemap->sync_orthographic(object_mat, level_offset, level, SHADOW_PROJECTION_CLIPMAP);
+    tilemap->sync_orthographic(
+        object_mat, level_offset, level, SHADOW_PROJECTION_CLIPMAP, light.shadow_set_membership);
 
     /* Add shadow tile-maps grouped by lights to the GPU buffer. */
     shadows_.tilemap_pool.tilemaps_data.append(*tilemap);

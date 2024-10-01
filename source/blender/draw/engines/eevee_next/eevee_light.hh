@@ -45,6 +45,9 @@ struct Light : public LightData, NonCopyable {
   bool initialized = false;
   bool used = false;
 
+  /** Used by shadow sync. */
+  uint2 shadow_set_membership = {0, 0};
+
   /** Pointers to source Shadow. Type depends on `LightData::type`. */
   ShadowDirectional *directional = nullptr;
   ShadowPunctual *punctual = nullptr;

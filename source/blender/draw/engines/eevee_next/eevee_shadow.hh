@@ -93,10 +93,15 @@ struct ShadowTileMap : public ShadowTileMapData {
   void sync_orthographic(const float4x4 &object_mat_,
                          int2 origin_offset,
                          int clipmap_level,
-                         eShadowProjectionType projection_type_);
+                         eShadowProjectionType projection_type_,
+                         uint2 shadow_set_membership_);
 
-  void sync_cubeface(
-      eLightType light_type_, const float4x4 &object_mat, float near, float far, eCubeFace face);
+  void sync_cubeface(eLightType light_type_,
+                     const float4x4 &object_mat,
+                     float near,
+                     float far,
+                     eCubeFace face,
+                     uint2 shadow_set_membership_);
 
   void debug_draw() const;
 

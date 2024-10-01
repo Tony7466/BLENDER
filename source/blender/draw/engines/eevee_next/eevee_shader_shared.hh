@@ -1009,7 +1009,7 @@ struct LightData {
   bool32_t shadow_jitter;
   float _pad2;
   uint2 light_set_membership;
-  uint2 shadow_set_membership;
+  uint2 _pad3;
 
 #if USE_LIGHT_UNION
   union {
@@ -1339,6 +1339,9 @@ struct ShadowTileMapData {
   float half_size;
   /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
   float2 center_offset;
+  /** Shadow set bitmask of the light using this tilemap. */
+  uint2 shadow_set_membership;
+  uint2 _pad3;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapData, 16)
 
@@ -1364,6 +1367,9 @@ struct ShadowRenderView {
   int tilemap_lod;
   /** Updated region of the tilemap. */
   int2 rect_min;
+  /** Shadow set bitmask of the light generating this view. */
+  uint2 shadow_set_membership;
+  uint2 _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowRenderView, 16)
 
