@@ -1086,21 +1086,16 @@ class VIEW3D_HT_header(Header):
                 )
 
             if mode_string in {'EDIT_GREASE_PENCIL', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL', 'VERTEX_GREASE_PENCIL'}:
-                layer = context.object.data.layers.active
-                group = context.object.data.layer_groups.active
-                icon = 'OUTLINER_DATA_GP_LAYER'
-                node_name = None
-
-                if layer:
-                    node_name = layer.name
-                elif group:
-                    icon = "GREASEPENCIL_LAYER_GROUP"
-                    node_name = group.name
+                grease_pencil = context.object.data
+                layer = grease_pencil.layers.active
+                group = grease_pencil.layer_groups.active
+                icon = 'OUTLINER_DATA_GP_LAYER' if layer else 'GREASEPENCIL_LAYER_GROUP'
+                node_name = layer.name if layer else group.name
 
                 # Clamp long names otherwise the selector can get too wide.
-                maxw = 25
-                if len(node_name) > maxw:
-                    node_name = node_name[:maxw - 5] + '..' + node_name[-3:]
+                max_width = 25
+                if len(node_name) > max_width:
+                    node_name = node_name[:max_width - 5] + '..' + node_name[-3:]
 
                 sub = layout.row()
                 sub.popover(
