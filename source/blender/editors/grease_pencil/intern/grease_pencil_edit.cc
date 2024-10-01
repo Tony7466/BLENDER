@@ -3737,46 +3737,6 @@ void ED_operatortypes_grease_pencil_edit()
 /** \name Joint Objects Operator
  * \{ */
 
-/* TODO use this from BKE once committed elsewhere */
-static void BKE_grease_pencil_copy_layer_parameters(const blender::bke::greasepencil::Layer &src,
-                                                    blender::bke::greasepencil::Layer &dst)
-{
-  using namespace blender::bke::greasepencil;
-  dst.as_node().flag = src.as_node().flag;
-  copy_v3_v3_uchar(dst.as_node().color, src.as_node().color);
-
-  dst.blend_mode = src.blend_mode;
-  dst.opacity = src.opacity;
-
-  LISTBASE_FOREACH (GreasePencilLayerMask *, src_mask, &src.masks) {
-    LayerMask *new_mask = MEM_new<LayerMask>(__func__, *reinterpret_cast<LayerMask *>(src_mask));
-    BLI_addtail(&dst.masks, reinterpret_cast<GreasePencilLayerMask *>(new_mask));
-  }
-  dst.active_mask_index = src.active_mask_index;
-
-  dst.parent = src.parent;
-  dst.set_parent_bone_name(src.parsubstr);
-  copy_m4_m4(dst.parentinv, src.parentinv);
-
-  copy_v3_v3(dst.translation, src.translation);
-  copy_v3_v3(dst.rotation, src.rotation);
-  copy_v3_v3(dst.scale, src.scale);
-
-  dst.set_view_layer_name(src.viewlayername);
-}
-
-static void BKE_grease_pencil_copy_layer_group_parameters(
-    const blender::bke::greasepencil::LayerGroup &src, blender::bke::greasepencil::LayerGroup &dst)
-{
-  using namespace blender::bke::greasepencil;
-  dst.base.type = src.base.type;
-  dst.base.flag |= src.base.flag;
-  dst.base.color[0] = src.base.color[0];
-  dst.base.color[1] = src.base.color[1];
-  dst.base.color[2] = src.base.color[2];
-  dst.color_tag = src.color_tag;
-}
-
 namespace blender::ed::greasepencil {
 
 /* Note: the `duplicate_layer` API would be nicer, but only supports duplicating groups from the
