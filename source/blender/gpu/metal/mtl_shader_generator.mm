@@ -971,7 +971,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Add Texture members.
    * These members pack both a texture and a sampler into a single
    * struct, as both are needed within texture functions.
-   * e.g. `_mtl_combined_image_sampler_2d<float, access::read>`
+   * e.g. `_mtl_sampler_2d<float, access::read>`
    * The exact typename is generated inside `get_msl_typestring_wrapper()`. */
   for (const MSLTextureResource &tex : msl_iface.texture_samplers) {
     if (bool(tex.stage & ShaderStage::VERTEX)) {
@@ -1304,7 +1304,7 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   /* Add Texture members.
    * These members pack both a texture and a sampler into a single
    * struct, as both are needed within texture functions.
-   * e.g. `_mtl_combined_image_sampler_2d<float, access::read>`
+   * e.g. `_mtl_sampler_2d<float, access::read>`
    * The exact typename is generated inside `get_msl_typestring_wrapper()`. */
   for (const MSLTextureResource &tex : msl_iface.texture_samplers) {
     if (bool(tex.stage & ShaderStage::COMPUTE)) {
@@ -3679,128 +3679,128 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
   /* Add Types as needed. */
   switch (this->type) {
     case ImageType::FLOAT_1D: {
-      return "_mtl_combined_image_sampler_1d";
+      return "_mtl_sampler_1d";
     }
     case ImageType::FLOAT_2D: {
-      return "_mtl_combined_image_sampler_2d";
+      return "_mtl_sampler_2d";
     }
     case ImageType::FLOAT_3D: {
-      return "_mtl_combined_image_sampler_3d";
+      return "_mtl_sampler_3d";
     }
     case ImageType::FLOAT_CUBE: {
-      return "_mtl_combined_image_sampler_cube";
+      return "_mtl_sampler_cube";
     }
     case ImageType::FLOAT_1D_ARRAY: {
-      return "_mtl_combined_image_sampler_1d_array";
+      return "_mtl_sampler_1d_array";
     }
     case ImageType::FLOAT_2D_ARRAY: {
-      return "_mtl_combined_image_sampler_2d_array";
+      return "_mtl_sampler_2d_array";
     }
     case ImageType::FLOAT_CUBE_ARRAY: {
-      return "_mtl_combined_image_sampler_cube_array";
+      return "_mtl_sampler_cube_array";
     }
     case ImageType::FLOAT_BUFFER: {
-      return "_mtl_combined_image_sampler_buffer";
+      return "_mtl_sampler_buffer";
     }
     case ImageType::DEPTH_2D: {
-      return "_mtl_combined_image_sampler_depth_2d";
+      return "_mtl_sampler_depth_2d";
     }
     case ImageType::SHADOW_2D: {
-      return "_mtl_combined_image_sampler_depth_2d";
+      return "_mtl_sampler_depth_2d";
     }
     case ImageType::DEPTH_2D_ARRAY: {
-      return "_mtl_combined_image_sampler_depth_2d_array";
+      return "_mtl_sampler_depth_2d_array";
     }
     case ImageType::SHADOW_2D_ARRAY: {
-      return "_mtl_combined_image_sampler_depth_2d_array";
+      return "_mtl_sampler_depth_2d_array";
     }
     case ImageType::DEPTH_CUBE: {
-      return "_mtl_combined_image_sampler_depth_cube";
+      return "_mtl_sampler_depth_cube";
     }
     case ImageType::SHADOW_CUBE: {
-      return "_mtl_combined_image_sampler_depth_cube";
+      return "_mtl_sampler_depth_cube";
     }
     case ImageType::DEPTH_CUBE_ARRAY: {
-      return "_mtl_combined_image_sampler_depth_cube_array";
+      return "_mtl_sampler_depth_cube_array";
     }
     case ImageType::SHADOW_CUBE_ARRAY: {
-      return "_mtl_combined_image_sampler_depth_cube_array";
+      return "_mtl_sampler_depth_cube_array";
     }
     case ImageType::INT_1D: {
-      return "_mtl_combined_image_sampler_1d";
+      return "_mtl_sampler_1d";
     }
     case ImageType::INT_2D: {
-      return "_mtl_combined_image_sampler_2d";
+      return "_mtl_sampler_2d";
     }
     case ImageType::INT_3D: {
-      return "_mtl_combined_image_sampler_3d";
+      return "_mtl_sampler_3d";
     }
     case ImageType::INT_CUBE: {
-      return "_mtl_combined_image_sampler_cube";
+      return "_mtl_sampler_cube";
     }
     case ImageType::INT_1D_ARRAY: {
-      return "_mtl_combined_image_sampler_1d_array";
+      return "_mtl_sampler_1d_array";
     }
     case ImageType::INT_2D_ARRAY: {
-      return "_mtl_combined_image_sampler_2d_array";
+      return "_mtl_sampler_2d_array";
     }
     case ImageType::INT_CUBE_ARRAY: {
-      return "_mtl_combined_image_sampler_cube_array";
+      return "_mtl_sampler_cube_array";
     }
     case ImageType::INT_BUFFER: {
-      return "_mtl_combined_image_sampler_buffer";
+      return "_mtl_sampler_buffer";
     }
     case ImageType::UINT_1D: {
-      return "_mtl_combined_image_sampler_1d";
+      return "_mtl_sampler_1d";
     }
     case ImageType::UINT_2D: {
-      return "_mtl_combined_image_sampler_2d";
+      return "_mtl_sampler_2d";
     }
     case ImageType::UINT_3D: {
-      return "_mtl_combined_image_sampler_3d";
+      return "_mtl_sampler_3d";
     }
     case ImageType::UINT_CUBE: {
-      return "_mtl_combined_image_sampler_cube";
+      return "_mtl_sampler_cube";
     }
     case ImageType::UINT_1D_ARRAY: {
-      return "_mtl_combined_image_sampler_1d_array";
+      return "_mtl_sampler_1d_array";
     }
     case ImageType::UINT_2D_ARRAY: {
-      return "_mtl_combined_image_sampler_2d_array";
+      return "_mtl_sampler_2d_array";
     }
     case ImageType::UINT_CUBE_ARRAY: {
-      return "_mtl_combined_image_sampler_cube_array";
+      return "_mtl_sampler_cube_array";
     }
     case ImageType::UINT_BUFFER: {
-      return "_mtl_combined_image_sampler_buffer";
+      return "_mtl_sampler_buffer";
     }
     /* If native texture atomics are unsupported, map types to fallback atomic structures which
      * contain a buffer pointer and metadata members for size and alignment. */
     case ImageType::INT_2D_ATOMIC:
     case ImageType::UINT_2D_ATOMIC: {
       if (supports_native_atomics) {
-        return "_mtl_combined_image_sampler_2d";
+        return "_mtl_sampler_2d";
       }
       else {
-        return "_mtl_combined_image_sampler_2d_atomic_fallback";
+        return "_mtl_sampler_2d_atomic_fallback";
       }
     }
     case ImageType::INT_3D_ATOMIC:
     case ImageType::UINT_3D_ATOMIC: {
       if (supports_native_atomics) {
-        return "_mtl_combined_image_sampler_3d";
+        return "_mtl_sampler_3d";
       }
       else {
-        return "_mtl_combined_image_sampler_3d_atomic_fallback";
+        return "_mtl_sampler_3d_atomic_fallback";
       }
     }
     case ImageType::INT_2D_ARRAY_ATOMIC:
     case ImageType::UINT_2D_ARRAY_ATOMIC: {
       if (supports_native_atomics) {
-        return "_mtl_combined_image_sampler_2d_array";
+        return "_mtl_sampler_2d_array";
       }
       else {
-        return "_mtl_combined_image_sampler_2d_array_atomic_fallback";
+        return "_mtl_sampler_2d_array_atomic_fallback";
       }
     }
     default: {
