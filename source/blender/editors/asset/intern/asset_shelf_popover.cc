@@ -191,7 +191,13 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
   const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
 
   uiLayout *layout = panel->layout;
-  uiLayoutSetUnitsX(layout, LAYOUT_WIDTH_UNITS);
+
+  wmWindow *window = CTX_wm_window(C);
+  const float LAYOUT_UNITS_X = LAYOUT_WIDTH_UNITS * UI_UNIT_X >= window->sizex ?
+                                   std::max(static_cast<float>(window->sizex) / UI_UNIT_X - 2.0f,
+                                            0.0f) :
+                                   LAYOUT_WIDTH_UNITS;
+  uiLayoutSetUnitsX(layout, LAYOUT_UNITS_X);
 
   AssetShelf *shelf = get_shelf_for_popup(*C, *shelf_type);
   if (!shelf) {
@@ -206,7 +212,7 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
 
   uiLayout *row = uiLayoutRow(layout, false);
   uiLayout *catalogs_col = uiLayoutColumn(row, false);
-  uiLayoutSetUnitsX(catalogs_col, LEFT_COL_WIDTH_UNITS);
+  uiLayoutSetUnitsX(catalogs_col, LAYOUT_UNITS_X / 4);
   uiLayoutSetFixedSize(catalogs_col, true);
   library_selector_draw(C, catalogs_col, *shelf);
   catalog_tree_draw(*catalogs_col, *shelf);
@@ -224,7 +230,7 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
           ICON_VIEWZOOM);
 
   uiLayout *asset_view_col = uiLayoutColumn(right_col, false);
-  uiLayoutSetUnitsX(asset_view_col, RIGHT_COL_WIDTH_UNITS);
+  uiLayoutSetUnitsX(asset_view_col, (LAYOUT_UNITS_X / 4) * 3);
   uiLayoutSetFixedSize(asset_view_col, true);
 
   build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, *shelf, *C, *region);
