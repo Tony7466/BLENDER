@@ -22,7 +22,7 @@ namespace blender::eevee {
 /* Convert by putting the least significant bits in the first component. */
 static uint2 uint64_to_uint2(uint64_t data)
 {
-  return {data, data >> 32u};
+  return {uint(data), uint(data >> uint64_t(32))};
 }
 
 /* -------------------------------------------------------------------- */
