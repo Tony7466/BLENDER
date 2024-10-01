@@ -1388,14 +1388,14 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
                 temp_buff, [droppedStr cStringUsingEncoding:NSUTF8StringEncoding], pastedTextSize);
             temp_buff[pastedTextSize] = '\0';
 
-            eventData = (GHOST_TDragnDropDataPtr)temp_buff;
+            eventData = static_cast<GHOST_TDragnDropDataPtr>(temp_buff);
             break;
           }
           case GHOST_kDragnDropTypeBitmap: {
             NSImage *droppedImg = static_cast<NSImage *>(data);
             ImBuf *ibuf = NSImageToImBuf(droppedImg);
 
-            eventData = (GHOST_TDragnDropDataPtr)ibuf;
+            eventData = static_cast<GHOST_TDragnDropDataPtr>(ibuf);
 
             [droppedImg release];
             break;
