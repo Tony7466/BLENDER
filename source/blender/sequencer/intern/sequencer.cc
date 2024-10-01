@@ -11,6 +11,7 @@
 #include "BKE_duplilist.hh"
 #include "BLI_assert.h"
 #include "BLI_map.hh"
+#include "DNA_listBase.h"
 #include <cstddef>
 #define DNA_DEPRECATED_ALLOW
 
@@ -312,15 +313,19 @@ void SEQ_editing_free(Scene *scene, const bool do_id_user)
 }
 
 static void seq_new_fix_links_recursive(Sequence *seq,
-                                        blender::Map<Sequence *, Sequence *> strip_map)
+                                        blender::Map<Sequence *, Sequence *> strip_map,
+                                        bool allow_old_references)
 {
   if (seq->type & SEQ_TYPE_EFFECT) {
-    seq->seq1 = strip_map.lookup_default(seq->seq1, nullptr);
-    seq->seq2 = strip_map.lookup_default(seq->seq2, nullptr);
+    Sequence *default_seq1 = allow_old_references ? seq->seq1 : nullptr;
+    Sequence *default_seq2 = allow_old_references ? seq->seq1 : nullptr;
+    seq->seq1 = strip_map.lookup_default(seq->seq1, default_seq1);
+    seq->seq2 = strip_map.lookup_default(seq->seq2, default_seq2);
   }
 
   LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
-    smd->mask_sequence = strip_map.lookup_default(smd->mask_sequence, nullptr);
+    Sequence *default_mask = allow_old_references ? smd->mask_sequence : nullptr;
+    smd->mask_sequence = strip_map.lookup_default(smd->mask_sequence, default_mask);
   }
 
   if (SEQ_is_strip_connected(seq)) {
@@ -333,7 +338,7 @@ static void seq_new_fix_links_recursive(Sequence *seq,
 
   if (seq->type == SEQ_TYPE_META) {
     LISTBASE_FOREACH (Sequence *, seqn, &seq->seqbase) {
-      seq_new_fix_links_recursive(seqn, strip_map);
+      seq_new_fix_links_recursive(seqn, strip_map, allow_old_references);
     }
   }
 }
@@ -638,7 +643,12 @@ Sequence *SEQ_sequence_dupli_recursive(
   Sequence *seqn = sequence_dupli_recursive_do(
       scene_src, scene_dst, new_seq_list, seq, dupe_flag, strip_map);
 
-  seq_new_fix_links_recursive(seqn, strip_map);
+  const Sequence *meta_parent = seq_sequence_lookup_meta_by_seq(scene_src, seq);
+  const ListBase *seqbase = meta_parent != nullptr ? &meta_parent->seqbase :
+                                                     &scene_src->ed->seqbase;
+
+  const bool allow_old_references = scene_src == scene_dst && seqbase == new_seq_list;
+  seq_new_fix_links_recursive(seqn, strip_map, allow_old_references);
   if (SEQ_is_strip_connected(seqn)) {
     SEQ_cut_one_way_connections(seqn);
   }
@@ -687,9 +697,11 @@ void SEQ_sequence_base_dupli_recursive(const Scene *scene_src,
 
   seqbase_dupli_recursive(scene_src, scene_dst, nseqbase, seqbase, dupe_flag, flag, strip_map);
 
+  const bool allow_old_references = scene_src == scene_dst && seqbase == nseqbase;
+
   /* Fix effect, modifier, and connected strip links. */
   LISTBASE_FOREACH (Sequence *, seq, nseqbase) {
-    seq_new_fix_links_recursive(seq, strip_map);
+    seq_new_fix_links_recursive(seq, strip_map, allow_old_references);
   }
   /* One-way connections cannot be cut until after all connections are resolved. */
   LISTBASE_FOREACH (Sequence *, seq, nseqbase) {
