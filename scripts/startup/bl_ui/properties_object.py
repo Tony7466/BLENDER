@@ -498,6 +498,51 @@ class OBJECT_PT_light_linking(ObjectButtonsPanel, Panel):
         sub.menu("OBJECT_MT_light_linking_context_menu", icon='DOWNARROW_HLT', text="")
 
 
+class OBJECT_MT_shadow_linking_context_menu(Menu):
+    bl_label = "Shadow Linking Specials"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("object.light_linking_blockers_select")
+
+
+class OBJECT_PT_shadow_linking(ObjectButtonsPanel, Panel):
+    bl_label = "Shadow Linking"
+    bl_parent_id = "OBJECT_PT_shading"
+    bl_context = "object"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        object = context.object
+        light_linking = object.light_linking
+
+        col = layout.column()
+
+        col.template_ID(
+            light_linking,
+            "blocker_collection",
+            new="object.light_linking_blocker_collection_new")
+
+        if not light_linking.blocker_collection:
+            return
+
+        row = layout.row()
+        col = row.column()
+        col.template_light_linking_collection(row, light_linking, "blocker_collection")
+
+        col = row.column()
+        sub = col.column(align=True)
+        prop = sub.operator("object.light_linking_blockers_link", icon='ADD', text="")
+        prop.link_state = 'INCLUDE'
+        sub.operator("object.light_linking_unlink_from_collection", icon='REMOVE', text="")
+        sub = col.column()
+        sub.menu("OBJECT_MT_shadow_linking_context_menu", icon='DOWNARROW_HLT', text="")
+
+
 class OBJECT_PT_animation(ObjectButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
     _animated_id_context_property = "object"
 
@@ -523,6 +568,8 @@ classes = (
     OBJECT_PT_shading,
     OBJECT_MT_light_linking_context_menu,
     OBJECT_PT_light_linking,
+    OBJECT_MT_shadow_linking_context_menu,
+    OBJECT_PT_shadow_linking,
     OBJECT_PT_visibility,
     OBJECT_PT_lineart,
     OBJECT_PT_animation,

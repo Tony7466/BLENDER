@@ -1348,52 +1348,6 @@ class CYCLES_OBJECT_PT_lightgroup(CyclesButtonsPanel, Panel):
         sub.enabled = bool(ob.lightgroup) and not any(lg.name == ob.lightgroup for lg in view_layer.lightgroups)
         sub.operator("scene.view_layer_add_lightgroup", icon='ADD', text="").name = ob.lightgroup
 
-
-class CYCLES_OBJECT_MT_shadow_linking_context_menu(Menu):
-    bl_label = "Shadow Linking Specials"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("object.light_linking_blockers_select")
-
-
-class CYCLES_OBJECT_PT_shadow_linking(CyclesButtonsPanel, Panel):
-    bl_label = "Shadow Linking"
-    bl_parent_id = "OBJECT_PT_shading"
-    bl_context = "object"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        object = context.object
-        light_linking = object.light_linking
-
-        col = layout.column()
-
-        col.template_ID(
-            light_linking,
-            "blocker_collection",
-            new="object.light_linking_blocker_collection_new")
-
-        if not light_linking.blocker_collection:
-            return
-
-        row = layout.row()
-        col = row.column()
-        col.template_light_linking_collection(row, light_linking, "blocker_collection")
-
-        col = row.column()
-        sub = col.column(align=True)
-        prop = sub.operator("object.light_linking_blockers_link", icon='ADD', text="")
-        prop.link_state = 'INCLUDE'
-        sub.operator("object.light_linking_unlink_from_collection", icon='REMOVE', text="")
-        sub = col.column()
-        sub.menu("CYCLES_OBJECT_MT_shadow_linking_context_menu", icon='DOWNARROW_HLT', text="")
-
-
 class CYCLES_OBJECT_PT_visibility(CyclesButtonsPanel, Panel):
     bl_label = "Visibility"
     bl_context = "object"
@@ -2535,8 +2489,6 @@ classes = (
     CYCLES_OBJECT_PT_shading_gi_approximation,
     CYCLES_OBJECT_PT_shading_caustics,
     CYCLES_OBJECT_PT_lightgroup,
-    CYCLES_OBJECT_MT_shadow_linking_context_menu,
-    CYCLES_OBJECT_PT_shadow_linking,
     CYCLES_OBJECT_PT_visibility,
     CYCLES_OBJECT_PT_visibility_ray_visibility,
     CYCLES_OBJECT_PT_visibility_culling,
