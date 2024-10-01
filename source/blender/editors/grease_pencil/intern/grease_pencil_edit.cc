@@ -3900,7 +3900,7 @@ static void join_object_with_active(Main &bmain,
                           &grease_pencil_dst.layers_data,
                           CD_MASK_ALL,
                           CD_SET_DEFAULT,
-                          grease_pencil_src.layers().size());
+                          grease_pencil_dst.layers().size());
   CustomData_copy_data(&grease_pencil_src.layers_data,
                        &grease_pencil_dst.layers_data,
                        0,
