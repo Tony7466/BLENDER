@@ -303,6 +303,7 @@ void VKBackend::detect_workarounds(VKDevice &device)
     workarounds.shader_output_layer = true;
     workarounds.shader_output_viewport_index = true;
     workarounds.vertex_formats.r8g8b8 = true;
+    workarounds.fragment_shader_barycentric = true;
 
     device.workarounds_ = workarounds;
     return;
@@ -325,6 +326,9 @@ void VKBackend::detect_workarounds(VKDevice &device)
       device.physical_device_get(), VK_FORMAT_R8G8B8_UNORM, &format_properties);
   workarounds.vertex_formats.r8g8b8 = (format_properties.bufferFeatures &
                                        VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT) == 0;
+
+  workarounds.fragment_shader_barycentric = !device.supports_extension(
+      VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
 
   device.workarounds_ = workarounds;
 }
@@ -466,10 +470,15 @@ void VKBackend::render_end()
   thread_data.rendering_depth -= 1;
   BLI_assert_msg(thread_data.rendering_depth >= 0, "Unbalanced `GPU_render_begin/end`");
 
-  if (G.background) {
+  if (G.background || !BLI_thread_is_main()) {
+    /* When **not** running on the main thread (or doing background rendering) we assume that there
+     * is no swap chain in play. Rendering happens on a single thread and when finished all the
+     * resources have been used and are in a state that they can be discarded. It can still be that
+     * a non-main thread discards a resource that is in use by another thread. We move discarded
+     * resources to a device global discard pool (`device.orphaned_data`). The next time the main
+     * thread goes to the next swap chain image the device global discard pool will be added to the
+     * discard pool of the new swap chain image.*/
     if (thread_data.rendering_depth == 0) {
-      thread_data.resource_pool_next();
-
       VKResourcePool &resource_pool = thread_data.resource_pool_get();
       resource_pool.discard_pool.destroy_discarded_resources(device);
       resource_pool.reset();
