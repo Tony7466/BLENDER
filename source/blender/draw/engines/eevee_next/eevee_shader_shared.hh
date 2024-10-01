@@ -1009,7 +1009,10 @@ struct LightData {
   bool32_t shadow_jitter;
   float _pad2;
   uint2 light_set_membership;
-  uint2 _pad3;
+  /** Used by shadow sync. */
+  /* TODO(fclem): this should be part of #eevee::Light struct. But for some reason it gets cleared
+   * to zero after each sync cycle. */
+  uint2 shadow_set_membership;
 
 #if USE_LIGHT_UNION
   union {
