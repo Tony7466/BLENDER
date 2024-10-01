@@ -33,6 +33,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
   b.add_input<decl::Geometry>("Mesh")
+      .only_realized_data()
       .supported_type(GeometryComponent::Type::Mesh)
       .make_available(
           [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_INTERSECT_SURFACE; });
@@ -385,13 +386,6 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
   BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
 }
 
-static void set_curve_intersections_surface(BVHTree *bvhtree,
-                                            Vector<Segment> curve_segments,
-                                            const Mesh &mesh,
-                                            IntersectionData &r_data)
-{
-}
-
 static void set_curve_mesh_intersections(GeometrySet &mesh_set,
                                          const bke::CurvesGeometry &src_curves,
                                          IntersectionData &r_data)
@@ -441,14 +435,14 @@ static void set_curve_mesh_intersections(GeometrySet &mesh_set,
             [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
               const Segment seg = curve_segments[index];
               float lambda = 0.0f;
-              float2 uv = float2(0.0f);
               if (isect_line_segment_tri_v3(
-                      seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, uv)) {
+                      seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, nullptr))
+              {
                 const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
                 const float3 dir_of_isect = math::normalize(seg.end - seg.start);
                 const float3 closest = math::interpolate(seg.start, seg.end, lambda);
                 add_intersection_data(r_data,
-                                      cent_pos,
+                                      closest,
                                       dir_of_isect,
                                       seg.curve_index,
                                       len_at_isect,
