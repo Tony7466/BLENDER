@@ -167,7 +167,7 @@ typedef struct SequenceRuntime {
 typedef struct Sequence {
   struct Sequence *next, *prev;
   /** Temp var for duplication, pointing to the newly duplicated Sequence. */
-  void *tmp;
+  void *tmp DNA_DEPRECATED;
   /** Needed (to be like ipo), else it will raise libdata warnings, this should never be used. */
   void *lib;
   /** SEQ_NAME_MAXSTR - name, set by default and needs to be unique, for RNA paths. */
