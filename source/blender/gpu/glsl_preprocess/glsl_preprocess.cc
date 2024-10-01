@@ -10,8 +10,15 @@
 #include <fstream>
 #include <iostream>
 #include <regex>
+#include <sstream>
 #include <string>
 #include <vector>
+
+struct SharedVar {
+  std::string type;
+  std::string name;
+  std::string array;
+};
 
 int main(int argc, char **argv)
 {
@@ -43,6 +50,8 @@ int main(int argc, char **argv)
 
   int error = 0;
 
+  std::vector<SharedVar> shared_vars;
+
   std::string line;
   size_t line_index = 0;
   while (std::getline(input_file, line)) {
@@ -68,8 +77,16 @@ int main(int argc, char **argv)
     }
     else {
       {
+        /* Shared variable parsing. */
+        std::regex shared_variable("shared\\s+(\\w+)\\s+(\\w+)([^;]*);");
+        std::smatch match;
+        if (std::regex_search(line, match, shared_variable)) {
+          shared_vars.push_back({match[1].str(), match[2].str(), match[3].str()});
+        }
+      }
+      {
         /* Argument decorator macro injection. */
-        std::regex inout("(out|inout|in)\\s+(\\w+)\\s+(\\w+)");
+        std::regex inout("(out|inout|in|shared)\\s+(\\w+)\\s+(\\w+)");
         line = std::regex_replace(line, inout, "$1 $2 _$1_sta $3 _$1_end");
       }
       {
@@ -91,6 +108,86 @@ int main(int argc, char **argv)
     }
 
     output_file << line << "\n";
+  }
+
+  if (!shared_vars.empty()) {
+    /**
+     * For Metal shaders to compile, shared (threadgroup) variable cannot be declared globally.
+     * They must reside within a function scope. Hence, we need to extract these uses and generate
+     * shared memory blocks within the entry point function. These shared memory blocks can
+     * then be passed as references to the remaining shader via the class function scope.
+     *
+     * The shared variable definitions from the source file are replaced with references to
+     * threadgroup memory blocks (using _shared_sta and _shared_end macros), but kept in-line in
+     * case external macros are used to declare the dimensions.
+     *
+     * Each part of the codegen is stored inside macros so that we don't have to do string
+     * replacement at runtime.
+     */
+    /* Arguments of the wrapper class constructor. */
+    output_file << "#undef MSL_SHARED_VARS_ARGS\n";
+    /* References assignment inside wrapper class constructor. */
+    output_file << "#undef MSL_SHARED_VARS_ASSIGN\n";
+    /* Declaration of threadgroup variables in entry point function. */
+    output_file << "#undef MSL_SHARED_VARS_DECLARE\n";
+    /* Arguments for wrapper class constructor call. */
+    output_file << "#undef MSL_SHARED_VARS_PASS\n";
+
+    /**
+     * Example replacement:
+     *
+     * `
+     * // Source
+     * shared float bar[10];                                    // Source declaration.
+     * shared float foo;                                        // Source declaration.
+     * // Rest of the source ...
+     * // End of Source
+     *
+     * // Backend Output
+     * class Wrapper {                                          // Added at runtime by backend.
+     *
+     * threadgroup float (&foo);                                // Replaced by regex and macros.
+     * threadgroup float (&bar)[10];                            // Replaced by regex and macros.
+     * // Rest of the source ...
+     *
+     * Wrapper (                                                // Added at runtime by backend.
+     * threadgroup float (&_foo), threadgroup float (&_bar)[10] // MSL_SHARED_VARS_ARGS
+     * )                                                        // Added at runtime by backend.
+     * : foo(_foo), bar(_bar)                                   // MSL_SHARED_VARS_ASSIGN
+     * {}                                                       // Added at runtime by backend.
+     *
+     * }; // End of Wrapper                                     // Added at runtime by backend.
+     *
+     * kernel entry_point() {                                   // Added at runtime by backend.
+     *
+     * threadgroup float foo;                                   // MSL_SHARED_VARS_DECLARE
+     * threadgroup float bar[10]                                // MSL_SHARED_VARS_DECLARE
+     *
+     * Wrapper wrapper                                          // Added at runtime by backend.
+     * (foo, bar)                                               // MSL_SHARED_VARS_PASS
+     * ;                                                        // Added at runtime by backend.
+     *
+     * }                                                        // Added at runtime by backend.
+     * // End of Backend Output
+     * `
+     */
+    std::stringstream args, assign, declare, pass;
+
+    bool first = true;
+    for (SharedVar &var : shared_vars) {
+      char sep = first ? ' ' : ',';
+      /*  */
+      args << sep << "threadgroup " << var.type << "(&_" << var.name << ")" << var.array;
+      assign << (first ? ':' : ',') << var.name << "(_" << var.name << ")";
+      declare << "threadgroup " << var.type << ' ' << var.name << var.array << ";";
+      pass << sep << var.name;
+      first = false;
+    }
+
+    output_file << "#define MSL_SHARED_VARS_ARGS " << args.str() << "\n";
+    output_file << "#define MSL_SHARED_VARS_ASSIGN " << assign.str() << "\n";
+    output_file << "#define MSL_SHARED_VARS_DECLARE " << declare.str() << "\n";
+    output_file << "#define MSL_SHARED_VARS_PASS (" << pass.str() << ")\n";
   }
 
   input_file.close();

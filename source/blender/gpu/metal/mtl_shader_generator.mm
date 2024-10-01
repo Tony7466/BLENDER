@@ -428,135 +428,6 @@ static bool extract_ssbo_pragma_info(const MTLShader *shader,
   return false;
 }
 
-/* Extract shared memory declaration and their parameters.
- * Inserts extracted cases as entries in MSLGeneratorInterface's shared memory block
- * list. These will later be used to generate shared memory declarations within the entry point.
- *
- * TODO(Metal/GPU): Move shared memory declarations to GPUShaderCreateInfo. This is currently a
- * necessary workaround to match GLSL functionality and enable full compute shader support. In the
- * long term, best to avoid needing to perform this operation. */
-void extract_shared_memory_blocks(MSLGeneratorInterface &msl_iface,
-                                  std::string &glsl_compute_source)
-{
-  msl_iface.shared_memory_blocks.clear();
-  char *current_str_begin = &*glsl_compute_source.begin();
-  char *current_str_end = &*glsl_compute_source.end();
-
-  for (char *c = current_str_begin; c < current_str_end - 6; c++) {
-    /* Find first instance of "shared ". */
-    char *c_expr_start = strstr(c, "shared ");
-    if (c_expr_start == nullptr) {
-      break;
-    }
-    /* Check if "shared" was part of a previous word. If so, this is not valid. */
-    if (next_word_in_range(c_expr_start - 1, c_expr_start) != nullptr) {
-      c += 7; /* Jump forward by length of "shared ". */
-      continue;
-    }
-
-    /* Jump to shared declaration and detect end of statement. */
-    c = c_expr_start;
-    char *c_expr_end = strstr(c, ";");
-    if (c_expr_end == nullptr) {
-      break;
-    }
-
-    /* Prepare MSLSharedMemoryBlock instance. */
-    MSLSharedMemoryBlock new_shared_block;
-    char buf[256];
-
-    /* Read type-name. */
-    c += 7; /* Jump forward by length of "shared ". */
-    c = next_word_in_range(c, c_expr_end);
-    if (c == nullptr) {
-      c = c_expr_end + 1;
-      continue;
-    }
-
-    char *c_next_space = next_symbol_in_range(c, c_expr_end, ' ');
-    if (c_next_space == nullptr) {
-      c = c_expr_end + 1;
-      continue;
-    }
-    int len = c_next_space - c;
-    BLI_assert(len < 256);
-    BLI_strncpy(buf, c, len + 1);
-    new_shared_block.type_name = std::string(buf);
-
-    /* Read var-name.
-     * `varname` can either come right before the final semi-colon, or
-     * with following array syntax.
-     * spaces may exist before closing symbol. */
-    c = c_next_space + 1;
-    c = next_word_in_range(c, c_expr_end);
-    if (c == nullptr) {
-      c = c_expr_end + 1;
-      continue;
-    }
-
-    char *c_array_begin = next_symbol_in_range(c, c_expr_end, '[');
-    c_next_space = next_symbol_in_range(c, c_expr_end, ' ');
-
-    char *varname_end = nullptr;
-    if (c_array_begin != nullptr) {
-      /* Array path. */
-      if (c_next_space != nullptr) {
-        varname_end = (c_next_space < c_array_begin) ? c_next_space : c_array_begin;
-      }
-      else {
-        varname_end = c_array_begin;
-      }
-      new_shared_block.is_array = true;
-    }
-    else {
-      /* Ending semi-colon. */
-      if (c_next_space != nullptr) {
-        varname_end = (c_next_space < c_expr_end) ? c_next_space : c_expr_end;
-      }
-      else {
-        varname_end = c_expr_end;
-      }
-      new_shared_block.is_array = false;
-    }
-    len = varname_end - c;
-    BLI_assert(len < 256);
-    BLI_strncpy(buf, c, len + 1);
-    new_shared_block.varname = std::string(buf);
-
-    /* Determine if array. */
-    if (new_shared_block.is_array) {
-      int len = c_expr_end - c_array_begin;
-      BLI_strncpy(buf, c_array_begin, len + 1);
-      new_shared_block.array_decl = std::string(buf);
-    }
-
-    /* Shared block is valid, add it to the list and replace declaration with class member.
-     * reference. This declaration needs to have one of the formats:
-     * TG int& varname;
-     * TG int (&varname)[len][len]
-     *
-     * In order to fit in the same space, replace `threadgroup` with `TG` macro.
-     */
-    for (char *c = c_expr_start; c <= c_expr_end; c++) {
-      *c = ' ';
-    }
-    std::string out_str = "TG ";
-    out_str += new_shared_block.type_name;
-    out_str += (new_shared_block.is_array) ? "(&" : "&";
-    out_str += new_shared_block.varname;
-    if (new_shared_block.is_array) {
-      out_str += ")" + new_shared_block.array_decl;
-    }
-    out_str += ";;";
-    memcpy(c_expr_start, out_str.c_str(), (out_str.length() - 1) * sizeof(char));
-
-    /* Jump to end of statement. */
-    c = c_expr_end + 1;
-
-    msl_iface.shared_memory_blocks.append(new_shared_block);
-  }
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1373,16 +1244,6 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   remove_multiline_comments_func(shd_builder_->glsl_compute_source_);
   remove_singleline_comments_func(shd_builder_->glsl_compute_source_);
 
-  /** Extract usage of shared memory.
-   * For Metal shaders to compile, shared (threadgroup) memory cannot be declared globally.
-   * It must reside within a function scope. Hence, we need to extract these uses and generate
-   * shared memory blocks within the entry point function, which can then be passed as references
-   * to the remaining shader via the class function scope.
-   *
-   * The existing block definitions are then replaced with references to threadgroup memory blocks,
-   * but kept in-line in case external macros are used to declare the dimensions. */
-  extract_shared_memory_blocks(msl_iface, shd_builder_->glsl_compute_source_);
-
   /** Generate Compute shader stage. **/
   std::stringstream ss_compute;
   ss_compute << "#line 1 \"msl_wrapper_code\"\n";
@@ -1475,37 +1336,8 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   /* Compute constructor for Shared memory blocks, as we must pass
    * local references from entry-point function scope into the class
    * instantiation. */
-  ss_compute << get_stage_class_name(ShaderStage::COMPUTE) << "(";
-  bool first = true;
-  if (msl_iface.shared_memory_blocks.size() > 0) {
-    for (const MSLSharedMemoryBlock &block : msl_iface.shared_memory_blocks) {
-      if (!first) {
-        ss_compute << ",";
-      }
-      if (block.is_array) {
-        ss_compute << "TG " << block.type_name << " (&_" << block.varname << ")"
-                   << block.array_decl;
-      }
-      else {
-        ss_compute << "TG " << block.type_name << " &_" << block.varname;
-      }
-      ss_compute << std::endl;
-      first = false;
-    }
-    ss_compute << ") : ";
-    first = true;
-    for (const MSLSharedMemoryBlock &block : msl_iface.shared_memory_blocks) {
-      if (!first) {
-        ss_compute << ",";
-      }
-      ss_compute << block.varname << "(_" << block.varname << ")";
-      first = false;
-    }
-  }
-  else {
-    ss_compute << ") ";
-  }
-  ss_compute << "{ }" << std::endl;
+  ss_compute << get_stage_class_name(ShaderStage::COMPUTE)
+             << "(MSL_SHARED_VARS_ARGS) MSL_SHARED_VARS_ASSIGN {}\n";
 
   /* Class Closing Bracket to end shader global scope. */
   ss_compute << "};" << std::endl;
@@ -2284,28 +2116,9 @@ std::string MSLGeneratorInterface::generate_msl_compute_entry_stub()
 
   out << this->generate_msl_compute_inputs_string();
   out << ") {" << std::endl << std::endl;
-  /* Generate Compute shader instance constructor. If shared memory blocks are used,
-   * these must be declared and then passed into the constructor. */
-  std::string stage_instance_constructor = "";
-  bool first = true;
-  if (shared_memory_blocks.size() > 0) {
-    stage_instance_constructor += "(";
-    for (const MSLSharedMemoryBlock &block : shared_memory_blocks) {
-      if (block.is_array) {
-        out << "TG " << block.type_name << " " << block.varname << block.array_decl << ";";
-      }
-      else {
-        out << "TG " << block.type_name << " " << block.varname << ";";
-      }
-      stage_instance_constructor += ((!first) ? "," : "") + block.varname;
-      first = false;
-
-      out << std::endl;
-    }
-    stage_instance_constructor += ")";
-  }
+  out << "MSL_SHARED_VARS_DECLARE\n";
   out << "\t" << get_stage_class_name(ShaderStage::COMPUTE) << " " << shader_stage_inst_name
-      << stage_instance_constructor << ";" << std::endl;
+      << " MSL_SHARED_VARS_PASS;\n";
 
   /* Copy global variables. */
   /* Entry point parameters for gl Globals. */
