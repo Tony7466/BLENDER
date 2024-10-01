@@ -67,12 +67,10 @@ void write_mask_mesh(const Depsgraph &depsgraph,
   threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
     Vector<int> &index_data = all_index_data.local();
-    node_mask.slice(range).foreach_index(GrainSize(1), [&](const int i) {
-      write_fn(mask.span, hide::node_visible_verts(nodes[i], hide_vert, index_data));
-      bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
-    });
+    write_fn(mask.span, hide::node_visible_verts(nodes[i], hide_vert, index_data));
+    bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
   });
   pbvh.tag_masks_changed(node_mask);
   mask.finish();
@@ -116,6 +114,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
   if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
+  const Scene &scene = *CTX_data_scene(C);
   Object &ob = *CTX_data_active_object(C);
   SculptSession &ss = *ob.sculpt;
   Depsgraph &depsgraph = *CTX_data_ensure_evaluated_depsgraph(C);
@@ -129,7 +128,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  undo::push_begin(ob, op);
+  undo::push_begin(scene, ob, op);
 
   const InitMode mode = InitMode(RNA_enum_get(op->ptr, "mode"));
   const int seed = BLI_time_now_seconds();

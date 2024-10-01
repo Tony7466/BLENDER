@@ -405,6 +405,8 @@ if(WITH_EXPERIMENTAL_FEATURES)
   add_blender_test(
     bl_animation_action
     --python ${CMAKE_CURRENT_LIST_DIR}/bl_animation_action.py
+    --
+    --testdir "${TEST_SRC_DIR}/animation"
   )
 endif()
 
@@ -927,6 +929,7 @@ set(geo_node_tests
   curve_primitives
   curves
   curves/interpolate_curves
+  foreach_geometry_element_zone
   geometry
   grease_pencil
   instance
@@ -1111,6 +1114,8 @@ else()
     effects
     filter
     transform
+    blend_modes_byte
+    blend_modes_float
   )
 
   foreach(render_test ${render_tests})
