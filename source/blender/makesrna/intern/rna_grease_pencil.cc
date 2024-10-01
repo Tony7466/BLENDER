@@ -367,7 +367,7 @@ static void rna_GreasePencilLayer_tint_color_get(PointerRNA *ptr, float *values)
 
   const VArray tint_colors = *grease_pencil.attributes().lookup_or_default<ColorGeometry4f>(
       "tint_color", bke::AttrDomain::Layer, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
-  copy_v4_v4(values, tint_colors[layer_idx]);
+  copy_v3_v3(values, tint_colors[layer_idx]);
 }
 
 static void rna_GreasePencilLayer_tint_color_set(PointerRNA *ptr, const float *values)
@@ -385,7 +385,7 @@ static void rna_GreasePencilLayer_tint_color_set(PointerRNA *ptr, const float *v
           bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
               ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f), grease_pencil.layers().size())));
 
-  copy_v4_v4(tint_colors.span[layer_idx], values);
+  copy_v3_v3(tint_colors.span[layer_idx], values);
   tint_colors.finish();
 }
 
@@ -862,7 +862,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 
   /* Tint Color. */
   prop = RNA_def_property(srna, "tint_color", PROP_FLOAT, PROP_COLOR);
-  RNA_def_property_array(prop, 4);
+  RNA_def_property_array(prop, 3);
   RNA_def_property_float_funcs(prop,
                                "rna_GreasePencilLayer_tint_color_get",
                                "rna_GreasePencilLayer_tint_color_set",
