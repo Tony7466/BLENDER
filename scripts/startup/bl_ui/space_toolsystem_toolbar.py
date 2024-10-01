@@ -2000,6 +2000,16 @@ class _defs_texture_paint:
         )
 
     @ToolDef.from_fn
+    def clone():
+        return dict(
+            idname="builtin_brush.clone",
+            label="Clone",
+            icon="brush.paint_texture.clone",
+            options={'USE_BRUSHES'},
+            brush_type='CLONE',
+        )
+
+    @ToolDef.from_fn
     def fill():
         return dict(
             idname="builtin_brush.fill",
@@ -3053,6 +3063,17 @@ class _defs_grease_pencil_sculpt:
             )
         )
 
+    @ToolDef.from_fn
+    def clone():
+        return dict(
+            idname="builtin_brush.clone",
+            label="Clone",
+            icon="ops.gpencil.sculpt_clone",
+            options={'USE_BRUSHES'},
+            brush_type='CLONE',
+        )
+
+
 
 class _defs_gpencil_weight:
     # No mode specific tools currently (only general ones).
@@ -3920,6 +3941,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'SCULPT_GREASE_PENCIL': [
             _brush_tool,
+            _defs_grease_pencil_sculpt.clone,
             None,
             *_tools_annotate,
             lambda context: (
@@ -3932,6 +3954,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_texture_paint.brush,
             _defs_texture_paint.blur,
             _defs_texture_paint.smear,
+            _defs_texture_paint.clone,
             _defs_texture_paint.fill,
             _defs_texture_paint.mask,
             None,

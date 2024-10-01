@@ -900,8 +900,10 @@ static void paint_brush_default_essentials_name_get(
           case IMAGE_PAINT_BRUSH_TYPE_MASK:
             name = "Mask";
             break;
-          case IMAGE_PAINT_BRUSH_TYPE_DRAW:
           case IMAGE_PAINT_BRUSH_TYPE_CLONE:
+            name = "Clone";
+            break;
+          case IMAGE_PAINT_BRUSH_TYPE_DRAW:
             break;
         }
       }
@@ -974,6 +976,15 @@ static void paint_brush_default_essentials_name_get(
       break;
     case OB_MODE_SCULPT_GPENCIL_LEGACY:
       name = "Smooth";
+      if (brush_type) {
+        switch (eBrushGPSculptType(*brush_type)) {
+          case GPSCULPT_BRUSH_TYPE_CLONE:
+            name = "Clone";
+            break;
+          default:
+            break;
+        }
+      }
       break;
     case OB_MODE_WEIGHT_GPENCIL_LEGACY:
       name = "Paint";

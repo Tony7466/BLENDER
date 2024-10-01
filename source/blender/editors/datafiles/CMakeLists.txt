@@ -26,6 +26,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   # BEGIN ICON_GEOM_NAMES
   brush.gpencil_draw.erase
   brush.gpencil_draw.fill
+  brush.paint_texture.clone
   brush.paint_texture.soften
   brush.paint_texture.smear
   brush.paint_texture.fill
@@ -90,6 +91,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.radius
   ops.gpencil.sculpt_average
   ops.gpencil.sculpt_blur
+  ops.gpencil.sculpt_clone
   ops.gpencil.sculpt_smear
   ops.gpencil.stroke_trim
   ops.gpencil.transform_fill
