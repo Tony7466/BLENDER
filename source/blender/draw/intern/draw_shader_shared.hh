@@ -174,7 +174,7 @@ struct ObjectInfos {
   float4 ob_color;
   uint index;
   /** Used for Light Linking in EEVEE */
-  uint light_set_membership;
+  uint light_and_shadow_set_membership;
   float random;
   eObjectInfoFlag flag;
 #endif
@@ -186,17 +186,23 @@ struct ObjectInfos {
 };
 BLI_STATIC_ASSERT_ALIGN(ObjectInfos, 16)
 
-#ifdef OBINFO_LIB
-uint receiver_light_set_get(uint object_id)
+inline uint receiver_light_set_get(ObjectInfos object_infos)
 {
-  return floatBitsToUint(drw_infos[object_id].infos.y) & 0xFFu;
+#if defined(GPU_SHADER) && !defined(DRAW_FINALIZE_SHADER)
+  return floatBitsToUint(object_infos.infos.y) & 0xFFu;
+#else
+  return object_infos.light_and_shadow_set_membership & 0xFFu;
+#endif
 }
 
-uint blocker_shadow_set_get(uint object_id)
+inline uint blocker_shadow_set_get(ObjectInfos object_infos)
 {
-  return (floatBitsToUint(drw_infos[object_id].infos.y) >> 8u) & 0xFFu;
-}
+#if defined(GPU_SHADER) && !defined(DRAW_FINALIZE_SHADER)
+  return (floatBitsToUint(object_infos.infos.y) >> 8u) & 0xFFu;
+#else
+  return (object_infos.light_and_shadow_set_membership >> 8u) & 0xFFu;
 #endif
+}
 
 struct ObjectBounds {
   /**
