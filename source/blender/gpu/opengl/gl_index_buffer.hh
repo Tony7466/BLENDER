@@ -56,8 +56,6 @@ class GLIndexBuf : public IndexBuf {
   {
     /* No-op. */
   }
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLIndexBuf")
 };
 
 static inline GLenum to_gl(GPUIndexBufType type)

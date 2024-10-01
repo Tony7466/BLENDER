@@ -56,10 +56,6 @@ class FastGrid : public Grid {
  protected:
   Cell **_cells;
   uint _cells_size;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:FastGrid")
-#endif
 };
 
 } /* namespace Freestyle */

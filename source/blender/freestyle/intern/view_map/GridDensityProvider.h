@@ -116,10 +116,6 @@ class GridDensityProvider {
   uint _cellsX, _cellsY;
   float _cellSize;
   float _cellOrigin[2];
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:GridDensityProvider")
-#endif
 };
 
 class GridDensityProviderFactory {
@@ -141,10 +137,6 @@ class GridDensityProviderFactory {
   virtual AutoPtr<GridDensityProvider> newGridDensityProvider(OccluderSource &source) = 0;
 
   virtual ~GridDensityProviderFactory() {}
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:GridDensityProviderFactory")
-#endif
 };
 
 } /* namespace Freestyle */

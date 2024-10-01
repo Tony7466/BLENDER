@@ -80,10 +80,6 @@ class BlenderStrokeRenderer : public StrokeRenderer {
                              int *visible_segments) const;
 
   vector<StrokeRep *> _strokeReps;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:BlenderStrokeRenderer")
-#endif
 };
 
 } /* namespace Freestyle */

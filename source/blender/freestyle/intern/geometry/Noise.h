@@ -59,10 +59,6 @@ class Noise {
   float g1[_NOISE_B + _NOISE_B + 2];
   /* UNUSED */
   // int start;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Noise")
-#endif
 };
 
 } /* namespace Freestyle */

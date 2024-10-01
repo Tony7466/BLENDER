@@ -79,8 +79,6 @@ class MTLIndexBuf : public IndexBuf {
 
  private:
   void strip_restart_indices() override;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLIndexBuf")
 };
 
 }  // namespace blender::gpu

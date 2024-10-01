@@ -109,8 +109,6 @@ class GLFrameBuffer : public FrameBuffer {
   void init();
   void update_attachments();
   void update_drawbuffers();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLFrameBuffer");
 };
 
 /* -------------------------------------------------------------------- */

@@ -84,8 +84,6 @@ class MTLStateManager : public StateManager {
   void mtl_stencil_set_func(eGPUStencilTest stencil_func, int ref, uint mask);
   void mtl_clip_plane_enable(uint i);
   void mtl_clip_plane_disable(uint i);
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLStateManager")
 };
 
 /* Fence synchronization primitive. */
@@ -104,8 +102,6 @@ class MTLFence : public Fence {
 
   void signal() override;
   void wait() override;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLFence")
 };
 
 }  // namespace blender::gpu

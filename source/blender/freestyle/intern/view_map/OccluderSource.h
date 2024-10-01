@@ -50,10 +50,6 @@ class OccluderSource {
   const GridHelpers::Transform &transform;
 
   void buildCachedPolygon();
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:OccluderSource")
-#endif
 };
 
 } /* namespace Freestyle */

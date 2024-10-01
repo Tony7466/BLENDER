@@ -263,10 +263,6 @@ template<class T, uint N> class Vec {
   enum {
     _dim = N,
   };
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:VecMat:Vec")
-#endif
 };
 
 //
@@ -736,10 +732,6 @@ template<class T, uint M, uint N> class Matrix {
 
  protected:
   value_type _coord[_SIZE];
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:VecMat:Matrix")
-#endif
 };
 
 #undef _SIZE

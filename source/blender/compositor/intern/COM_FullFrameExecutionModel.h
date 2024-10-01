@@ -83,10 +83,6 @@ class FullFrameExecutionModel : public ExecutionModel {
   void determine_reads(NodeOperation *output_op);
 
   void update_progress_bar();
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("COM:FullFrameExecutionModel")
-#endif
 };
 
 }  // namespace blender::compositor

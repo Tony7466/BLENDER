@@ -159,8 +159,6 @@ class MeshTopology {
   // Indexed by face contains index within face_vertex_indices_ which corresponds
   // to the element which contains first vertex of the face.
   std::vector<int> faces_first_vertex_index_;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MeshTopology");
 };
 
 }  // namespace blender::opensubdiv

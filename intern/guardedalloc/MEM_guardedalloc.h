@@ -373,63 +373,6 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name, const T &ot
   return new_object;
 }
 
-/** Allocation functions (for C++ only). */
-#  define MEM_CXX_CLASS_ALLOC_FUNCS(_id) \
-   public: \
-    void *operator new(size_t num_bytes) \
-    { \
-      return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, \
-          __STDCPP_DEFAULT_NEW_ALIGNMENT__, \
-          _id, \
-          mem_guarded::internal::AllocationType::NEW_DELETE); \
-    } \
-    void *operator new(size_t num_bytes, std::align_val_t alignment) \
-    { \
-      return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, size_t(alignment), _id, mem_guarded::internal::AllocationType::NEW_DELETE); \
-    } \
-    void operator delete(void *mem) \
-    { \
-      if (mem) { \
-        mem_guarded::internal::mem_freeN_ex(mem, \
-                                            mem_guarded::internal::AllocationType::NEW_DELETE); \
-      } \
-    } \
-    void *operator new[](size_t num_bytes) \
-    { \
-      return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, \
-          __STDCPP_DEFAULT_NEW_ALIGNMENT__, \
-          _id "[]", \
-          mem_guarded::internal::AllocationType::NEW_DELETE); \
-    } \
-    void *operator new[](size_t num_bytes, std::align_val_t alignment) \
-    { \
-      return mem_guarded::internal::mem_mallocN_aligned_ex( \
-          num_bytes, \
-          size_t(alignment), \
-          _id "[]", \
-          mem_guarded::internal::AllocationType::NEW_DELETE); \
-    } \
-    void operator delete[](void *mem) \
-    { \
-      if (mem) { \
-        mem_guarded::internal::mem_freeN_ex(mem, \
-                                            mem_guarded::internal::AllocationType::NEW_DELETE); \
-      } \
-    } \
-    void *operator new(size_t /*count*/, void *ptr) \
-    { \
-      return ptr; \
-    } \
-    /** \
-     * This is the matching delete operator to the placement-new operator above. \
-     * Both parameters \
-     * will have the same value. Without this, we get the warning C4291 on windows. \
-     */ \
-    void operator delete(void * /*ptr_to_free*/, void * /*ptr*/) {}
-
 /**
  * Construct a T that will only be destructed after leak detection is run.
  *

@@ -71,8 +71,6 @@ class TopologyRefinerImpl {
   //  - Vertex crease where OpenSubdiv will force crease for non-manifold or
   //    corner vertices.
   MeshTopology base_mesh_topology;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("TopologyRefinerImpl");
 };
 
 }  // namespace blender::opensubdiv

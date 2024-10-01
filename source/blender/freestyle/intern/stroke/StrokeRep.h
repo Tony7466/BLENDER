@@ -112,10 +112,6 @@ class StrokeVertexRep {
   Vec2r _texCoord_w_tips;
   Vec3r _color;
   float _alpha;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:StrokeVertexRep")
-#endif
 };
 
 class Strip {
@@ -155,10 +151,6 @@ class Strip {
   {
     return _vertices;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Strip")
-#endif
 };
 
 class StrokeRep {
@@ -253,10 +245,6 @@ class StrokeRep {
   {
     _mtex[idx] = mtex_ptr;
   }
-#endif
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:StrokeRep")
 #endif
 };
 

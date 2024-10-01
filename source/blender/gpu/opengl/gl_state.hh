@@ -101,8 +101,6 @@ class GLStateManager : public StateManager {
 
   void texture_bind_apply();
   void image_bind_apply();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLStateManager")
 };
 
 /* Fence synchronization primitive. */
@@ -116,8 +114,6 @@ class GLFence : public Fence {
 
   void signal() override;
   void wait() override;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLFence")
 };
 
 static inline GLbitfield to_gl(eGPUBarrier barrier_bits)

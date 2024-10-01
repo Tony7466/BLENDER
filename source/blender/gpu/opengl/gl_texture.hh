@@ -123,8 +123,6 @@ class GLTexture : public Texture {
   void update_sub_direct_state_access(
       int mip, int offset[3], int extent[3], GLenum gl_format, GLenum gl_type, const void *data);
   FrameBuffer *framebuffer_get();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLTexture")
 };
 
 class GLPixelBuffer : public PixelBuffer {
@@ -139,8 +137,6 @@ class GLPixelBuffer : public PixelBuffer {
   void unmap() override;
   int64_t get_native_handle() override;
   size_t get_size() override;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLPixelBuffer")
 };
 
 inline GLenum to_gl_internal_format(eGPUTextureFormat format)

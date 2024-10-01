@@ -259,8 +259,6 @@ class MTLFrameBuffer : public FrameBuffer {
  private:
   /* Clears a render target by force-opening a render pass. */
   void force_clear();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLFrameBuffer");
 };
 
 }  // namespace blender::gpu

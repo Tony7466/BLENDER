@@ -96,10 +96,6 @@ struct CryptomatteHash {
 struct CryptomatteLayer {
   blender::Map<std::string, CryptomatteHash> hashes;
 
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("cryptomatte:CryptomatteLayer")
-#endif
-
   static std::unique_ptr<CryptomatteLayer> read_from_manifest(blender::StringRefNull manifest);
   uint32_t add_ID(const ID &id);
   void add_hash(blender::StringRef name, CryptomatteHash cryptomatte_hash);

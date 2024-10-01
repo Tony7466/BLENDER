@@ -32,8 +32,6 @@ extern "C" uchar BLI_noise_hash_uchar_512[512]; /* `noise.cc` */
  */
 struct RNG {
   blender::RandomNumberGenerator rng;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("RNG")
 };
 
 RNG *BLI_rng_new(uint seed)

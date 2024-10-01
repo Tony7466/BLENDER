@@ -185,8 +185,6 @@ struct Depsgraph {
   Vector<std::function<void()>> sync_writeback_callbacks;
   /** Needs to be locked when adding a writeback callback during evaluation. */
   std::mutex sync_writeback_callbacks_mutex;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("Depsgraph");
 };
 
 }  // namespace blender::deg

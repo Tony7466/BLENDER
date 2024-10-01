@@ -32,10 +32,6 @@ class PseudoNoise {
  protected:
   static const uint NB_VALUE_NOISE = 512;
   static real _values[NB_VALUE_NOISE];
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:PseudoNoise")
-#endif
 };
 
 } /* namespace Freestyle */

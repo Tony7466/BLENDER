@@ -127,8 +127,6 @@ class MTLBatch : public Batch {
   id<MTLBuffer> get_emulated_toplogy_buffer(GPUPrimType &in_out_prim_type, uint32_t &v_count);
 
   void prepare_vertex_descriptor_and_bindings(MTLVertBuf **buffers, int &num_buffers);
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLBatch");
 };
 
 }  // namespace blender::gpu

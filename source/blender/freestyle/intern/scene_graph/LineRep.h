@@ -129,10 +129,6 @@ class LineRep : public Rep {
   LINES_STYLE _Style;
   vector<Vec3r> _vertices;
   float _width;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:LineRep")
-#endif
 };
 
 } /* namespace Freestyle */

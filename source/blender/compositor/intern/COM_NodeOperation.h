@@ -125,10 +125,6 @@ class NodeOperationInput {
    * \return Whether canvas area could be determined.
    */
   bool determine_canvas(const rcti &preferred_area, rcti &r_area);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("COM:NodeOperation")
-#endif
 };
 
 class NodeOperationOutput {
@@ -154,10 +150,6 @@ class NodeOperationOutput {
   }
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("COM:NodeOperation")
-#endif
 };
 
 struct NodeOperationFlags {
@@ -564,10 +556,6 @@ class NodeOperation {
 
   /* allow the DebugInfo class to look at internals */
   friend class DebugInfo;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("COM:NodeOperation")
-#endif
 };
 
 std::ostream &operator<<(std::ostream &os, const NodeOperationFlags &node_operation_flags);

@@ -101,10 +101,6 @@ class Interface0D {
 
   /** Cast the Interface0D in TVertex if it can be. */
   virtual TVertex *castToTVertex();
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Interface0D")
-#endif
 };
 
 //

@@ -15,7 +15,6 @@ struct OpenSubdiv_EvaluatorCacheImpl {
   ~OpenSubdiv_EvaluatorCacheImpl();
 
   void *eval_cache;
-  MEM_CXX_CLASS_ALLOC_FUNCS("OpenSubdiv_EvaluatorCacheImpl");
 };
 
 OpenSubdiv_EvaluatorCacheImpl *openSubdiv_createEvaluatorCacheInternal(

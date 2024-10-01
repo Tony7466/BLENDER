@@ -74,10 +74,6 @@ class StrokeShader {
    *    modifies the Stroke's attribute's values such as Color, Thickness, Geometry...)
    */
   virtual int shade(Stroke &ioStroke) const;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:StrokeShader")
-#endif
 };
 
 } /* namespace Freestyle */

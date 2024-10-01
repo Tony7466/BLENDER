@@ -472,8 +472,6 @@ class MTLTexture : public Texture {
 
   /* fullscreen blit utilities. */
   GPUShader *fullscreen_blit_sh_get();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLTexture")
 };
 
 class MTLPixelBuffer : public PixelBuffer {
@@ -490,8 +488,6 @@ class MTLPixelBuffer : public PixelBuffer {
   size_t get_size() override;
 
   id<MTLBuffer> get_metal_buffer();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLPixelBuffer")
 };
 
 /* Utility */

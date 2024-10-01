@@ -88,7 +88,6 @@ class MTLStorageBuf : public StorageBuf {
   }
 
  private:
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLStorageBuf");
 };
 
 }  // namespace gpu

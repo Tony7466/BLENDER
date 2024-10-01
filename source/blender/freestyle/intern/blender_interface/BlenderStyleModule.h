@@ -37,10 +37,6 @@ class BufferedStyleModule : public StyleModule {
 
  private:
   string _buffer;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:BufferedStyleModule")
-#endif
 };
 
 class BlenderStyleModule : public StyleModule {
@@ -63,10 +59,6 @@ class BlenderStyleModule : public StyleModule {
 
  private:
   struct Text *_text;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:BlenderStyleModule")
-#endif
 };
 
 } /* namespace Freestyle */

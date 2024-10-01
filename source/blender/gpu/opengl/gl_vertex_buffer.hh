@@ -53,8 +53,6 @@ class GLVertBuf : public VertBuf {
 
  private:
   bool is_active() const;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLVertBuf");
 };
 
 static inline GLenum to_gl(GPUUsageType type)

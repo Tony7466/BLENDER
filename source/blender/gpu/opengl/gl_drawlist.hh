@@ -62,8 +62,6 @@ class GLDrawList : public DrawList {
 
   /** To free the buffer_id_. */
   GLContext *context_;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLDrawList");
 };
 
 }  // namespace gpu

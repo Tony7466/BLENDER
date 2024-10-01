@@ -49,8 +49,6 @@ class GLStorageBuf : public StorageBuf {
 
  private:
   void init();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLStorageBuf");
 };
 
 }  // namespace gpu

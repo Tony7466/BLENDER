@@ -54,8 +54,6 @@ class MTLUniformBuf : public UniformBuf {
   {
     return name_;
   }
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLUniformBuf");
 };
 
 }  // namespace blender::gpu

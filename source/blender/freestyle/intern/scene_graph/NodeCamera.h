@@ -65,10 +65,6 @@ class NodeCamera : public Node {
   double projection_matrix_[16];
 
   CameraType camera_type_;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:NodeCamera")
-#endif
 };
 
 class NodeOrthographicCamera : public NodeCamera {
@@ -131,10 +127,6 @@ class NodeOrthographicCamera : public NodeCamera {
   double top_;
   double zNear_;
   double zFar_;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:NodeOrthographicCamera")
-#endif
 };
 
 class NodePerspectiveCamera : public NodeCamera {
@@ -195,10 +187,6 @@ class NodePerspectiveCamera : public NodeCamera {
    */
   NodePerspectiveCamera(
       double left, double right, double bottom, double top, double zNear, double zFar);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:NodePerspectiveCamera")
-#endif
 };
 
 } /* namespace Freestyle */

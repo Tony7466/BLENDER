@@ -142,8 +142,6 @@ class GLContext : public Context {
  private:
   static void orphans_add(Vector<GLuint> &orphan_list, std::mutex &list_mutex, GLuint id);
   void orphans_clear();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLContext")
 };
 
 }  // namespace gpu

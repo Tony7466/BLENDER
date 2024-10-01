@@ -211,10 +211,6 @@ class WVertex {
     // virtual WOEdge **operator->();
    protected:
     virtual void increment();
-
-#ifdef WITH_CXX_GUARDEDALLOC
-    MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WVertex:incoming_edge_iterator")
-#endif
   };
 
   class face_iterator {
@@ -282,10 +278,6 @@ class WVertex {
     {
       ++_edge_it;
     }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-    MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WVertex:face_iterator")
-#endif
   };
 
  public:
@@ -302,10 +294,6 @@ class WVertex {
   {
     return face_iterator(incoming_edges_end());
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WVertex")
-#endif
 };
 
 /**********************************
@@ -483,10 +471,6 @@ class WOEdge {
   {
     userdata = nullptr;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WOEdge")
-#endif
 };
 
 /**********************************
@@ -672,10 +656,6 @@ class WEdge {
   {
     userdata = nullptr;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WEdge")
-#endif
 };
 
 /**********************************
@@ -971,10 +951,6 @@ class WFace {
   {
     userdata = nullptr;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WFace")
-#endif
 };
 
 /**********************************
@@ -1283,10 +1259,6 @@ class WShape {
                           vector<bool> &iFaceEdgeMarksList,
                           uint iMaterialIndex,
                           WFace *face);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WShape")
-#endif
 };
 
 /**********************************
@@ -1337,10 +1309,6 @@ class WingedEdge {
  private:
   vector<WShape *> _wshapes;
   uint _numFaces;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WingedEdge")
-#endif
 };
 
 /*

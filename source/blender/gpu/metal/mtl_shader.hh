@@ -404,8 +404,6 @@ class MTLShader : public Shader {
   /* Generate MSL shader from GLSL source. */
   bool generate_msl_from_glsl(const shader::ShaderCreateInfo *info);
   bool generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *info);
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLShader");
 };
 
 class MTLParallelShaderCompiler {

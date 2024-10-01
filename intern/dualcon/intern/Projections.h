@@ -105,10 +105,6 @@ class CubeTriangleIsect {
   int isIntersectingPrimary(int edgeInd) const;
 
   float getIntersectionPrimary(int edgeInd) const;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("DUALCON:CubeTriangleIsect")
-#endif
 };
 
 #endif /* __PROJECTIONS_H__ */

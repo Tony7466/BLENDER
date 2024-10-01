@@ -333,10 +333,6 @@ class CurvePoint : public Interface0D {
   real curvatureFredo() const;
   Vec2d directionFredo() const;
 #endif
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:CurvePoint")
-#endif
 };
 
 /**********************************/
@@ -582,10 +578,6 @@ class Curve : public Interface1D {
    * temporary CurvePoint is created.
    */
   virtual Interface0DIterator pointsEnd(float t = 0.0f);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Curve")
-#endif
 };
 
 } /* namespace Freestyle */

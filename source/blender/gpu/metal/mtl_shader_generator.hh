@@ -557,8 +557,6 @@ class MSLGeneratorInterface {
 
   /* Fetch combined shader source header. */
   char *msl_patch_default_get();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MSLGeneratorInterface");
 };
 
 inline const char *get_stage_class_name(ShaderStage stage)

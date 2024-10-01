@@ -466,10 +466,6 @@ struct ViewOpsData_Utility : ViewOpsData {
 
     WM_keyconfig_update_suppress_end();
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("ViewOpsData_Utility")
-#endif
 };
 
 static bool view3d_navigation_poll_impl(bContext *C, const char viewlock)

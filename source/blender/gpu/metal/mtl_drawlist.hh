@@ -53,8 +53,6 @@ class MTLDrawList : public DrawList {
 
  private:
   void init();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLDrawList");
 };
 
 }  // namespace blender::gpu

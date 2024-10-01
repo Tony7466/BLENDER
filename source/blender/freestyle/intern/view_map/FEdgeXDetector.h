@@ -222,10 +222,6 @@ class FEdgeXDetector {
 
   ProgressBar *_pProgressBar;
   RenderMonitor *_pRenderMonitor;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:FEdgeXDetector")
-#endif
 };
 
 } /* namespace Freestyle */

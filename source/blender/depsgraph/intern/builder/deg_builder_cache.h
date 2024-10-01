@@ -37,8 +37,6 @@ class AnimatedPropertyID {
   /* Corresponds to PointerRNA.data. */
   const void *data;
   const PropertyRNA *property_rna;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("AnimatedPropertyID");
 };
 
 class AnimatedPropertyStorage {
@@ -61,8 +59,6 @@ class AnimatedPropertyStorage {
   /* indexed by PointerRNA.data. */
   Set<const void *> animated_objects_set;
   Set<AnimatedPropertyID> animated_properties_set;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("AnimatedPropertyStorage");
 };
 
 /* Cached data which can be re-used by multiple builders. */
@@ -97,8 +93,6 @@ class DepsgraphBuilderCache {
   }
 
   Map<const ID *, AnimatedPropertyStorage *> animated_property_storage_map_;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("DepsgraphBuilderCache");
 };
 
 }  // namespace blender::deg

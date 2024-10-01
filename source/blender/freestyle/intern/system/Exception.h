@@ -42,10 +42,6 @@ class Exception {
 
  private:
   static exception_type _exception;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Exception")
-#endif
 };
 
 } /* namespace Freestyle */

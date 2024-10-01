@@ -184,8 +184,6 @@ class MTLBuffer {
 
   /* Safety check to ensure buffers are not used after free. */
   void debug_ensure_used();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLBuffer");
 };
 
 /* View into part of an MTLBuffer. */
@@ -342,8 +340,6 @@ class MTLSafeFreeList {
       }
     }
   }
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLSafeFreeList");
 };
 
 /* MTLBuffer pools. */
@@ -514,8 +510,6 @@ class MTLScratchBufferManager {
    * This call will perform a partial flush of the buffer starting from
    * the last offset the data was flushed from, to the current offset. */
   void flush_active_scratch_buffer();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLBufferPool");
 };
 
 /** \} */

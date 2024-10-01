@@ -310,8 +310,6 @@ class MTLShaderInterface : public ShaderInterface {
   id<MTLArgumentEncoder> find_argument_encoder(int buffer_index) const;
 
   void insert_argument_encoder(int buffer_index, id encoder);
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLShaderInterface");
 };
 
 }  // namespace blender::gpu

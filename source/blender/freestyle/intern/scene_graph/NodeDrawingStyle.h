@@ -82,10 +82,6 @@ class NodeDrawingStyle : public NodeGroup {
 
  private:
   DrawingStyle _DrawingStyle;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:NodeDrawingStyle")
-#endif
 };
 
 } /* namespace Freestyle */

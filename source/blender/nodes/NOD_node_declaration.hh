@@ -518,8 +518,6 @@ class NodeDeclaration {
   {
     return anonymous_attribute_relations_.get();
   }
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("NodeDeclaration")
 };
 
 class NodeDeclarationBuilder {

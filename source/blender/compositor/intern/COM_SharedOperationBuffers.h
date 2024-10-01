@@ -80,10 +80,6 @@ class SharedOperationBuffers {
 
  private:
   BufferData &get_buffer_data(NodeOperation *op);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("COM:SharedOperationBuffers")
-#endif
 };
 
 }  // namespace blender::compositor

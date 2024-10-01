@@ -302,10 +302,6 @@ class FrsMaterial {
   float Emission[4];
   float Shininess;
   int Priority;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:FrsMaterial")
-#endif
 };
 
 FrsMaterial::FrsMaterial()

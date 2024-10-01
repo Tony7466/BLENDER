@@ -153,10 +153,6 @@ template<class Point> class Polygon {
   Point _min;
   Point _max;
   uint _id;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Geometry:Polygon")
-#endif
 };
 
 //

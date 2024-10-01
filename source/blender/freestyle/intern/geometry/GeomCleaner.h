@@ -139,10 +139,6 @@ class GeomCleaner {
                                       float **oVertices,
                                       uint *oVSize,
                                       uint **oIndices);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:GeomCleaner")
-#endif
 };
 
 /** Binary operators */
@@ -224,10 +220,6 @@ class IndexedVertex {
   {
     return (_Vector == v._Vector);
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:IndexedVertex")
-#endif
 };
 
 #if 0

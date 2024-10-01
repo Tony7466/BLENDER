@@ -211,10 +211,6 @@ class orientedViewEdgeIterator : public Iterator {
     }
     return 0;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:orientedViewEdgeIterator")
-#endif
 };
 
 }  // namespace ViewVertexInternal
@@ -386,10 +382,6 @@ class SVertexIterator : public Interface0DIteratorNested {
   FEdge *_previous_edge;
   FEdge *_next_edge;
   float _t;  // curvilinear abscissa
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:SVertexIterator")
-#endif
 };
 
 //
@@ -560,10 +552,6 @@ class ViewEdgeIterator : public Iterator {
   bool _orientation;
   ViewEdge *_edge;
   ViewEdge *_begin;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewEdgeIterator")
-#endif
 };
 
 }  // end of namespace ViewEdgeInternal

@@ -103,10 +103,6 @@ template<class T> class UnaryFunction1D {
 
  protected:
   IntegrationType _integration;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:UnaryFunction1D")
-#endif
 };
 
 class UnaryFunction1D_void {
@@ -148,10 +144,6 @@ class UnaryFunction1D_void {
 
  protected:
   IntegrationType _integration;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:UnaryFunction1D_void")
-#endif
 };
 
 //

@@ -115,10 +115,6 @@ class SilhouetteGeomEngine {
 
   /** From camera to image */
   static Vec3r CameraToImage(const Vec3r &M);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:SilhouetteGeomEngine")
-#endif
 };
 
 } /* namespace Freestyle */

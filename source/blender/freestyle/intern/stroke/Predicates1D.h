@@ -61,10 +61,6 @@ class UnaryPredicate1D {
    *  \return true if the condition is satisfied, false otherwise.
    */
   virtual int operator()(Interface1D &inter);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:UnaryPredicate1D")
-#endif
 };
 
 //
@@ -106,10 +102,6 @@ class BinaryPredicate1D {
    *  \return true or false.
    */
   virtual int operator()(Interface1D &inter1, Interface1D &inter2);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:BinaryPredicate1D")
-#endif
 };
 
 //

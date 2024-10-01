@@ -112,8 +112,6 @@ class GLBatch : public Batch {
   {
     return static_cast<GLVertBuf *>(inst[index]);
   }
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLBatch");
 };
 
 }  // namespace gpu

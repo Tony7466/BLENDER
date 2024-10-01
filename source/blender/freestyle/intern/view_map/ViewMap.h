@@ -220,10 +220,6 @@ class ViewMap {
 
   /* Clean temporary FEdges created by chaining */
   virtual void Clean();
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewMap")
-#endif
 };
 
 /**********************************/
@@ -353,10 +349,6 @@ class ViewVertex : public Interface0D {
 
   /** Returns an orientedViewEdgeIterator pointing to the ViewEdge given as argument. */
   virtual ViewVertexInternal::orientedViewEdgeIterator edgesIterator(ViewEdge *iEdge) = 0;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewVertex")
-#endif
 };
 
 /**********************************/
@@ -637,10 +629,6 @@ class TVertex : public ViewVertex {
 
   /** Returns an orientedViewEdgeIterator pointing to the ViewEdge given as argument. */
   virtual ViewVertexInternal::orientedViewEdgeIterator edgesIterator(ViewEdge *iEdge);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:TVertex")
-#endif
 };
 
 /**********************************/
@@ -856,10 +844,6 @@ class NonTVertex : public ViewVertex {
 
   /** Returns an orientedViewEdgeIterator pointing to the ViewEdge given as argument. */
   virtual ViewVertexInternal::orientedViewEdgeIterator edgesIterator(ViewEdge *iEdge);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:NonTVertex")
-#endif
 };
 
 /**********************************/
@@ -1377,10 +1361,6 @@ class ViewEdge : public Interface1D {
    *    the sampling value.
    */
   virtual Interface0DIterator pointsEnd(float t = 0.0f);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewEdge")
-#endif
 };
 
 /**********************************/
@@ -1618,10 +1598,6 @@ class ViewShape {
 
   /* removes the view vertex iViewVertex in the View Shape. */
   void RemoveVertex(ViewVertex *iViewVertex);
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:ViewShape")
-#endif
 };
 
 /*

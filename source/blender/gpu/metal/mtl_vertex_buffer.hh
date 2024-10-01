@@ -72,8 +72,6 @@ class MTLVertBuf : public VertBuf {
   void duplicate_data(VertBuf *dst) override;
   void bind_as_ssbo(uint binding) override;
   void bind_as_texture(uint binding) override;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("MTLVertBuf");
 };
 
 }  // namespace blender::gpu

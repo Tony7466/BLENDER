@@ -31,18 +31,10 @@ typedef unsigned long ulong;
 typedef unsigned char uchar;
 #endif
 
-#if defined(WITH_CXX_GUARDEDALLOC) && defined(__cplusplus)
-#  define GHOST_DECLARE_HANDLE(name) \
-    typedef struct name##__ { \
-      int unused; \
-      MEM_CXX_CLASS_ALLOC_FUNCS(#name) \
-    } *name
-#else
-#  define GHOST_DECLARE_HANDLE(name) \
-    typedef struct name##__ { \
-      int unused; \
-    } *name
-#endif
+#define GHOST_DECLARE_HANDLE(name) \
+  typedef struct name##__ { \
+    int unused; \
+  } *name
 
 /**
  * Creates a "handle" for a C++ GHOST object.

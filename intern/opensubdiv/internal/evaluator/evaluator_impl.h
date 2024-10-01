@@ -192,8 +192,6 @@ struct OpenSubdiv_EvaluatorImpl {
   blender::opensubdiv::EvalOutputAPI *eval_output;
   const blender::opensubdiv::PatchMap *patch_map;
   const OpenSubdiv::Far::PatchTable *patch_table;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("OpenSubdiv_EvaluatorImpl");
 };
 
 OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(

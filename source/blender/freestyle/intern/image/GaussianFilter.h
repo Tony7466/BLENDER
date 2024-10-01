@@ -89,10 +89,6 @@ class GaussianFilter {
 
  protected:
   void computeMask();
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:GaussianFilter")
-#endif
 };
 
 /*

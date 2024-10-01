@@ -37,8 +37,6 @@ class GLUniformBuf : public UniformBuf {
 
  private:
   void init();
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLUniformBuf");
 };
 
 }  // namespace gpu

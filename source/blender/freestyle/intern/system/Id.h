@@ -111,10 +111,6 @@ class Id {
  private:
   id_type _first;
   id_type _second;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Id")
-#endif
 };
 
 // stream operator

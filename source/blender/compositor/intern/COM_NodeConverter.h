@@ -103,10 +103,6 @@ class NodeConverter {
  private:
   /** The internal builder for storing the results of the graph construction. */
   NodeOperationBuilder *builder_;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("COM:NodeCompiler")
-#endif
 };
 
 }  // namespace blender::compositor

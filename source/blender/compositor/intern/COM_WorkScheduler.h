@@ -61,10 +61,6 @@ struct WorkScheduler {
   static int get_num_cpu_threads();
 
   static int current_thread_id();
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("COM:WorkScheduler")
-#endif
 };
 
 }  // namespace blender::compositor

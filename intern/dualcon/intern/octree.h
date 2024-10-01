@@ -1389,10 +1389,6 @@ class Octree {
     removeInternal(num - 1, par);
     return npar;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("DUALCON:Octree")
-#endif
 };
 
 #endif /* __OCTREE_H__ */

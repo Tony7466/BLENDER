@@ -39,8 +39,6 @@ class GLShaderInterface : public ShaderInterface {
 
   void ref_add(GLVaoCache *ref);
   void ref_remove(GLVaoCache *ref);
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("GLShaderInterface");
 };
 
 }  // namespace blender::gpu

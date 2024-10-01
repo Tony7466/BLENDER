@@ -52,10 +52,6 @@ class BaseObject {
 
  private:
   uint _ref_counter;
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:BaseObject")
-#endif
 };
 
 } /* namespace Freestyle */

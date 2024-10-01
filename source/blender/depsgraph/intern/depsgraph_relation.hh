@@ -47,8 +47,6 @@ struct Relation {
   /* relationship attributes */
   const char *name; /* label for debugging */
   int flag;         /* Bitmask of RelationFlag) */
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("Relation");
 };
 
 }  // namespace blender::deg

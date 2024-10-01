@@ -88,8 +88,6 @@ struct FallbackTransform {
   float scale;
   /* Exponent transform. */
   float exponent;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("FallbackTransform");
 };
 
 struct FallbackProcessor {
@@ -111,8 +109,6 @@ struct FallbackProcessor {
   }
 
   FallbackTransform transform;
-
-  MEM_CXX_CLASS_ALLOC_FUNCS("FallbackProcessor");
 };
 
 OCIO_ConstConfigRcPtr *FallbackImpl::getCurrentConfig()

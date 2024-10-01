@@ -51,10 +51,6 @@ class Iterator {
     cerr << "Warning:  isEnd() not implemented" << endl;
     return false;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Iterator")
-#endif
 };
 
 } /* namespace Freestyle */

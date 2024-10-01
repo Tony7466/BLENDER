@@ -89,10 +89,6 @@ class Chain : public Curve {
   {
     return _splittingId;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:Chain")
-#endif
 };
 
 } /* namespace Freestyle */

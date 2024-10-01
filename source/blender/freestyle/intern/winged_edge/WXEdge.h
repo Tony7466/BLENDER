@@ -77,10 +77,6 @@ class WXVertex : public WVertex {
   {
     return _curvatures;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WXVertex")
-#endif
 };
 
 /**********************************
@@ -181,10 +177,6 @@ class WXEdge : public WEdge {
   {
     _order = i;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WXEdge")
-#endif
 };
 
 /**********************************
@@ -292,10 +284,6 @@ class WXSmoothEdge {
   {
     _config = iConf;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WXSmoothEdge")
-#endif
 };
 
 /* Class to store a value per vertex and a smooth edge.
@@ -474,9 +462,6 @@ class WXFaceLayer {
     }
   }
 
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WXFaceLayer")
-#endif
 };  // namespace Freestyle
 
 class WXFace : public WFace {
@@ -687,10 +672,6 @@ class WXFace : public WFace {
       (*wxf)->userdata = nullptr;
     }
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WXFace")
-#endif
 };
 
 /**********************************
@@ -799,10 +780,6 @@ class WXShape : public WShape {
     }
   }
   /** accessors */
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:WXShape")
-#endif
 };
 
 /*

@@ -43,10 +43,6 @@ class BezierCurveSegment {
   {
     return _Vertices;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:BezierCurveSegment")
-#endif
 };
 
 class BezierCurve {
@@ -71,10 +67,6 @@ class BezierCurve {
   {
     return _Segments;
   }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("Freestyle:BezierCurve")
-#endif
 };
 
 } /* namespace Freestyle */
