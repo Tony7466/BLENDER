@@ -1254,7 +1254,7 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       const float radius_offset = math::safe_divide(
           float(thickness_px) * LEGACY_RADIUS_CONVERSION_FACTOR, uniform_object_scale);
 
-      radius_offsets.span[layer_idx] = radius_offset;
+      radius_offsets.span[layer_idx] = radius_offset * src_object_data.pixfactor;
 
       if (has_thickness_adjustment_animation) {
         animdata_thickness_transfer.root_path_dst = fmt::format("data.layers[\"{}\"]",
