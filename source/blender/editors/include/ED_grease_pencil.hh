@@ -55,7 +55,7 @@ enum {
  * \{ */
 
 /**
- * Join objects called from OBJECT_OT_join.
+ * Join selected objects. Called from #OBJECT_OT_join.
  */
 int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op);
 
