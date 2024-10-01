@@ -47,9 +47,10 @@ void SEQ_offset_animdata(Scene *scene, Sequence *seq, int ofs)
     return;
   }
 
-  Vector<FCurve *> fcurves = animrig::fcurves_in_listbase_filtered(
-      scene->adt->action->curves,
-      [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
+  Vector<FCurve *> fcurves = animrig::fcurves_in_action_slot_filtered(
+      scene->adt->action, scene->adt->slot_handle, [&](const FCurve &fcurve) {
+        return SEQ_fcurve_matches(*seq, fcurve);
+      });
 
   for (FCurve *fcu : fcurves) {
     uint i;
