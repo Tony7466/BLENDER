@@ -72,8 +72,6 @@
 #include "UI_resources.hh"
 #include <limits>
 
-#include <iostream>
-
 namespace blender::ed::greasepencil {
 
 /* -------------------------------------------------------------------- */
@@ -3734,7 +3732,7 @@ void ED_operatortypes_grease_pencil_edit()
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Joint Objects Operator
+/** \name Join Objects Operator
  * \{ */
 
 namespace blender::ed::greasepencil {
