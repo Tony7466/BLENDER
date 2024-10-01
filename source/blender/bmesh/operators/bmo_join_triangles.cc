@@ -133,7 +133,7 @@ static float quad_calc_error(const float v1[3],
  * \param edge     An edge to be merged.  It must be manifold and have triangles on either side.
  * \param r_v_quad An array of vertices to return the corners.
  */
-static void edge_to_quad_verts(const BMEdge *edge, const BMVert *r_v_quad[4])
+static void bm_edge_to_quad_verts(const BMEdge *edge, const BMVert *r_v_quad[4])
 {
   BLI_assert(edge);
   BLI_assert(BM_edge_is_manifold(edge));
@@ -173,7 +173,7 @@ struct DelimitData {
 };
 
 /** Determines if the loop customdata is contiguous. */
-static bool edge_is_contiguous_loop_cd_all(const BMEdge *e, const DelimitData_CD *delimit_data)
+static bool bm_edge_is_contiguous_loop_cd_all(const BMEdge *e, const DelimitData_CD *delimit_data)
 {
   int cd_offset;
   for (cd_offset = delimit_data->cd_offset; cd_offset < delimit_data->cd_offset_end;
@@ -188,7 +188,9 @@ static bool edge_is_contiguous_loop_cd_all(const BMEdge *e, const DelimitData_CD
 }
 
 /** Looks up delimit data from custom data.  Used to delimit by color or UV. */
-static bool edge_delimit_cdata(CustomData *ldata, eCustomDataType type, DelimitData_CD *r_delim_cd)
+static bool bm_edge_delimit_cdata(CustomData *ldata,
+                                  eCustomDataType type,
+                                  DelimitData_CD *r_delim_cd)
 {
   const int layer_len = CustomData_number_of_layers(ldata, type);
   r_delim_cd->cd_type = type;
@@ -225,7 +227,6 @@ static DelimitData configure_delimit_data(BMesh *bm, BMOperator *op)
   float angle_shape = BMO_slot_float_get(op->slots_in, "angle_shape_threshold");
   if (angle_shape < DEG2RADF(180.0f)) {
     delimit_data.angle_shape = angle_shape;
-    delimit_data.angle_shape = angle_shape;
     delimit_data.do_angle_shape = true;
   }
   else {
@@ -233,14 +234,15 @@ static DelimitData configure_delimit_data(BMesh *bm, BMOperator *op)
   }
 
   if (BMO_slot_bool_get(op->slots_in, "cmp_uvs") &&
-      edge_delimit_cdata(&bm->ldata, CD_PROP_FLOAT2, &delimit_data.cdata[delimit_data.cdata_len]))
+      bm_edge_delimit_cdata(
+          &bm->ldata, CD_PROP_FLOAT2, &delimit_data.cdata[delimit_data.cdata_len]))
   {
     delimit_data.cdata_len += 1;
   }
 
   delimit_data.cdata[delimit_data.cdata_len].cd_offset = -1;
   if (BMO_slot_bool_get(op->slots_in, "cmp_vcols") &&
-      edge_delimit_cdata(
+      bm_edge_delimit_cdata(
           &bm->ldata, CD_PROP_BYTE_COLOR, &delimit_data.cdata[delimit_data.cdata_len]))
   {
     delimit_data.cdata_len += 1;
@@ -254,7 +256,7 @@ static DelimitData configure_delimit_data(BMesh *bm, BMOperator *op)
  * \param delimit_data the delimit configuration
  * \return             true, if the edge is a delimit edge.
  */
-static bool edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
+static bool bm_edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
 {
   BMFace *f_a = e->l->f, *f_b = e->l->radial_next->f;
 
@@ -283,7 +285,7 @@ static bool edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
 
   if (delimit_data->do_angle_shape) {
     const BMVert *verts[4];
-    edge_to_quad_verts(e, verts);
+    bm_edge_to_quad_verts(e, verts);
 
     /* if we're checking the shape at all, a flipped face is out of the question */
     if (is_quad_flip_v3(verts[0]->co, verts[1]->co, verts[2]->co, verts[3]->co)) {
@@ -319,7 +321,7 @@ static bool edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
   if (delimit_data->cdata_len) {
     int i;
     for (i = 0; i < delimit_data->cdata_len; i++) {
-      if (!edge_is_contiguous_loop_cd_all(e, &delimit_data->cdata[i])) {
+      if (!bm_edge_is_contiguous_loop_cd_all(e, &delimit_data->cdata[i])) {
         return true;
       }
     }
@@ -398,11 +400,11 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
     /* If the edge is manifold, has a tagged input tri on both sides, and is NOT delmit ...
      * then it's a candidate to merge.*/
     if (BM_edge_face_pair(edge, &f_a, &f_b) && (f_a->head.hflag & BM_ELEM_TAG) &&
-        (f_b->head.hflag & BM_ELEM_TAG) && !edge_is_delimit(edge, &delimit_data))
+        (f_b->head.hflag & BM_ELEM_TAG) && !bm_edge_is_delimit(edge, &delimit_data))
     {
       /* Compute the error that would result from a merge */
       const BMVert *verts[4];
-      edge_to_quad_verts(edge, verts);
+      bm_edge_to_quad_verts(edge, verts);
       float merge_error = quad_calc_error(verts[0]->co, verts[1]->co, verts[2]->co, verts[3]->co);
 
       /* Record the candidate merge in the heap. */
