@@ -1399,6 +1399,12 @@ Vector<FCurve *> fcurves_in_action_slot_filtered(
     bAction *act, slot_handle_t slot_handle, FunctionRef<bool(const FCurve &fcurve)> predicate);
 
 /**
+ * Return the F-Curves in the given span for which `predicate` returns true.
+ */
+Vector<FCurve *> fcurves_in_span_filtered(Span<FCurve *> fcurves,
+                                          FunctionRef<bool(const FCurve &fcurve)> predicate);
+
+/**
  * Return the F-Curves in the given listbase for which `predicate` returns
  * true.
  */
