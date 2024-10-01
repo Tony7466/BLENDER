@@ -22,16 +22,22 @@
 #include "BLI_utildefines.h"
 #include "BLT_translation.hh"
 
+#include "DNA_anim_types.h"
 #include "DNA_array_utils.hh"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
+#include "DNA_view3d_types.h"
+#include "DNA_windowmanager_types.h"
 
+#include "BKE_anim_data.hh"
+#include "BKE_animsys.h"
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_curves_utils.hh"
 #include "BKE_deform.hh"
+#include "BKE_fcurve_driver.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.hh"
@@ -41,8 +47,6 @@
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
-#include "DNA_view3d_types.h"
-#include "DNA_windowmanager_types.h"
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
@@ -67,6 +71,8 @@
 
 #include "UI_resources.hh"
 #include <limits>
+
+#include <iostream>
 
 namespace blender::ed::greasepencil {
 
@@ -3828,7 +3834,9 @@ static bke::greasepencil::LayerGroup &copy_layer_group_recursive(
   return group_dst;
 }
 
-static Array<int> add_materials_to_map(const GreasePencil &grease_pencil, VectorSet<Material *> &materials) {
+static Array<int> add_materials_to_map(const GreasePencil &grease_pencil,
+                                       VectorSet<Material *> &materials)
+{
   Array<int> material_index_map(grease_pencil.material_array_num);
   for (const int i : material_index_map.index_range()) {
     Material *material = grease_pencil.material_array[i];
@@ -3837,13 +3845,14 @@ static Array<int> add_materials_to_map(const GreasePencil &grease_pencil, Vector
   return material_index_map;
 }
 
-static void remap_material_indices(bke::greasepencil::Drawing &drawing, const Span<int> material_index_map)
+static void remap_material_indices(bke::greasepencil::Drawing &drawing,
+                                   const Span<int> material_index_map)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   /* Validate material indices and add missing materials. */
-  bke::SpanAttributeWriter<int> material_writer =
-      attributes.lookup_or_add_for_write_span<int>("material_index", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<int> material_writer = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", bke::AttrDomain::Curve);
   threading::parallel_for(curves.curves_range(), 1024, [&](const IndexRange range) {
     for (const int curve_i : range) {
       material_writer.span[curve_i] = material_index_map[material_writer.span[curve_i]];
@@ -3852,7 +3861,10 @@ static void remap_material_indices(bke::greasepencil::Drawing &drawing, const Sp
   material_writer.finish();
 }
 
-static Map<StringRefNull, StringRefNull> add_vertex_groups(Object &object, GreasePencil &grease_pencil, const ListBase &vertex_group_names){
+static Map<StringRefNull, StringRefNull> add_vertex_groups(Object &object,
+                                                           GreasePencil &grease_pencil,
+                                                           const ListBase &vertex_group_names)
+{
   Map<StringRefNull, StringRefNull> vertex_group_map;
   LISTBASE_FOREACH (bDeformGroup *, dg, &vertex_group_names) {
     bDeformGroup *vgroup = static_cast<bDeformGroup *>(MEM_dupallocN(dg));
@@ -3863,7 +3875,9 @@ static Map<StringRefNull, StringRefNull> add_vertex_groups(Object &object, Greas
   return vertex_group_map;
 }
 
-static void remap_vertex_groups(bke::greasepencil::Drawing &drawing, const Map<StringRefNull, StringRefNull> &vertex_group_map) {
+static void remap_vertex_groups(bke::greasepencil::Drawing &drawing,
+                                const Map<StringRefNull, StringRefNull> &vertex_group_map)
+{
   LISTBASE_FOREACH (bDeformGroup *, dg, &drawing.strokes_for_write().vertex_group_names) {
     BLI_strncpy(dg->name, vertex_group_map.lookup(dg->name).c_str(), sizeof(dg->name));
   }
@@ -3872,7 +3886,10 @@ static void remap_vertex_groups(bke::greasepencil::Drawing &drawing, const Map<S
    * Only the names of the groups change. */
 }
 
-static void join_object_with_active(Object &ob_src, Object &ob_dst, VectorSet<Material *> &materials)
+static void join_object_with_active(Main &bmain,
+                                    Object &ob_src,
+                                    Object &ob_dst,
+                                    VectorSet<Material *> &materials)
 {
   using namespace blender::bke::greasepencil;
 
@@ -3888,7 +3905,8 @@ static void join_object_with_active(Object &ob_src, Object &ob_dst, VectorSet<Ma
   /* Number of existing layers that don't need to be updated. */
   const int orig_layers_num = grease_pencil_dst.layers().size();
 
-  const Map<StringRefNull, StringRefNull> vertex_group_map = add_vertex_groups(ob_dst, grease_pencil_dst, grease_pencil_src.vertex_group_names);
+  const Map<StringRefNull, StringRefNull> vertex_group_map = add_vertex_groups(
+      ob_dst, grease_pencil_dst, grease_pencil_src.vertex_group_names);
   const Array<int> material_index_map = add_materials_to_map(grease_pencil_src, materials);
 
   /* Concatenate drawing arrays. Existing drawings in dst keep their position, new drawings are
@@ -3969,6 +3987,77 @@ static void join_object_with_active(Object &ob_src, Object &ob_dst, VectorSet<Ma
       }
     }
   }
+
+  /* Rename animation paths to layers. */
+  BKE_fcurves_main_cb(&bmain, [&](ID *id, FCurve *fcu) {
+    if (id == &grease_pencil_src.id && fcu->rna_path && strstr(fcu->rna_path, "layers[")) {
+      /* Have to use linear search, the layer name map only contains substrings of RNA paths. */
+      for (auto [name_src, name_dst] : layer_name_map.items()) {
+        if (name_dst != name_src) {
+          const char *old_path = fcu->rna_path;
+          fcu->rna_path = BKE_animsys_fix_rna_path_rename(
+              id, fcu->rna_path, "layers", name_src.c_str(), name_dst.c_str(), 0, 0, false);
+          if (old_path != fcu->rna_path) {
+            /* Stop after first match. */
+            break;
+          }
+        }
+      }
+    }
+    /* Fix driver targets. */
+    if (fcu->driver) {
+      LISTBASE_FOREACH (DriverVar *, dvar, &fcu->driver->variables) {
+        /* Only change the used targets, since the others will need fixing manually anyway. */
+        DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
+          if (dtar->id != &grease_pencil_src.id) {
+            continue;
+          }
+          dtar->id = &grease_pencil_dst.id;
+
+          if (dtar->rna_path && strstr(dtar->rna_path, "layers[")) {
+            for (auto [name_src, name_dst] : layer_name_map.items()) {
+              if (name_dst != name_src) {
+                const char *old_path = fcu->rna_path;
+                dtar->rna_path = BKE_animsys_fix_rna_path_rename(
+                    id, dtar->rna_path, "layers", name_src.c_str(), name_dst.c_str(), 0, 0, false);
+                if (old_path != dtar->rna_path) {
+                  break;
+                }
+              }
+            }
+          }
+        }
+        DRIVER_TARGETS_LOOPER_END;
+      }
+    }
+  });
+
+  /* Merge animation data of objects and grease pencil datablocks. */
+  if (ob_src.adt) {
+    if (ob_dst.adt == nullptr) {
+      ob_dst.adt = BKE_animdata_copy(&bmain, ob_src.adt, 0);
+    }
+    else {
+      BKE_animdata_merge_copy(&bmain, &ob_dst.id, &ob_src.id, ADT_MERGECOPY_KEEP_DST, false);
+    }
+
+    if (ob_dst.adt->action) {
+      DEG_id_tag_update(&ob_dst.adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+    }
+  }
+  if (grease_pencil_src.adt) {
+    if (grease_pencil_dst.adt == nullptr) {
+      grease_pencil_dst.adt = BKE_animdata_copy(&bmain, grease_pencil_src.adt, 0);
+    }
+    else {
+      BKE_animdata_merge_copy(
+          &bmain, &grease_pencil_dst.id, &grease_pencil_src.id, ADT_MERGECOPY_KEEP_DST, false);
+    }
+
+    if (grease_pencil_dst.adt->action) {
+      DEG_id_tag_update(&grease_pencil_dst.adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+    }
+  }
 }
 
 }  // namespace blender::ed::greasepencil
@@ -4002,13 +4091,15 @@ int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op)
   GreasePencil *grease_pencil_dst = static_cast<GreasePencil *>(ob_dst->data);
 
   blender::VectorSet<Material *> materials;
-  blender::Array<int> material_index_map = blender::ed::greasepencil::add_materials_to_map(*grease_pencil_dst, materials);
+  blender::Array<int> material_index_map = blender::ed::greasepencil::add_materials_to_map(
+      *grease_pencil_dst, materials);
   /* Reassign material indices in the original layers, in case materials are deduplicated. */
   for (GreasePencilDrawingBase *drawing_base : grease_pencil_dst->drawings()) {
     if (drawing_base->type != GP_DRAWING) {
       continue;
     }
-    blender::bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+    blender::bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
     blender::ed::greasepencil::remap_material_indices(drawing, material_index_map);
   }
 
@@ -4018,7 +4109,7 @@ int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    blender::ed::greasepencil::join_object_with_active(*ob_iter, *ob_dst, materials);
+    blender::ed::greasepencil::join_object_with_active(*bmain, *ob_iter, *ob_dst, materials);
 
     /* Free the old object. */
     blender::ed::object::base_free_and_unlink(bmain, scene, ob_iter);
@@ -4029,7 +4120,8 @@ int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op)
   if (!materials.is_empty()) {
     /* Old C API, needs a const_cast but doesn't actually change anything. */
     Material **materials_ptr = const_cast<Material **>(materials.data());
-    BKE_object_material_array_assign(bmain, DEG_get_original_object(ob_dst), &materials_ptr, materials.size(), false);
+    BKE_object_material_array_assign(
+        bmain, DEG_get_original_object(ob_dst), &materials_ptr, materials.size(), false);
   }
 
   DEG_id_tag_update(&grease_pencil_dst->id, ID_RECALC_GEOMETRY);
