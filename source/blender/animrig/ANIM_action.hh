@@ -1377,7 +1377,7 @@ FCurve *fcurve_find_in_action_slot(bAction *act,
 FCurve *fcurve_find_in_assigned_slot(AnimData &adt, FCurveDescriptor fcurve_descriptor);
 
 /**
- * Return whether `fcurve` is for the given collection path + data name.
+ * Return whether `fcurve` targets the given collection path + data name.
  *
  * For example, to match F-Curves for the pose bone named `"botje"`, you'd pass
  * `collection_rna_path = "pose.bones["` and `data_name="botje"`.
