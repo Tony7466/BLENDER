@@ -6200,6 +6200,7 @@ class VIEW3D_MT_edit_greasepencil(Menu):
 
         layout.separator()
 
+        layout.operator("grease_pencil.split", text="Split")
         layout.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
         layout.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
 
@@ -6207,7 +6208,7 @@ class VIEW3D_MT_edit_greasepencil(Menu):
 
         layout.menu("VIEW3D_MT_edit_greasepencil_showhide")
         layout.operator_menu_enum("grease_pencil.separate", "mode", text="Separate")
-        layout.operator_menu_enum("grease_pencil.split", "mode", text="Split")
+
         layout.menu("VIEW3D_MT_edit_greasepencil_cleanup")
 
         layout.separator()
@@ -8759,6 +8760,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
             col.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
             col.operator("grease_pencil.duplicate_move", text="Duplicate")
+            col.operator("grease_pencil.split", text="Split")
 
             col.separator()
 
@@ -8807,12 +8809,13 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
             col.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
             col.operator("grease_pencil.duplicate_move", text="Duplicate")
-
+            
             col.separator()
 
             col.operator("grease_pencil.extrude_move", text="Extrude")
 
             col.separator()
+
 
             col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
 

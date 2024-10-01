@@ -2197,15 +2197,14 @@ Vector<IndexRange> find_curve_ranges(const Span<bool> span)
       length++;
     }
   }
-  if (length > 0) {
-    ranges.append(IndexRange::from_end_size(span.size(), length));
-  }
+
+  ranges.append(IndexRange::from_end_size(span.size(), length));
 
   return ranges;
 }
 
-static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curves,
-                                                const IndexMask &mask)
+static bke::CurvesGeometry split_points_selected(const bke::CurvesGeometry &curves,
+                                                 const IndexMask &mask)
 {
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -2215,8 +2214,8 @@ static bke::CurvesGeometry split_points_simpler(const bke::CurvesGeometry &curve
   mask.to_bools(points_to_split.as_mutable_span());
   const int total_split = points_to_split.as_span().count(true);
 
-  /*Return if splitting everything or nothing.*/
-  /*see if total split is 0 or equals the total number of points.*/
+  /* Return if splitting everything or nothing. */
+  /* Check if total split is 0 or equals the total number of points. */
   if (total_split == 0 || total_split == curves.points_num()) {
     return curves;
   }
@@ -2328,7 +2327,7 @@ static int grease_pencil_split_exec(bContext *C, wmOperator *op)
     };
 
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    curves = split_points_simpler(curves, points_to_split);
+    curves = split_points_selected(curves, points_to_split);
 
     info.drawing.tag_topology_changed();
     changed = true;
@@ -2346,7 +2345,7 @@ static void GREASE_PENCIL_OT_split(wmOperatorType *ot)
 {
   ot->name = "Split";
   ot->idname = "GREASE_PENCIL_OT_split";
-  ot->description = "REWRITE ME split strokes at selected points";
+  ot->description = "Split selected points out to new stroke(s) on same frame.";
 
   ot->exec = grease_pencil_split_exec;
   ot->poll = editable_grease_pencil_poll;
