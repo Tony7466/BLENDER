@@ -101,10 +101,10 @@ void Light::sync(ShadowModule &shadows,
   }
 
   if (light_linking) {
-    this->light_set_membership.x = light_linking->runtime.light_set_membership >> 32;
-    this->light_set_membership.y = light_linking->runtime.light_set_membership;
-    this->shadow_set_membership.x = light_linking->runtime.shadow_set_membership >> 32;
-    this->shadow_set_membership.y = light_linking->runtime.shadow_set_membership;
+    this->light_set_membership.x = light_linking->runtime.light_set_membership;
+    this->light_set_membership.y = light_linking->runtime.light_set_membership >> 32;
+    this->shadow_set_membership.x = light_linking->runtime.shadow_set_membership;
+    this->shadow_set_membership.y = light_linking->runtime.shadow_set_membership >> 32;
   }
   else {
     /* Set all bits if light linking is not used. */

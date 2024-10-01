@@ -90,7 +90,7 @@ float light_power_get(LightData light, LightingType type)
 
 bool light_linking_affects_receiver(uvec2 light_set_membership, uchar receiver_light_set)
 {
-  return bitmask64_test(light_set_membership.yx, receiver_light_set);
+  return bitmask64_test(light_set_membership, receiver_light_set);
 }
 
 void light_eval_single_closure(LightData light,
