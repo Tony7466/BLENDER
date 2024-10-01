@@ -20,6 +20,18 @@ struct SharedVar {
   std::string array;
 };
 
+void report_error(std::string filename,
+                  std::string src_line,
+                  size_t err_line,
+                  size_t err_char,
+                  std::string err_msg)
+{
+  std::cerr << filename << ':' << std::to_string(err_line) << ':' << std::to_string(err_char);
+  std::cerr << ": error: " << err_msg << std::endl;
+  std::cerr << src_line << std::endl;
+  std::cerr << std::string(err_char, ' ') << '^' << std::endl;
+}
+
 int main(int argc, char **argv)
 {
   if (argc != 3) {
@@ -95,13 +107,12 @@ int main(int argc, char **argv)
         std::smatch match;
         if (std::regex_search(line, match, matrix_cast)) {
           /* This only catches some invalid usage. For the rest, the CI will catch them. */
-          std::cerr << input_file_name << ':' << std::to_string(line_index) << ':'
-                    << std::to_string(line_index) << ':';
-          std::cerr << " error: Matrix cast is not cross API compatible. Use to_floatNxM to "
-                       "reshape the matrix or use other constructors instead.\n"
-                    << std::endl;
-          std::cerr << line << std::endl;
-          std::cerr << std::string(match.position(), ' ') << '^' << std::endl;
+          report_error(input_file_name,
+                       line,
+                       line_index,
+                       match.position(),
+                       "Matrix cast is not cross API compatible. "
+                       "Use to_floatNxM to reshape the matrix or use other constructors instead.");
           error = 1;
         }
       }
