@@ -21,7 +21,8 @@ struct ReportList;
 bool rna_CurvesGeometry_add_curves(blender::bke::CurvesGeometry &curves,
                                    ReportList *reports,
                                    const int *sizes,
-                                   int sizes_num);
+                                   int sizes_num,
+                                   int curve_type = 0);
 
 bool rna_CurvesGeometry_remove_curves(blender::bke::CurvesGeometry &curves,
                                       ReportList *reports,

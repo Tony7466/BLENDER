@@ -226,7 +226,7 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
   }
 }
 
-void add_curves(bke::CurvesGeometry &curves, const Span<int> new_sizes)
+void add_curves(bke::CurvesGeometry &curves, const Span<int> new_sizes, const CurveType new_type)
 {
   const int orig_points_num = curves.points_num();
   const int orig_curves_num = curves.curves_num();
@@ -245,6 +245,10 @@ void add_curves(bke::CurvesGeometry &curves, const Span<int> new_sizes)
       attributes, bke::AttrDomain::Point, {}, curves.points_range().drop_front(orig_points_num));
   bke::fill_attribute_range_default(
       attributes, bke::AttrDomain::Curve, {}, curves.curves_range().drop_front(orig_curves_num));
+
+  /* Set the curve type for the added curves */
+  IndexRange indexRange = curves.curves_range().drop_front(orig_curves_num);
+  curves.curve_types_for_write().slice(indexRange).fill(new_type);
 
   curves.update_curve_types();
 }

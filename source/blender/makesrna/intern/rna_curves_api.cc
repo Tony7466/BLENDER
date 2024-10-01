@@ -10,6 +10,8 @@
 
 #include "rna_internal.hh" /* own include */
 
+#include "DNA_curve_types.h"
+
 #ifdef RNA_RUNTIME
 
 #  include "BKE_curves.hh"
@@ -26,7 +28,8 @@
 bool rna_CurvesGeometry_add_curves(blender::bke::CurvesGeometry &curves,
                                    ReportList *reports,
                                    const int *sizes_ptr,
-                                   const int sizes_num)
+                                   const int sizes_num,
+                                   const int curve_type)
 {
   using namespace blender;
   if (std::any_of(sizes_ptr, sizes_ptr + sizes_num, [](const int size) { return size < 1; })) {
@@ -34,7 +37,13 @@ bool rna_CurvesGeometry_add_curves(blender::bke::CurvesGeometry &curves,
     return false;
   }
 
-  ed::curves::add_curves(curves, {sizes_ptr, sizes_num});
+  if (curve_type < 0 || curve_type >= CURVE_TYPES_NUM)
+  {
+    BKE_report(reports, RPT_ERROR, "Curve type must be in range");
+    return false;
+  }
+
+  ed::curves::add_curves(curves, {sizes_ptr, sizes_num}, static_cast<CurveType>(curve_type));
   curves.tag_topology_changed();
   return true;
 }
@@ -133,11 +142,12 @@ bool rna_CurvesGeometry_resize_curves(blender::bke::CurvesGeometry &curves,
 static void rna_Curves_add_curves(Curves *curves_id,
                                   ReportList *reports,
                                   const int *sizes,
-                                  const int sizes_num)
+                                  const int sizes_num, 
+                                  const int curve_type)
 {
   using namespace blender;
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-  if (!rna_CurvesGeometry_add_curves(curves, reports, sizes, sizes_num)) {
+  if (!rna_CurvesGeometry_add_curves(curves, reports, sizes, sizes_num, curve_type)) {
     return;
   }
 
@@ -208,6 +218,14 @@ void RNA_api_curves(StructRNA *srna)
                            1,
                            10000);
   RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
+
+  parm = RNA_def_int(func,
+                      "type",
+                      0, 0,
+                      100,
+                      "Type",
+                      "The type of the curve to add",
+                      0, 100);
 
   func = RNA_def_function(srna, "remove_curves", "rna_Curves_remove_curves");
   RNA_def_function_ui_description(func,

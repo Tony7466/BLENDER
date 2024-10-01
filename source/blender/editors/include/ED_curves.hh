@@ -432,7 +432,7 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask);
  * Adds new curves to \a curves.
  * \param new_sizes: The new size for each curve. Sizes must be > 0.
  */
-void add_curves(bke::CurvesGeometry &curves, Span<int> new_sizes);
+void add_curves(bke::CurvesGeometry &curves, Span<int> new_sizes, const CurveType new_type);
 
 /**
  * Resizes the curves in \a curves.
