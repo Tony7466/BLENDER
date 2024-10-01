@@ -116,6 +116,21 @@ int main(int argc, char **argv)
           error = 1;
         }
       }
+      {
+        /* Invalid array constructor (linting). */
+        std::regex matrix_cast(" (i?u?vec\\d?|float|u?int)\\s*\\[[\\s\\*\\w]*\\]\\s*\\(");
+        std::smatch match;
+        if (std::regex_search(line, match, matrix_cast)) {
+          /* This only catches some invalid usage. For the rest, the CI will catch them. */
+          report_error(input_file_name,
+                       line,
+                       line_index,
+                       match.position(),
+                       "Array constructor is not cross API compatible. "
+                       "Use type_array instead of type[].");
+          error = 1;
+        }
+      }
     }
 
     output_file << line << "\n";
