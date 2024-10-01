@@ -464,7 +464,7 @@ void VKDevice::debug_print(std::ostream &os, const VKDiscardPool &discard_pool)
 
 void VKDevice::debug_print()
 {
-  BLI_assert_msg(BLI_thread_is_main,
+  BLI_assert_msg(BLI_thread_is_main(),
                  "VKDevice::debug_print can only be called from the main thread.");
 
   std::ostream &os = std::cout;
