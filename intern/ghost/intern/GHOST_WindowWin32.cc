@@ -44,9 +44,11 @@
 const wchar_t *GHOST_WindowWin32::s_windowClassName = L"GHOST_WindowClass";
 const int GHOST_WindowWin32::s_maxTitleLength = 128;
 
-/* force NVidia OPTIMUS to used dedicated graphics */
 extern "C" {
+/* Force NVidia OPTIMUS to use dedicated graphics. */
 __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+/* Similar setting for AMD. */
+__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 0x00000001;
 }
 
 GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
