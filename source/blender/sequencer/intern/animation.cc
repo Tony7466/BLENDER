@@ -79,12 +79,14 @@ void SEQ_free_animdata(Scene *scene, Sequence *seq)
     return;
   }
 
-  Vector<FCurve *> fcurves = animrig::fcurves_in_listbase_filtered(
-      scene->adt->action->curves,
-      [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
+  Vector<FCurve *> fcurves = animrig::fcurves_in_action_slot_filtered(
+      scene->adt->action, scene->adt->slot_handle, [&](const FCurve &fcurve) {
+        return SEQ_fcurve_matches(*seq, fcurve);
+      });
 
+  animrig::Action &action = scene->adt->action->wrap();
   for (FCurve *fcu : fcurves) {
-    BLI_remlink(&scene->adt->action->curves, fcu);
+    action_fcurve_detach(action, *fcu);
     BKE_fcurve_free(fcu);
   }
 }
