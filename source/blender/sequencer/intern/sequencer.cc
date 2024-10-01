@@ -9,6 +9,7 @@
  */
 
 #include "BKE_duplilist.hh"
+#include "BLI_assert.h"
 #include "BLI_map.hh"
 #include <cstddef>
 #define DNA_DEPRECATED_ALLOW
@@ -654,24 +655,23 @@ static void seqbase_dupli_recursive(const Scene *scene_src,
                                     blender::Map<Sequence *, Sequence *> &strip_map)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
-    if ((seq->flag & SELECT) || (dupe_flag & SEQ_DUPE_ALL)) {
-      Sequence *seqn = seq_dupli(scene_src, scene_dst, nseqbase, seq, dupe_flag, flag, strip_map);
+    if ((seq->flag & SELECT) == 0 && (dupe_flag & SEQ_DUPE_ALL) == 0) {
+      continue;
+    }
 
-      if (seqn == nullptr) {
-        continue; /* Should never fail. */
-      }
+    Sequence *seqn = seq_dupli(scene_src, scene_dst, nseqbase, seq, dupe_flag, flag, strip_map);
+    BLI_assert(seqn != nullptr);
 
-      if (seq->type == SEQ_TYPE_META) {
-        /* Always include meta all strip children. */
-        int dupe_flag_recursive = dupe_flag | SEQ_DUPE_ALL;
-        seqbase_dupli_recursive(scene_src,
-                                scene_dst,
-                                &seqn->seqbase,
-                                &seq->seqbase,
-                                dupe_flag_recursive,
-                                flag,
-                                strip_map);
-      }
+    if (seq->type == SEQ_TYPE_META) {
+      /* Always include meta all strip children. */
+      int dupe_flag_recursive = dupe_flag | SEQ_DUPE_ALL;
+      seqbase_dupli_recursive(scene_src,
+                              scene_dst,
+                              &seqn->seqbase,
+                              &seq->seqbase,
+                              dupe_flag_recursive,
+                              flag,
+                              strip_map);
     }
   }
 }
