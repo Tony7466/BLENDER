@@ -1268,6 +1268,7 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
   }
 
   tint_colors.finish();
+  radius_offsets.finish();
 
   animdata_tint_transfer.fcurves_convert_finalize();
   animdata_thickness_transfer.fcurves_convert_finalize();
