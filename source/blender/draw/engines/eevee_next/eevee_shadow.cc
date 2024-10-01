@@ -10,6 +10,7 @@
 
 #include "BKE_global.hh"
 #include "BLI_math_matrix.hh"
+#include "GPU_compute.hh"
 
 #include "eevee_instance.hh"
 
@@ -1217,6 +1218,44 @@ int ShadowModule::max_view_per_tilemap()
   }
 
   return max_view_count;
+}
+
+/* Special culling pass to take shadow linking into consideration. */
+void ShadowModule::ShadowView::compute_visibility(ObjectBoundsBuf &bounds,
+                                                  ObjectInfosBuf &infos,
+                                                  uint resource_len,
+                                                  bool /*debug_freeze*/)
+{
+  GPU_debug_group_begin("View.compute_visibility");
+
+  uint word_per_draw = this->visibility_word_per_draw();
+  /* Switch between tightly packed and set of whole word per instance. */
+  uint words_len = (view_len_ == 1) ? divide_ceil_u(resource_len, 32) :
+                                      resource_len * word_per_draw;
+  words_len = ceil_to_multiple_u(max_ii(1, words_len), 4);
+  /* TODO(fclem): Resize to nearest pow2 to reduce fragmentation. */
+  visibility_buf_.resize(words_len);
+
+  const uint32_t data = 0xFFFFFFFFu;
+  GPU_storagebuf_clear(visibility_buf_, data);
+
+  if (do_visibility_) {
+    GPUShader *shader = inst_.shaders.static_shader_get(SHADOW_VIEW_VISIBILITY);
+    GPU_shader_bind(shader);
+    GPU_shader_uniform_1i(shader, "resource_len", resource_len);
+    GPU_shader_uniform_1i(shader, "view_len", view_len_);
+    GPU_shader_uniform_1i(shader, "visibility_word_per_draw", word_per_draw);
+    GPU_storagebuf_bind(bounds, GPU_shader_get_ssbo_binding(shader, "bounds_buf"));
+    GPU_storagebuf_bind(visibility_buf_, GPU_shader_get_ssbo_binding(shader, "visibility_buf"));
+    GPU_storagebuf_bind(render_view_buf_, GPU_shader_get_ssbo_binding(shader, "render_view_buf"));
+    GPU_storagebuf_bind(infos, DRW_OBJ_INFOS_SLOT);
+    GPU_uniformbuf_bind(data_, DRW_VIEW_UBO_SLOT);
+    GPU_uniformbuf_bind(culling_, DRW_VIEW_CULLING_UBO_SLOT);
+    GPU_compute_dispatch(shader, divide_ceil_u(resource_len, DRW_VISIBILITY_GROUP_SIZE), 1, 1);
+    GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+  }
+
+  GPU_debug_group_end();
 }
 
 void ShadowModule::set_view(View &view, int2 extent)

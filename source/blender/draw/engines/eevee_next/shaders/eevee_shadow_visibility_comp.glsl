@@ -31,6 +31,20 @@ void mask_visibility_bit(uint view_id)
   }
 }
 
+/* Returns true if visibility needs to be disabled. */
+bool non_culling_tests(uint view_id, uint resource_id)
+{
+  if (shadow_linking_affects_caster(view_id, resource_id) == false) {
+    /* Object doesn't cast shadow from this light. */
+    return true;
+  }
+  else if (drw_view_culling.bound_sphere.w == -1.0) {
+    /* View disabled. */
+    return true;
+  }
+  return false;
+}
+
 void main()
 {
   if (int(gl_GlobalInvocationID.x) >= resource_len) {
@@ -49,8 +63,7 @@ void main()
                                            bounds._inner_sphere_radius);
 
     for (drw_view_id = 0u; drw_view_id < uint(view_len); drw_view_id++) {
-      if (shadow_linking_affects_caster(drw_view_id, gl_GlobalInvocationID.x) == false) {
-        /* Object doesn't cast shadow from this light. */
+      if (non_culling_tests(drw_view_id, gl_GlobalInvocationID.x)) {
         mask_visibility_bit(drw_view_id);
       }
       else if (drw_view_culling.bound_sphere.w == -1.0) {
@@ -73,8 +86,7 @@ void main()
   else {
     /* Culling is disabled, but we need to mask the bits for disabled views. */
     for (drw_view_id = 0u; drw_view_id < uint(view_len); drw_view_id++) {
-      if (drw_view_culling.bound_sphere.w == -1.0) {
-        /* View disabled. */
+      if (non_culling_tests(drw_view_id, gl_GlobalInvocationID.x)) {
         mask_visibility_bit(drw_view_id);
       }
     }

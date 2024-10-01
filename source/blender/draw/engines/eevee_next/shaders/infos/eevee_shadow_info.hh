@@ -272,7 +272,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_tile_store)
     .fragment_source("eevee_shadow_page_tile_frag.glsl");
 
 /* Custom visibility check pass. */
-GPU_SHADER_CREATE_INFO(eevee_shadow_visibility_compute)
+GPU_SHADER_CREATE_INFO(eevee_shadow_view_visibility)
     .do_static_compilation(true)
     .typedef_source("eevee_defines.hh")
     .typedef_source("eevee_shader_shared.hh")
