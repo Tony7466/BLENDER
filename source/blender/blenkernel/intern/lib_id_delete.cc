@@ -181,8 +181,6 @@ void BKE_id_free_ex(Main *bmain, void *idv, const int flag_orig, const bool use_
     BKE_layer_collection_resync_forbid();
   }
 
-  const ID_Type id_type = GS(static_cast<ID *>(idv)->name);
-
   int flag_final = id_free(bmain, idv, flag_orig, use_flag_from_idtag);
 
   if (bmain) {
@@ -191,9 +189,7 @@ void BKE_id_free_ex(Main *bmain, void *idv, const int flag_orig, const bool use_
     }
 
     if ((flag_final & LIB_ID_FREE_NO_MAIN) == 0) {
-      if (ELEM(id_type, ID_SCE, ID_GR, ID_OB)) {
-        BKE_main_collection_sync_remap(bmain);
-      }
+      BKE_main_collection_sync_remap(bmain);
     }
   }
 }
