@@ -7,6 +7,7 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_curves.hh"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
 
 #include "BLI_bounds.hh"
@@ -31,6 +32,10 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveIntersections)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Geometry>("Mesh")
+      .supported_type(GeometryComponent::Type::Mesh)
+      .make_available(
+          [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_INTERSECT_SURFACE; });
   b.add_input<decl::Bool>("Self Intersection")
       .default_value(false)
       .description("Include self intersections");
@@ -67,15 +72,20 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const NodeGeometryCurveIntersections &storage = node_storage(*node);
   const GeometryNodeCurveIntersectionMode mode = GeometryNodeCurveIntersectionMode(storage.mode);
 
-  bNodeSocket *self = static_cast<bNodeSocket *>(node->inputs.first)->next;
+  bNodeSocket *mesh = static_cast<bNodeSocket *>(node->inputs.first)->next;
+  bNodeSocket *self = mesh->next;
   bNodeSocket *direction = self->next;
   bNodeSocket *plane_offset = direction->next;
   bNodeSocket *distance = plane_offset->next;
 
+  bke::node_set_socket_availability(ntree, mesh, mode == GEO_NODE_CURVE_INTERSECT_SURFACE);
   bke::node_set_socket_availability(ntree, self, mode == GEO_NODE_CURVE_INTERSECT_ALL);
   bke::node_set_socket_availability(ntree, direction, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
   bke::node_set_socket_availability(ntree, plane_offset, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
-  bke::node_set_socket_availability(ntree, distance, mode != GEO_NODE_CURVE_INTERSECT_PLANE);
+  bke::node_set_socket_availability(ntree,
+                                    distance,
+                                    mode != GEO_NODE_CURVE_INTERSECT_PLANE &&
+                                        mode != GEO_NODE_CURVE_INTERSECT_SURFACE);
 }
 
 struct IntersectionData {
@@ -376,6 +386,70 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
   BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
 }
 
+static void set_curve_intersections_surface(const bke::CurvesGeometry &src_curves,
+                                            const Mesh &mesh,
+                                            IntersectionData &r_data)
+{
+
+  /* Get mesh data. */
+  const Span<float3> positions = mesh.vert_positions();
+
+  if (positions.size() < 1) {
+    return;
+  }
+
+  const Span<int> corner_verts = mesh.corner_verts();
+  const Span<int3> corner_tris = mesh.corner_tris();
+
+  /* Build bvh. */
+  Vector<Segment> curve_segments;
+  BVHTree *bvhtree = create_curve_segment_bvhtree(src_curves, &curve_segments);
+
+  /* Loop data. */
+  ThreadLocalData thread_storage;
+  threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
+    for (const int64_t face_index : range) {
+      const int3 &tri = corner_tris[face_index];
+      const int v0_loop = tri[0];
+      const int v1_loop = tri[1];
+      const int v2_loop = tri[2];
+      const float3 &v0_pos = positions[corner_verts[v0_loop]];
+      const float3 &v1_pos = positions[corner_verts[v1_loop]];
+      const float3 &v2_pos = positions[corner_verts[v2_loop]];
+
+      float3 cent_pos;
+      interp_v3_v3v3v3(cent_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
+      const float distance = math::max(
+          math::max(math::distance(cent_pos, v0_pos), math::distance(cent_pos, v1_pos)),
+          math::distance(cent_pos, v2_pos));
+      BLI_bvhtree_range_query_cpp(
+          *bvhtree,
+          cent_pos,
+          distance + curve_isect_eps,
+          [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
+            const Segment ab = curve_segments[index];
+            float lambda = 0.0f;
+            float2 uv = float2(0.0f);
+            if (isect_line_segment_tri_v3(ab.start, ab.end, v0_pos, v1_pos, v2_pos, &lambda, uv)) {
+              const float len_at_isect = math::interpolate(ab.len_start, ab.len_end, lambda);
+              const float3 dir_of_isect = math::normalize(ab.end - ab.start);
+              const float3 closest = math::interpolate(ab.start, ab.end, lambda);
+              add_intersection_data(r_data,
+                                    cent_pos,
+                                    dir_of_isect,
+                                    ab.curve_index,
+                                    len_at_isect,
+                                    ab.curve_length,
+                                    false);
+            }
+          });
+    }
+  });
+  gather_thread_storage(thread_storage, r_data);
+
+  BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const NodeGeometryCurveIntersections &storage = node_storage(params.node());
@@ -383,6 +457,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
+
+  lazy_threading::send_hint();
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (!geometry_set.has_curves()) {
@@ -411,6 +487,15 @@ static void node_geo_exec(GeoNodeExecParams params)
         const float3 direction = params.extract_input<float3>("Direction");
         const float3 plane_offset = params.extract_input<float3>("Plane Offset");
         set_curve_intersections_plane(src_curves, plane_offset, direction, r_data);
+        break;
+      }
+      case GEO_NODE_CURVE_INTERSECT_SURFACE: {
+        GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
+        if (!geometry_set.has_mesh()) {
+          return;
+        }
+        const Mesh &mesh = *geometry_set.get_mesh();
+        set_curve_intersections_surface(src_curves, mesh, r_data);
         break;
       }
       default: {
@@ -479,6 +564,11 @@ static void node_rna(StructRNA *srna)
        0,
        "Plane",
        "Find all the intersection positions for each curve in reference to a plane"},
+      {GEO_NODE_CURVE_INTERSECT_SURFACE,
+       "SURFACE",
+       0,
+       "Surface",
+       "Find all the intersection positions for each curve in reference to a mesh surface"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

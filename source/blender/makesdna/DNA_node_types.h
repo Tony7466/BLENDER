@@ -3013,6 +3013,7 @@ typedef enum GeometryNodeCurveIntersectionMode {
   GEO_NODE_CURVE_INTERSECT_SELF = 0,
   GEO_NODE_CURVE_INTERSECT_ALL = 1,
   GEO_NODE_CURVE_INTERSECT_PLANE = 2,
+  GEO_NODE_CURVE_INTERSECT_SURFACE = 3,
 } GeometryNodeCurveIntersectionMode;
 
 typedef enum GeometryNodeCurveFilletMode {
