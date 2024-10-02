@@ -19,11 +19,42 @@ class BrushAssetShelf:
         return hasattr(context, "object") and context.object and context.object.mode == cls.mode
 
     @classmethod
+    def has_tool_with_brush_type(cls, context, brush_type):
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+        space_type = context.space_data.type
+
+        brush_type_items = bpy.types.Brush.bl_rna.properties[cls.tool_prop].enum_items
+
+        tool_helper_cls = ToolSelectPanelHelper._tool_class_from_space_type(space_type)
+        for item in ToolSelectPanelHelper._tools_flatten(
+                tool_helper_cls.tools_from_context(context, mode=context.mode),
+        ):
+            if item is None:
+                continue
+            if item.idname in {
+                    "builtin.arc",
+                    "builtin.curve",
+                    "builtin.line",
+                    "builtin.box",
+                    "builtin.circle",
+                    "builtin.polyline",
+            }:
+                continue
+            if item.options is None or ('USE_BRUSHES' not in item.options):
+                continue
+            if item.brush_type is not None:
+                if brush_type_items[item.brush_type].value == brush_type:
+                    return True
+
+        return False
+
+
+    @classmethod
     def brush_type_poll(cls, context, asset):
         from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
         tool = ToolSelectPanelHelper.tool_active_from_context(context)
 
-        if not tool or tool.brush_type == 'ANY':
+        if not tool:
             return True
         if not cls.brush_type_prop or not cls.tool_prop:
             return True
@@ -33,8 +64,13 @@ class BrushAssetShelf:
         # certain brush type.
         if asset_brush_type is None:
             return False
-        brush_type_items = bpy.types.Brush.bl_rna.properties[cls.tool_prop].enum_items
 
+        # For the general brush that supports any brush type, filter out brushes that show up for
+        # other tools already.
+        if tool.brush_type == 'ANY':
+            return not cls.has_tool_with_brush_type(context, asset_brush_type)
+
+        brush_type_items = bpy.types.Brush.bl_rna.properties[cls.tool_prop].enum_items
         return brush_type_items[tool.brush_type].value == asset_brush_type
 
     @classmethod
