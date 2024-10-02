@@ -295,7 +295,8 @@ static int geometry_attribute_add_invoke(bContext *C, wmOperator *op, const wmEv
     EnumPropertyItem *items;
     int totitems;
     bool free;
-    RNA_property_enum_items(C, op->ptr, prop, const_cast<const EnumPropertyItem **>(&items), &totitems, &free);
+    RNA_property_enum_items(
+        C, op->ptr, prop, const_cast<const EnumPropertyItem **>(&items), &totitems, &free);
     if (totitems > 0) {
       RNA_property_enum_set(op->ptr, prop, items[0].value);
     }
