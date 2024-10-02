@@ -5252,8 +5252,15 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
   EDBM_mesh_stats_multi(objects, nullptr, totelem_sel);
   bool is_face_pair = (totelem_sel[2] == 2);
   if (is_face_pair) {
-    angle_face_threshold = DEG2RADF(180.0f);
-    angle_shape_threshold = DEG2RADF(180.0f);
+    /* `RNA_struct_property_is_set()` is `false` when the prop was left at its default.
+     * when false, override to the most permissive possible threshold to make merging easier.
+     * when true, the user has set this value explicitly.  Respect the user command. */
+    if (RNA_struct_property_is_set(op->ptr, "face_threshold") == false) {
+      angle_face_threshold = DEG2RADF(180.0f);
+    }
+    if (RNA_struct_property_is_set(op->ptr, "shape_threshold") == false) {
+      angle_shape_threshold = DEG2RADF(180.0f);
+    }
   }
 
   for (Object *obedit : objects) {
