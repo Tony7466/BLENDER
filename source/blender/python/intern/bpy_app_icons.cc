@@ -120,6 +120,12 @@ static PyObject *bpy_app_icons_new_triangles_from_file(PyObject * /*self*/,
     return nullptr;
   }
 
+  int svg_icon_id = BKE_icon_svg_ensure(filepath_data.value, true);
+  if (svg_icon_id != 0)
+  {
+    return PyLong_FromLong(svg_icon_id);
+  }
+
   Icon_Geom *geom = BKE_icon_geom_from_file(filepath_data.value);
   Py_XDECREF(filepath_data.value_coerce);
 

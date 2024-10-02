@@ -109,7 +109,8 @@ void blf_draw_svg_icon(FontBLF *font,
                        const float color[4] = nullptr,
                        float outline_alpha = 1.0f,
                        bool multicolor = false,
-                       blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr);
+                       blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr,
+                       uchar *custom_svg = nullptr);
 
 blender::Array<uchar> blf_svg_icon_bitmap(
     FontBLF *font,
@@ -197,7 +198,7 @@ GlyphBLF *blf_glyph_ensure_icon(
     GlyphCacheBLF *gc,
     uint icon_id,
     bool color = false,
-    blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr);
+    blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr, uchar *custom_svg = nullptr);
 
 /**
  * Convert a character's outlines into curves.

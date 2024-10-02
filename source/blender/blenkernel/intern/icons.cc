@@ -163,6 +163,10 @@ static int get_next_free_id()
   return 0;
 }
 
+int BKE_icon_next_id() {
+  return get_next_free_id();
+}
+
 void BKE_icons_init(int first_dyn_id)
 {
   BLI_assert(BLI_thread_is_main());

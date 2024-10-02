@@ -1293,8 +1293,14 @@ static void widget_draw_icon(
     return;
   }
 
-  const float aspect = but->block->aspect * UI_INV_SCALE_FAC;
-  const float height = ICON_DEFAULT_HEIGHT / aspect;
+  float aspect = but->block->aspect * UI_INV_SCALE_FAC;
+  float height = ICON_DEFAULT_HEIGHT / aspect;
+
+  if ((rect->xmax - rect->xmin) > (height * 1.8f) && (rect->ymax - rect->ymin) > (height * 1.8f)) {
+    /* If the entire area is larger then make these tool-sized. */
+    height *= 1.644f;
+    aspect /= 1.644f;
+  }
 
   /* calculate blend color */
   if (ELEM(but->type, UI_BTYPE_TOGGLE, UI_BTYPE_ROW, UI_BTYPE_TOGGLE_N, UI_BTYPE_LISTROW)) {
@@ -1380,6 +1386,7 @@ static void widget_draw_icon(
                       but->drawflag & UI_BUT_ICON_INVERT);
     }
     else {
+      alpha *= 0.8f;
       const float desaturate = 1.0 - btheme->tui.icon_saturation;
       UI_icon_draw_ex(
           xs, ys, icon, aspect, alpha, desaturate, color, outline, &but->icon_overlay_text);

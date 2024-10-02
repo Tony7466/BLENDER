@@ -119,6 +119,8 @@ bool BKE_icon_is_image(int icon_id);
  */
 void BKE_icon_set(int icon_id, struct Icon *icon);
 
+int BKE_icon_next_id();
+
 /**
  * Remove icon and free data if library object becomes invalid.
  */
@@ -155,6 +157,8 @@ struct ImBuf *BKE_icon_geom_rasterize(const struct Icon_Geom *geom,
 void BKE_icon_geom_invert_lightness(struct Icon_Geom *geom);
 
 int BKE_icon_ensure_studio_light(struct StudioLight *sl, int id_type);
+
+int BKE_icon_svg_ensure(const char *filepath, bool color);
 
 #define ICON_RENDER_DEFAULT_HEIGHT 32
 

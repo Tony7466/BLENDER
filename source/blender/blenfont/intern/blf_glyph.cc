@@ -356,9 +356,17 @@ static GlyphBLF *blf_glyph_cache_add_svg(
     GlyphCacheBLF *gc,
     uint charcode,
     bool color,
-    blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr)
+    blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr,
+    uchar *custom_svg = nullptr)
 {
-  std::string svg_source = blf_get_icon_svg(int(charcode) - BLF_ICON_OFFSET);
+  std::string svg_source;
+  if (custom_svg) {
+    svg_source = (char *)custom_svg;
+  }
+  else {
+    svg_source = blf_get_icon_svg(int(charcode) - BLF_ICON_OFFSET);
+  }
+
   if (edit_source_cb) {
     edit_source_cb(svg_source);
   }
@@ -1399,13 +1407,14 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
 GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc,
                                 const uint icon_id,
                                 bool color,
-                                blender::FunctionRef<void(std::string &)> edit_source_cb)
+                                blender::FunctionRef<void(std::string &)> edit_source_cb,
+                                uchar *custom_svg)
 {
   GlyphBLF *g = blf_glyph_cache_find_glyph(gc, icon_id + BLF_ICON_OFFSET, 0);
   if (g) {
     return g;
   }
-  return blf_glyph_cache_add_svg(gc, icon_id + BLF_ICON_OFFSET, color, edit_source_cb);
+  return blf_glyph_cache_add_svg(gc, icon_id + BLF_ICON_OFFSET, color, edit_source_cb, custom_svg);
 }
 #endif /* WITH_HEADLESS */
 

@@ -89,6 +89,7 @@ struct DrawInfo {
     } buffer;
     struct {
       int theme_color;
+      uchar *custom_svg;
     } texture;
     struct {
       /* Can be packed into a single int. */
@@ -916,6 +917,11 @@ void UI_icons_free_drawinfo(void *drawinfo)
       IMB_freeImBuf(di->data.geom.image_cache);
     }
   }
+  else if (ELEM(di->type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
+    if (di->data.texture.custom_svg) {
+      MEM_freeN(di->data.texture.custom_svg);
+    }
+  }
 
   MEM_freeN(di);
 }
@@ -971,6 +977,40 @@ bool UI_icon_get_theme_color(int icon_id, uchar color[4])
 
   DrawInfo *di = icon_ensure_drawinfo(icon);
   return UI_GetIconThemeColor4ubv(di->data.texture.theme_color, color);
+}
+
+int BKE_icon_svg_ensure(const char *filepath, bool color)
+{
+  size_t data_len;
+
+  // make sure the file ends in ".svg"
+  char filename[FILE_MAXFILE];
+  STRNCPY(filename, filepath);
+  BLI_path_extension_strip(filename);
+  BLI_path_extension_ensure(filename, FILE_MAX, ".svg");
+
+  uchar *data = (uchar *)BLI_file_read_binary_as_mem(filename, 0, &data_len);
+
+  //if (!data) {
+  //  return ICON_NONE;
+  //}
+
+  int icon_id = BKE_icon_next_id();
+
+  Icon *new_icon = MEM_cnew<Icon>(__func__);
+  new_icon->obj = nullptr; /* icon is not for library object */
+  new_icon->id_type = 0;
+
+  DrawInfo *di = MEM_cnew<DrawInfo>(__func__);
+  di->type = color ? ICON_TYPE_SVG_COLOR : ICON_TYPE_SVG_MONO;
+  di->data.texture.custom_svg = data;
+
+  new_icon->drawinfo_free = UI_icons_free_drawinfo;
+  new_icon->drawinfo = di;
+
+  BKE_icon_set(icon_id, new_icon);
+
+  return icon_id;
 }
 
 void UI_icons_init()
@@ -1501,10 +1541,11 @@ static void icon_draw_size(float x,
   else if (di->type == ICON_TYPE_GEOM) {
 #ifdef USE_UI_TOOLBAR_HACK
     /* TODO(@ideasman42): scale icons up for toolbar,
-     * we need a way to detect larger buttons and do this automatic. */
+     * The following is only called for custom non-SVG icons. */
     {
-      float scale = float(ICON_DEFAULT_HEIGHT_TOOLBAR) / float(ICON_DEFAULT_HEIGHT);
+      float scale = 1.25f;
       y = (y + (h / 2)) - ((h * scale) / 2);
+      x -= (w * 0.1f);
       w *= scale;
       h *= scale;
     }
@@ -1541,6 +1582,7 @@ static void icon_draw_size(float x,
                                                  btheme->tui.icon_border_intensity :
                                                  0.3f) :
                                             0.0f;
+
     float color[4];
     if (mono_rgba) {
       rgba_uchar_to_float(color, (const uchar *)mono_rgba);
@@ -1559,7 +1601,8 @@ static void icon_draw_size(float x,
                         color,
                         outline_intensity,
                         true,
-                        icon_source_edit_cb);
+                        icon_source_edit_cb,
+                        di->data.texture.custom_svg);
     }
     else {
       BLF_draw_svg_icon(uint(icon_id),
@@ -1569,7 +1612,8 @@ static void icon_draw_size(float x,
                         color,
                         outline_intensity,
                         false,
-                        nullptr);
+                        nullptr,
+                        di->data.texture.custom_svg);
     }
 
     if (text_overlay && text_overlay->text[0] != '\0') {

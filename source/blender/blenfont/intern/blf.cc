@@ -616,7 +616,8 @@ void BLF_draw_svg_icon(uint icon_id,
                        const float color[4],
                        float outline_alpha,
                        bool multicolor,
-                       blender::FunctionRef<void(std::string &)> edit_source_cb)
+                       blender::FunctionRef<void(std::string &)> edit_source_cb,
+                       uchar *custom_svg)
 {
 #ifndef WITH_HEADLESS
   FontBLF *font = global_font[0];
@@ -624,7 +625,7 @@ void BLF_draw_svg_icon(uint icon_id,
     /* Avoid bgl usage to corrupt BLF drawing. */
     GPU_bgl_end();
     blf_draw_gpu__start(font);
-    blf_draw_svg_icon(font, icon_id, x, y, size, color, outline_alpha, multicolor, edit_source_cb);
+    blf_draw_svg_icon(font, icon_id, x, y, size, color, outline_alpha, multicolor, edit_source_cb, custom_svg);
     blf_draw_gpu__end(font);
   }
 #else
