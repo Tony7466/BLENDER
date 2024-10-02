@@ -136,6 +136,9 @@ void MathNode::convert_to_operations(NodeConverter &converter,
     case NODE_MATH_SMOOTH_MAX:
       operation = new MathSmoothMaxOperation();
       break;
+    case NODE_MATH_NEGATE:
+      operation = new MathNegateOperation();
+      break;
   }
 
   if (operation) {

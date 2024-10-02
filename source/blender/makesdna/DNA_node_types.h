@@ -2494,6 +2494,7 @@ typedef enum NodeMathOperation {
   NODE_MATH_SMOOTH_MIN = 38,
   NODE_MATH_SMOOTH_MAX = 39,
   NODE_MATH_FLOORED_MODULO = 40,
+  NODE_MATH_NEGATE = 41,
 } NodeMathOperation;
 
 typedef enum NodeVectorMathOperation {
@@ -2527,6 +2528,7 @@ typedef enum NodeVectorMathOperation {
   NODE_VECTOR_MATH_REFRACT = 24,
   NODE_VECTOR_MATH_FACEFORWARD = 25,
   NODE_VECTOR_MATH_MULTIPLY_ADD = 26,
+  NODE_VECTOR_MATH_NEGATE = 27,
 } NodeVectorMathOperation;
 
 typedef enum NodeBooleanMathOperation {

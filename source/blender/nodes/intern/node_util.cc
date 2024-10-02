@@ -110,6 +110,7 @@ void node_math_update(bNodeTree *ntree, bNode *node)
                                                    NODE_MATH_ARCCOSINE,
                                                    NODE_MATH_ARCTANGENT) &&
                                                  !ELEM(node->custom1,
+                                                       NODE_MATH_NEGATE,
                                                        NODE_MATH_INV_SQRT,
                                                        NODE_MATH_TRUNC,
                                                        NODE_MATH_EXPONENT,

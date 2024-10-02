@@ -63,6 +63,8 @@ inline bool try_dispatch_float_math_fl_to_fl(const int operation, Callback &&cal
   };
 
   switch (operation) {
+    case NODE_MATH_NEGATE:
+      return dispatch(exec_preset_fast, [](float a) { return -a; });
     case NODE_MATH_EXPONENT:
       return dispatch(exec_preset_slow, [](float a) { return expf(a); });
     case NODE_MATH_SQRT:
@@ -447,6 +449,8 @@ inline bool try_dispatch_float_math_fl3_to_fl3(const NodeVectorMathOperation ope
   };
 
   switch (operation) {
+    case NODE_VECTOR_MATH_NEGATE:
+      return dispatch(exec_preset_fast, [](float3 in) { return -in; });
     case NODE_VECTOR_MATH_NORMALIZE:
       /* Should be safe. */
       return dispatch(exec_preset_fast, [](float3 in) { return normalize(in); });

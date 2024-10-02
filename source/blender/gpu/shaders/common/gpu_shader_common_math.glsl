@@ -24,6 +24,11 @@ void math_divide(float a, float b, float c, out float result)
   result = safe_divide(a, b);
 }
 
+void math_negate(float a, float b, float c, out float result)
+{
+  result = -a;
+}
+
 void math_power(float a, float b, float c, out float result)
 {
   if (a >= 0.0) {

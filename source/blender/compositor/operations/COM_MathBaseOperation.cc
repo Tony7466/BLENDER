@@ -363,4 +363,12 @@ void MathSmoothMaxOperation::update_memory_buffer_partial(BuffersIterator<float>
   }
 }
 
+void MathNegateOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
+{
+  for (; !it.is_end(); ++it) {
+    *it.out = -(*it.in(0));
+    clamp_when_enabled(it.out);
+  }
+}
+
 }  // namespace blender::compositor

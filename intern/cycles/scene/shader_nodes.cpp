@@ -6640,6 +6640,7 @@ NODE_DEFINE(MathNode)
   type_enum.insert("subtract", NODE_MATH_SUBTRACT);
   type_enum.insert("multiply", NODE_MATH_MULTIPLY);
   type_enum.insert("divide", NODE_MATH_DIVIDE);
+  type_enum.insert("negate", NODE_MATH_NEGATE);
   type_enum.insert("multiply_add", NODE_MATH_MULTIPLY_ADD);
   type_enum.insert("sine", NODE_MATH_SINE);
   type_enum.insert("cosine", NODE_MATH_COSINE);
@@ -6754,6 +6755,7 @@ NODE_DEFINE(VectorMathNode)
   type_enum.insert("subtract", NODE_VECTOR_MATH_SUBTRACT);
   type_enum.insert("multiply", NODE_VECTOR_MATH_MULTIPLY);
   type_enum.insert("divide", NODE_VECTOR_MATH_DIVIDE);
+  type_enum.insert("negate", NODE_VECTOR_MATH_NEGATE);
 
   type_enum.insert("cross_product", NODE_VECTOR_MATH_CROSS_PRODUCT);
   type_enum.insert("project", NODE_VECTOR_MATH_PROJECT);

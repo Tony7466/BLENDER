@@ -49,6 +49,10 @@ static void valuefn(float *out, TexParams *p, bNode *node, bNodeStack **in, shor
       }
       break;
     }
+    case NODE_MATH_NEGATE: {
+      *out = -in0;
+      break;
+    }
     case NODE_MATH_SINE: {
       *out = sinf(in0);
       break;

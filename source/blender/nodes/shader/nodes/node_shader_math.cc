@@ -262,6 +262,9 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem x = get_input_value(0, NodeItem::Type::Float);
 
   switch (op) {
+    case NODE_MATH_NEGATE:
+      res = -x;
+      break;
     case NODE_MATH_SINE:
       res = x.sin();
       break;

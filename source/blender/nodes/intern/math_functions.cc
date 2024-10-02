@@ -25,6 +25,8 @@ const FloatMathOperationInfo *get_float_math_operation_info(const int operation)
       RETURN_OPERATION_INFO("Multiply", "math_multiply");
     case NODE_MATH_DIVIDE:
       RETURN_OPERATION_INFO("Divide", "math_divide");
+    case NODE_MATH_NEGATE:
+      RETURN_OPERATION_INFO("Negate", "math_negate");
     case NODE_MATH_SINE:
       RETURN_OPERATION_INFO("Sine", "math_sine");
     case NODE_MATH_COSINE:
@@ -201,6 +203,8 @@ const FloatMathOperationInfo *get_float3_math_operation_info(const int operation
       RETURN_OPERATION_INFO("Faceforward", "vector_math_faceforward");
     case NODE_VECTOR_MATH_MULTIPLY_ADD:
       RETURN_OPERATION_INFO("Multiply Add", "vector_math_multiply_add");
+    case NODE_VECTOR_MATH_NEGATE:
+      RETURN_OPERATION_INFO("Negate", "vector_math_negate");
   }
 
 #undef RETURN_OPERATION_INFO

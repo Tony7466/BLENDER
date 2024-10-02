@@ -169,3 +169,9 @@ void vector_math_multiply_add(
 {
   outVector = a * b + c;
 }
+
+void vector_math_negate(
+    vec3 a, vec3 b, vec3 c, float scale, out vec3 outVector, out float outValue)
+{
+  outVector = -a;
+}

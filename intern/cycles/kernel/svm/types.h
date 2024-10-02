@@ -183,6 +183,7 @@ typedef enum NodeMathType {
   NODE_MATH_SMOOTH_MIN,
   NODE_MATH_SMOOTH_MAX,
   NODE_MATH_FLOORED_MODULO,
+  NODE_MATH_NEGATE,
 } NodeMathType;
 
 typedef enum NodeVectorMathType {
@@ -216,6 +217,7 @@ typedef enum NodeVectorMathType {
   NODE_VECTOR_MATH_REFRACT,
   NODE_VECTOR_MATH_FACEFORWARD,
   NODE_VECTOR_MATH_MULTIPLY_ADD,
+  NODE_VECTOR_MATH_NEGATE,
 } NodeVectorMathType;
 
 typedef enum NodeClampType {

@@ -27,6 +27,9 @@ ccl_device void svm_vector_math(ccl_private float *value,
     case NODE_VECTOR_MATH_DIVIDE:
       *vector = safe_divide(a, b);
       break;
+    case NODE_VECTOR_MATH_NEGATE:
+      *vector = -a;
+      break;
     case NODE_VECTOR_MATH_CROSS_PRODUCT:
       *vector = cross(a, b);
       break;
@@ -115,6 +118,8 @@ ccl_device float svm_math(NodeMathType type, float a, float b, float c)
       return safe_divide(a, b);
     case NODE_MATH_POWER:
       return safe_powf(a, b);
+    case NODE_MATH_NEGATE:
+      return -a;
     case NODE_MATH_LOGARITHM:
       return safe_logf(a, b);
     case NODE_MATH_SQRT:

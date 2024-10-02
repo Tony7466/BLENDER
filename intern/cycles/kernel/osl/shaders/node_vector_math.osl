@@ -25,6 +25,9 @@ shader node_vector_math(string math_type = "add",
   else if (math_type == "divide") {
     Vector = safe_divide(Vector1, Vector2);
   }
+  else if (math_type == "negate") {
+    Vector = -Vector1;
+  }
   else if (math_type == "cross_product") {
     Vector = cross(Vector1, Vector2);
   }

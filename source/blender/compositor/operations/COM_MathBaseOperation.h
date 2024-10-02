@@ -238,4 +238,9 @@ class MathSmoothMaxOperation : public MathBaseOperation {
   void update_memory_buffer_partial(BuffersIterator<float> &it) override;
 };
 
+class MathNegateOperation : public MathBaseOperation {
+ protected:
+  void update_memory_buffer_partial(BuffersIterator<float> &it) override;
+};
+
 }  // namespace blender::compositor

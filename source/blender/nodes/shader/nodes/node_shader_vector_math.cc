@@ -93,6 +93,8 @@ static const char *gpu_shader_get_name(int mode)
       return "vector_math_multiply";
     case NODE_VECTOR_MATH_DIVIDE:
       return "vector_math_divide";
+    case NODE_VECTOR_MATH_NEGATE:
+      return "vector_math_negate";
 
     case NODE_VECTOR_MATH_CROSS_PRODUCT:
       return "vector_math_cross";
@@ -173,6 +175,7 @@ static void node_shader_update_vector_math(bNodeTree *ntree, bNode *node)
   bke::node_set_socket_availability(ntree,
                                     sockB,
                                     !ELEM(node->custom1,
+                                          NODE_VECTOR_MATH_NEGATE,
                                           NODE_VECTOR_MATH_SINE,
                                           NODE_VECTOR_MATH_COSINE,
                                           NODE_VECTOR_MATH_TANGENT,
@@ -418,6 +421,9 @@ NODE_SHADER_MATERIALX_BEGIN
   NodeItem x = get_input_value(0, NodeItem::Type::Vector3);
 
   switch (op) {
+    case NODE_VECTOR_MATH_NEGATE:
+      res = -x;
+      break;
     case NODE_VECTOR_MATH_SINE:
       res = x.sin();
       break;
