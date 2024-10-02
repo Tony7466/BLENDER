@@ -1348,6 +1348,7 @@ class CYCLES_OBJECT_PT_lightgroup(CyclesButtonsPanel, Panel):
         sub.enabled = bool(ob.lightgroup) and not any(lg.name == ob.lightgroup for lg in view_layer.lightgroups)
         sub.operator("scene.view_layer_add_lightgroup", icon='ADD', text="").name = ob.lightgroup
 
+
 class CYCLES_OBJECT_PT_visibility(CyclesButtonsPanel, Panel):
     bl_label = "Visibility"
     bl_context = "object"
@@ -2394,12 +2395,6 @@ def draw_pause(self, context):
         if view.shading.type == 'RENDERED':
             cscene = scene.cycles
             layout.prop(cscene, "preview_pause", icon='PLAY' if cscene.preview_pause else 'PAUSE', text="")
-
-
-def draw_make_links(self, context):
-    if context.engine == "CYCLES":
-        layout = self.layout
-        layout.operator_menu_enum("object.light_linking_blockers_link", "link_state")
 
 
 def get_panels():
