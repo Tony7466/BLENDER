@@ -3067,7 +3067,7 @@ static bool versioning_convert_seq_text_anchor(Sequence *seq, void * /*user_data
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   data->anchor_x = data->align;
   data->anchor_y = data->align_y;
-  data->align = SEQ_TEXT_ALIGN_X_CENTER;
+  data->align = SEQ_TEXT_ALIGN_X_LEFT;
 
   return true;
 }
