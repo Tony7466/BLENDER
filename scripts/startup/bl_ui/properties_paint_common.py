@@ -1433,7 +1433,7 @@ def brush_basic_texpaint_settings(layout, context, brush, *, compact=False):
     )
 
 
-def brush_basic__draw_color_selector(context, layout, brush, gp_settings, props):
+def brush_basic__draw_color_selector(context, layout, brush, gp_settings):
     tool_settings = context.scene.tool_settings
     settings = tool_settings.gpencil_paint
     ma = gp_settings.material
@@ -1584,7 +1584,7 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
 
-def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=False):
+def brush_basic_grease_pencil_paint_settings(layout, context, brush, props, *, compact=False):
     gp_settings = brush.gpencil_settings
     tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
     if gp_settings is None:
@@ -1625,6 +1625,9 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
         if brush.use_pressure_strength and not compact:
             col = layout.column()
             col.template_curve_mapping(gp_settings, "curve_strength", brush=True, use_negative_slope=True)
+
+    if props:
+        layout.prop(props, "subdivision")
 
     # Brush details
     if tool.idname in {
