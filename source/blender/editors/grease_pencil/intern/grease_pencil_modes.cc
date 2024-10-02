@@ -41,7 +41,6 @@ static bool brush_cursor_poll(bContext *C)
 
 static bool paintmode_toggle_poll(bContext *C)
 {
-  /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
   if ((ob) && ob->type == OB_GREASE_PENCIL) {
     return ob->data != nullptr;
@@ -57,33 +56,27 @@ static int paintmode_toggle_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
-  bool is_object = false;
   short mode;
-  /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
-  if (ob != nullptr) {
-    const bool is_mode_set = (ob->mode & OB_MODE_PAINT_GPENCIL_LEGACY) != 0;
-    if (!is_mode_set) {
-      Scene *scene = CTX_data_scene(C);
-      BKE_paint_init(bmain, scene, PaintMode::GPencil, PAINT_CURSOR_PAINT_GREASE_PENCIL);
-      Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::GPencil);
-      ED_paint_cursor_start(paint, brush_cursor_poll);
-      mode = OB_MODE_PAINT_GPENCIL_LEGACY;
-    }
-    else {
-      mode = OB_MODE_OBJECT;
-    }
-    is_object = true;
+  BLI_assert(ob != nullptr);
+
+  const bool is_mode_set = (ob->mode & OB_MODE_PAINT_GPENCIL_LEGACY) != 0;
+  if (!is_mode_set) {
+    Scene *scene = CTX_data_scene(C);
+    BKE_paint_init(bmain, scene, PaintMode::GPencil, PAINT_CURSOR_PAINT_GREASE_PENCIL);
+    Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::GPencil);
+    ED_paint_cursor_start(paint, brush_cursor_poll);
+    mode = OB_MODE_PAINT_GPENCIL_LEGACY;
+  }
+  else {
+    mode = OB_MODE_OBJECT;
   }
 
-  if (is_object) {
-    /* try to back previous mode */
-    if ((ob->restore_mode) && ((ob->mode & OB_MODE_PAINT_GPENCIL_LEGACY) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
-    }
-    ob->restore_mode = ob->mode;
-    ob->mode = mode;
+  if ((ob->restore_mode) && ((ob->mode & OB_MODE_PAINT_GPENCIL_LEGACY) == 0) && (back == 1)) {
+    mode = ob->restore_mode;
   }
+  ob->restore_mode = ob->mode;
+  ob->mode = mode;
 
   if (mode == OB_MODE_PAINT_GPENCIL_LEGACY) {
     /* Be sure we have brushes and Paint settings.
@@ -108,9 +101,8 @@ static int paintmode_toggle_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 
-  if (is_object) {
-    WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
-  }
+  WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
+
   if (G.background == false) {
     WM_toolsystem_update_from_context_view3d(C);
   }
@@ -122,19 +114,15 @@ static void GREASE_PENCIL_OT_paintmode_toggle(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  /* identifiers */
   ot->name = "Strokes Paint Mode Toggle";
   ot->idname = "GREASE_PENCIL_OT_paintmode_toggle";
   ot->description = "Enter/Exit paint mode for Grease Pencil strokes";
 
-  /* callbacks */
   ot->exec = paintmode_toggle_exec;
   ot->poll = paintmode_toggle_poll;
 
-  /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
-  /* properties */
   prop = RNA_def_boolean(
       ot->srna, "back", false, "Return to Previous Mode", "Return to previous mode");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
@@ -148,7 +136,6 @@ static void GREASE_PENCIL_OT_paintmode_toggle(wmOperatorType *ot)
 
 static bool sculptmode_toggle_poll(bContext *C)
 {
-  /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
   if (ob == nullptr) {
     return false;
@@ -179,36 +166,28 @@ static int sculptmode_toggle_exec(bContext *C, wmOperator *op)
   const bool back = RNA_boolean_get(op->ptr, "back");
 
   wmMsgBus *mbus = CTX_wm_message_bus(C);
-  bool is_object = false;
   short mode;
-  /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
-  if (ob != nullptr) {
-    const bool is_mode_set = (ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) != 0;
-    if (is_mode_set) {
-      mode = OB_MODE_OBJECT;
-    }
-    else {
-      Scene *scene = CTX_data_scene(C);
-      BKE_paint_init(
-          bmain, scene, PaintMode::SculptGreasePencil, PAINT_CURSOR_SCULPT_GREASE_PENCIL);
-      Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::SculptGreasePencil);
-      ED_paint_cursor_start(paint, sculpt_poll_view3d);
-      mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
-    }
-    is_object = true;
+  BLI_assert(ob != nullptr);
+  const bool is_mode_set = (ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) != 0;
+  if (is_mode_set) {
+    mode = OB_MODE_OBJECT;
+  }
+  else {
+    Scene *scene = CTX_data_scene(C);
+    BKE_paint_init(bmain, scene, PaintMode::SculptGreasePencil, PAINT_CURSOR_SCULPT_GREASE_PENCIL);
+    Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::SculptGreasePencil);
+    ED_paint_cursor_start(paint, sculpt_poll_view3d);
+    mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
   }
 
-  if (is_object) {
-    if ((ob->restore_mode) && ((ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
-    }
-    ob->restore_mode = ob->mode;
-    ob->mode = mode;
+  if ((ob->restore_mode) && ((ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) == 0) && (back == 1)) {
+    mode = ob->restore_mode;
   }
+  ob->restore_mode = ob->mode;
+  ob->mode = mode;
 
   if (mode == OB_MODE_SCULPT_GPENCIL_LEGACY) {
-    /* Be sure we have brushes. */
     BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_sculptpaint);
     BKE_paint_brushes_validate(bmain, &ts->gp_sculptpaint->paint);
   }
@@ -219,9 +198,8 @@ static int sculptmode_toggle_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 
-  if (is_object) {
-    WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
-  }
+  WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
+
   if (G.background == false) {
     WM_toolsystem_update_from_context_view3d(C);
   }
@@ -239,25 +217,19 @@ static void GREASE_PENCIL_OT_sculptmode_toggle(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  /* identifiers */
   ot->name = "Strokes Sculpt Mode Toggle";
   ot->idname = "GREASE_PENCIL_OT_sculptmode_toggle";
   ot->description = "Enter/Exit sculpt mode for Grease Pencil strokes";
 
-  /* callbacks */
   ot->exec = sculptmode_toggle_exec;
   ot->poll = sculptmode_toggle_poll;
 
-  /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
-  /* properties */
   prop = RNA_def_boolean(
       ot->srna, "back", false, "Return to Previous Mode", "Return to previous mode");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
-
-/* Stroke Weight Paint Mode Management */
 
 static bool grease_pencil_poll_weight_cursor(bContext *C)
 {
@@ -268,7 +240,6 @@ static bool grease_pencil_poll_weight_cursor(bContext *C)
 
 static bool weightmode_toggle_poll(bContext *C)
 {
-  /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
   if ((ob) && ob->type == OB_GREASE_PENCIL) {
     return ob->data != nullptr;
@@ -285,32 +256,25 @@ static int weightmode_toggle_exec(bContext *C, wmOperator *op)
   const bool back = RNA_boolean_get(op->ptr, "back");
 
   wmMsgBus *mbus = CTX_wm_message_bus(C);
-  bool is_object = false;
   short mode;
-  /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
+  BLI_assert(ob != nullptr);
   const bool is_mode_set = (ob->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) != 0;
-  if (ob != nullptr) {
-    is_object = true;
-    if (!is_mode_set) {
-      mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
-    }
-    else {
-      mode = OB_MODE_OBJECT;
-    }
+  if (!is_mode_set) {
+    mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
+  }
+  else {
+    mode = OB_MODE_OBJECT;
   }
 
-  if (is_object) {
-    /* try to back previous mode */
-    if ((ob->restore_mode) && ((ob->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
-    }
-    ob->restore_mode = ob->mode;
-    ob->mode = mode;
-
-    /* Prepare armature posemode. */
-    blender::ed::object::posemode_set_for_weight_paint(C, bmain, ob, is_mode_set);
+  if ((ob->restore_mode) && ((ob->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) && (back == 1)) {
+    mode = ob->restore_mode;
   }
+  ob->restore_mode = ob->mode;
+  ob->mode = mode;
+
+  /* Prepare armature posemode. */
+  blender::ed::object::posemode_set_for_weight_paint(C, bmain, ob, is_mode_set);
 
   if (mode == OB_MODE_WEIGHT_GPENCIL_LEGACY) {
     /* Be sure we have brushes. */
@@ -329,9 +293,8 @@ static int weightmode_toggle_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 
-  if (is_object) {
-    WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
-  }
+  WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
+
   if (G.background == false) {
     WM_toolsystem_update_from_context_view3d(C);
   }
@@ -343,19 +306,15 @@ static void GREASE_PENCIL_OT_weightmode_toggle(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  /* identifiers */
   ot->name = "Strokes Weight Mode Toggle";
   ot->idname = "GREASE_PENCIL_OT_weightmode_toggle";
   ot->description = "Enter/Exit weight paint mode for Grease Pencil strokes";
 
-  /* callbacks */
   ot->exec = weightmode_toggle_exec;
   ot->poll = weightmode_toggle_poll;
 
-  /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
-  /* properties */
   prop = RNA_def_boolean(
       ot->srna, "back", false, "Return to Previous Mode", "Return to previous mode");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
@@ -376,7 +335,6 @@ static bool grease_pencil_poll_vertex_cursor(bContext *C)
 
 static bool vertexmode_toggle_poll(bContext *C)
 {
-  /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
   if ((ob) && ob->type == OB_GREASE_PENCIL) {
     return ob->data != nullptr;
@@ -393,28 +351,22 @@ static int vertexmode_toggle_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
-  bool is_object = false;
   short mode;
-  /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
+  BLI_assert(ob != nullptr);
   const bool is_mode_set = (ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) != 0;
-  if (ob != nullptr) {
-    is_object = true;
-    if (!is_mode_set) {
-      mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
-    }
-    else {
-      mode = OB_MODE_OBJECT;
-    }
+  if (!is_mode_set) {
+    mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
+  }
+  else {
+    mode = OB_MODE_OBJECT;
   }
 
-  if (is_object) {
-    if ((ob->restore_mode) && ((ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
-    }
-    ob->restore_mode = ob->mode;
-    ob->mode = mode;
+  if ((ob->restore_mode) && ((ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) == 0) && (back == 1)) {
+    mode = ob->restore_mode;
   }
+  ob->restore_mode = ob->mode;
+  ob->mode = mode;
 
   if (mode == OB_MODE_VERTEX_GPENCIL_LEGACY) {
     /* Be sure we have brushes.
@@ -437,9 +389,8 @@ static int vertexmode_toggle_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 
-  if (is_object) {
-    WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
-  }
+  WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
+
   if (G.background == false) {
     WM_toolsystem_update_from_context_view3d(C);
   }
@@ -451,19 +402,15 @@ static void GREASE_PENCIL_OT_vertexmode_toggle(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  /* identifiers */
   ot->name = "Strokes Vertex Mode Toggle";
   ot->idname = "GREASE_PENCIL_OT_vertexmode_toggle";
   ot->description = "Enter/Exit vertex paint mode for Grease Pencil strokes";
 
-  /* callbacks */
   ot->exec = vertexmode_toggle_exec;
   ot->poll = vertexmode_toggle_poll;
 
-  /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
-  /* properties */
   prop = RNA_def_boolean(
       ot->srna, "back", false, "Return to Previous Mode", "Return to previous mode");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
