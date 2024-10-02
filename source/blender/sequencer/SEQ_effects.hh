@@ -100,7 +100,6 @@ namespace blender::seq {
 struct CharInfo {
   const char *str_ptr = nullptr;
   int byte_length = 0;
-  int flags = 0;
   float2 position{0.0f, 0.0f};
   int advance_x = 0;
   bool do_wrap = false;
