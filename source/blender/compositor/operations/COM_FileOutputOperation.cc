@@ -320,7 +320,9 @@ static float *inflate_input(const FileOutputInput &input, const int2 size)
       return buffer;
     }
     default:
-      /* Other types are internal and needn't be handled by operations. */
+      /* Vector types are not possible for File output, see get_input_data_type in
+       * COM_FileOutputNode.cc for more information. Other types are internal and needn't be
+       * handled by operations. */
       break;
   }
 
@@ -333,12 +335,14 @@ void FileOutputOperation::add_pass_for_input(realtime_compositor::FileOutput &fi
                                              const char *pass_name,
                                              const char *view_name)
 {
+  /* For constant operations, we fill a buffer that covers the canvas of the operation with the
+   * value of the operation. */
   const int2 size = input.image_input->get_flags().is_constant_operation ?
                         int2(this->get_width(), this->get_height()) :
                         int2(input.image_input->get_width(), input.image_input->get_height());
 
   /* The image buffer in the file output will take ownership of this buffer and freeing it will be
-   * its responsibility. */
+   * its responsibility. So if we don't use the output buffer, we need to free it here. */
   float *buffer = nullptr;
   if (input.image_input->get_flags().is_constant_operation) {
     buffer = inflate_input(input, size);
