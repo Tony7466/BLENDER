@@ -174,14 +174,14 @@ void ED_screen_draw_edges(wmWindow *win)
 
   if (region) {
     /* Find active area from active region. */
-    const int pos[2] = {region->winrct.xmin, region->winrct.ymin};
+    const int pos[2] = {BLI_rcti_cent_x(&region->winrct), BLI_rcti_cent_y(&region->winrct)};
     active_area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, pos);
   }
 
   if (!active_area) {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       AZone *zone = ED_area_actionzone_find_xy(area, win->eventstate->xy);
-      /* Get area from action zone, if not scrollbar. */
+      /* Get area from action zone, if not scroll-bar. */
       if (zone && zone->type != AZONE_REGION_SCROLL) {
         active_area = area;
         break;
@@ -242,6 +242,10 @@ void ED_screen_draw_edges(wmWindow *win)
   GPU_batch_uniform_1f(batch, "scale", corner_scale);
   GPU_batch_uniform_4fv(batch, "color", col);
 
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    drawscredge_area(area, win_size[0], win_size[1], edge_thickness);
+  }
+
   float outline1[4];
   float outline2[4];
   UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, outline1);
@@ -250,11 +254,9 @@ void ED_screen_draw_edges(wmWindow *win)
   const float offset = UI_SCALE_FAC * 1.34f;
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    drawscredge_area(area, win_size[0], win_size[1], edge_thickness);
-
-    rctf rectf2 = {float(area->totrct.xmin) + offset - 0.5f,
-                   float(area->totrct.xmax) - offset + 1.0f,
-                   float(area->totrct.ymin) + offset - 0.5f,
+    rctf rectf2 = {float(area->totrct.xmin) + offset - 1.0f,
+                   float(area->totrct.xmax) - offset + 1.5f,
+                   float(area->totrct.ymin) + offset - 1.0f,
                    float(area->totrct.ymax) - offset + 1.0f};
 
     UI_draw_roundbox_4fv_ex(&rectf2,
