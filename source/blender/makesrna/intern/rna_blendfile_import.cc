@@ -178,7 +178,7 @@ struct RNABlendImportContextItemsIterator {
   BlendfileLinkAppendContext::items_iterator_t iter;
 };
 
-void rna_BlendImportContext_items_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+void rna_BlendImportContext_import_items_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   BlendfileLinkAppendContext *ctx = static_cast<BlendfileLinkAppendContext *>(ptr->data);
 
@@ -188,7 +188,7 @@ void rna_BlendImportContext_items_begin(CollectionPropertyIterator *iter, Pointe
   iter->valid = (items_iter->iter != items_iter->ctx->items.end());
 }
 
-void rna_BlendImportContext_items_next(CollectionPropertyIterator *iter)
+void rna_BlendImportContext_import_items_next(CollectionPropertyIterator *iter)
 {
   RNABlendImportContextItemsIterator *items_iter =
       static_cast<RNABlendImportContextItemsIterator *>(iter->internal.custom);
@@ -196,7 +196,7 @@ void rna_BlendImportContext_items_next(CollectionPropertyIterator *iter)
   iter->valid = (items_iter->iter != items_iter->ctx->items.end());
 }
 
-void rna_BlendImportContext_items_end(CollectionPropertyIterator *iter)
+void rna_BlendImportContext_import_items_end(CollectionPropertyIterator *iter)
 {
   RNABlendImportContextItemsIterator *items_iter =
       static_cast<RNABlendImportContextItemsIterator *>(iter->internal.custom);
@@ -206,7 +206,7 @@ void rna_BlendImportContext_items_end(CollectionPropertyIterator *iter)
   MEM_delete(items_iter);
 }
 
-PointerRNA rna_BlendImportContext_items_get(CollectionPropertyIterator *iter)
+PointerRNA rna_BlendImportContext_import_items_get(CollectionPropertyIterator *iter)
 {
   RNABlendImportContextItemsIterator *items_iter =
       static_cast<RNABlendImportContextItemsIterator *>(iter->internal.custom);
@@ -215,7 +215,7 @@ PointerRNA rna_BlendImportContext_items_get(CollectionPropertyIterator *iter)
   return rna_pointer_inherit_refine(&iter->parent, &RNA_BlendImportContextItem, &ctx_item);
 }
 
-int rna_BlendImportContext_items_len(PointerRNA *ptr)
+int rna_BlendImportContext_import_items_len(PointerRNA *ptr)
 {
   BlendfileLinkAppendContext *ctx = static_cast<BlendfileLinkAppendContext *>(ptr->data);
   return int(ctx->items.size());
@@ -440,16 +440,16 @@ static void rna_def_blendfile_import_context(BlenderRNA *brna)
 
   RNA_define_verify_sdna(false); /* not in sdna */
 
-  /* XXX Cannot use `items` here as this is a reserved Python dict method name. */
-  prop = RNA_def_property(srna, "elements", PROP_COLLECTION, PROP_NONE);
+  /* NOTE: Cannot use just `items` here as this is a reserved Python dict method name. */
+  prop = RNA_def_property(srna, "import_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "BlendImportContextItem");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_collection_funcs(prop,
-                                    "rna_BlendImportContext_items_begin",
-                                    "rna_BlendImportContext_items_next",
-                                    "rna_BlendImportContext_items_end",
-                                    "rna_BlendImportContext_items_get",
-                                    "rna_BlendImportContext_items_len",
+                                    "rna_BlendImportContext_import_items_begin",
+                                    "rna_BlendImportContext_import_items_next",
+                                    "rna_BlendImportContext_import_items_end",
+                                    "rna_BlendImportContext_import_items_get",
+                                    "rna_BlendImportContext_import_items_len",
                                     nullptr,
                                     nullptr,
                                     nullptr);
