@@ -3109,7 +3109,7 @@ static blender::Vector<CharInfo> build_character_info(const TextVars *data, int 
     CharInfo char_info;
     char_info.str_ptr = str;
     char_info.byte_length = char_length;
-    char_info.advance_x = BLF_glyph_advance(font, str, char_length);
+    char_info.advance_x = BLF_glyph_advance(font, str);
     characters.append(char_info);
 
     byte_offset += char_length;

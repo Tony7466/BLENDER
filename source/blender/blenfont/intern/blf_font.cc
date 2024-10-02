@@ -1041,7 +1041,7 @@ float blf_font_fixed_width(FontBLF *font)
   return width;
 }
 
-int blf_font_glyph_advance(FontBLF *font, const char *str, const size_t str_len)
+int blf_font_glyph_advance(FontBLF *font, const char *str)
 {
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
   const uint charcode = BLI_str_utf8_as_unicode_safe(str);
