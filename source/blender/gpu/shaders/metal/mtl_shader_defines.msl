@@ -13,6 +13,8 @@
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wcomment"
 
+#define ENABLE_IF(cond) thread metal::enable_if_t<(cond)> * = nullptr
+
 /* Base instance with offsets. */
 #define gpu_BaseInstance gl_BaseInstanceARB
 #define gpu_InstanceIndex (gl_InstanceID + gpu_BaseInstance)
@@ -146,7 +148,14 @@ using sampler_ptr = thread sampler *;
  * through removal of bounds tests, as these are handled by the sample operation. */
 constexpr sampler _mtl_fetch_samp(address::clamp_to_zero, filter::nearest, coord::pixel);
 
-template<typename T, access A, typename TextureT, bool is_depth, int Dim, int Cube, int Array>
+template<typename T,
+         access A,
+         typename TextureT,
+         bool is_depth,
+         int Dim,
+         int Cube,
+         int Array,
+         bool Atomic = false>
 struct _mtl_sampler {
 
   template<typename U, int S>
@@ -160,8 +169,7 @@ struct _mtl_sampler {
   using UintDeriv = vec_or_scalar<uint, Dim + Cube>;
   using SizeVec = vec_or_scalar<int, Dim + Array>;
   using DataVec = vec<T, 4>;
-
-  using texture_ptr = thread TextureT *;
+  using AtomicT = T;
 
   /* Template compatible gradient type choosing. */
   template<int D, int C> struct gradient_n {};
@@ -173,11 +181,8 @@ struct _mtl_sampler {
   /* Using `using` would invalidate the whole class. */
 #define gradient typename gradient_n<Dim, Cube>::type
 
-  texture_ptr texture;
+  thread TextureT *texture;
   sampler_ptr samp;
-
-#define ARRAY_FN template<int Ar = Array, thread metal::enable_if_t<Ar == 1> * = nullptr>
-#define NON_ARRAY_FN template<int Ar = Array, thread metal::enable_if_t<Ar == 0> * = nullptr>
 
   template<int dim, int array> SizeVec size_impl(uint lod) const {}
   template<> SizeVec size_impl<1, 0>(uint lod) const
@@ -204,6 +209,9 @@ struct _mtl_sampler {
   {
     return size_impl<Dim, Array>(uint(lod));
   }
+
+#define ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 1)>
+#define NON_ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 0)>
 
   NON_ARRAY_FN DataVec sample(FltCoord coord) const
   {
@@ -256,15 +264,24 @@ struct _mtl_sampler {
   }
   ARRAY_FN DataVec fetch(IntCoord coord) const
   {
-    return texture->sample(_mtl_fetch_samp, FltDeriv(uv_mask(coord)), layer_mask(coord));
+    return texture->sample(_mtl_fetch_samp, uv_mask(coord), layer_mask(coord));
   }
   ARRAY_FN DataVec fetch(IntCoord coord, level lod, IntDeriv ofs = {0}) const
   {
-    return texture->sample(_mtl_fetch_samp, FltDeriv(uv_mask(coord)), layer_mask(coord), lod, ofs);
+    return texture->sample(_mtl_fetch_samp, uv_mask(coord), layer_mask(coord), lod, ofs);
   }
 
-  /** Image only functions. */
-  /* TODO(fclem): Split type for images. */
+#undef gradient
+#undef ARRAY_FN
+#undef NON_ARRAY_FN
+
+  /**
+   * Image functions.
+   * To be split to its own class.
+   */
+
+#define ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 1)>
+#define NON_ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 0)>
 
   NON_ARRAY_FN DataVec load(IntCoord coord) const
   {
@@ -277,12 +294,89 @@ struct _mtl_sampler {
 
   ARRAY_FN DataVec load(IntCoord coord) const
   {
-    return texture->read(UintCoord(uv_mask(coord)), layer_mask(coord), 0);
+    return texture->read(uv_mask_img(coord), layer_mask_img(coord), 0);
   }
   ARRAY_FN void store(DataVec data, IntCoord coord) const
   {
-    texture->write(data, UintCoord(uv_mask(coord)), layer_mask(coord), 0);
+    texture->write(data, uv_mask_img(coord), layer_mask_img(coord), 0);
   }
+
+#undef ARRAY_FN
+#undef NON_ARRAY_FN
+
+#define NON_ARRAY_ATOMIC \
+  template<typename U = T, \
+           int Ar = Array, \
+           ENABLE_IF(metal::is_integral_v<U> == true), \
+           ENABLE_IF(sizeof(U) == 4), \
+           ENABLE_IF(Ar == 0)>
+#define ARRAY_ATOMIC \
+  template<typename U = T, \
+           int Ar = Array, \
+           ENABLE_IF(metal::is_integral_v<U> == true), \
+           ENABLE_IF(sizeof(U) == 4), \
+           ENABLE_IF(Ar == 1)>
+
+  NON_ARRAY_ATOMIC AtomicT atomic_min(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_min(UintCoord(coord), data).x;
+  }
+  NON_ARRAY_ATOMIC AtomicT atomic_max(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_max(UintCoord(coord), data).x;
+  }
+  NON_ARRAY_ATOMIC AtomicT atomic_add(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_add(UintCoord(coord), data).x;
+  }
+  NON_ARRAY_ATOMIC AtomicT atomic_and(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_and(UintCoord(coord), data).x;
+  }
+  NON_ARRAY_ATOMIC AtomicT atomic_or(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_or(UintCoord(coord), data).x;
+  }
+  NON_ARRAY_ATOMIC AtomicT atomic_xor(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_xor(UintCoord(coord), data).x;
+  }
+  NON_ARRAY_ATOMIC AtomicT atomic_exchange(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_exchange(UintCoord(coord), data).x;
+  }
+
+  ARRAY_ATOMIC AtomicT atomic_min(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_min(uv_mask_img(coord), layer_mask_img(coord), data).x;
+  }
+  ARRAY_ATOMIC AtomicT atomic_max(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_max(uv_mask_img(coord), layer_mask_img(coord), data).x;
+  }
+  ARRAY_ATOMIC AtomicT atomic_add(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_add(uv_mask_img(coord), layer_mask_img(coord), data).x;
+  }
+  ARRAY_ATOMIC AtomicT atomic_and(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_and(uv_mask_img(coord), layer_mask_img(coord), data).x;
+  }
+  ARRAY_ATOMIC AtomicT atomic_or(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_or(uv_mask_img(coord), layer_mask_img(coord), data).x;
+  }
+  ARRAY_ATOMIC AtomicT atomic_xor(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_fetch_xor(uv_mask_img(coord), layer_mask_img(coord), data).x;
+  }
+  ARRAY_ATOMIC AtomicT atomic_exchange(IntCoord coord, AtomicT data) const
+  {
+    return texture->atomic_exchange(uv_mask_img(coord), layer_mask_img(coord), data).x;
+  }
+
+#undef NON_ARRAY_ATOMIC
+#undef ARRAY_ATOMIC
 
   void fence()
   {
@@ -304,9 +398,9 @@ struct _mtl_sampler {
   {
     return reshape<FltDeriv>(coord);
   }
-  IntDeriv uv_mask(IntCoord coord) const
+  FltDeriv uv_mask(IntCoord coord) const
   {
-    return reshape<IntDeriv>(coord);
+    return FltDeriv(reshape<IntDeriv>(coord));
   }
 
   uint layer_mask(FltCoord coord) const
@@ -318,81 +412,159 @@ struct _mtl_sampler {
     return coord[Dim + Cube];
   }
 
-#undef gradient
-#undef ARRAY_FN
-#undef NON_ARRAY_FN
+  UintDeriv uv_mask_img(IntCoord coord) const
+  {
+    return UintDeriv(reshape<IntDeriv>(coord));
+  }
+
+  uint layer_mask_img(IntCoord coord) const
+  {
+    return coord[Dim + Cube];
+  }
 };
 
 /** Sampler functions */
 
-template<typename SamplerT> typename SamplerT::SizeVec textureSize(SamplerT texture, int lod)
+#define SAMPLER_FN \
+  template<typename SamplerT, \
+           typename FltCoord = typename SamplerT::FltCoord, \
+           typename FltDeriv = typename SamplerT::FltDeriv, \
+           typename IntCoord = typename SamplerT::IntCoord, \
+           typename IntDeriv = typename SamplerT::IntDeriv, \
+           typename UintCoord = typename SamplerT::UintCoord, \
+           typename UintDeriv = typename SamplerT::UintDeriv, \
+           typename SizeVec = typename SamplerT::SizeVec, \
+           typename DataVec = typename SamplerT::DataVec>
+
+SAMPLER_FN SizeVec textureSize(SamplerT texture, int lod)
 {
   return texture.size(lod);
 }
 
-template<typename SamplerT, typename fVec>
-typename SamplerT::DataVec texture(SamplerT texture, fVec coord)
+SAMPLER_FN DataVec texture(SamplerT texture, FltCoord coord)
 {
   return texture.sample(coord);
 }
 
-template<typename SamplerT, typename fVec>
-typename SamplerT::DataVec texture(SamplerT texture, fVec coord, float lod_bias)
+SAMPLER_FN DataVec texture(SamplerT texture, FltCoord coord, float lod_bias)
 {
   return texture.sample_bias(coord, bias(lod_bias));
 }
 
-template<typename SamplerT, typename fVec>
-typename SamplerT::DataVec textureLod(SamplerT texture, fVec coord, float lod)
+SAMPLER_FN DataVec textureLod(SamplerT texture, FltCoord coord, float lod)
 {
   return texture.sample_lod(coord, level(lod));
 }
 
-template<typename SamplerT, typename fVec, typename iVec>
-typename SamplerT::DataVec textureLodOffset(SamplerT texture, fVec coord, float lod, iVec offset)
+SAMPLER_FN DataVec textureLodOffset(SamplerT texture, FltCoord coord, float lod, IntDeriv offset)
 {
   return texture.sample_lod(coord, level(lod), offset);
 }
 
-template<typename SamplerT, typename fVec>
-typename SamplerT::DataVec textureGather(SamplerT texture, fVec coord)
+SAMPLER_FN DataVec textureGather(SamplerT texture, FltCoord coord)
 {
   return texture.gather(coord);
 }
 
-template<typename SamplerT, typename fVec, typename fDeriv>
-typename SamplerT::DataVec textureGrad(SamplerT texture, fVec coord, fDeriv dPdx, fDeriv dPdy)
+SAMPLER_FN DataVec textureGrad(SamplerT texture, FltCoord coord, FltDeriv dPdx, FltDeriv dPdy)
 {
   return texture.sample_grad(coord, dPdx, dPdy);
 }
 
-template<typename SamplerT, typename iVec>
-typename SamplerT::DataVec texelFetch(SamplerT texture, iVec coord, int lod)
+SAMPLER_FN DataVec texelFetch(SamplerT texture, IntCoord coord, int lod)
 {
   return texture.fetch(coord, level(lod));
 }
 
-template<typename SamplerT, typename iVec>
-typename SamplerT::DataVec texelFetchOffset(SamplerT texture, iVec coord, int lod, iVec offset)
+SAMPLER_FN DataVec texelFetchOffset(SamplerT texture, IntCoord coord, int lod, IntDeriv offset)
 {
   return texture.fetch(coord, level(lod), offset);
 }
 
+#undef SAMPLER_FN
+
 /** Image functions */
 
-template<typename SamplerT> typename SamplerT::SizeVec imageSize(SamplerT texture)
+#define IMAGE_FN \
+  template<typename SamplerT, \
+           typename IntCoord = typename SamplerT::IntCoord, \
+           typename IntDeriv = typename SamplerT::IntDeriv, \
+           typename UintCoord = typename SamplerT::UintCoord, \
+           typename UintDeriv = typename SamplerT::UintDeriv, \
+           typename SizeVec = typename SamplerT::SizeVec, \
+           typename DataVec = typename SamplerT::DataVec, \
+           typename AtomicT = typename SamplerT::AtomicT>
+
+IMAGE_FN SizeVec imageSize(SamplerT texture)
 {
   return texture.size();
 }
 
-template<typename SamplerT> void imageFence(SamplerT texture)
+IMAGE_FN void imageFence(SamplerT texture)
 {
   return texture.fence();
 }
 
-#if 0
+IMAGE_FN DataVec imageLoad(SamplerT texture, IntCoord coord)
+{
+  if (any(UintCoord(coord) >= UintCoord(texture.size()))) {
+    return DataVec(0);
+  }
+  return texture.load(coord);
+}
+
+IMAGE_FN DataVec imageLoadFast(SamplerT texture, IntCoord coord)
+{
+  return texture.load(coord);
+}
+
+IMAGE_FN void imageStore(SamplerT texture, IntCoord coord, DataVec data)
+{
+  if (any(UintCoord(coord) >= UintCoord(texture.size()))) {
+    return;
+  }
+  texture.store(data, coord);
+}
+
+IMAGE_FN
+void imageStoreFast(SamplerT texture, IntCoord coord, DataVec data)
+{
+  texture.store(data, coord);
+}
+
+IMAGE_FN AtomicT imageAtomicMin(SamplerT texture, IntCoord coord, AtomicT data)
+{
+  return texture.atomic_min(coord, data);
+}
+IMAGE_FN AtomicT imageAtomicMax(SamplerT texture, IntCoord coord, AtomicT data)
+{
+  return texture.atomic_max(coord, data);
+}
+IMAGE_FN AtomicT imageAtomicAdd(SamplerT texture, IntCoord coord, AtomicT data)
+{
+  return texture.atomic_add(coord, data);
+}
+IMAGE_FN AtomicT imageAtomicAnd(SamplerT texture, IntCoord coord, AtomicT data)
+{
+  return texture.atomic_and(coord, data);
+}
+IMAGE_FN AtomicT imageAtomicOr(SamplerT texture, IntCoord coord, AtomicT data)
+{
+  return texture.atomic_or(coord, data);
+}
+IMAGE_FN AtomicT imageAtomicXor(SamplerT texture, IntCoord coord, AtomicT data)
+{
+  return texture.atomic_xor(coord, data);
+}
+IMAGE_FN AtomicT imageAtomicExchange(SamplerT texture, IntCoord coord, AtomicT data)
+{
+  return texture.atomic_exchange(coord, data);
+}
+
+#undef IMAGE_FN
+
 /* Add any types as needed. */
-#  define TEMPLATE template<typename T, access A>
+#define TEMPLATE template<typename T = float, access A = access::sample>
 TEMPLATE using depth2D = _mtl_sampler<T, A, depth2d<T, A>, true, 2, 0, 0>;
 TEMPLATE using depth2DArray = _mtl_sampler<T, A, depth2d_array<T, A>, true, 2, 0, 1>;
 TEMPLATE using depthCube = _mtl_sampler<T, A, texturecube<T, A>, true, 2, 1, 1>;
@@ -405,51 +577,49 @@ TEMPLATE using sampler3D = _mtl_sampler<T, A, texture3d<T, A>, false, 3, 0, 0>;
 TEMPLATE using samplerBuffer = _mtl_sampler<T, A, texture_buffer<T, A>, false, 1, 0, 0>;
 TEMPLATE using samplerCube = _mtl_sampler<T, A, texturecube<T, A>, false, 2, 1, 0>;
 TEMPLATE using samplerCubeArray = _mtl_sampler<T, A, texturecube_array<T, A>, false, 2, 1, 1>;
-#  undef TEMPLATE
-#else
-#  define P template<typename T, access A = access::sample>
-P using _mtl_sampler_depth_2d = _mtl_sampler<T, A, depth2d<T, A>, true, 2, 0, 0>;
-P using _mtl_sampler_depth_2d_array = _mtl_sampler<T, A, depth2d_array<T, A>, true, 2, 0, 1>;
-P using _mtl_sampler_depth_cube = _mtl_sampler<T, A, texturecube<T, A>, true, 2, 1, 1>;
-P using _mtl_sampler_depth_cube_array = _mtl_sampler<T, A, texturecube_array<T, A>, true, 2, 1, 1>;
-P using _mtl_sampler_1d = _mtl_sampler<T, A, texture1d<T, A>, false, 1, 0, 0>;
-P using _mtl_sampler_1d_array = _mtl_sampler<T, A, texture1d_array<T, A>, false, 1, 0, 1>;
-P using _mtl_sampler_2d = _mtl_sampler<T, A, texture2d<T, A>, false, 2, 0, 0>;
-P using _mtl_sampler_2d_array = _mtl_sampler<T, A, texture2d_array<T, A>, false, 2, 0, 1>;
-P using _mtl_sampler_3d = _mtl_sampler<T, A, texture3d<T, A>, false, 3, 0, 0>;
-P using _mtl_sampler_buffer = _mtl_sampler<T, A, texture_buffer<T, A>, false, 1, 0, 0>;
-P using _mtl_sampler_cube = _mtl_sampler<T, A, texturecube<T, A>, false, 2, 1, 0>;
-P using _mtl_sampler_cube_array = _mtl_sampler<T, A, texturecube_array<T, A>, false, 2, 1, 1>;
-#  undef P
-#endif
 
-/* Variant for 1D(Array) samplers. Discard the lod. */
+/* Used by backend to declare the samplers. Could be removed. */
+TEMPLATE using _mtl_sampler_depth_2d = depth2D<T, A>;
+TEMPLATE using _mtl_sampler_depth_2d_array = depth2DArray<T, A>;
+TEMPLATE using _mtl_sampler_depth_cube = depthCube<T, A>;
+TEMPLATE using _mtl_sampler_depth_cube_array = depthCubeArray<T, A>;
+TEMPLATE using _mtl_sampler_1d = sampler1D<T, A>;
+TEMPLATE using _mtl_sampler_1d_array = sampler1DArray<T, A>;
+TEMPLATE using _mtl_sampler_2d = sampler2D<T, A>;
+TEMPLATE using _mtl_sampler_2d_array = sampler2DArray<T, A>;
+TEMPLATE using _mtl_sampler_3d = sampler3D<T, A>;
+TEMPLATE using _mtl_sampler_buffer = samplerBuffer<T, A>;
+TEMPLATE using _mtl_sampler_cube = samplerCube<T, A>;
+TEMPLATE using _mtl_sampler_cube_array = samplerCubeArray<T, A>;
+#undef TEMPLATE
+
+/* Variant for 1D samplers. Discard the lod. */
 template<typename T, access A>
-typename _mtl_sampler_1d<T, A>::DataVec texelFetch(_mtl_sampler_1d<T, A> texture,
-                                                   int coord,
-                                                   int lod = 0)
+typename sampler1D<T, A>::DataVec texelFetch(sampler1D<T, A> texture, int coord, int lod = 0)
 {
   return texture.fetch(coord);
 }
+
+/* Variant for 1DArray samplers. Discard the lod. */
 template<typename T, access A>
-typename _mtl_sampler_1d_array<T, A>::DataVec texelFetch(_mtl_sampler_1d_array<T, A> texture,
-                                                         int2 coord,
-                                                         int lod = 0)
+typename sampler1DArray<T, A>::DataVec texelFetch(sampler1DArray<T, A> texture,
+                                                  int2 coord,
+                                                  int lod = 0)
 {
   return texture.fetch(coord);
 }
 
 /* Variant for buffer samplers. Discard the lod. */
 template<typename T, access A>
-typename _mtl_sampler_buffer<T, A>::DataVec texelFetch(_mtl_sampler_buffer<T, A> texture,
-                                                       int coord,
-                                                       int lod = 0)
+typename samplerBuffer<T, A>::DataVec texelFetch(samplerBuffer<T, A> texture,
+                                                 int coord,
+                                                 int lod = 0)
 {
   uint texel = uint(coord);
   if (texel < texture.texture->get_width()) {
     return texture.texture->read(texel);
   }
-  return typename _mtl_sampler_buffer<T, A>::DataVec(0);
+  return typename samplerBuffer<T, A>::DataVec(0);
 }
 
 /* If native texture atomics are unsupported, we instead utilize a custom type which wraps a
@@ -497,8 +667,8 @@ template<typename T, access A = access::sample> struct _mtl_sampler_3d_atomic {
   device T *buffer;
   /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater than
    * the texture's native width to satisfy device alignment rules. We need to use the padded width
-   * when writing to ensure the
-   * correct writing location aligns with a given pixel location in the texture. */
+   * when writing to ensure the correct writing location aligns with a given pixel location in the
+   * texture. */
   uint aligned_width;
   /* Texture size required to determine location offset of array layer with 2D texture space. */
   ushort3 texture_size;
@@ -571,8 +741,8 @@ struct SStruct {
 #define st xy
 
 /* Texture functions. */
-#define imageLoad(__image, __coord) _texelFetch_internal(__image, __coord, 0)
-#define imageLoadFast(__image, __coord) _texelFetch_internal_fast(__image, __coord, 0)
+// #define imageLoad(__image, __coord) _texelFetch_internal(__image, __coord, 0)
+// #define imageLoadFast(__image, __coord) _texelFetch_internal_fast(__image, __coord, 0)
 // #define texture2(__tex, __uv) _texture_internal_samp(__tex, __uv)
 // #define texture3(__tex, __uv, _bias) _texture_internal_bias(__tex, __uv, bias(float(_bias)))
 // #define textureGather2(__tex, __uv) _texture_gather_internal(__tex, __uv, 0)
@@ -588,8 +758,8 @@ struct SStruct {
 // textureGather2)(__VA_ARGS__)
 
 /* Texture-write functions. */
-#define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
-#define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
+// #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
+// #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
 
 /* Singular return values from texture functions of type DEPTH are often indexed with either .r or
  * .x. This is a lightweight wrapper type for handling this syntax. */
@@ -1322,12 +1492,12 @@ inline void _texture_write_internal_fast(thread _mtl_sampler_3d<S, A> tex, T _co
 #ifdef MTL_SUPPORTS_TEXTURE_ATOMICS
 
 /* Image atomic operations. */
-#  define imageAtomicMin(tex, coord, data) _texture_image_atomic_min_internal(tex, coord, data)
-#  define imageAtomicAdd(tex, coord, data) _texture_image_atomic_add_internal(tex, coord, data)
-#  define imageAtomicExchange(tex, coord, data) \
-    _texture_image_atomic_exchange_internal(tex, coord, data)
-#  define imageAtomicXor(tex, coord, data) _texture_image_atomic_xor_internal(tex, coord, data)
-#  define imageAtomicOr(tex, coord, data) _texture_image_atomic_or_internal(tex, coord, data)
+// #  define imageAtomicMin(tex, coord, data) _texture_image_atomic_min_internal(tex, coord, data)
+// #  define imageAtomicAdd(tex, coord, data) _texture_image_atomic_add_internal(tex, coord, data)
+// #  define imageAtomicExchange(tex, coord, data) \
+//     _texture_image_atomic_exchange_internal(tex, coord, data)
+// #  define imageAtomicXor(tex, coord, data) _texture_image_atomic_xor_internal(tex, coord, data)
+// #  define imageAtomicOr(tex, coord, data) _texture_image_atomic_or_internal(tex, coord, data)
 
 /* Atomic OR. */
 template<typename S, access A>
@@ -2283,6 +2453,8 @@ RESHAPE(float4x4, float3x3, m[0].x, m[0].y, m[0].z, 0, m[1].x, m[1].y, m[1].z, 0
 /* TODO(fclem): Remove. Use Transform instead. */
 RESHAPE(float3x3, float3x4, m[0].xyz, m[1].xyz, m[2].xyz)
 #undef RESHAPE
+
+#undef ENABLE_IF
 
 /* Array syntax compatibility. */
 /* clang-format off */
