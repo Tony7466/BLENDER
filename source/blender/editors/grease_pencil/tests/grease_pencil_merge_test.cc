@@ -4,6 +4,7 @@
 
 #include "testing/testing.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.hh"
@@ -12,6 +13,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_vector.hh"
+#include "BLI_virtual_array.hh"
 
 #include "ED_grease_pencil.hh"
 
@@ -51,7 +53,7 @@ TEST(grease_pencil_merge, merge_simple)
 
   GreasePencil *merged_grease_pencil = BKE_grease_pencil_new_nomain();
 
-  /* Merge Layer1 and Layer2*/
+  /* Merge Layer1 and Layer2. */
   Array<Vector<int>> src_layer_indices_by_dst_layer({{0, 1}});
   ed::greasepencil::merge_layers(
       grease_pencil, src_layer_indices_by_dst_layer, *merged_grease_pencil);
@@ -223,6 +225,42 @@ TEST(grease_pencil_merge, merge_keyframes)
 
   Layer &expected_layer_4 = merged_grease_pencil->find_node_by_name("Layer4")->as_layer();
   EXPECT_EQ(merged_grease_pencil->get_drawing_at(expected_layer_4, 3)->strokes().points_num(), 70);
+
+  BKE_id_free(nullptr, merged_grease_pencil);
+}
+
+TEST(grease_pencil_merge, merge_layer_attributes)
+{
+  using namespace bke;
+  using namespace bke::greasepencil;
+  GreasePencilIDTestContext ctx;
+  GreasePencil &grease_pencil = *ctx.grease_pencil;
+
+  grease_pencil.add_layer("Layer1");
+  grease_pencil.add_layer("Layer2");
+  grease_pencil.add_layer("Layer3");
+
+  Array<float> test_float_values({4.2f, 1.0f, -12.0f});
+  SpanAttributeWriter<float> test_attribute =
+      grease_pencil.attributes_for_write().lookup_or_add_for_write_only_span<float>(
+          "test", AttrDomain::Layer);
+  test_attribute.span.copy_from(test_float_values);
+  test_attribute.finish();
+
+  GreasePencil *merged_grease_pencil = BKE_grease_pencil_new_nomain();
+
+  /* Merge Layer1 and Layer2. */
+  Array<Vector<int>> src_layer_indices_by_dst_layer({{0, 1}, {2}});
+  ed::greasepencil::merge_layers(
+      grease_pencil, src_layer_indices_by_dst_layer, *merged_grease_pencil);
+
+  EXPECT_EQ(merged_grease_pencil->layers().size(), 2);
+
+  VArray<float> merged_values = *merged_grease_pencil->attributes().lookup<float>("test");
+  Array<float> expected_float_values({2.6, -12.0f});
+  for (const int i : merged_grease_pencil->layers().index_range()) {
+    EXPECT_FLOAT_EQ(merged_values[i], expected_float_values[i]);
+  }
 
   BKE_id_free(nullptr, merged_grease_pencil);
 }
