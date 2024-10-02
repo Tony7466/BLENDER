@@ -572,7 +572,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
 {
   const TransInfo *t = static_cast<const TransInfo *>(op->customdata);
   if (t->modifiers & MOD_EDIT_SNAP_SOURCE) {
-    if (value == TFM_MODAL_EDIT_SNAP_SOURCE_OFF) {
+    if (value == TFM_MODAL_SET_SNAP_BASE) {
       return true;
     }
     if (!ELEM(
@@ -710,9 +710,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       }
       break;
     }
-    case TFM_MODAL_EDIT_SNAP_SOURCE_OFF:
-      return false;
-    case TFM_MODAL_EDIT_SNAP_SOURCE_ON: {
+    case TFM_MODAL_SET_SNAP_BASE: {
       if (!ELEM(t->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
         return false;
       }
@@ -753,10 +751,7 @@ wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf)
       {TFM_MODAL_PLANE_Y, "PLANE_Y", 0, "Y Plane", ""},
       {TFM_MODAL_PLANE_Z, "PLANE_Z", 0, "Z Plane", ""},
       {TFM_MODAL_CONS_OFF, "CONS_OFF", 0, "Clear Constraints", ""},
-      {TFM_MODAL_EDIT_SNAP_SOURCE_ON, "EDIT_SNAP_SOURCE_ON", 0, "Set Snap Base", ""},
-      {TFM_MODAL_EDIT_SNAP_SOURCE_OFF, "EDIT_SNAP_SOURCE_OFF", 0, "Set Snap Base (Off)", ""},
-      {TFM_MODAL_SNAP_INV_ON, "SNAP_INV_ON", 0, "Snap Invert", ""},
-      {TFM_MODAL_SNAP_INV_OFF, "SNAP_INV_OFF", 0, "Snap Invert (Off)", ""},
+      {TFM_MODAL_SET_SNAP_BASE, "EDIT_SNAP_SOURCE_ON", 0, "Set Snap Base", ""},
       {TFM_MODAL_SNAP_TOGGLE, "SNAP_TOGGLE", 0, "Snap Toggle", ""},
       {TFM_MODAL_ADD_SNAP, "ADD_SNAP", 0, "Add Snap Point", ""},
       {TFM_MODAL_REMOVE_SNAP, "REMOVE_SNAP", 0, "Remove Last Snap Point", ""},
@@ -991,6 +986,14 @@ static bool transform_event_modal_constraint(TransInfo *t, short modal_type)
   return true;
 }
 
+static bool is_event_toggling(const wmEvent *event)
+{
+  if (event->prev_val == KM_RELEASE) {
+    return WM_event_drag_test(event, event->prev_press_xy);
+  }
+  return true;
+}
+
 int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
 {
   bool handled = false;
@@ -1126,24 +1129,10 @@ int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
         t->redraw |= TREDRAW_HARD;
         handled = true;
         break;
-
-      case TFM_MODAL_SNAP_INV_ON:
-        if (!(t->modifiers & MOD_SNAP_INVERT)) {
-          t->modifiers |= MOD_SNAP_INVERT;
-          transform_snap_flag_from_modifiers_set(t);
-          t->redraw |= TREDRAW_HARD;
-        }
-        handled = true;
-        break;
-      case TFM_MODAL_SNAP_INV_OFF:
-        if (t->modifiers & MOD_SNAP_INVERT) {
-          t->modifiers &= ~MOD_SNAP_INVERT;
-          transform_snap_flag_from_modifiers_set(t);
-          t->redraw |= TREDRAW_HARD;
-          handled = true;
-        }
-        break;
       case TFM_MODAL_SNAP_TOGGLE:
+        if (!is_event_toggling(event)) {
+          break;
+        }
         t->modifiers ^= MOD_SNAP;
         transform_snap_flag_from_modifiers_set(t);
         t->redraw |= TREDRAW_HARD;
@@ -1329,9 +1318,11 @@ int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
           t->redraw |= TREDRAW_HARD;
         }
         break;
-      case TFM_MODAL_EDIT_SNAP_SOURCE_ON:
-        transform_mode_snap_source_init(t, nullptr);
-        t->redraw |= TREDRAW_HARD;
+      case TFM_MODAL_SET_SNAP_BASE:
+        if (!(t->modifiers & MOD_EDIT_SNAP_SOURCE)) {
+          transform_mode_snap_source_init(t, nullptr);
+          t->redraw |= TREDRAW_HARD;
+        }
         break;
       default:
         break;
@@ -2059,7 +2050,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
           continue;
         }
 
-        if (kmi->propvalue == TFM_MODAL_SNAP_INV_ON && kmi->val == KM_PRESS) {
+        if (kmi->propvalue == TFM_MODAL_SNAP_TOGGLE && kmi->val == KM_PRESS) {
           if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) &&
                (event->modifier & KM_CTRL)) ||
               (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&

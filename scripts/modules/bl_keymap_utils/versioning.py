@@ -184,4 +184,19 @@ def keyconfig_update(keyconfig_data, keyconfig_version):
     if keyconfig_version <= (4, 1, 21):
         rename_keymap({"NLA Channels": "NLA Tracks"})
 
+    if keyconfig_version <= (4, 4, 0):
+        if not has_copy:
+            keyconfig_data = copy.deepcopy(keyconfig_data)
+            has_copy = True
+
+        if km_items_data := get_transform_modal_map():
+            keywords_to_remove = {"EDIT_SNAP_SOURCE_OFF", "SNAP_TOGGLE", "SNAP_INV_ON", "SNAP_INV_OFF", "ADD_SNAP"}
+            km_items_data["items"] = [item for item in km_items_data["items"] if item[0] not in keywords_to_remove]
+            km_items_data["items"].extend([
+                ("SNAP_TOGGLE", {"type": 'LEFT_CTRL', "value": 'ANY', "any": True}, None),
+                ("SNAP_TOGGLE", {"type": 'RIGHT_CTRL', "value": 'ANY', "any": True}, None),
+                ("SNAP_TOGGLE", {"type": 'TAB', "value": 'ANY', "shift": True}, None),
+                ("ADD_SNAP", {"type": 'A', "value": 'PRESS'}, None),
+            ])
+
     return keyconfig_data

@@ -118,8 +118,7 @@ static eRedrawFlag snapsource_handle_event_fn(TransInfo *t, const wmEvent *event
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
       case TFM_MODAL_CONFIRM:
-      case TFM_MODAL_EDIT_SNAP_SOURCE_ON:
-      case TFM_MODAL_EDIT_SNAP_SOURCE_OFF:
+      case TFM_MODAL_SET_SNAP_BASE:
         if (t->modifiers & MOD_EDIT_SNAP_SOURCE) {
           snapsource_confirm(t);
 

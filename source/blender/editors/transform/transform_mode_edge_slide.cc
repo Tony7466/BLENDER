@@ -766,8 +766,7 @@ static void applyEdgeSlide(TransInfo *t)
   const bool is_clamp = !(t->flag & T_ALT_TRANSFORM);
   const bool is_constrained = !(is_clamp == false || hasNumInput(&t->num));
   const bool is_precision = t->modifiers & MOD_PRECISION;
-  const bool is_snap = t->modifiers & MOD_SNAP;
-  const bool is_snap_invert = t->modifiers & MOD_SNAP_INVERT;
+  const bool is_snap = transform_snap_is_active(t);
 
   final = t->values[0] + t->values_modal_offset[0];
 
@@ -812,9 +811,8 @@ static void applyEdgeSlide(TransInfo *t)
   WorkspaceStatus status(t->context);
   status.opmodal(IFACE_("Confirm"), op->type, TFM_MODAL_CONFIRM);
   status.opmodal(IFACE_("Cancel"), op->type, TFM_MODAL_CONFIRM);
-  status.opmodal(IFACE_("Snap"), op->type, TFM_MODAL_SNAP_TOGGLE, is_snap);
-  status.opmodal(IFACE_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON, is_snap_invert);
-  status.opmodal(IFACE_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
+  status.opmodal(IFACE_("Snap Toggle"), op->type, TFM_MODAL_SNAP_TOGGLE, is_snap);
+  status.opmodal(IFACE_("Set Snap Base"), op->type, TFM_MODAL_SET_SNAP_BASE);
   status.opmodal(IFACE_("Move"), op->type, TFM_MODAL_TRANSLATE);
   status.opmodal(IFACE_("Rotate"), op->type, TFM_MODAL_ROTATE);
   status.opmodal(IFACE_("Resize"), op->type, TFM_MODAL_RESIZE);
