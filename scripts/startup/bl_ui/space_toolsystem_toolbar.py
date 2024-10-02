@@ -2329,10 +2329,10 @@ class _defs_grease_pencil_paint:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("grease_pencil.interpolate")
             layout.prop(props, "layers")
-            layout.prop(props, "exclude_breakdowns")
             layout.prop(props, "flip")
             layout.prop(props, "smooth_factor")
             layout.prop(props, "smooth_steps")
+            layout.prop(props, "exclude_breakdowns")
 
         return dict(
             idname="builtin.interpolate",
