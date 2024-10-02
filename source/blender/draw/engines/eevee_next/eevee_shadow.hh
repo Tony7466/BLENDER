@@ -94,14 +94,14 @@ struct ShadowTileMap : public ShadowTileMapData {
                          int2 origin_offset,
                          int clipmap_level,
                          eShadowProjectionType projection_type_,
-                         uint2 shadow_set_membership_);
+                         uint2 shadow_set_membership_ = ~uint2(0));
 
   void sync_cubeface(eLightType light_type_,
                      const float4x4 &object_mat,
                      float near,
                      float far,
                      eCubeFace face,
-                     uint2 shadow_set_membership_);
+                     uint2 shadow_set_membership_ = ~uint2(0));
 
   void debug_draw() const;
 
