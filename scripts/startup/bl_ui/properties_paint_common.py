@@ -1474,14 +1474,14 @@ def brush_basic__draw_color_selector(context, layout, brush, gp_settings):
             sub_row.prop_enum(settings, "color_mode", 'MATERIAL', text="", icon='MATERIAL')
             sub_row.prop_enum(settings, "color_mode", 'VERTEXCOLOR', text="", icon='VPAINT_HLT')
 
-        sub_row = row.row(align=True)
-        sub_row.enabled = settings.color_mode == 'VERTEXCOLOR' or gp_settings.brush_draw_mode == 'VERTEXCOLOR'
-        sub_row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
-        row.prop(gp_settings, "pin_draw_mode", text="")
+        show_vertex_color = settings.color_mode == 'VERTEXCOLOR' or gp_settings.brush_draw_mode == 'VERTEXCOLOR'
 
-    if props:
-        row = layout.row(align=True)
-        row.prop(props, "subdivision")
+        if show_vertex_color:
+            sub_row = row.row(align=True)
+            sub_row.enabled = show_vertex_color
+            sub_row.scale_x = 0.8
+            sub_row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
+        row.prop(gp_settings, "pin_draw_mode", text="")
 
 
 def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False):
