@@ -43,7 +43,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 #include "BLI_sys_types.h" /* For `intptr_t` support. */
@@ -1247,6 +1247,10 @@ int BLI_delete_soft(const char *filepath, const char **r_error_message)
     /* Child process. */
     execvp(args[0], (char **)args);
     /* This should only be reached if `execvp` fails and stack isn't replaced. */
+
+    /* Ensure outputs are flushed as `_exit` doesn't flush. */
+    fflush(stdout);
+    fflush(stderr);
 
     /* Use `_exit` instead of `exit` so Blender's `atexit` cleanup functions don't run. */
     _exit(errno);

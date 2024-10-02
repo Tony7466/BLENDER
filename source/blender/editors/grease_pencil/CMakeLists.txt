@@ -24,19 +24,22 @@ set(INC_SYS
 
 set(SRC
   intern/grease_pencil_add.cc
-  intern/grease_pencil_cutter.cc
+  intern/grease_pencil_bake_animation.cc
   intern/grease_pencil_edit.cc
   intern/grease_pencil_frames.cc
   intern/grease_pencil_geom.cc
   intern/grease_pencil_image_render.cc
+  intern/grease_pencil_join_selection.cc
   intern/grease_pencil_layers.cc
   intern/grease_pencil_lineart.cc
   intern/grease_pencil_material.cc
   intern/grease_pencil_ops.cc
   intern/grease_pencil_primitive.cc
   intern/grease_pencil_select.cc
+  intern/grease_pencil_trim.cc
   intern/grease_pencil_undo.cc
   intern/grease_pencil_utils.cc
+  intern/grease_pencil_vertex_paint.cc
   intern/grease_pencil_weight_paint.cc
 )
 

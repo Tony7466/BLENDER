@@ -709,8 +709,7 @@ static Mesh *mesh_new_from_evaluated_curve_type_object(const Object *evaluated_o
     return BKE_mesh_copy_for_eval(*mesh);
   }
   if (const Curves *curves = get_evaluated_curves_from_object(evaluated_object)) {
-    const blender::bke::AnonymousAttributePropagationInfo propagation_info;
-    return blender::bke::curve_to_wire_mesh(curves->geometry.wrap(), propagation_info);
+    return blender::bke::curve_to_wire_mesh(curves->geometry.wrap());
   }
   return nullptr;
 }
@@ -1061,9 +1060,10 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
     BLI_assert(mesh_dst == ob->data);
   }
 
+  const bool verts_num_changed = mesh_dst->verts_num != mesh_src->verts_num;
+
   BKE_mesh_clear_geometry_and_metadata(mesh_dst);
 
-  const bool verts_num_changed = mesh_dst->verts_num != mesh_src->verts_num;
   mesh_dst->verts_num = mesh_src->verts_num;
   mesh_dst->edges_num = mesh_src->edges_num;
   mesh_dst->faces_num = mesh_src->faces_num;

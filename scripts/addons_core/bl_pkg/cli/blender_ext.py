@@ -54,9 +54,6 @@ def signal_handler_sigint(_sig: int, _frame: Any) -> None:
     REQUEST_EXIT = True
 
 
-signal.signal(signal.SIGINT, signal_handler_sigint)
-
-
 # A primitive type that can be communicated via message passing.
 PrimType = Union[int, str]
 PrimTypeOrSeq = Union[PrimType, Sequence[PrimType]]
@@ -175,6 +172,7 @@ def _worlaround_win32_ssl_cert_failure() -> None:
             # Keep it for consistency.
             return certs
 
+    # pylint: disable-next=protected-access
     ssl.SSLContext._load_windows_store_certs = SSLContext_DUMMY._load_windows_store_certs  # type: ignore
 
 
@@ -3425,6 +3423,7 @@ class subcmd_client:
     @staticmethod
     def list_packages(
             msglog: MessageLogger,
+            *,
             remote_url: str,
             online_user_agent: str,
             access_token: str,
@@ -4648,7 +4647,7 @@ def argparse_create_client_list(subparsers: "argparse._SubParsersAction[argparse
     subparse.set_defaults(
         func=lambda args: subcmd_client.list_packages(
             msglog_from_args(args),
-            args.remote_url,
+            remote_url=args.remote_url,
             online_user_agent=args.online_user_agent,
             access_token=args.access_token,
             timeout_in_seconds=args.timeout,
@@ -5023,6 +5022,10 @@ def main(
         args_extra_subcommands_fn: Optional[ArgsSubparseFn] = None,
         prog: Optional[str] = None,
 ) -> int:
+    # NOTE: only manipulate Python's run-time such as encoding & SIGINT when running stand-alone.
+
+    # Run early to prevent a `KeyboardInterrupt` exception.
+    signal.signal(signal.SIGINT, signal_handler_sigint)
 
     # Needed on WIN32 which doesn't default to `utf-8`.
     for fh in (sys.stdout, sys.stderr):
@@ -5038,7 +5041,7 @@ def main(
         sys.stdout.write("{:s}\n".format(VERSION))
         return 0
 
-    if sys.platform == "win32":
+    if (sys.platform == "win32") and (sys.version_info < (3, 12, 6)):
         _worlaround_win32_ssl_cert_failure()
 
     parser = argparse_create(

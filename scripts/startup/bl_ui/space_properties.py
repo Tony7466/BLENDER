@@ -93,7 +93,7 @@ class PropertiesAnimationMixin:
 
     @classmethod
     def _animated_id(cls, context):
-        assert cls._animated_id_context_property, f'set _animated_id_context_property on {cls}'
+        assert cls._animated_id_context_property, "set _animated_id_context_property on {!r}".format(cls)
 
         # If the pinned ID is of a different type, there could still be a an ID
         # for which to show this panel. For example, a camera object can be
@@ -110,10 +110,18 @@ class PropertiesAnimationMixin:
 
         col = layout.column(align=True)
         col.use_property_split = True
+        col.use_property_decorate = False
         self.draw_action_and_slot_selector(context, col, self._animated_id(context))
 
-    @staticmethod
-    def draw_action_and_slot_selector(context, layout, animated_id):
+    @classmethod
+    def draw_action_and_slot_selector(cls, context, layout, animated_id):
+        if not animated_id:
+            class_list = [c.__name__ for c in cls.mro()]
+            print("PropertiesAnimationMixin: no animatable data-block, this is a bug "
+                  "in one of these classes: {!r}".format(class_list))
+            layout.label(text='No animatable data-block, please report as bug', icon='ERROR')
+            return
+
         layout.template_action(animated_id, new="action.new", unlink="action.unlink")
 
         if not context.preferences.experimental.use_animation_baklava:

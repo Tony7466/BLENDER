@@ -66,7 +66,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_collection.hh"
 #include "BKE_context.hh"
@@ -835,6 +835,8 @@ static bAnimListElem *make_new_animlistelem(
       break;
     }
     case ANIMTYPE_GROUP: {
+      BLI_assert_msg(GS(fcurve_owner_id->name) == ID_AC, "fcurve_owner_id should be an Action");
+
       bActionGroup *agrp = (bActionGroup *)data;
 
       ale->flag = agrp->flag;
@@ -868,10 +870,10 @@ static bAnimListElem *make_new_animlistelem(
 
         /* the corresponding keyframes are from the animdata */
         if (ale->adt && ale->adt->action) {
-          bAction *act = ale->adt->action;
           /* Try to find the F-Curve which corresponds to this exactly. */
           if (std::optional<std::string> rna_path = BKE_keyblock_curval_rnapath_get(key, kb)) {
-            ale->key_data = (void *)BKE_fcurve_find(&act->curves, rna_path->c_str(), 0);
+            ale->key_data = (void *)blender::animrig::fcurve_find_in_assigned_slot(*ale->adt,
+                                                                                   {*rna_path, 0});
           }
         }
         ale->datatype = (ale->key_data) ? ALE_FCURVE : ALE_NONE;
@@ -1582,10 +1584,9 @@ static size_t animfilter_action_slot(bAnimContext *ac,
    * anyway. */
   const bool is_action_mode = (ac->spacetype == SPACE_ACTION &&
                                ac->dopesheet_mode == SACTCONT_ACTION);
-  const bool show_fcurves_only = (filter_mode & ANIMFILTER_FCURVESONLY);
   const bool show_active_group_only = filter_mode & ANIMFILTER_ACTGROUPED;
   const bool include_summary_channels = (filter_mode & ANIMFILTER_LIST_CHANNELS);
-  const bool show_slot_channel = (is_action_mode && selection_ok_for_slot && !show_fcurves_only &&
+  const bool show_slot_channel = (is_action_mode && selection_ok_for_slot &&
                                   include_summary_channels);
   if (show_slot_channel) {
     ANIMCHANNEL_NEW_CHANNEL(ac->bmain, &slot, ANIMTYPE_ACTION_SLOT, animated_id, &action.id);
@@ -1599,13 +1600,6 @@ static size_t animfilter_action_slot(bAnimContext *ac,
 
   animrig::ChannelBag *channel_bag = animrig::channelbag_for_action_slot(action, slot.handle);
   if (channel_bag == nullptr) {
-    return items;
-  }
-
-  if (show_fcurves_only) {
-    Span<FCurve *> fcurves = channel_bag->fcurves();
-    items += animfilter_fcurves_span(
-        ac, anim_data, fcurves, slot.handle, filter_mode, animated_id, &action.id);
     return items;
   }
 
@@ -3242,7 +3236,7 @@ static size_t animdata_filter_dopesheet_ob(bAnimContext *ac,
     }
 
     /* grease pencil */
-    if ((ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY)) && (ob->data) &&
+    if (ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY) && (ob->data) &&
         !(ads_filterflag & ADS_FILTER_NOGPENCIL))
     {
       if (ob->type == OB_GREASE_PENCIL) {
