@@ -33,7 +33,7 @@ void main()
   }
 
   if (test(GPU_KEYFRAME_SHAPE_LINE)) {
-    outline_dist = max(absPos.x - radii[1] * 0.6, absPos.y - radii[1] * 1.2);
+    outline_dist = max(absPos.x - radii[1] * 0.7, absPos.y - radii[1] * 1.3);
   }
 
   /* Top & Bottom clamp */
