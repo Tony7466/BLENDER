@@ -100,6 +100,26 @@ class GreasePencil_LayerTransformPanel:
         row.prop(layer, "scale")
 
 
+class GreasePencil_LayerAdjustmentsPanel:
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        ob = context.object
+        grease_pencil = ob.data
+        layer = grease_pencil.layers.active
+        layout.active = not layer.lock
+
+        # Layer options
+        col = layout.column(align=True)
+
+        col.prop(layer, "tint_color")
+        col.prop(layer, "tint_factor", text="Factor", slider=True)
+
+        col = layout.row(align=True)
+        col.prop(layer, "radius_offset", text="Stroke Thickness")
+
+
 class GreasPencil_LayerRelationsPanel:
     def draw(self, context):
         layout = self.layout
@@ -176,10 +196,6 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         ob = context.object
         grease_pencil = ob.data
         layer = grease_pencil.layers.active
-        space = context.space_data
-
-        if space.type == 'PROPERTIES':
-            layout.operator("grease_pencil.layer_group_add", text="Add Group")
 
         layout.separator()
         layout.operator("grease_pencil.layer_duplicate", text="Duplicate", icon='DUPLICATE').empty_keyframes = False
@@ -220,11 +236,11 @@ class GREASE_PENCIL_MT_group_context_menu(Menu):
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
     bl_label = "Layers"
 
-    def draw(self, context):
-        layout = self.layout
-
-        grease_pencil = context.grease_pencil
+    @classmethod
+    def draw_settings(cls, layout, grease_pencil):
         layer = grease_pencil.layers.active
+        is_layer_active = layer is not None
+        is_group_active = grease_pencil.layer_groups.active is not None
 
         row = layout.row()
         row.template_grease_pencil_layer_tree()
@@ -233,11 +249,25 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         sub = col.column(align=True)
         sub.operator_context = 'EXEC_DEFAULT'
         sub.operator("grease_pencil.layer_add", icon='ADD', text="")
+        sub.operator("grease_pencil.layer_group_add", icon='NEWFOLDER', text="")
+        sub.separator()
+
+        if is_layer_active:
+            sub.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+        if is_group_active:
+            sub.operator("grease_pencil.layer_group_remove", icon='REMOVE', text="").keep_children = True
+
+        sub.separator()
+
         sub.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
-        col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+        col.separator()
 
-        if not layer:
+        sub = col.column(align=True)
+        sub.operator("grease_pencil.layer_move", icon='TRIA_UP', text="").direction = 'UP'
+        sub.operator("grease_pencil.layer_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+
+        if not is_layer_active:
             return
 
         layout.use_property_split = True
@@ -254,6 +284,12 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         row = layout.row(align=True)
         row.prop(layer, "use_lights", text="Lights")
 
+    def draw(self, context):
+        layout = self.layout
+        grease_pencil = context.grease_pencil
+
+        self.draw_settings(layout, grease_pencil)
+
 
 class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, GreasePencil_LayerMaskPanel, Panel):
     bl_label = "Masks"
@@ -263,6 +299,12 @@ class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, GreasePencil_Laye
 
 class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, GreasePencil_LayerTransformPanel, Panel):
     bl_label = "Transform"
+    bl_parent_id = "DATA_PT_grease_pencil_layers"
+    bl_options = {'DEFAULT_CLOSED'}
+
+
+class DATA_PT_grease_pencil_layer_adjustments(LayerDataButtonsPanel, GreasePencil_LayerAdjustmentsPanel, Panel):
+    bl_label = "Adjustments"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -353,7 +395,7 @@ class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
 
 
 class DATA_PT_grease_pencil_animation(DataButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
-    _animated_id_context_property = 'grease_pencil'
+    _animated_id_context_property = "grease_pencil"
 
 
 class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
@@ -368,6 +410,7 @@ classes = (
     DATA_PT_grease_pencil_layers,
     DATA_PT_grease_pencil_layer_masks,
     DATA_PT_grease_pencil_layer_transform,
+    DATA_PT_grease_pencil_layer_adjustments,
     DATA_PT_grease_pencil_layer_relations,
     DATA_PT_grease_pencil_onion_skinning,
     DATA_PT_grease_pencil_onion_skinning_custom_colors,

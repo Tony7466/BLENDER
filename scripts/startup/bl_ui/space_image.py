@@ -215,7 +215,7 @@ class IMAGE_MT_image(Menu):
         layout.separator()
 
         has_image_clipboard = False
-        if sys.platform[:3] == "win":
+        if sys.platform[:3] in {"win", "dar"}:
             has_image_clipboard = True
         else:
             from _bpy import _ghost_backend
@@ -402,7 +402,7 @@ class IMAGE_MT_uvs_unwrap(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("uv.unwrap")
+        layout.operator_enum("uv.unwrap", "method")
 
         layout.separator()
 

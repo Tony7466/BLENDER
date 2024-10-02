@@ -211,19 +211,26 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref);
 
 Brush *BKE_paint_brush(Paint *paint);
 const Brush *BKE_paint_brush_for_read(const Paint *paint);
-Brush *BKE_paint_brush_from_essentials(Main *bmain, const char *name);
+Brush *BKE_paint_brush_from_essentials(Main *bmain, eObjectMode obmode, const char *name);
+
+/**
+ * Check if brush \a brush may be set/activated for \a paint. Passing null for \a brush will return
+ * true.
+ */
+bool BKE_paint_brush_poll(const Paint *paint, const Brush *brush);
 
 /**
  * Activates \a brush for painting, and updates #Paint.brush_asset_reference so the brush can be
- * restored after file read.
+ * restored after file read. No change is done if #BKE_paint_brush_poll() returns false.
  *
  * \return True on success. If \a brush is already active, this is considered a success (the brush
  * asset reference will still be updated).
  *
  * \note #WM_toolsystem_activate_brush_and_tool() might be the preferable way to change the active
- * brush. It also lets the toolsystem decide if the active tool should be changed given the type of
- * brush, and it updates the "last used brush" for the previous tool. #BKE_paint_brush_set() should
- * only be called to force a brush to be active, circumventing the tool system.
+ * brush. It also lets the tool-system decide if the active tool should be changed given the type
+ * of brush, and it updates the "last used brush" for the previous tool.
+ * #BKE_paint_brush_set() should only be called to force a brush to be active,
+ * circumventing the tool system.
  */
 bool BKE_paint_brush_set(Paint *paint, Brush *brush);
 /**
@@ -245,9 +252,9 @@ void BKE_paint_brushes_validate(Main *bmain, Paint *paint);
 
 Brush *BKE_paint_eraser_brush(Paint *paint);
 const Brush *BKE_paint_eraser_brush_for_read(const Paint *paint);
-Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, const char *name);
 
 bool BKE_paint_eraser_brush_set(Paint *paint, Brush *brush);
+Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, eObjectMode ob_mode, const char *name);
 bool BKE_paint_eraser_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_eraser_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
 
@@ -265,6 +272,10 @@ bool BKE_paint_select_face_test(const Object *ob);
  * Return true when in vertex/weight paint + vertex-select mode?
  */
 bool BKE_paint_select_vert_test(const Object *ob);
+/**
+ * Return true when in grease pencil sculpt mode.
+ */
+bool BKE_paint_select_grease_pencil_test(const Object *ob);
 /**
  * used to check if selection is possible
  * (when we don't care if its face or vert)
@@ -332,8 +343,6 @@ struct SculptBoundaryPreview {
 };
 
 struct SculptFakeNeighbors {
-  bool use_fake_neighbors;
-
   /* Max distance used to calculate neighborhood information. */
   float current_max_distance;
 
@@ -404,8 +413,8 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   blender::ed::sculpt_paint::expand::Cache *expand_cache = nullptr;
 
   /* Cursor data and active vertex for tools */
-  int active_face_index = -1;
-  int active_grid_index = -1;
+  std::optional<int> active_face_index;
+  std::optional<int> active_grid_index;
 
   /* When active, the cursor draws with faded colors, indicating that there is an action
    * enabled.

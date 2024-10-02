@@ -124,8 +124,8 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
                                    ViewDepths *view_depths)
     : region_(&region),
       view3d_(&view3d),
-      surface_offset_(surface_offset),
-      depth_cache_(view_depths)
+      depth_cache_(view_depths),
+      surface_offset_(surface_offset)
 {
   layer_space_to_world_space_ = (layer != nullptr) ? layer->to_world_space(eval_object) :
                                                      eval_object.object_to_world();
@@ -1501,6 +1501,7 @@ int grease_pencil_draw_operator_invoke(bContext *C,
                                        wmOperator *op,
                                        const bool use_duplicate_previous_key)
 {
+  const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
   if (!object || object->type != OB_GREASE_PENCIL) {
     return OPERATOR_CANCELLED;
@@ -1528,7 +1529,7 @@ int grease_pencil_draw_operator_invoke(bContext *C,
   /* Ensure a drawing at the current keyframe. */
   bool inserted_keyframe = false;
   if (!ed::greasepencil::ensure_active_keyframe(
-          C, grease_pencil, use_duplicate_previous_key, inserted_keyframe))
+          *scene, grease_pencil, active_layer, use_duplicate_previous_key, inserted_keyframe))
   {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
