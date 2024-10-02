@@ -3171,7 +3171,7 @@ static void apply_word_wrapping(const TextVars *data,
   }
 }
 
-static int text_box_width_get(blender::Vector<LineInfo> lines)
+static int text_box_width_get(const blender::Vector<LineInfo> lines)
 {
   int width_max = 0;
 
@@ -3246,10 +3246,12 @@ static void apply_text_alignment(const TextVars *data,
       character.position += alignment;
     }
   }
-  runtime.text_boundbox.xmin = image_center.x - width_max / 2 + runtime.font_descender;
-  runtime.text_boundbox.xmax = image_center.x + width_max / 2 - runtime.font_descender;
-  runtime.text_boundbox.ymax = image_center.y + text_height / 2;
-  runtime.text_boundbox.ymin = image_center.y - text_height / 2;
+
+  /* Box is padded by font descender in X axis to make it symmetrical on all sides. */
+  runtime.text_boundbox.xmin = anchor.x + image_center.x + runtime.font_descender;
+  runtime.text_boundbox.xmax = anchor.x + image_center.x + width_max - runtime.font_descender;
+  runtime.text_boundbox.ymax = anchor.y + image_center.y;
+  runtime.text_boundbox.ymin = anchor.y + image_center.y - text_height;
 }
 
 static void calc_text_runtime(const Sequence *seq,
