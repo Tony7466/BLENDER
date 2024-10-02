@@ -728,6 +728,7 @@ void spreadsheet_data_set_panel_draw(const bContext *C, Panel *panel)
         "Instances Tree View",
         std::make_unique<GeometryInstancesTreeView>(root_geometry, *C));
     tree_view->set_context_menu_title("Instance");
+    tree_view->set_default_rows(3);
     ui::TreeViewBuilder::build_tree_view(*tree_view, *panel, {}, false);
   }
   if (uiLayout *panel = uiLayoutPanel(
