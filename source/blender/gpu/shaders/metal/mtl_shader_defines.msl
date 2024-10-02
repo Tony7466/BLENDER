@@ -137,16 +137,320 @@ ATOMIC_OP(Exchange, exchange)
 
 /* Generate wrapper structs for combined texture and sampler type. */
 #ifdef USE_ARGUMENT_BUFFER_FOR_SAMPLERS
-#  define SAMPLER_DECLARATION constant sampler *samp;
+using sampler_ptr = constant sampler *;
 #else
-#  define SAMPLER_DECLARATION thread sampler *samp;
+using sampler_ptr = thread sampler *;
 #endif
 
-#define COMBINED_SAMPLER_TYPE(STRUCT_NAME, TEX_TYPE) \
-  template<typename T, access A = access::sample> struct STRUCT_NAME { \
-    thread TEX_TYPE<T, A> *texture; \
-    SAMPLER_DECLARATION \
+/* Use point sampler instead of texture read to benefit from texture caching and reduce branching
+ * through removal of bounds tests, as these are handled by the sample operation. */
+constexpr sampler _mtl_fetch_samp(address::clamp_to_zero, filter::nearest, coord::pixel);
+
+template<typename T, access A, typename TextureT, bool is_depth, int Dim, int Cube, int Array>
+struct _mtl_sampler {
+
+  template<typename U, int S>
+  using vec_or_scalar = typename metal::conditional<S == 1, U, vec<U, S>>::type;
+
+  using FltCoord = vec_or_scalar<float, Dim + Cube + Array>;
+  using FltDeriv = vec_or_scalar<float, Dim + Cube>;
+  using IntCoord = vec_or_scalar<int, Dim + Cube + Array>;
+  using IntDeriv = vec_or_scalar<int, Dim + Cube>;
+  using UintCoord = vec_or_scalar<uint, Dim + Cube + Array>;
+  using UintDeriv = vec_or_scalar<uint, Dim + Cube>;
+  using SizeVec = vec_or_scalar<int, Dim + Array>;
+  using DataVec = vec<T, 4>;
+
+  using texture_ptr = thread TextureT *;
+
+  /* Template compatible gradient type choosing. */
+  template<int D, int C> struct gradient_n {};
+  /* clang-format off */
+  template<> struct gradient_n<2, 0> { using type = gradient2d; };
+  template<> struct gradient_n<3, 0> { using type = gradient3d; };
+  template<> struct gradient_n<2, 1> { using type = gradientcube; };
+  /* clang-format on */
+  /* Using `using` would invalidate the whole class. */
+#define gradient typename gradient_n<Dim, Cube>::type
+
+  texture_ptr texture;
+  sampler_ptr samp;
+
+#define ARRAY_FN template<int Ar = Array, thread metal::enable_if_t<Ar == 1> * = nullptr>
+#define NON_ARRAY_FN template<int Ar = Array, thread metal::enable_if_t<Ar == 0> * = nullptr>
+
+  template<int dim, int array> SizeVec size_impl(uint lod) const {}
+  template<> SizeVec size_impl<1, 0>(uint lod) const
+  {
+    return SizeVec(texture->get_width());
   }
+  template<> SizeVec size_impl<1, 1>(uint lod) const
+  {
+    return SizeVec(texture->get_width(), texture->get_array_size());
+  }
+  template<> SizeVec size_impl<2, 0>(uint lod) const
+  {
+    return SizeVec(texture->get_width(lod), texture->get_height(lod));
+  }
+  template<> SizeVec size_impl<2, 1>(uint lod) const
+  {
+    return SizeVec(texture->get_width(lod), texture->get_height(lod), texture->get_array_size());
+  }
+  template<> SizeVec size_impl<3, 0>(uint lod) const
+  {
+    return SizeVec(texture->get_width(lod), texture->get_height(lod), texture->get_depth(lod));
+  }
+  SizeVec size(int lod = 0) const
+  {
+    return size_impl<Dim, Array>(uint(lod));
+  }
+
+  NON_ARRAY_FN DataVec sample(FltCoord coord) const
+  {
+    return texture->sample(*samp, coord);
+  }
+  NON_ARRAY_FN DataVec sample_grad(FltCoord coord, FltDeriv dPdx, FltDeriv dPdy) const
+  {
+    return texture->sample(*samp, coord, gradient(dPdx, dPdy));
+  }
+  NON_ARRAY_FN DataVec sample_bias(FltCoord coord, bias lod_bias) const
+  {
+    return texture->sample(*samp, coord, lod_bias);
+  }
+  NON_ARRAY_FN DataVec sample_lod(FltCoord coord, level lod, IntDeriv offset = {0}) const
+  {
+    return texture->sample(*samp, coord, lod, offset);
+  }
+  NON_ARRAY_FN DataVec gather(FltCoord coord) const
+  {
+    return texture->gather(*samp, coord);
+  }
+  NON_ARRAY_FN DataVec fetch(IntCoord coord) const
+  {
+    return texture->sample(_mtl_fetch_samp, FltCoord(coord));
+  }
+  NON_ARRAY_FN DataVec fetch(IntCoord coord, level lod, IntDeriv offset = {0}) const
+  {
+    return texture->sample(_mtl_fetch_samp, FltCoord(coord), lod, offset);
+  }
+
+  ARRAY_FN DataVec sample(FltCoord coord) const
+  {
+    return texture->sample(*samp, uv_mask(coord), layer_mask(coord));
+  }
+  ARRAY_FN DataVec sample_grad(FltCoord coord, FltDeriv dPdx, FltDeriv dPdy) const
+  {
+    return texture->sample(*samp, uv_mask(coord), layer_mask(coord), gradient(dPdx, dPdy));
+  }
+  ARRAY_FN DataVec sample_bias(FltCoord coord, bias lod_bias) const
+  {
+    return texture->sample(*samp, uv_mask(coord), layer_mask(coord), lod_bias);
+  }
+  ARRAY_FN DataVec sample_lod(FltCoord coord, level lod, IntDeriv offset = {0}) const
+  {
+    return texture->sample(*samp, uv_mask(coord), layer_mask(coord), lod, offset);
+  }
+  ARRAY_FN DataVec gather(FltCoord coord) const
+  {
+    return texture->gather(*samp, uv_mask(coord), layer_mask(coord));
+  }
+  ARRAY_FN DataVec fetch(IntCoord coord) const
+  {
+    return texture->sample(_mtl_fetch_samp, FltDeriv(uv_mask(coord)), layer_mask(coord));
+  }
+  ARRAY_FN DataVec fetch(IntCoord coord, level lod, IntDeriv ofs = {0}) const
+  {
+    return texture->sample(_mtl_fetch_samp, FltDeriv(uv_mask(coord)), layer_mask(coord), lod, ofs);
+  }
+
+  /** Image only functions. */
+  /* TODO(fclem): Split type for images. */
+
+  NON_ARRAY_FN DataVec load(IntCoord coord) const
+  {
+    return texture->read(UintCoord(coord), 0);
+  }
+  NON_ARRAY_FN void store(DataVec data, IntCoord coord) const
+  {
+    texture->write(data, UintCoord(coord), 0);
+  }
+
+  ARRAY_FN DataVec load(IntCoord coord) const
+  {
+    return texture->read(UintCoord(uv_mask(coord)), layer_mask(coord), 0);
+  }
+  ARRAY_FN void store(DataVec data, IntCoord coord) const
+  {
+    texture->write(data, UintCoord(uv_mask(coord)), layer_mask(coord), 0);
+  }
+
+  void fence()
+  {
+    texture->fence();
+  }
+
+ private:
+  template<typename U, typename V> static U reshape(V v) {}
+  /* clang-format off */
+  template<> float reshape<float>(float2 v) { return v.x; }
+  template<> float2 reshape<float2>(float3 v) { return v.xy; }
+  template<> float3 reshape<float3>(float4 v) { return v.xyz; }
+  template<> int reshape<int>(int2 v) { return v.x; }
+  template<> int2 reshape<int2>(int3 v) { return v.xy; }
+  template<> int3 reshape<int3>(int4 v) { return v.xyz; }
+  /* clang-format on */
+
+  FltDeriv uv_mask(FltCoord coord) const
+  {
+    return reshape<FltDeriv>(coord);
+  }
+  IntDeriv uv_mask(IntCoord coord) const
+  {
+    return reshape<IntDeriv>(coord);
+  }
+
+  uint layer_mask(FltCoord coord) const
+  {
+    return coord[Dim + Cube];
+  }
+  uint layer_mask(IntCoord coord) const
+  {
+    return coord[Dim + Cube];
+  }
+
+#undef gradient
+#undef ARRAY_FN
+#undef NON_ARRAY_FN
+};
+
+/** Sampler functions */
+
+template<typename SamplerT> typename SamplerT::SizeVec textureSize(SamplerT texture, int lod)
+{
+  return texture.size(lod);
+}
+
+template<typename SamplerT, typename fVec>
+typename SamplerT::DataVec texture(SamplerT texture, fVec coord)
+{
+  return texture.sample(coord);
+}
+
+template<typename SamplerT, typename fVec>
+typename SamplerT::DataVec texture(SamplerT texture, fVec coord, float lod_bias)
+{
+  return texture.sample_bias(coord, bias(lod_bias));
+}
+
+template<typename SamplerT, typename fVec>
+typename SamplerT::DataVec textureLod(SamplerT texture, fVec coord, float lod)
+{
+  return texture.sample_lod(coord, level(lod));
+}
+
+template<typename SamplerT, typename fVec, typename iVec>
+typename SamplerT::DataVec textureLodOffset(SamplerT texture, fVec coord, float lod, iVec offset)
+{
+  return texture.sample_lod(coord, level(lod), offset);
+}
+
+template<typename SamplerT, typename fVec>
+typename SamplerT::DataVec textureGather(SamplerT texture, fVec coord)
+{
+  return texture.gather(coord);
+}
+
+template<typename SamplerT, typename fVec, typename fDeriv>
+typename SamplerT::DataVec textureGrad(SamplerT texture, fVec coord, fDeriv dPdx, fDeriv dPdy)
+{
+  return texture.sample_grad(coord, dPdx, dPdy);
+}
+
+template<typename SamplerT, typename iVec>
+typename SamplerT::DataVec texelFetch(SamplerT texture, iVec coord, int lod)
+{
+  return texture.fetch(coord, level(lod));
+}
+
+template<typename SamplerT, typename iVec>
+typename SamplerT::DataVec texelFetchOffset(SamplerT texture, iVec coord, int lod, iVec offset)
+{
+  return texture.fetch(coord, level(lod), offset);
+}
+
+/** Image functions */
+
+template<typename SamplerT> typename SamplerT::SizeVec imageSize(SamplerT texture)
+{
+  return texture.size();
+}
+
+template<typename SamplerT> void imageFence(SamplerT texture)
+{
+  return texture.fence();
+}
+
+#if 0
+/* Add any types as needed. */
+#  define TEMPLATE template<typename T, access A>
+TEMPLATE using depth2D = _mtl_sampler<T, A, depth2d<T, A>, true, 2, 0, 0>;
+TEMPLATE using depth2DArray = _mtl_sampler<T, A, depth2d_array<T, A>, true, 2, 0, 1>;
+TEMPLATE using depthCube = _mtl_sampler<T, A, texturecube<T, A>, true, 2, 1, 1>;
+TEMPLATE using depthCubeArray = _mtl_sampler<T, A, texturecube_array<T, A>, true, 2, 1, 1>;
+TEMPLATE using sampler1D = _mtl_sampler<T, A, texture1d<T, A>, false, 1, 0, 0>;
+TEMPLATE using sampler1DArray = _mtl_sampler<T, A, texture1d_array<T, A>, false, 1, 0, 1>;
+TEMPLATE using sampler2D = _mtl_sampler<T, A, texture2d<T, A>, false, 2, 0, 0>;
+TEMPLATE using sampler2DArray = _mtl_sampler<T, A, texture2d_array<T, A>, false, 2, 0, 1>;
+TEMPLATE using sampler3D = _mtl_sampler<T, A, texture3d<T, A>, false, 3, 0, 0>;
+TEMPLATE using samplerBuffer = _mtl_sampler<T, A, texture_buffer<T, A>, false, 1, 0, 0>;
+TEMPLATE using samplerCube = _mtl_sampler<T, A, texturecube<T, A>, false, 2, 1, 0>;
+TEMPLATE using samplerCubeArray = _mtl_sampler<T, A, texturecube_array<T, A>, false, 2, 1, 1>;
+#  undef TEMPLATE
+#else
+#  define P template<typename T, access A = access::sample>
+P using _mtl_sampler_depth_2d = _mtl_sampler<T, A, depth2d<T, A>, true, 2, 0, 0>;
+P using _mtl_sampler_depth_2d_array = _mtl_sampler<T, A, depth2d_array<T, A>, true, 2, 0, 1>;
+P using _mtl_sampler_depth_cube = _mtl_sampler<T, A, texturecube<T, A>, true, 2, 1, 1>;
+P using _mtl_sampler_depth_cube_array = _mtl_sampler<T, A, texturecube_array<T, A>, true, 2, 1, 1>;
+P using _mtl_sampler_1d = _mtl_sampler<T, A, texture1d<T, A>, false, 1, 0, 0>;
+P using _mtl_sampler_1d_array = _mtl_sampler<T, A, texture1d_array<T, A>, false, 1, 0, 1>;
+P using _mtl_sampler_2d = _mtl_sampler<T, A, texture2d<T, A>, false, 2, 0, 0>;
+P using _mtl_sampler_2d_array = _mtl_sampler<T, A, texture2d_array<T, A>, false, 2, 0, 1>;
+P using _mtl_sampler_3d = _mtl_sampler<T, A, texture3d<T, A>, false, 3, 0, 0>;
+P using _mtl_sampler_buffer = _mtl_sampler<T, A, texture_buffer<T, A>, false, 1, 0, 0>;
+P using _mtl_sampler_cube = _mtl_sampler<T, A, texturecube<T, A>, false, 2, 1, 0>;
+P using _mtl_sampler_cube_array = _mtl_sampler<T, A, texturecube_array<T, A>, false, 2, 1, 1>;
+#  undef P
+#endif
+
+/* Variant for 1D(Array) samplers. Discard the lod. */
+template<typename T, access A>
+typename _mtl_sampler_1d<T, A>::DataVec texelFetch(_mtl_sampler_1d<T, A> texture,
+                                                   int coord,
+                                                   int lod = 0)
+{
+  return texture.fetch(coord);
+}
+template<typename T, access A>
+typename _mtl_sampler_1d_array<T, A>::DataVec texelFetch(_mtl_sampler_1d_array<T, A> texture,
+                                                         int2 coord,
+                                                         int lod = 0)
+{
+  return texture.fetch(coord);
+}
+
+/* Variant for buffer samplers. Discard the lod. */
+template<typename T, access A>
+typename _mtl_sampler_buffer<T, A>::DataVec texelFetch(_mtl_sampler_buffer<T, A> texture,
+                                                       int coord,
+                                                       int lod = 0)
+{
+  uint texel = uint(coord);
+  if (texel < texture.texture->get_width()) {
+    return texture.texture->read(texel);
+  }
+  return typename _mtl_sampler_buffer<T, A>::DataVec(0);
+}
 
 /* If native texture atomics are unsupported, we instead utilize a custom type which wraps a
  * buffer-backed texture. This texture will always be a Texture2D, but will emulate access to
@@ -165,7 +469,7 @@ ATOMIC_OP(Exchange, exchange)
 
 template<typename T, access A = access::sample> struct _mtl_sampler_2d_atomic {
   thread texture2d<T, A> *texture;
-  SAMPLER_DECLARATION
+  sampler_ptr samp;
   device T *buffer;
   /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater than
    * the texture's native width to satisfy device alignment rules. We need to use the padded width
@@ -176,7 +480,7 @@ template<typename T, access A = access::sample> struct _mtl_sampler_2d_atomic {
 
 template<typename T, access A = access::sample> struct _mtl_sampler_2d_array_atomic {
   thread texture2d<T, A> *texture;
-  SAMPLER_DECLARATION
+  sampler_ptr samp;
   device T *buffer;
   /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater than
    * the texture's native width to satisfy device alignment rules. We need to use the padded width
@@ -189,7 +493,7 @@ template<typename T, access A = access::sample> struct _mtl_sampler_2d_array_ato
 
 template<typename T, access A = access::sample> struct _mtl_sampler_3d_atomic {
   thread texture2d<T, A> *texture;
-  SAMPLER_DECLARATION
+  sampler_ptr samp;
   device T *buffer;
   /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater than
    * the texture's native width to satisfy device alignment rules. We need to use the padded width
@@ -200,20 +504,6 @@ template<typename T, access A = access::sample> struct _mtl_sampler_3d_atomic {
   ushort3 texture_size;
 };
 #endif
-
-/* Add any types as needed. */
-COMBINED_SAMPLER_TYPE(_mtl_sampler_1d, texture1d);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_1d_array, texture1d_array);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_2d, texture2d);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_depth_2d, depth2d);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_2d_array, texture2d_array);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_depth_2d_array, depth2d_array);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_3d, texture3d);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_buffer, texture_buffer);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_cube, texturecube);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_cube_array, texturecube_array);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_depth_cube, texturecube_array);
-COMBINED_SAMPLER_TYPE(_mtl_sampler_depth_cube_array, texturecube_array);
 
 /* Sampler struct for argument buffer. */
 #ifdef USE_ARGUMENT_BUFFER_FOR_SAMPLERS
@@ -281,33 +571,25 @@ struct SStruct {
 #define st xy
 
 /* Texture functions. */
-#define texelFetch _texelFetch_internal
-#define texelFetchOffset(__tex, __texel, __lod, __offset) \
-  _texelFetch_internal(__tex, __texel, __lod, __offset)
 #define imageLoad(__image, __coord) _texelFetch_internal(__image, __coord, 0)
 #define imageLoadFast(__image, __coord) _texelFetch_internal_fast(__image, __coord, 0)
-#define texture2(__tex, __uv) _texture_internal_samp(__tex, __uv)
-#define texture3(__tex, __uv, _bias) _texture_internal_bias(__tex, __uv, bias(float(_bias)))
-#define textureLod(__tex, __uv, __lod) _texture_internal_level(__tex, __uv, level(float(__lod)))
-#define textureLodOffset(__tex, __uv, __lod, __offset) \
-  _texture_internal_level(__tex, __uv, level(float(__lod)), __offset)
-#define textureGather2(__tex, __uv) _texture_gather_internal(__tex, __uv, 0)
-#define textureGather3(__tex, __uv, __comp) _texture_gather_internal(__tex, __uv, __comp)
-#define textureGatherOffset(__tex, __offset, __uv, __comp) \
-  _texture_gather_internal(__tex, __uv, __comp, __offset)
-#define textureGrad(__tex, __uv, __dpdx, __dpdy) \
-  _texture_grad_internal(__tex, __uv, __dpdx, __dpdy)
+// #define texture2(__tex, __uv) _texture_internal_samp(__tex, __uv)
+// #define texture3(__tex, __uv, _bias) _texture_internal_bias(__tex, __uv, bias(float(_bias)))
+// #define textureGather2(__tex, __uv) _texture_gather_internal(__tex, __uv, 0)
+// #define textureGather3(__tex, __uv, __comp) _texture_gather_internal(__tex, __uv, __comp)
+// #define textureGatherOffset(__tex, __offset, __uv, __comp) \
+//   _texture_gather_internal(__tex, __uv, __comp, __offset)
+// #define textureGrad(__tex, __uv, __dpdx, __dpdy) _texture_grad_internal(__tex, __uv, __dpdx,
+// __dpdy)
 
-#define TEXURE_MACRO(_1, _2, _3, TEXNAME, ...) TEXNAME
-#define texture(...) TEXURE_MACRO(__VA_ARGS__, texture3, texture2)(__VA_ARGS__)
-#define textureGather(...) TEXURE_MACRO(__VA_ARGS__, textureGather3, textureGather2)(__VA_ARGS__)
+// #define TEXURE_MACRO(_1, _2, _3, TEXNAME, ...) TEXNAME
+// #define texture(...) TEXURE_MACRO(__VA_ARGS__, texture3, texture2)(__VA_ARGS__)
+// #define textureGather(...) TEXURE_MACRO(__VA_ARGS__, textureGather3,
+// textureGather2)(__VA_ARGS__)
 
 /* Texture-write functions. */
 #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
 #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
-
-/* Texture synchronization functions. */
-#define imageFence(image) image.texture->fence()
 
 /* Singular return values from texture functions of type DEPTH are often indexed with either .r or
  * .x. This is a lightweight wrapper type for handling this syntax. */
@@ -1814,61 +2096,6 @@ template<typename T> int findMSB(T x)
   return int(sizeof(T) * 8) - 1 - int(clz(x));
 }
 
-#define unpackUnorm4x8 unpack_unorm4x8_to_float
-#define unpackSnorm4x8 unpack_snorm4x8_to_float
-#define unpackUnorm2x16 unpack_unorm2x16_to_float
-#define unpackSnorm2x16 unpack_snorm2x16_to_float
-
-/* Texture size functions. Add texture types as needed. */
-#define imageSize(image) textureSize(image, 0)
-
-template<typename T, access A> int textureSize(thread _mtl_sampler_1d<T, A> image, uint lod)
-{
-  return int(image.texture->get_width());
-}
-
-template<typename T, access A> int2 textureSize(thread _mtl_sampler_1d_array<T, A> image, uint lod)
-{
-  return int2(image.texture->get_width(), image.texture->get_array_size());
-}
-
-template<typename T, access A> int2 textureSize(thread _mtl_sampler_2d<T, A> image, uint lod)
-{
-  return int2(image.texture->get_width(lod), image.texture->get_height(lod));
-}
-
-template<typename T, access A> int2 textureSize(thread _mtl_sampler_depth_2d<T, A> image, uint lod)
-{
-  return int2(image.texture->get_width(lod), image.texture->get_height(lod));
-}
-
-template<typename T, access A> int3 textureSize(thread _mtl_sampler_2d_array<T, A> image, uint lod)
-{
-  return int3(image.texture->get_width(lod),
-              image.texture->get_height(lod),
-              image.texture->get_array_size());
-}
-
-template<typename T, access A>
-int3 textureSize(thread _mtl_sampler_depth_2d_array<T, A> image, uint lod)
-{
-  return int3(image.texture->get_width(lod),
-              image.texture->get_height(lod),
-              image.texture->get_array_size());
-}
-
-template<typename T, access A> int2 textureSize(thread _mtl_sampler_cube<T, A> image, uint lod)
-{
-  return int2(image.texture->get_width(lod), image.texture->get_height(lod));
-}
-
-template<typename T, access A> int3 textureSize(thread _mtl_sampler_3d<T, A> image, uint lod)
-{
-  return int3(image.texture->get_width(lod),
-              image.texture->get_height(lod),
-              image.texture->get_depth(lod));
-}
-
 #ifndef MTL_SUPPORTS_TEXTURE_ATOMICS
 /* textureSize functions for fallback atomic textures. */
 template<typename T, access A>
@@ -1889,6 +2116,11 @@ int3 textureSize(thread _mtl_sampler_3d_atomic<T, A> image, uint lod)
   return int3(image.texture_size);
 }
 #endif
+
+#define unpackUnorm4x8 unpack_unorm4x8_to_float
+#define unpackSnorm4x8 unpack_snorm4x8_to_float
+#define unpackUnorm2x16 unpack_unorm2x16_to_float
+#define unpackSnorm2x16 unpack_snorm2x16_to_float
 
 /* Equality and comparison functions. */
 #define lessThan(a, b) ((a) < (b))
