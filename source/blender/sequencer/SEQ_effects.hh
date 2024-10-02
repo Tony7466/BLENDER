@@ -118,11 +118,6 @@ struct TextVarsRuntime {
   int font_descender;
   int character_count;
   int font;
-
-  /* Variables for UI. */
-  bool editing_is_active;
-  int cursor_character;
-  int cursor_line;
 };
 
 }  // namespace blender::seq
