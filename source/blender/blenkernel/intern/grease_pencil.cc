@@ -3815,17 +3815,7 @@ static void write_drawing_array(GreasePencil &grease_pencil, BlendWriter *writer
 
 static void free_drawing_array(GreasePencil &grease_pencil)
 {
-  if (grease_pencil.drawing_array == nullptr) {
-    BLI_assert(grease_pencil.drawing_array_num == 0);
-    return;
-  }
-  for (int i = 0; i < grease_pencil.drawing_array_num; i++) {
-    GreasePencilDrawingBase *drawing_base = grease_pencil.drawing_array[i];
-    delete_drawing(drawing_base);
-  }
-  MEM_freeN(grease_pencil.drawing_array);
-  grease_pencil.drawing_array = nullptr;
-  grease_pencil.drawing_array_num = 0;
+  grease_pencil.resize_drawings(0);
 }
 
 /** \} */
