@@ -2530,7 +2530,6 @@ def register():
 
     bpy.types.RENDER_PT_context.append(draw_device)
     bpy.types.VIEW3D_HT_header.append(draw_pause)
-    bpy.types.VIEW3D_MT_make_links.append(draw_make_links)
 
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('CYCLES')
@@ -2544,7 +2543,6 @@ def unregister():
 
     bpy.types.RENDER_PT_context.remove(draw_device)
     bpy.types.VIEW3D_HT_header.remove(draw_pause)
-    bpy.types.VIEW3D_MT_make_links.remove(draw_make_links)
 
     for panel in get_panels():
         if 'CYCLES' in panel.COMPAT_ENGINES:
