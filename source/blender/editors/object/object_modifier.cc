@@ -987,37 +987,12 @@ static void remove_invalid_attribute_strings(Mesh &mesh)
   }
 }
 
-static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
-                                             Object *ob,
-                                             Object *ob_eval,
-                                             GreasePencil &grease_pencil_orig,
-                                             ModifierData *md_eval,
-                                             ReportList *reports)
+static void apply_eval_grease_pencil_data(GreasePencil &grease_pencil_result,
+                                          const int eval_frame,
+                                          GreasePencil &grease_pencil_orig)
 {
   using namespace bke;
   using namespace bke::greasepencil;
-  const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md_eval->type));
-  GreasePencil *grease_pencil_for_eval = ob_eval->runtime->data_orig ?
-                                             reinterpret_cast<GreasePencil *>(
-                                                 ob_eval->runtime->data_orig) :
-                                             &grease_pencil_orig;
-  const int eval_frame = int(DEG_get_ctime(depsgraph));
-  GreasePencil *grease_pencil_temp = reinterpret_cast<GreasePencil *>(
-      BKE_id_copy_ex(nullptr, &grease_pencil_for_eval->id, nullptr, LIB_ID_COPY_LOCALIZE));
-  grease_pencil_temp->runtime->eval_frame = eval_frame;
-  GeometrySet eval_geometry_set = GeometrySet::from_grease_pencil(grease_pencil_temp,
-                                                                  GeometryOwnershipType::Owned);
-
-  ModifierEvalContext mectx = {depsgraph, ob_eval, MOD_APPLY_TO_ORIGINAL};
-  mti->modify_geometry_set(md_eval, &mectx, &eval_geometry_set);
-  if (!eval_geometry_set.has_grease_pencil()) {
-    BKE_report(reports,
-               RPT_ERROR,
-               "Evaluated geometry from modifier does not contain grease pencil geometry");
-    return false;
-  }
-  GreasePencil &grease_pencil_result =
-      *eval_geometry_set.get_component_for_write<GreasePencilComponent>().get_for_write();
 
   /* Anonymous attributes shouldn't be available on original geometry. */
   grease_pencil_result.attributes_for_write().remove_anonymous();
@@ -1180,14 +1155,116 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
     });
     dst.finish();
   });
+}
+
+static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
+                                             Object *ob,
+                                             GreasePencil &grease_pencil_orig,
+                                             ModifierData *md_eval)
+{
+  using namespace bke;
+  using namespace bke::greasepencil;
+  const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md_eval->type));
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+  GreasePencil *grease_pencil_for_eval = ob_eval->runtime->data_orig ?
+                                             reinterpret_cast<GreasePencil *>(
+                                                 ob_eval->runtime->data_orig) :
+                                             &grease_pencil_orig;
+  const int eval_frame = int(DEG_get_ctime(depsgraph));
+  GreasePencil *grease_pencil_temp = reinterpret_cast<GreasePencil *>(
+      BKE_id_copy_ex(nullptr, &grease_pencil_for_eval->id, nullptr, LIB_ID_COPY_LOCALIZE));
+  grease_pencil_temp->runtime->eval_frame = eval_frame;
+  GeometrySet eval_geometry_set = GeometrySet::from_grease_pencil(grease_pencil_temp,
+                                                                  GeometryOwnershipType::Owned);
+
+  ModifierEvalContext mectx = {depsgraph, ob_eval, MOD_APPLY_TO_ORIGINAL};
+  mti->modify_geometry_set(md_eval, &mectx, &eval_geometry_set);
+  if (!eval_geometry_set.has_grease_pencil()) {
+
+    return false;
+  }
+  GreasePencil &grease_pencil_result =
+      *eval_geometry_set.get_component_for_write<GreasePencilComponent>().get_for_write();
+
+  apply_eval_grease_pencil_data(grease_pencil_result, eval_frame, grease_pencil_orig);
 
   Main *bmain = DEG_get_bmain(depsgraph);
   BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
   return true;
 }
 
-static bool modifier_apply_obdata(
-    ReportList *reports, Depsgraph *depsgraph, Scene *scene, Object *ob, ModifierData *md_eval)
+static bool apply_grease_pencil_for_modifier_all_keyframes(Depsgraph *depsgraph,
+                                                           Scene *scene,
+                                                           Object *ob,
+                                                           GreasePencil &grease_pencil_orig,
+                                                           ModifierData *md_eval)
+{
+  using namespace bke;
+  using namespace bke::greasepencil;
+  Main *bmain = DEG_get_bmain(depsgraph);
+  const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md_eval->type));
+
+  WM_cursor_wait(true);
+  /* Get all the frames at which to evaluated the object. */
+  Array<int> sorted_frame_times;
+  {
+    VectorSet<int> all_keys;
+    for (const Layer *layer : grease_pencil_orig.layers()) {
+      for (const auto &[key, value] : layer->frames().items()) {
+        if (!value.is_end()) {
+          all_keys.add(key);
+        }
+      }
+    }
+    sorted_frame_times = all_keys.as_span();
+    std::sort(sorted_frame_times.begin(), sorted_frame_times.end());
+  }
+
+  const int prev_frame = int(DEG_get_ctime(depsgraph));
+  bool changed = false;
+  for (const int eval_frame : sorted_frame_times) {
+    scene->r.cfra = eval_frame;
+    BKE_scene_graph_update_for_newframe(depsgraph);
+
+    Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+    GreasePencil *grease_pencil_for_eval = ob_eval->runtime->data_orig ?
+                                               reinterpret_cast<GreasePencil *>(
+                                                   ob_eval->runtime->data_orig) :
+                                               &grease_pencil_orig;
+
+    GreasePencil *grease_pencil_temp = reinterpret_cast<GreasePencil *>(
+        BKE_id_copy_ex(nullptr, &grease_pencil_for_eval->id, nullptr, LIB_ID_COPY_LOCALIZE));
+    grease_pencil_temp->runtime->eval_frame = eval_frame;
+    GeometrySet eval_geometry_set = GeometrySet::from_grease_pencil(grease_pencil_temp,
+                                                                    GeometryOwnershipType::Owned);
+
+    ModifierEvalContext mectx = {depsgraph, ob_eval, MOD_APPLY_TO_ORIGINAL};
+    mti->modify_geometry_set(md_eval, &mectx, &eval_geometry_set);
+    if (!eval_geometry_set.has_grease_pencil()) {
+      continue;
+    }
+    GreasePencil &grease_pencil_result =
+        *eval_geometry_set.get_component_for_write<GreasePencilComponent>().get_for_write();
+
+    apply_eval_grease_pencil_data(grease_pencil_result, eval_frame, grease_pencil_orig);
+
+    BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
+    changed = true;
+  }
+
+  scene->r.cfra = prev_frame;
+  BKE_scene_graph_update_for_newframe(depsgraph);
+
+  WM_cursor_wait(false);
+  return changed;
+}
+
+static bool modifier_apply_obdata(ReportList *reports,
+                                  Depsgraph *depsgraph,
+                                  Scene *scene,
+                                  Object *ob,
+                                  ModifierData *md_eval,
+                                  const bool do_all_keyframes)
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md_eval->type);
 
@@ -1351,11 +1428,19 @@ static bool modifier_apply_obdata(
       BKE_report(reports, RPT_ERROR, "Cannot apply this modifier to grease pencil geometry");
       return false;
     }
-    Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     GreasePencil &grease_pencil_orig = *static_cast<GreasePencil *>(ob->data);
-    if (!apply_grease_pencil_for_modifier(
-            depsgraph, ob, ob_eval, grease_pencil_orig, md_eval, reports))
-    {
+    bool success = false;
+    if (do_all_keyframes) {
+      success = apply_grease_pencil_for_modifier_all_keyframes(
+          depsgraph, scene, ob, grease_pencil_orig, md_eval);
+    }
+    else {
+      success = apply_grease_pencil_for_modifier(depsgraph, ob, grease_pencil_orig, md_eval);
+    }
+    if (!success) {
+      BKE_report(reports,
+                 RPT_ERROR,
+                 "Evaluated geometry from modifier does not contain grease pencil geometry");
       return false;
     }
   }
@@ -1386,7 +1471,8 @@ bool modifier_apply(Main *bmain,
                     Object *ob,
                     ModifierData *md,
                     int mode,
-                    bool keep_modifier)
+                    bool keep_modifier,
+                    const bool do_all_keyframes)
 {
   if (BKE_object_is_in_editmode(ob)) {
     BKE_report(reports, RPT_ERROR, "Modifiers cannot be applied in edit mode");
@@ -1449,7 +1535,8 @@ bool modifier_apply(Main *bmain,
     did_apply = modifier_apply_shape(bmain, reports, apply_depsgraph, scene, ob, md_eval);
   }
   else {
-    did_apply = modifier_apply_obdata(reports, apply_depsgraph, scene, ob, md_eval);
+    did_apply = modifier_apply_obdata(
+        reports, apply_depsgraph, scene, ob, md_eval, do_all_keyframes);
   }
 
   if (did_apply) {
@@ -2108,6 +2195,9 @@ static int modifier_apply_exec_ex(bContext *C, wmOperator *op, int apply_as, boo
   const bool do_merge_customdata = (apply_as == MODIFIER_APPLY_DATA) ?
                                        RNA_boolean_get(op->ptr, "merge_customdata") :
                                        false;
+  const bool do_all_keyframes = (apply_as == MODIFIER_APPLY_DATA) ?
+                                    RNA_boolean_get(op->ptr, "all_keyframes") :
+                                    false;
 
   bool changed = false;
   for (const PointerRNA &ptr : objects) {
@@ -2126,7 +2216,16 @@ static int modifier_apply_exec_ex(bContext *C, wmOperator *op, int apply_as, boo
       DEG_relations_tag_update(bmain);
     }
 
-    if (!modifier_apply(bmain, op->reports, depsgraph, scene, ob, md, apply_as, keep_modifier)) {
+    if (!modifier_apply(bmain,
+                        op->reports,
+                        depsgraph,
+                        scene,
+                        ob,
+                        md,
+                        apply_as,
+                        keep_modifier,
+                        do_all_keyframes))
+    {
       continue;
     }
     changed = true;
@@ -2192,6 +2291,8 @@ static int modifier_apply_invoke(bContext *C, wmOperator *op, const wmEvent *eve
 
 void OBJECT_OT_modifier_apply(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   ot->name = "Apply Modifier";
   ot->description = "Apply modifier and remove from the stack";
   ot->idname = "OBJECT_OT_modifier_apply";
@@ -2212,11 +2313,17 @@ void OBJECT_OT_modifier_apply(wmOperatorType *ot)
                   "Merge UVs",
                   "For mesh objects, merge UV coordinates that share a vertex to account for "
                   "imprecision in some modifiers");
-  PropertyRNA *prop = RNA_def_boolean(ot->srna,
-                                      "single_user",
-                                      false,
-                                      "Make Data Single User",
-                                      "Make the object's data single user if needed");
+  prop = RNA_def_boolean(ot->srna,
+                         "single_user",
+                         false,
+                         "Make Data Single User",
+                         "Make the object's data single user if needed");
+  RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_SKIP_SAVE));
+  prop = RNA_def_boolean(ot->srna,
+                         "all_keyframes",
+                         false,
+                         "Apply to all keyframes",
+                         "For Grease Pencil objects, apply the modifier to all the keyframes");
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_SKIP_SAVE));
   modifier_register_use_selected_objects_prop(ot);
 }
