@@ -34,6 +34,7 @@ set(SRC
   intern/grease_pencil_lineart.cc
   intern/grease_pencil_material.cc
   intern/grease_pencil_merge.cc
+  intern/grease_pencil_modes.cc
   intern/grease_pencil_ops.cc
   intern/grease_pencil_primitive.cc
   intern/grease_pencil_select.cc
