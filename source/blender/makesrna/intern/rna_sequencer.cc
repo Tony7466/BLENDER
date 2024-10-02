@@ -3322,9 +3322,16 @@ static void rna_def_text(StructRNA *srna)
 {
   /* Avoid text icons because they imply this aligns within a frame, see: #71082 */
   static const EnumPropertyItem text_align_x_items[] = {
-      {SEQ_TEXT_ALIGN_X_LEFT, "LEFT", ICON_ALIGN_LEFT, "Left", ""},
-      {SEQ_TEXT_ALIGN_X_CENTER, "CENTER", ICON_ALIGN_CENTER, "Center", ""},
-      {SEQ_TEXT_ALIGN_X_RIGHT, "RIGHT", ICON_ALIGN_RIGHT, "Right", ""},
+      {SEQ_TEXT_ALIGN_X_LEFT, "LEFT", ICON_ANCHOR_LEFT, "Left", ""},
+      {SEQ_TEXT_ALIGN_X_CENTER, "CENTER", ICON_ANCHOR_CENTER, "Center", ""},
+      {SEQ_TEXT_ALIGN_X_RIGHT, "RIGHT", ICON_ANCHOR_RIGHT, "Right", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem text_align_y_items[] = {
+      {SEQ_TEXT_ALIGN_Y_TOP, "TOP", ICON_ANCHOR_TOP, "Top", ""},
+      {SEQ_TEXT_ALIGN_Y_CENTER, "CENTER", ICON_ANCHOR_CENTER, "Center", ""},
+      {SEQ_TEXT_ALIGN_Y_BOTTOM, "BOTTOM", ICON_ANCHOR_BOTTOM, "Bottom", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -3426,6 +3433,13 @@ static void rna_def_text(StructRNA *srna)
   RNA_def_property_enum_items(prop, text_align_x_items);
   RNA_def_property_ui_text(
       prop, "Align X", "Align the text along the X axis, relative to the text bounds");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+
+  prop = RNA_def_property(srna, "align_y", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "align_y");
+  RNA_def_property_enum_items(prop, text_align_y_items);
+  RNA_def_property_ui_text(
+      prop, "Align Y", "Align the text along the Y axis, relative to the text bounds");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "text", PROP_STRING, PROP_NONE);

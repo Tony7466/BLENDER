@@ -2529,6 +2529,7 @@ static void init_text_effect(Sequence *seq)
   data->loc[0] = 0.5f;
   data->loc[1] = 0.5f;
   data->align = SEQ_TEXT_ALIGN_X_CENTER;
+  data->align_y = SEQ_TEXT_ALIGN_Y_CENTER;
   data->wrap_width = 1.0f;
 }
 
@@ -3196,6 +3197,36 @@ static float2 horizontal_alignment_offset_get(const TextVars *data,
   return {center_offset - line_offset, 0.0f};
 }
 
+static float2 anchor_offset_get(const TextVars *data, int width_max, int text_height)
+{
+  float2 anchor_offset;
+
+  switch (data->align) {
+    case SEQ_TEXT_ALIGN_X_LEFT:
+      anchor_offset.x = 0;
+      break;
+    case SEQ_TEXT_ALIGN_X_CENTER:
+      anchor_offset.x = -width_max / 2;
+      break;
+    case SEQ_TEXT_ALIGN_X_RIGHT:
+      anchor_offset.x = -width_max;
+      break;
+  }
+  switch (data->align_y) {
+    case SEQ_TEXT_ALIGN_Y_TOP:
+      anchor_offset.y = 0;
+      break;
+    case SEQ_TEXT_ALIGN_Y_CENTER:
+      anchor_offset.y = text_height / 2;
+      break;
+    case SEQ_TEXT_ALIGN_Y_BOTTOM:
+      anchor_offset.y = text_height;
+      break;
+  }
+
+  return anchor_offset;
+}
+
 static void apply_text_alignment(const TextVars *data,
                                  TextVarsRuntime &runtime,
                                  const int2 image_size)
@@ -3205,11 +3236,12 @@ static void apply_text_alignment(const TextVars *data,
 
   const float2 image_center{data->loc[0] * image_size.x, data->loc[1] * image_size.y};
   const float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
-  const float2 alignment_y(0.0f, text_height / 2.0f);
+  const float2 anchor = anchor_offset_get(data, width_max, text_height);
 
   for (LineInfo &line : runtime.lines) {
-    const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
-    const float2 alignment = image_center + line_height_offset + alignment_x + alignment_y;
+    // const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
+    const float2 alignment_x{0, 0};
+    const float2 alignment = image_center + line_height_offset + alignment_x + anchor;
 
     for (CharInfo &character : line.characters) {
       character.position += alignment;
