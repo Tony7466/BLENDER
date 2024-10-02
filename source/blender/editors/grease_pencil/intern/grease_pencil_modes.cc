@@ -200,6 +200,9 @@ static int sculptmode_toggle_exec(bContext *C, wmOperator *op)
   }
 
   if (is_object) {
+    if ((ob->restore_mode) && ((ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) == 0) && (back == 1)) {
+      mode = ob->restore_mode;
+    }
     ob->restore_mode = ob->mode;
     ob->mode = mode;
   }
@@ -299,6 +302,9 @@ static int weightmode_toggle_exec(bContext *C, wmOperator *op)
 
   if (is_object) {
     /* try to back previous mode */
+    if ((ob->restore_mode) && ((ob->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) && (back == 1)) {
+      mode = ob->restore_mode;
+    }
     ob->restore_mode = ob->mode;
     ob->mode = mode;
 
@@ -403,6 +409,9 @@ static int vertexmode_toggle_exec(bContext *C, wmOperator *op)
   }
 
   if (is_object) {
+    if ((ob->restore_mode) && ((ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) == 0) && (back == 1)) {
+      mode = ob->restore_mode;
+    }
     ob->restore_mode = ob->mode;
     ob->mode = mode;
   }
