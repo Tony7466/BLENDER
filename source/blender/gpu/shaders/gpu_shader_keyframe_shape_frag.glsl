@@ -32,6 +32,10 @@ void main()
     outline_dist = max(outline_dist, radius - radii[1]);
   }
 
+  if (test(GPU_KEYFRAME_SHAPE_LINE)) {
+    outline_dist = max(absPos.x - radii[1] * 0.6, absPos.y - radii[1] * 1.2);
+  }
+
   /* Top & Bottom clamp */
   if (test(GPU_KEYFRAME_SHAPE_CLIPPED_VERTICAL)) {
     outline_dist = max(outline_dist, absPos.y - radii[2]);

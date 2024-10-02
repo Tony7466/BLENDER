@@ -1228,6 +1228,9 @@ static void node_socket_draw(const bNodeSocket &sock,
     case SOCK_DISPLAY_SHAPE_CIRCLE_DOT:
       flags = GPU_KEYFRAME_SHAPE_CIRCLE;
       break;
+    case SOCK_DISPLAY_SHAPE_LINE:
+      flags = GPU_KEYFRAME_SHAPE_LINE;
+      break;
   }
 
   if (ELEM(sock.display_shape,

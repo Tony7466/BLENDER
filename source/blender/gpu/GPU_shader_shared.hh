@@ -30,6 +30,7 @@ enum eGPUKeyframeShapes : uint32_t {
   GPU_KEYFRAME_SHAPE_ARROW_END_MIXED = (1u << 10u),
   GPU_KEYFRAME_SHAPE_SQUARE = (GPU_KEYFRAME_SHAPE_CLIPPED_VERTICAL |
                                GPU_KEYFRAME_SHAPE_CLIPPED_HORIZONTAL),
+  GPU_KEYFRAME_SHAPE_LINE = (1u << 11u),
 };
 
 struct NodeLinkData {

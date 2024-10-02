@@ -864,9 +864,9 @@ class NodeTreeMainUpdater {
     if (socket.runtime->declaration) {
       switch (socket.runtime->declaration->structure_type) {
         case StructureType::Single:
-          return SOCK_DISPLAY_SHAPE_CIRCLE;
+          return SOCK_DISPLAY_SHAPE_LINE;
         case StructureType::Dynamic:
-          return SOCK_DISPLAY_SHAPE_CIRCLE_DOT;
+          return SOCK_DISPLAY_SHAPE_CIRCLE;
         case StructureType::Field:
           return SOCK_DISPLAY_SHAPE_DIAMOND;
         case StructureType::Grid:
