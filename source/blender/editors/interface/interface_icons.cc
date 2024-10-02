@@ -991,9 +991,9 @@ int BKE_icon_svg_ensure(const char *filepath, bool color)
 
   uchar *data = (uchar *)BLI_file_read_binary_as_mem(filename, 0, &data_len);
 
-  //if (!data) {
-  //  return ICON_NONE;
-  //}
+  // if (!data) {
+  //   return ICON_NONE;
+  // }
 
   int icon_id = BKE_icon_next_id();
 
@@ -1582,7 +1582,6 @@ static void icon_draw_size(float x,
                                                  btheme->tui.icon_border_intensity :
                                                  0.3f) :
                                             0.0f;
-
     float color[4];
     if (mono_rgba) {
       rgba_uchar_to_float(color, (const uchar *)mono_rgba);
@@ -1602,7 +1601,7 @@ static void icon_draw_size(float x,
                         outline_intensity,
                         true,
                         icon_source_edit_cb,
-                        di->data.texture.custom_svg);
+                        (char *)di->data.texture.custom_svg);
     }
     else {
       BLF_draw_svg_icon(uint(icon_id),
@@ -1613,7 +1612,7 @@ static void icon_draw_size(float x,
                         outline_intensity,
                         false,
                         nullptr,
-                        di->data.texture.custom_svg);
+                        (char *)di->data.texture.custom_svg);
     }
 
     if (text_overlay && text_overlay->text[0] != '\0') {

@@ -163,7 +163,8 @@ static int get_next_free_id()
   return 0;
 }
 
-int BKE_icon_next_id() {
+int BKE_icon_next_id()
+{
   return get_next_free_id();
 }
 

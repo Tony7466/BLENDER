@@ -155,7 +155,7 @@ void BLF_draw_svg_icon(uint icon_id,
                        float outline_alpha = 1.0f,
                        bool multicolor = false,
                        blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr,
-                       uchar *custom_svg = nullptr);
+                       const char *custom_svg = nullptr);
 
 blender::Array<uchar> BLF_svg_icon_bitmap(
     uint icon_id,

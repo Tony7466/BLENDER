@@ -534,7 +534,7 @@ void blf_draw_svg_icon(FontBLF *font,
                        float outline_alpha,
                        bool multicolor,
                        blender::FunctionRef<void(std::string &)> edit_source_cb,
-                       uchar *custom_svg)
+                       const char *custom_svg)
 {
   blf_font_size(font, size);
   font->pos[0] = int(x);
