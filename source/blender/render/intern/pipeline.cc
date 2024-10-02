@@ -1092,6 +1092,7 @@ static void render_result_uncrop(Render *re)
 
       render_result_clone_passes(re, rres, nullptr);
       render_result_passes_allocated_ensure(rres);
+      render_result_passes_initialize_buffers_default(rres);
 
       render_result_merge(rres, re->result);
       render_result_free(re->result);

@@ -196,6 +196,29 @@ static void assign_render_pass_ibuf_colorspace(RenderPass &render_pass)
   IMB_colormanagement_assign_float_colorspace(render_pass.ibuf, data_colorspace);
 }
 
+/* Initializes the given pass data to a suitable default value. All passes are zero initialized,
+ * except vector passes which are initialized to PASS_VECTOR_MAX and Z passes which are initialized
+ * to 10^10. */
+static void initialize_pass_buffer_default(RenderPass *pass)
+{
+  const size_t size = size_t(pass->ibuf->x) * pass->ibuf->y * pass->channels;
+
+  if (STREQ(pass->name, RE_PASSNAME_VECTOR)) {
+    /* Initialize to max speed. */
+    for (int i = 0; i < size; i++) {
+      pass->ibuf->float_buffer.data[i] = PASS_VECTOR_MAX;
+    }
+  }
+  else if (STREQ(pass->name, RE_PASSNAME_Z)) {
+    for (int i = 0; i < size; i++) {
+      pass->ibuf->float_buffer.data[i] = 10e10f;
+    }
+  }
+  else {
+    memset(pass->ibuf->float_buffer.data, 0, sizeof(float) * size);
+  }
+}
+
 static void render_layer_allocate_pass(RenderResult *rr, RenderPass *rp)
 {
   if (rp->ibuf && rp->ibuf->float_buffer.data) {
@@ -213,16 +236,10 @@ static void render_layer_allocate_pass(RenderResult *rr, RenderPass *rp)
   IMB_assign_float_buffer(rp->ibuf, buffer_data, IB_TAKE_OWNERSHIP);
   assign_render_pass_ibuf_colorspace(*rp);
 
-  if (STREQ(rp->name, RE_PASSNAME_VECTOR)) {
-    /* initialize to max speed */
-    for (int x = rectsize - 1; x >= 0; x--) {
-      buffer_data[x] = PASS_VECTOR_MAX;
-    }
-  }
-  else if (STREQ(rp->name, RE_PASSNAME_Z)) {
-    for (int x = rectsize - 1; x >= 0; x--) {
-      buffer_data[x] = 10e10;
-    }
+  /* No need to initialize other passes, since they are already zero initialized in the allocation
+   * call. */
+  if (STR_ELEM(rp->name, RE_PASSNAME_VECTOR, RE_PASSNAME_Z)) {
+    initialize_pass_buffer_default(rp);
   }
 }
 
@@ -390,6 +407,17 @@ void render_result_passes_allocated_ensure(RenderResult *rr)
   }
 
   rr->passes_allocated = true;
+}
+
+void render_result_passes_initialize_buffers_default(RenderResult *render_result)
+{
+  BLI_assert(render_result->passes_allocated);
+
+  LISTBASE_FOREACH (RenderLayer *, render_layer, &render_result->layers) {
+    LISTBASE_FOREACH (RenderPass *, render_pass, &render_layer->passes) {
+      initialize_pass_buffer_default(render_pass);
+    }
+  }
 }
 
 void render_result_clone_passes(Render *re, RenderResult *rr, const char *viewname)

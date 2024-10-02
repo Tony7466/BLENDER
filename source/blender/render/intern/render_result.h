@@ -62,6 +62,11 @@ void render_result_views_new(struct RenderResult *rr, const struct RenderData *r
  */
 void render_result_merge(struct RenderResult *rr, struct RenderResult *rrpart);
 
+/* Initializes the buffers in all of the passes with their default value. All passes are zero
+ * initialized, except vector passes which are initialized to PASS_VECTOR_MAX and Z passes which
+ * are initialized to 10^10. */
+void render_result_passes_initialize_buffers_default(struct RenderResult *render_result);
+
 /* Add Passes */
 
 void render_result_clone_passes(struct Render *re, struct RenderResult *rr, const char *viewname);
