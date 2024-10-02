@@ -13,6 +13,7 @@
 
 #include "ANIM_action.hh"
 #include "ANIM_action_iterators.hh"
+#include "ANIM_action_legacy.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -918,8 +919,10 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
 
     for (const int property_index : rna_values.index_range()) {
       /* If we're only keying one array element, skip all elements other than
-       * that one. */
-      if (rna_path.index.has_value() && *rna_path.index != property_index) {
+       * that one. index == -1 means 'all array elements' though, so that one is
+       * treated just like having no value here at all. */
+      if (rna_path.index.has_value() && *rna_path.index != -1 && *rna_path.index != property_index)
+      {
         continue;
       }
 
@@ -972,10 +975,8 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
   bAction *dna_action = id_action_ensure(bmain, id);
   BLI_assert(dna_action != nullptr);
 
-  Action &action = dna_action->wrap();
-  if (!action.is_action_legacy() ||
-      (action.is_empty() && USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)))
-  {
+  if (!animrig::legacy::action_treat_as_legacy(*dna_action)) {
+    Action &action = dna_action->wrap();
     KeyframeSettings key_settings = get_keyframe_settings(
         (insert_key_flags & INSERTKEY_NO_USERPREF) == 0);
     key_settings.keyframe_type = key_type;

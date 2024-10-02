@@ -127,6 +127,7 @@ void VKBuffer::read(VKContext &context, void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot read a non-mapped buffer.");
   context.rendering_end();
+  context.descriptor_set_get().upload_descriptor_sets();
   context.render_graph.submit_buffer_for_read(vk_buffer_);
   memcpy(data, mapped_memory_, size_in_bytes_);
 }
@@ -173,6 +174,19 @@ bool VKBuffer::free()
   vk_buffer_ = VK_NULL_HANDLE;
 
   return true;
+}
+
+void VKBuffer::free_immediately(VKDevice &device)
+{
+  BLI_assert(vk_buffer_ != VK_NULL_HANDLE);
+  BLI_assert(allocation_ != VK_NULL_HANDLE);
+  if (is_mapped()) {
+    unmap();
+  }
+  device.resources.remove_buffer(vk_buffer_);
+  vmaDestroyBuffer(device.mem_allocator_get(), vk_buffer_, allocation_);
+  allocation_ = VK_NULL_HANDLE;
+  vk_buffer_ = VK_NULL_HANDLE;
 }
 
 }  // namespace blender::gpu
