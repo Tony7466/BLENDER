@@ -1868,6 +1868,7 @@ void BKE_grease_pencil_nomain_to_grease_pencil(GreasePencil *grease_pencil_src,
   }
 
   /* Layers. */
+  CustomData_free(&grease_pencil_dst->layers_data, grease_pencil_src->layers().size());
   if (grease_pencil_dst->root_group_ptr) {
     MEM_delete(&grease_pencil_dst->root_group());
   }
