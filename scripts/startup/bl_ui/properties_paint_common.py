@@ -1686,9 +1686,9 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, props, *, c
         layout.use_property_split = use_property_split_prev
     elif grease_pencil_tool == 'ERASE':
         layout.prop(gp_settings, "eraser_mode", expand=True)
+        layout.prop(gp_settings, "use_active_layer_only")
         if gp_settings.eraser_mode in {'HARD', 'SOFT'}:
             layout.prop(gp_settings, "use_keep_caps_eraser")
-        layout.prop(gp_settings, "use_active_layer_only")
     elif grease_pencil_tool == 'TINT':
         layout.prop(gp_settings, "vertex_mode", text="Mode")
         layout.popover("VIEW3D_PT_tools_brush_falloff")
