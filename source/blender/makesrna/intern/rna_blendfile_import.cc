@@ -243,7 +243,7 @@ static void rna_def_blendfile_import_library(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "BlendImportContextLibrary", nullptr);
   RNA_def_struct_ui_text(
       srna,
-      "Link Append Context Item",
+      "Blendfile Import Context Library",
       "Library (blendfile) reference in a BlendImportContext data. Currently only "
       "exposed as read-only data for the pre/post blendimport handlers");
 
@@ -267,7 +267,7 @@ static void RNA_def_blendfile_import_libraries(BlenderRNA *brna, PropertyRNA *cp
   srna = RNA_def_struct(brna, "BlendImportContextLibraries", nullptr);
   RNA_def_struct_ui_text(srna,
                          "Blendfile Import Context Libraries",
-                         "Collection of link/append source libraries, i.e. blendfile paths");
+                         "Collection of source libraries, i.e. blendfile paths");
 }
 
 static void rna_def_blendfile_import_item(BlenderRNA *brna)
@@ -276,10 +276,11 @@ static void rna_def_blendfile_import_item(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "BlendImportContextItem", nullptr);
-  RNA_def_struct_ui_text(srna,
-                         "Blendfile Import Context Item",
-                         "An item (data-block) in a BlendImportContext data. Currently only "
-                         "exposed as read-only data for the pre/post linking handlers");
+  RNA_def_struct_ui_text(
+      srna,
+      "Blendfile Import Context Item",
+      "An item (representing a data-block) in a BlendImportContext data. Currently only "
+      "exposed as read-only data for the pre/post linking handlers");
 
   RNA_define_verify_sdna(false); /* not in sdna */
 
@@ -300,8 +301,8 @@ static void rna_def_blendfile_import_item(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Source Libraries",
-                           "List of libraries to search and load that ID from. The ID will be "
-                           "linked from the first file in that list that contains it");
+                           "List of libraries to search and import that ID from. The ID will be "
+                           "imported from the first file in that list that contains it");
   RNA_def_property_collection_funcs(prop,
                                     "rna_BlendImportContextItem_libraries_begin",
                                     "rna_BlendImportContextItem_libraries_next",
@@ -334,7 +335,7 @@ static void rna_def_blendfile_import_item(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Append Action",
-                           "How this item has been handled by the append operation. Only set once "
+                           "How this item has been handled by the append operation. Only set if "
                            "the data has been appended");
   RNA_def_property_enum_funcs(
       prop, "rna_BlendImportContextItem_append_action_get", nullptr, nullptr);
@@ -344,12 +345,12 @@ static void rna_def_blendfile_import_item(BlenderRNA *brna)
        "INDIRECT_USAGE",
        0,
        "",
-       "That item was added for an indirectly linked ID, as a dependency of another data-block"},
+       "That item was added for an indirectly imported ID, as a dependency of another data-block"},
       {LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY,
        "LIBOVERRIDE_DEPENDENCY",
        0,
        "",
-       "That item represent an ID also used as liboverride dependency (either directly, as a "
+       "That item represents an ID also used as liboverride dependency (either directly, as a "
        "liboverride reference, or indirectly, as data used by a liboverride reference). It should "
        "never be directly made local. Mutually exclusive with `LIBOVERRIDE_DEPENDENCY_ONLY`"},
       {LINK_APPEND_TAG_LIBOVERRIDE_DEPENDENCY_ONLY,
@@ -358,8 +359,8 @@ static void rna_def_blendfile_import_item(BlenderRNA *brna)
        "",
        "That item represents an ID only used as liboverride dependency (either directly or "
        "indirectly, see `LIBOVERRIDE_DEPENDENCY` for precisions). It should not be considered "
-       "during the 'make local' process, and remain purely linked data. Mutually exclusive with "
-       "`LIBOVERRIDE_DEPENDENCY`"},
+       "during the 'make local' (append) process, and remain purely linked data. Mutually "
+       "exclusive with `LIBOVERRIDE_DEPENDENCY`"},
       {0, nullptr, 0, nullptr, nullptr},
   };
   prop = RNA_def_property(srna, "import_info", PROP_ENUM, PROP_NONE);
@@ -375,9 +376,9 @@ static void rna_def_blendfile_import_item(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "ID");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
-                           "Linked ID",
-                           "The linked or appended ID. None until it has been linked. May be the "
-                           "same as `reusable_local_id`");
+                           "Imported ID",
+                           "The imported ID. None until it has been linked or appended. May be "
+                           "the same as `reusable_local_id` when appended");
   RNA_def_property_pointer_funcs(
       prop, "rna_BlendImportContextItem_id_get", nullptr, nullptr, nullptr);
 
@@ -386,8 +387,8 @@ static void rna_def_blendfile_import_item(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Source Library",
-                           "Library ID representing the blendfile from which the ID was linked. "
-                           "None until the ID has been linked");
+                           "Library ID representing the blendfile from which the ID was imported. "
+                           "None until the ID has been linked or appended");
   RNA_def_property_pointer_funcs(
       prop, "rna_BlendImportContextItem_source_library_get", nullptr, nullptr, nullptr);
 
@@ -421,7 +422,7 @@ static void rna_def_blendfile_import_items(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_srna(cprop, "BlendImportContextItems");
   srna = RNA_def_struct(brna, "BlendImportContextItems", nullptr);
   RNA_def_struct_ui_text(
-      srna, "Link Append Context Items", "Collection of link/append context items");
+      srna, "Blendfile Import Context Items", "Collection of blendfile import context items");
 
   /* TODO: Add/Remove items _before_ doing link/append (i.e. for 'pre' handlers). */
 }
@@ -456,7 +457,7 @@ static void rna_def_blendfile_import_context(BlenderRNA *brna)
   rna_def_blendfile_import_items(brna, prop);
 
   static const EnumPropertyItem blend_import_options_items[] = {
-      {FILE_LINK, "LINK", 0, "", "Link data instead of appending it"},
+      {FILE_LINK, "LINK", 0, "", "Only link data, instead of appending it"},
       {FILE_RELPATH,
        "MAKE_PATHS_RELATIVE",
        0,
@@ -488,22 +489,19 @@ static void rna_def_blendfile_import_context(BlenderRNA *brna)
        "APPEND_LOCAL_ID_REUSE",
        0,
        "",
-       "Try to re-use previously appended matching IDs on new append"},
+       "Try to re-use previously appended matching IDs when appending them again, instead of "
+       "creating local duplicates"},
       {BLO_LIBLINK_APPEND_ASSET_DATA_CLEAR,
        "APPEND_ASSET_DATA_CLEAR",
        0,
        "",
        "Clear the asset data on append (it is always kept for linked data)"},
-      {FILE_AUTOSELECT,
-       "SELECT_OBJECTS",
-       0,
-       "",
-       "Automatically select linked or appended objects"},
+      {FILE_AUTOSELECT, "SELECT_OBJECTS", 0, "", "Automatically select imported objects"},
       {FILE_ACTIVE_COLLECTION,
        "USE_ACTIVE_COLLECTION",
        0,
        "",
-       "Use the active Collection of the current View Layer to instantiate linked/appended "
+       "Use the active Collection of the current View Layer to instantiate imported "
        "collections and objects"},
       {BLO_LIBLINK_OBDATA_INSTANCE,
        "OBDATA_INSTANCE",
@@ -514,14 +512,14 @@ static void rna_def_blendfile_import_context(BlenderRNA *brna)
        "COLLECTION_INSTANCE",
        0,
        "",
-       "Instantiate collections as empties, instead of linking them into current view layer"},
+       "Instantiate collections as empties, instead of linking them into the current view layer"},
       {0, nullptr, 0, nullptr, nullptr},
   };
   prop = RNA_def_property(srna, "options", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, blend_import_options_items);
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "", "Options for this link/append operation");
+  RNA_def_property_ui_text(prop, "", "Options for this blendfile import operation");
   RNA_def_property_enum_funcs(prop, "rna_BlendImportContext_options_get", nullptr, nullptr);
 
   /* NOTE: Only stages currently exposed to handlers are listed here. */
@@ -530,18 +528,19 @@ static void rna_def_blendfile_import_context(BlenderRNA *brna)
        "INIT",
        0,
        "",
-       "Link data is being initialized, not data has been linked or appended yet"},
+       "Blendfile import context has been initialized and filled with a list of items to import, "
+       "no data has been linked or appended yet"},
       {int(BlendfileLinkAppendContext::ProcessStage::Done),
        "DONE",
        0,
        "",
-       "All data has been linked or appended"},
+       "All data has been imported and is available in the list of `import_items`"},
       {0, nullptr, 0, nullptr, nullptr},
   };
   prop = RNA_def_property(srna, "process_stage", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, blend_import_process_stage_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "", "Current stage of the link/append process");
+  RNA_def_property_ui_text(prop, "", "Current stage of the import process");
   RNA_def_property_enum_funcs(prop, "rna_BlendImportContext_process_stage_get", nullptr, nullptr);
 
   RNA_define_verify_sdna(true); /* not in sdna */
