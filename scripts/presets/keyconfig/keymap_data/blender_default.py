@@ -7658,7 +7658,7 @@ def km_grease_pencil_primitive_tool_modal_map(params):
 
     return keymap
 
- 
+
 def km_3d_view_tool_paint_grease_pencil_primitive_line(params):
     return (
         "3D View Tool: Paint Grease Pencil, Line",
