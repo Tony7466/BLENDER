@@ -836,6 +836,7 @@ SocketDeclarationPtr create_extend_declaration(const eNodeSocketInOut in_out)
   decl->name = "";
   decl->identifier = "__extend__";
   decl->in_out = in_out;
+  decl->structure_type = StructureType::Dynamic;
   return decl;
 }
 
