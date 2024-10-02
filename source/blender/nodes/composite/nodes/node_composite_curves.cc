@@ -219,7 +219,8 @@ static void cmp_node_rgbcurves_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0)
-      .description("Image/Color input on which RGB color transformation will be applied");
+      .description("Image/Color input on which RGB color transformation will be applied")
+      .is_default_link_socket();
   b.add_input<decl::Color>("Black Level")
       .default_value({0.0f, 0.0f, 0.0f, 1.0f})
       .description("Input color that should be mapped to black");

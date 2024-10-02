@@ -30,7 +30,7 @@ static void cmp_node_valtorgb_declare(NodeDeclarationBuilder &b)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .compositor_domain_priority(1);
-  b.add_output<decl::Color>("Image").compositor_domain_priority(0);
+  b.add_output<decl::Color>("Image").compositor_domain_priority(0).is_default_link_socket();
   b.add_output<decl::Float>("Alpha");
 }
 

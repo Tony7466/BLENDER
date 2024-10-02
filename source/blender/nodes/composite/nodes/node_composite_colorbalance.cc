@@ -65,7 +65,8 @@ static void cmp_node_colorbalance_declare(NodeDeclarationBuilder &b)
       .compositor_domain_priority(1);
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
-      .compositor_domain_priority(0);
+      .compositor_domain_priority(0)
+      .is_default_link_socket();
   b.add_output<decl::Color>("Image");
 }
 
