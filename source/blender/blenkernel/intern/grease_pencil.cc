@@ -1848,7 +1848,7 @@ void BKE_grease_pencil_nomain_to_grease_pencil(GreasePencil *grease_pencil_src,
 
   /* Drawings. */
   free_drawing_array(*grease_pencil_dst);
-  grease_pencil_dst->resize_drawings(grease_pencil_dst->drawing_array_num);
+  grease_pencil_dst->resize_drawings(grease_pencil_src->drawing_array_num);
   for (const int i : IndexRange(grease_pencil_dst->drawing_array_num)) {
     switch (grease_pencil_src->drawing_array[i]->type) {
       case GP_DRAWING: {
