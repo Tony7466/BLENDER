@@ -2402,83 +2402,66 @@ GHOST_TSuccess GHOST_SystemWin32::hasClipboardImage(void) const
   }
 
   /* This could be a file path to an image file. */
+  GHOST_TSuccess result = GHOST_kFailure;
   if (IsClipboardFormatAvailable(CF_HDROP)) {
-    if (!OpenClipboard(nullptr)) {
-      return GHOST_kFailure;
-    }
-    HANDLE hGlobal = GetClipboardData(CF_HDROP);
-    if (hGlobal == nullptr) {
+    if (OpenClipboard(nullptr)) {
+      if (HANDLE hGlobal = GetClipboardData(CF_HDROP)) {
+        if (HDROP hDrop = static_cast<HDROP>(GlobalLock(hGlobal))) {
+          UINT fileCount = DragQueryFile(hDrop, 0xffffffff, nullptr, 0);
+          if (fileCount == 1) {
+            WCHAR lpszFile[MAX_PATH] = {0};
+            DragQueryFileW(hDrop, 0, lpszFile, MAX_PATH);
+            char *filepath = alloc_utf_8_from_16(lpszFile, 0);
+            ImBuf *ibuf = IMB_testiffname(filepath, IB_rect | IB_multilayer);
+            free(filepath);
+            if (ibuf) {
+              IMB_freeImBuf(ibuf);
+              result = GHOST_kSuccess;
+            }
+          }
+          GlobalUnlock(hGlobal);
+        }
+      }
       CloseClipboard();
-      return GHOST_kFailure;
     }
-    HDROP hDrop = static_cast<HDROP>(GlobalLock(hGlobal));
-    if (hDrop == nullptr) {
-      CloseClipboard();
-      return GHOST_kFailure;
-    }
-    UINT fileCount = DragQueryFile(hDrop, 0xffffffff, nullptr, 0);
-    if (fileCount != 1) {
-      GlobalUnlock(hGlobal);
-      CloseClipboard();
-      return GHOST_kFailure;
-    }
-
-    WCHAR lpszFile[MAX_PATH] = {0};
-    DragQueryFileW(hDrop, 0, lpszFile, MAX_PATH);
-    char *filepath = alloc_utf_8_from_16(lpszFile, 0);
-    ImBuf *ibuf = IMB_testiffname(filepath, IB_rect | IB_multilayer);
-    const bool is_image = ibuf != nullptr;
-    IMB_freeImBuf(ibuf);
-    free(filepath);
-    GlobalUnlock(hGlobal);
-    CloseClipboard();
-    return is_image ? GHOST_kSuccess : GHOST_kFailure;
   }
-
-  return GHOST_kFailure;
+  return result;
 }
 
 static uint *getClipboardImageFilepath(int *r_width, int *r_height)
 {
-  if (!OpenClipboard(nullptr)) {
-    return nullptr;
-  }
-  HANDLE hGlobal = GetClipboardData(CF_HDROP);
-  if (hGlobal == nullptr) {
-    CloseClipboard();
-    return nullptr;
-  }
-  HDROP hDrop = static_cast<HDROP>(GlobalLock(hGlobal));
-  if (hDrop == nullptr) {
-    CloseClipboard();
-    return nullptr;
-  }
-  UINT fileCount = DragQueryFile(hDrop, 0xffffffff, nullptr, 0);
-  if (fileCount != 1) {
-    GlobalUnlock(hGlobal);
-    CloseClipboard();
-    return nullptr;
-  }
+  char *filepath = nullptr;
 
-  WCHAR lpszFile[MAX_PATH] = {0};
-  DragQueryFileW(hDrop, 0, lpszFile, MAX_PATH);
-  char *filepath = alloc_utf_8_from_16(lpszFile, 0);
-
-  ImBuf *ibuf = IMB_loadiffname(filepath, IB_rect | IB_multilayer, nullptr);
-  free(filepath);
-  GlobalUnlock(hGlobal);
-  CloseClipboard();
-
-  if (ibuf) {
-    *r_width = ibuf->x;
-    *r_height = ibuf->y;
-    const uint64_t byte_count = static_cast<uint64_t>(ibuf->x) * ibuf->y * 4;
-    uint *rgba = static_cast<uint *>(malloc(byte_count));
-    if (rgba) {
-      memcpy(rgba, ibuf->byte_buffer.data, byte_count);
+  GHOST_TSuccess result = GHOST_kFailure;
+  if (OpenClipboard(nullptr)) {
+    if (HANDLE hGlobal = GetClipboardData(CF_HDROP)) {
+      if (HDROP hDrop = static_cast<HDROP>(GlobalLock(hGlobal))) {
+        UINT fileCount = DragQueryFile(hDrop, 0xffffffff, nullptr, 0);
+        if (fileCount == 1) {
+          WCHAR lpszFile[MAX_PATH] = {0};
+          DragQueryFileW(hDrop, 0, lpszFile, MAX_PATH);
+          filepath = alloc_utf_8_from_16(lpszFile, 0);
+        }
+        GlobalUnlock(hGlobal);
+      }
     }
-    IMB_freeImBuf(ibuf);
-    return rgba;
+    CloseClipboard();
+  }
+
+  if (filepath) {
+    ImBuf *ibuf = IMB_loadiffname(filepath, IB_rect | IB_multilayer, nullptr);
+    free(filepath);
+    if (ibuf) {
+      *r_width = ibuf->x;
+      *r_height = ibuf->y;
+      const uint64_t byte_count = static_cast<uint64_t>(ibuf->x) * ibuf->y * 4;
+      uint *rgba = static_cast<uint *>(malloc(byte_count));
+      if (rgba) {
+        memcpy(rgba, ibuf->byte_buffer.data, byte_count);
+      }
+      IMB_freeImBuf(ibuf);
+      return rgba;
+    }
   }
 
   return nullptr;
