@@ -2528,7 +2528,7 @@ static void delete_drawing(GreasePencilDrawingBase *drawing_base)
 void GreasePencil::resize_drawings(const int new_num)
 {
   using namespace blender;
-  BLI_assert(new_num > 0);
+  BLI_assert(new_num >= 0);
 
   const int prev_num = int(this->drawings().size());
   if (new_num == prev_num) {
