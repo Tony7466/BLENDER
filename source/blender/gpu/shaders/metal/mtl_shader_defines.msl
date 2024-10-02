@@ -181,10 +181,70 @@ struct _mtl_sampler {
   /* Using `using` would invalidate the whole class. */
 #define gradient typename gradient_n<Dim, Cube>::type
 
+#ifndef MTL_SUPPORTS_TEXTURE_ATOMICS
+  /* If native texture atomics are unsupported, we instead utilize a custom type which wraps a
+   * buffer-backed texture. This texture will always be a Texture2D, but will emulate access to
+   * Texture3D and Texture2DArray by stacking layers.
+   * Access pattern will be derived based on the source type. 2DArray and 3D atomic texture
+   * support will require information on the size of each layer within the source 2D texture.
+   *
+   * A device pointer to the backing buffer will also be available for the atomic operations.
+   * NOTE: For atomic ops, it will only be valid to use access::read_write.
+   * We still need to use the wrapped type for access:sample, as texture2DArray and texture3D
+   * will require access indirection.
+   *
+   * NOTE: Only type of UINT is valid, but full template provided to match syntax of standard
+   * textures. */
+  template<typename U, int D, bool At> struct AtomicEmulation {};
+
+  template<typename U> struct AtomicEmulation<U, 2, true> {
+    /** Buffer to do atomic operations on. */
+    device U *buffer;
+    /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater
+     * than the texture's native width to satisfy device alignment rules. We need to use the padded
+     * width when writing to ensure the correct writing location aligns with a given pixel location
+     * in the texture. */
+    ushort aligned_width;
+
+    int2 to_internal_coord(IntCoord coord) const
+    {
+      return coord.xy;
+    }
+    uint to_linear_coord(IntCoord coord) const
+    {
+      return coord.x + coord.y * aligned_width;
+    }
+  };
+
+  template<typename U> struct AtomicEmulation<U, 3, true> {
+    /** Buffer to do atomic operations on. */
+    device U *buffer;
+    /** Required to pixel location inside the backing texture 2D space, and texture size query. */
+    ushort3 texture_size;
+    /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater
+     * than the texture's native width to satisfy device alignment rules. We need to use the padded
+     * width when writing to ensure the correct writing location aligns with a given pixel location
+     * in the texture. */
+    ushort aligned_width;
+
+    int2 to_internal_coord(IntCoord coord) const
+    {
+      return int2(coord.x, coord.y + texture_size.y * coord.z);
+    }
+    uint to_linear_coord(IntCoord coord) const
+    {
+      uint row = coord.y + coord.z * texture_size.y;
+      return coord.x + row * aligned_width;
+    }
+  };
+
+  AtomicEmulation<T, Dim + Array, Atomic> atomic;
+#endif
+
   thread TextureT *texture;
   sampler_ptr samp;
 
-  template<int dim, int array> SizeVec size_impl(uint lod) const {}
+  template<int dim, int array, bool At = false> SizeVec size_impl(uint lod) const {}
   template<> SizeVec size_impl<1, 0>(uint lod) const
   {
     return SizeVec(texture->get_width());
@@ -205,13 +265,25 @@ struct _mtl_sampler {
   {
     return SizeVec(texture->get_width(lod), texture->get_height(lod), texture->get_depth(lod));
   }
+#ifndef MTL_SUPPORTS_TEXTURE_ATOMICS
+  template<> SizeVec size_impl<2, 1, true>(uint lod) const
+  {
+    return SizeVec(atomic.texture_size);
+  }
+  template<> SizeVec size_impl<3, 0, true>(uint lod) const
+  {
+    return SizeVec(atomic.texture_size);
+  }
+#endif
   SizeVec size(int lod = 0) const
   {
-    return size_impl<Dim, Array>(uint(lod));
+    return size_impl<Dim, Array, Atomic>(uint(lod));
   }
 
-#define ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 1)>
-#define NON_ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 0)>
+#define ARRAY_FN \
+  template<int Ar = Array, bool At = Atomic, ENABLE_IF(Ar == 1), ENABLE_IF(At == false)>
+#define NON_ARRAY_FN \
+  template<int Ar = Array, bool At = Atomic, ENABLE_IF(Ar == 0), ENABLE_IF(At == false)>
 
   NON_ARRAY_FN DataVec sample(FltCoord coord) const
   {
@@ -280,8 +352,10 @@ struct _mtl_sampler {
    * To be split to its own class.
    */
 
-#define ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 1)>
-#define NON_ARRAY_FN template<int Ar = Array, ENABLE_IF(Ar == 0)>
+#define ARRAY_FN \
+  template<int Ar = Array, bool At = Atomic, ENABLE_IF(Ar == 1), ENABLE_IF(At == false)>
+#define NON_ARRAY_FN \
+  template<int Ar = Array, bool At = Atomic, ENABLE_IF(Ar == 0), ENABLE_IF(At == false)>
 
   NON_ARRAY_FN DataVec load(IntCoord coord) const
   {
@@ -304,18 +378,77 @@ struct _mtl_sampler {
 #undef ARRAY_FN
 #undef NON_ARRAY_FN
 
-#define NON_ARRAY_ATOMIC \
-  template<typename U = T, \
-           int Ar = Array, \
-           ENABLE_IF(metal::is_integral_v<U> == true), \
-           ENABLE_IF(sizeof(U) == 4), \
-           ENABLE_IF(Ar == 0)>
-#define ARRAY_ATOMIC \
-  template<typename U = T, \
-           int Ar = Array, \
-           ENABLE_IF(metal::is_integral_v<U> == true), \
-           ENABLE_IF(sizeof(U) == 4), \
-           ENABLE_IF(Ar == 1)>
+#ifndef MTL_SUPPORTS_TEXTURE_ATOMICS
+  /* Atomic samplers only support `textureFetch` as the texture layout doesn't allow filtering. */
+
+#  define ATOMIC_FN template<bool At = Atomic, ENABLE_IF(At == true)>
+
+  ATOMIC_FN DataVec fetch(IntCoord coord) const
+  {
+    int2 coord_2d = atomic.to_internal_coord(coord);
+    return texture->sample(_mtl_fetch_samp, float2(coord_2d));
+  }
+  ATOMIC_FN DataVec fetch(IntCoord coord, level lod, IntDeriv offset = {0}) const
+  {
+    int2 coord_2d = atomic.to_internal_coord(coord);
+    return texture->sample(_mtl_fetch_samp, float2(coord_2d), lod, offset);
+  }
+
+  ATOMIC_FN DataVec load(IntCoord coord) const
+  {
+    int2 coord_2d = atomic.to_internal_coord(coord);
+    return texture->read(uint2(coord_2d), 0);
+  }
+  ATOMIC_FN void store(DataVec data, IntCoord coord) const
+  {
+    int2 coord_2d = atomic.to_internal_coord(coord);
+    texture->write(data, uint2(coord_2d), 0);
+  }
+
+#  undef ATOMIC_FN
+
+  AtomicT atomic_min(IntCoord coord, AtomicT data) const
+  {
+    return atomicMin(atomic.buffer[atomic.to_linear_coord(coord)], data);
+  }
+  AtomicT atomic_max(IntCoord coord, AtomicT data) const
+  {
+    return atomicMax(atomic.buffer[atomic.to_linear_coord(coord)], data);
+  }
+  AtomicT atomic_add(IntCoord coord, AtomicT data) const
+  {
+    return atomicAdd(atomic.buffer[atomic.to_linear_coord(coord)], data);
+  }
+  AtomicT atomic_and(IntCoord coord, AtomicT data) const
+  {
+    return atomicAnd(atomic.buffer[atomic.to_linear_coord(coord)], data);
+  }
+  AtomicT atomic_or(IntCoord coord, AtomicT data) const
+  {
+    return atomicOr(atomic.buffer[atomic.to_linear_coord(coord)], data);
+  }
+  AtomicT atomic_xor(IntCoord coord, AtomicT data) const
+  {
+    return atomicXor(atomic.buffer[atomic.to_linear_coord(coord)], data);
+  }
+  AtomicT atomic_exchange(IntCoord coord, AtomicT data) const
+  {
+    return atomicExchange(atomic.buffer[atomic.to_linear_coord(coord)], data);
+  }
+
+#else
+#  define NON_ARRAY_ATOMIC \
+    template<typename U = T, \
+             int Ar = Array, \
+             ENABLE_IF(metal::is_integral_v<U> == true), \
+             ENABLE_IF(sizeof(U) == 4), \
+             ENABLE_IF(Ar == 0)>
+#  define ARRAY_ATOMIC \
+    template<typename U = T, \
+             int Ar = Array, \
+             ENABLE_IF(metal::is_integral_v<U> == true), \
+             ENABLE_IF(sizeof(U) == 4), \
+             ENABLE_IF(Ar == 1)>
 
   NON_ARRAY_ATOMIC AtomicT atomic_min(IntCoord coord, AtomicT data) const
   {
@@ -375,8 +508,9 @@ struct _mtl_sampler {
     return texture->atomic_exchange(uv_mask_img(coord), layer_mask_img(coord), data).x;
   }
 
-#undef NON_ARRAY_ATOMIC
-#undef ARRAY_ATOMIC
+#  undef NON_ARRAY_ATOMIC
+#  undef ARRAY_ATOMIC
+#endif
 
   void fence()
   {
@@ -577,6 +711,10 @@ TEMPLATE using sampler3D = _mtl_sampler<T, A, texture3d<T, A>, false, 3, 0, 0>;
 TEMPLATE using samplerBuffer = _mtl_sampler<T, A, texture_buffer<T, A>, false, 1, 0, 0>;
 TEMPLATE using samplerCube = _mtl_sampler<T, A, texturecube<T, A>, false, 2, 1, 0>;
 TEMPLATE using samplerCubeArray = _mtl_sampler<T, A, texturecube_array<T, A>, false, 2, 1, 1>;
+/* Atomic textures are defined as 2D textures with special layout for 3D texture emulation. */
+TEMPLATE using sampler2DAtomic = _mtl_sampler<T, A, texture2d<T, A>, false, 2, 0, 0, true>;
+TEMPLATE using sampler2DArrayAtomic = _mtl_sampler<T, A, texture2d<T, A>, false, 2, 0, 1, true>;
+TEMPLATE using sampler3DAtomic = _mtl_sampler<T, A, texture2d<T, A>, false, 3, 0, 0, true>;
 
 /* Used by backend to declare the samplers. Could be removed. */
 TEMPLATE using _mtl_sampler_depth_2d = depth2D<T, A>;
@@ -591,6 +729,9 @@ TEMPLATE using _mtl_sampler_3d = sampler3D<T, A>;
 TEMPLATE using _mtl_sampler_buffer = samplerBuffer<T, A>;
 TEMPLATE using _mtl_sampler_cube = samplerCube<T, A>;
 TEMPLATE using _mtl_sampler_cube_array = samplerCubeArray<T, A>;
+TEMPLATE using _mtl_sampler_2d_atomic = sampler2DAtomic<T, A>;
+TEMPLATE using _mtl_sampler_2d_array_atomic = sampler2DArrayAtomic<T, A>;
+TEMPLATE using _mtl_sampler_3d_atomic = sampler3DAtomic<T, A>;
 #undef TEMPLATE
 
 /* Variant for 1D samplers. Discard the lod. */
@@ -621,59 +762,6 @@ typename samplerBuffer<T, A>::DataVec texelFetch(samplerBuffer<T, A> texture,
   }
   return typename samplerBuffer<T, A>::DataVec(0);
 }
-
-/* If native texture atomics are unsupported, we instead utilize a custom type which wraps a
- * buffer-backed texture. This texture will always be a Texture2D, but will emulate access to
- * Texture3D and Texture2DArray by stacking layers.
- * Access pattern will be derived based on the source type. 2DArray and 3D atomic texture
- * support will require information on the size of each layer within the source 2D texture.
- *
- * A device pointer to the backing buffer will also be available for the atomic operations.
- * NOTE: For atomic ops, it will only be valid to use access::read_write.
- * We still need to use the wrapped type for access:sample, as texture2DArray and texture3D
- * will require access indirection.
- *
- * NOTE: Only type of UINT is valid, but full template provided to match syntax of standard
- * textures. */
-#ifndef MTL_SUPPORTS_TEXTURE_ATOMICS
-
-template<typename T, access A = access::sample> struct _mtl_sampler_2d_atomic {
-  thread texture2d<T, A> *texture;
-  sampler_ptr samp;
-  device T *buffer;
-  /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater than
-   * the texture's native width to satisfy device alignment rules. We need to use the padded width
-   * when writing to ensure the
-   * correct writing location aligns with a given pixel location in the texture. */
-  uint aligned_width;
-};
-
-template<typename T, access A = access::sample> struct _mtl_sampler_2d_array_atomic {
-  thread texture2d<T, A> *texture;
-  sampler_ptr samp;
-  device T *buffer;
-  /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater than
-   * the texture's native width to satisfy device alignment rules. We need to use the padded width
-   * when writing to ensure the
-   * correct writing location aligns with a given pixel location in the texture. */
-  uint aligned_width;
-  /* Texture size required to determine location offset of array layer with 2D texture space. */
-  ushort3 texture_size;
-};
-
-template<typename T, access A = access::sample> struct _mtl_sampler_3d_atomic {
-  thread texture2d<T, A> *texture;
-  sampler_ptr samp;
-  device T *buffer;
-  /* Aligned width matches the number of buffer elements in bytes_per_row. This may be greater than
-   * the texture's native width to satisfy device alignment rules. We need to use the padded width
-   * when writing to ensure the correct writing location aligns with a given pixel location in the
-   * texture. */
-  uint aligned_width;
-  /* Texture size required to determine location offset of array layer with 2D texture space. */
-  ushort3 texture_size;
-};
-#endif
 
 /* Sampler struct for argument buffer. */
 #ifdef USE_ARGUMENT_BUFFER_FOR_SAMPLERS
@@ -739,1377 +827,6 @@ struct SStruct {
 
 /* Vector accessor aliases. */
 #define st xy
-
-/* Texture functions. */
-// #define imageLoad(__image, __coord) _texelFetch_internal(__image, __coord, 0)
-// #define imageLoadFast(__image, __coord) _texelFetch_internal_fast(__image, __coord, 0)
-// #define texture2(__tex, __uv) _texture_internal_samp(__tex, __uv)
-// #define texture3(__tex, __uv, _bias) _texture_internal_bias(__tex, __uv, bias(float(_bias)))
-// #define textureGather2(__tex, __uv) _texture_gather_internal(__tex, __uv, 0)
-// #define textureGather3(__tex, __uv, __comp) _texture_gather_internal(__tex, __uv, __comp)
-// #define textureGatherOffset(__tex, __offset, __uv, __comp) \
-//   _texture_gather_internal(__tex, __uv, __comp, __offset)
-// #define textureGrad(__tex, __uv, __dpdx, __dpdy) _texture_grad_internal(__tex, __uv, __dpdx,
-// __dpdy)
-
-// #define TEXURE_MACRO(_1, _2, _3, TEXNAME, ...) TEXNAME
-// #define texture(...) TEXURE_MACRO(__VA_ARGS__, texture3, texture2)(__VA_ARGS__)
-// #define textureGather(...) TEXURE_MACRO(__VA_ARGS__, textureGather3,
-// textureGather2)(__VA_ARGS__)
-
-/* Texture-write functions. */
-// #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
-// #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
-
-/* Singular return values from texture functions of type DEPTH are often indexed with either .r or
- * .x. This is a lightweight wrapper type for handling this syntax. */
-union _msl_return_float {
-  float r;
-  float x;
-  inline operator float() const
-  {
-    return r;
-  }
-};
-
-/* Add custom texture sampling/reading routines for each type to account for special return cases,
- * e.g. returning a float with an r parameter Note: Cannot use template specialization for input
- * type, as return types are specific to the signature of 'tex'. */
-
-/* Use point sampler instead of texture read to benefit from texture caching and reduce branching
- * through removal of bounds tests, as these are handled by the sample operation. */
-constexpr sampler _point_sample_(address::clamp_to_zero, filter::nearest, coord::pixel);
-
-/* Texture Read via point sampling.
- * NOTE: These templates will evaluate first for texture resources bound with sample. */
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_1d<S, access::sample> tex,
-                                      T texel,
-                                      uint lod = 0)
-{
-  return tex.texture->sample(_point_sample_, float(texel));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_1d<S, access::sample> tex,
-                                      T texel,
-                                      uint lod,
-                                      T offset)
-{
-  return tex.texture->sample(_point_sample_, float(texel + offset));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_1d_array<S, access::sample> tex,
-                                      vec<T, 2> texel,
-                                      uint lod,
-                                      vec<T, 2> offset = vec<T, 2>(0, 0))
-{
-  return tex.texture->sample(_point_sample_, float(texel.x + offset.x), uint(texel.y + offset.y));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d<S, access::sample> tex,
-                                      vec<T, 2> texel,
-                                      uint lod,
-                                      vec<T, 2> offset = vec<T, 2>(0))
-{
-  return tex.texture->sample(_point_sample_, float2(texel.xy + offset.xy), level(lod));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d_array<S, access::sample> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->sample(
-      _point_sample_, float2(texel.xy + offset.xy), uint(texel.z + offset.z), level(lod));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_3d<S, access::sample> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->sample(_point_sample_, float3(texel.xyz + offset.xyz), level(lod));
-}
-
-template<typename T>
-inline _msl_return_float _texelFetch_internal(
-    thread _mtl_sampler_depth_2d<float, access::sample> tex,
-    vec<T, 2> texel,
-    uint lod,
-    vec<T, 2> offset = vec<T, 2>(0))
-{
-  _msl_return_float fl = {
-      tex.texture->sample(_point_sample_, float2(texel.xy + offset.xy), level(lod))};
-  return fl;
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texture_internal_samp(thread _mtl_sampler_2d_array<S, access::sample> tex,
-                                        vec<T, 3> texel,
-                                        uint lod,
-                                        vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->sample(
-      _point_sample_, float2(texel.xy + offset.xy), uint(texel.z + offset.z), level(lod));
-}
-
-/* Texture Read via read operation. Required by compute/image-bindings. */
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_1d<S, A> tex, T texel, uint lod = 0)
-{
-  float w = tex.texture->get_width();
-  if (texel >= 0 && texel < w) {
-    return tex.texture->read(uint(texel));
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_sampler_1d<S, A> tex, T texel, uint lod = 0)
-{
-  return tex.texture->read(uint(texel));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(const thread _mtl_sampler_buffer<S, access::read> tex,
-                                      T texel,
-                                      uint lod = 0)
-{
-  float w = tex.texture->get_width();
-  if (texel >= 0 && texel < w) {
-    return tex.texture->read(uint(texel));
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal_fast(const thread _mtl_sampler_buffer<S, access::read> tex,
-                                           T texel,
-                                           uint lod = 0)
-{
-  return tex.texture->read(uint(texel));
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_1d<S, A> tex,
-                                      T texel,
-                                      uint lod,
-                                      T offset)
-{
-  float w = tex.texture->get_width();
-  if ((texel + offset) >= 0 && (texel + offset) < w) {
-    /* LODs not supported for 1d textures. This must be zero. */
-    return tex.texture->read(uint(texel + offset), 0);
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_sampler_1d<S, A> tex,
-                                           T texel,
-                                           uint lod,
-                                           T offset)
-{
-  /* LODs not supported for 1d textures. This must be zero. */
-  return tex.texture->read(uint(texel + offset), 0);
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_1d_array<S, A> tex,
-                                      vec<T, 2> texel,
-                                      uint lod,
-                                      vec<T, 2> offset = vec<T, 2>(0, 0))
-{
-
-  float w = tex.texture->get_width();
-  float h = tex.texture->get_array_size();
-  if ((texel.x + offset.x) >= 0 && (texel.x + offset.x) < w && (texel.y + offset.y) >= 0 &&
-      (texel.y + offset.y) < h)
-  {
-    /* LODs not supported for 1d textures. This must be zero. */
-    return tex.texture->read(uint(texel.x + offset.x), uint(texel.y + offset.y), 0);
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_sampler_1d_array<S, A> tex,
-                                           vec<T, 2> texel,
-                                           uint lod,
-                                           vec<T, 2> offset = vec<T, 2>(0, 0))
-{
-  /* LODs not supported for 1d textures. This must be zero. */
-  return tex.texture->read(uint(texel.x + offset.x), uint(texel.y + offset.y), 0);
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d<S, A> tex,
-                                      vec<T, 2> texel,
-                                      uint lod,
-                                      vec<T, 2> offset = vec<T, 2>(0))
-{
-
-  float w = tex.texture->get_width() >> lod;
-  float h = tex.texture->get_height() >> lod;
-  if ((texel.x + offset.x) >= 0 && (texel.x + offset.x) < w && (texel.y + offset.y) >= 0 &&
-      (texel.y + offset.y) < h)
-  {
-    return tex.texture->read(uint2(texel + offset), lod);
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_sampler_2d<S, A> tex,
-                                           vec<T, 2> texel,
-                                           uint lod,
-                                           vec<T, 2> offset = vec<T, 2>(0))
-{
-  return tex.texture->read(uint2(texel + offset), lod);
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d_array<S, A> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-  float w = tex.texture->get_width() >> lod;
-  float h = tex.texture->get_height() >> lod;
-  float d = tex.texture->get_array_size();
-  if ((texel.x + offset.x) >= 0 && (texel.x + offset.x) < w && (texel.y + offset.y) >= 0 &&
-      (texel.y + offset.y) < h && (texel.z + offset.z) >= 0 && (texel.z + offset.z) < d)
-  {
-    return tex.texture->read(uint2(texel.xy + offset.xy), uint(texel.z + offset.z), lod);
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_sampler_2d_array<S, A> tex,
-                                           vec<T, 3> texel,
-                                           uint lod,
-                                           vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->read(uint2(texel.xy + offset.xy), uint(texel.z + offset.z), lod);
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_3d<S, A> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-
-  float w = tex.texture->get_width() >> lod;
-  float h = tex.texture->get_height() >> lod;
-  float d = tex.texture->get_depth() >> lod;
-  if ((texel.x + offset.x) >= 0 && (texel.x + offset.x) < w && (texel.y + offset.y) >= 0 &&
-      (texel.y + offset.y) < h && (texel.z + offset.z) >= 0 && (texel.z + offset.z) < d)
-  {
-    return tex.texture->read(uint3(texel + offset), lod);
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal_fast(thread _mtl_sampler_3d<S, A> tex,
-                                           vec<T, 3> texel,
-                                           uint lod,
-                                           vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->read(uint3(texel + offset), lod);
-}
-
-template<typename T, access A>
-inline _msl_return_float _texelFetch_internal(thread _mtl_sampler_depth_2d<float, A> tex,
-                                              vec<T, 2> texel,
-                                              uint lod,
-                                              vec<T, 2> offset = vec<T, 2>(0))
-{
-
-  float w = tex.texture->get_width() >> lod;
-  float h = tex.texture->get_height() >> lod;
-  if ((texel.x + offset.x) >= 0 && (texel.x + offset.x) < w && (texel.y + offset.y) >= 0 &&
-      (texel.y + offset.y) < h)
-  {
-    _msl_return_float fl = {tex.texture->read(uint2(texel + offset), lod)};
-    return fl;
-  }
-  else {
-    _msl_return_float fl = {0};
-    return fl;
-  }
-}
-
-template<typename T, access A>
-inline _msl_return_float _texelFetch_internal_fast(thread _mtl_sampler_depth_2d<float, A> tex,
-                                                   vec<T, 2> texel,
-                                                   uint lod,
-                                                   vec<T, 2> offset = vec<T, 2>(0))
-{
-  _msl_return_float fl = {tex.texture->read(uint2(texel + offset), lod)};
-  return fl;
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texture_internal_samp(thread _mtl_sampler_2d_array<S, A> tex,
-                                        vec<T, 3> texel,
-                                        uint lod,
-                                        vec<T, 3> offset = vec<T, 3>(0))
-{
-
-  float w = tex.texture->get_width() >> lod;
-  float h = tex.texture->get_height() >> lod;
-  float d = tex.texture->get_array_size();
-  if ((texel.x + offset.x) >= 0 && (texel.x + offset.x) < w && (texel.y + offset.y) >= 0 &&
-      (texel.y + offset.y) < h && (texel.z + offset.z) >= 0 && (texel.z + offset.z) < d)
-  {
-    return tex.texture->read(uint2(texel.xy + offset.xy), uint(texel.z + offset.z), lod);
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-/* Sample. */
-template<typename T>
-inline vec<T, 4> _texture_internal_samp(thread _mtl_sampler_1d<T, access::sample> tex, float u)
-{
-  return tex.texture->sample(*tex.samp, u);
-}
-
-inline float4 _texture_internal_samp(thread _mtl_sampler_1d_array<float, access::sample> tex,
-                                     float2 ua)
-{
-  return tex.texture->sample(*tex.samp, ua.x, uint(ua.y));
-}
-
-inline int4 _texture_internal_samp(thread _mtl_sampler_2d<int, access::sample> tex, float2 uv)
-{
-  return tex.texture->sample(*tex.samp, uv);
-}
-
-inline uint4 _texture_internal_samp(thread _mtl_sampler_2d<uint, access::sample> tex, float2 uv)
-{
-  return tex.texture->sample(*tex.samp, uv);
-}
-
-inline float4 _texture_internal_samp(thread _mtl_sampler_2d<float, access::sample> tex, float2 uv)
-{
-  return tex.texture->sample(*tex.samp, uv);
-}
-
-inline _msl_return_float _texture_internal_samp(
-    thread _mtl_sampler_depth_2d<float, access::sample> tex, float2 uv)
-{
-  _msl_return_float fl = {tex.texture->sample(*tex.samp, uv)};
-  return fl;
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_samp(thread _mtl_sampler_3d<T, access::sample> tex, float3 uvw)
-{
-  return tex.texture->sample(*tex.samp, uvw);
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_samp(thread _mtl_sampler_2d_array<T, access::sample> tex,
-                                        float3 uva)
-{
-  return tex.texture->sample(*tex.samp, uva.xy, uint(uva.z));
-}
-
-inline _msl_return_float _texture_internal_samp(
-    thread _mtl_sampler_depth_2d_array<float, access::sample> tex, float3 uva)
-{
-  _msl_return_float fl = {tex.texture->sample(*tex.samp, uva.xy, uint(uva.z))};
-  return fl;
-}
-
-inline _msl_return_float _texture_internal_samp(
-    thread _mtl_sampler_depth_2d_array<float, access::sample> tex, float4 uvac)
-{
-  _msl_return_float fl = {
-      tex.texture->sample_compare(*tex.samp, uvac.xy, uint(uvac.z), uvac.w, level(0))};
-  return fl;
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_samp(thread _mtl_sampler_cube<T, access::sample> tex,
-                                        float3 uvs)
-{
-  return tex.texture->sample(*tex.samp, uvs.xyz);
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_samp(thread _mtl_sampler_cube_array<T, access::sample> tex,
-                                        float4 coord_a)
-{
-  return tex.texture->sample(*tex.samp, coord_a.xyz, uint(coord_a.w));
-}
-
-/* Sample Level. */
-template<typename T>
-inline vec<T, 4> _texture_internal_level(thread _mtl_sampler_1d<T, access::sample> tex,
-                                         float u,
-                                         level options,
-                                         int offset = 0)
-{
-  /* LODs not supported for 1d textures. This must be zero. */
-  return tex.texture->sample(*tex.samp, u);
-}
-
-inline float4 _texture_internal_level(thread _mtl_sampler_1d_array<float, access::sample> tex,
-                                      float2 ua,
-                                      level options,
-                                      int offset = 0)
-{
-  /* LODs not supported for 1d textures. This must be zero. */
-  return tex.texture->sample(*tex.samp, ua.x, uint(ua.y));
-}
-
-inline int4 _texture_internal_level(thread _mtl_sampler_2d<int, access::sample> tex,
-                                    float2 uv,
-                                    level options,
-                                    int2 offset = int2(0))
-{
-  return tex.texture->sample(*tex.samp, uv, options, offset);
-}
-
-inline uint4 _texture_internal_level(thread _mtl_sampler_2d<uint, access::sample> tex,
-                                     float2 uv,
-                                     level options,
-                                     int2 offset = int2(0))
-{
-  return tex.texture->sample(*tex.samp, uv, options, offset);
-}
-
-inline float4 _texture_internal_level(thread _mtl_sampler_2d<float, access::sample> tex,
-                                      float2 uv,
-                                      level options,
-                                      int2 offset = int2(0))
-{
-  return tex.texture->sample(*tex.samp, uv, options, offset);
-}
-
-inline _msl_return_float _texture_internal_level(
-    thread _mtl_sampler_depth_2d<float, access::sample> tex,
-    float2 uv,
-    level options,
-    int2 offset = int2(0))
-{
-  _msl_return_float fl = {tex.texture->sample(*tex.samp, uv, options, offset)};
-  return fl;
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_level(thread _mtl_sampler_3d<T, access::sample> tex,
-                                         float3 uvw,
-                                         level options = level(0),
-                                         int3 offset = int3(0))
-{
-  return tex.texture->sample(*tex.samp, uvw, options, offset);
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_level(thread _mtl_sampler_2d_array<T, access::sample> tex,
-                                         float3 uva,
-                                         level options = level(0),
-                                         int2 offset = int2(0))
-{
-  return tex.texture->sample(*tex.samp, uva.xy, uint(uva.z), options, offset);
-}
-
-inline _msl_return_float _texture_internal_level(
-    thread _mtl_sampler_depth_2d_array<float, access::sample> tex,
-    float3 uva,
-    level options = level(0),
-    int2 offset = int2(0))
-{
-  _msl_return_float fl = {tex.texture->sample(*tex.samp, uva.xy, uint(uva.z), options, offset)};
-  return fl;
-}
-
-inline _msl_return_float _texture_internal_level(
-    thread _mtl_sampler_depth_2d_array<float, access::sample> tex,
-    float4 uvac,
-    level options = level(0),
-    int2 offset = int2(0))
-{
-  _msl_return_float fl = {
-      tex.texture->sample_compare(*tex.samp, uvac.xy, uint(uvac.z), uvac.w, level(0), offset)};
-  return fl;
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_level(thread _mtl_sampler_cube<T, access::sample> tex,
-                                         float3 uvs,
-                                         level options = level(0),
-                                         int2 offset = int2(0))
-{
-  return tex.texture->sample(*tex.samp, uvs.xyz, options);
-}
-
-template<typename T>
-inline vec<T, 4> _texture_internal_level(thread _mtl_sampler_cube_array<T, access::sample> tex,
-                                         float4 coord_a,
-                                         level options = level(0),
-                                         int3 offset = int3(0))
-{
-  return tex.texture->sample(*tex.samp, coord_a.xyz, uint(coord_a.w), options);
-}
-
-/* Sample Bias. */
-template<typename T>
-inline vec<T, 4> _texture_internal_bias(thread _mtl_sampler_1d<T, access::sample> tex,
-                                        float u,
-                                        bias options = bias(0.0),
-                                        int offset = 0)
-{
-  return tex.texture->sample(*tex.samp, u);
-}
-
-inline float4 _texture_internal_bias(thread _mtl_sampler_2d<float, access::sample> tex,
-                                     float2 uv,
-                                     bias options = bias(0.0),
-                                     int2 offset = int2(0))
-{
-  return tex.texture->sample(*tex.samp, uv, options, offset);
-}
-
-inline _msl_return_float _texture_internal_bias(
-    thread _mtl_sampler_depth_2d<float, access::sample> tex,
-    float2 uv,
-    bias options = bias(0),
-    int2 offset = int2(0))
-{
-  _msl_return_float fl = {tex.texture->sample(*tex.samp, uv, options, offset)};
-  return fl;
-}
-
-/* Texture Gather. */
-component int_to_component(const int comp)
-{
-  switch (comp) {
-    default:
-    case 0:
-      return component::x;
-    case 1:
-      return component::y;
-    case 2:
-      return component::z;
-    case 3:
-      return component::w;
-  }
-  return component::x;
-}
-
-inline float4 _texture_gather_internal(thread _mtl_sampler_depth_2d<float, access::sample> tex,
-                                       float2 uv,
-                                       const int comp = 0,
-                                       int2 offset = int2(0))
-{
-  return tex.texture->gather(*tex.samp, uv, offset);
-}
-
-inline float4 _texture_gather_internal(
-    thread _mtl_sampler_depth_2d_array<float, access::sample> tex,
-    float3 uva,
-    const int comp = 0,
-    int2 offset = int2(0))
-{
-  return tex.texture->gather(*tex.samp, uva.xy, uint(uva.z), offset);
-}
-
-template<typename T>
-inline vec<T, 4> _texture_gather_internal(thread _mtl_sampler_2d<T, access::sample> tex,
-                                          float2 uv,
-                                          const int comp = 0,
-                                          int2 offset = int2(0))
-{
-  return tex.texture->gather(*tex.samp, uv, offset);
-}
-
-template<typename T>
-inline vec<T, 4> _texture_gather_internal(thread _mtl_sampler_2d_array<T, access::sample> tex,
-                                          float3 uva,
-                                          const int comp = 0,
-                                          int2 offset = int2(0))
-{
-  return tex.texture->gather(*tex.samp, uva.xy, uint(uva.z), offset);
-}
-
-/* Texture Grad. */
-inline float4 _texture_grad_internal(thread _mtl_sampler_2d<float, access::sample> tex,
-                                     float2 uv,
-                                     float2 dpdx,
-                                     float2 dpdy)
-{
-  return tex.texture->sample(*tex.samp, uv, gradient2d(dpdx, dpdy));
-}
-
-inline float4 _texture_grad_internal(thread _mtl_sampler_2d_array<float, access::sample> tex,
-                                     float3 uva,
-                                     float2 dpdx,
-                                     float2 dpdy)
-{
-  return tex.texture->sample(*tex.samp, uva.xy, uint(uva.z), gradient2d(dpdx, dpdy));
-}
-
-inline float4 _texture_grad_internal(thread _mtl_sampler_3d<float, access::sample> tex,
-                                     float3 uvw,
-                                     float3 dpdx,
-                                     float3 dpdy)
-{
-  return tex.texture->sample(*tex.samp, uvw, gradient3d(dpdx, dpdy));
-}
-
-/* Texture write support. */
-template<typename S, typename T, access A>
-inline void _texture_write_internal(thread _mtl_sampler_1d<S, A> tex, T _coord, vec<S, 4> value)
-{
-  float w = tex.texture->get_width();
-  if (_coord >= 0 && _coord < w) {
-    tex.texture->write(value, uint(_coord));
-  }
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_1d<S, A> tex,
-                                         T _coord,
-                                         vec<S, 4> value)
-{
-  tex.texture->write(value, uint(_coord));
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_1d<S, A> tex, T _coord, S value)
-{
-  tex.texture->write(value, uint(_coord));
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal(thread _mtl_sampler_2d<S, A> tex, T _coord, vec<S, 4> value)
-{
-  float w = tex.texture->get_width();
-  float h = tex.texture->get_height();
-  if (_coord.x >= 0 && _coord.x < w && _coord.y >= 0 && _coord.y < h) {
-    tex.texture->write(value, uint2(_coord.xy));
-  }
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_2d<S, A> tex,
-                                         T _coord,
-                                         vec<S, 4> value)
-{
-  tex.texture->write(value, uint2(_coord.xy));
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_2d<S, A> tex, T _coord, S value)
-{
-  tex.texture->write(value, uint2(_coord.xy));
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal(thread _mtl_sampler_2d_array<S, A> tex,
-                                    T _coord,
-                                    vec<S, 4> value)
-{
-  float w = tex.texture->get_width();
-  float h = tex.texture->get_height();
-  float d = tex.texture->get_array_size();
-  if (_coord.x >= 0 && _coord.x < w && _coord.y >= 0 && _coord.y < h && _coord.z >= 0 &&
-      _coord.z < d)
-  {
-    tex.texture->write(value, uint2(_coord.xy), _coord.z);
-  }
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_2d_array<S, A> tex,
-                                         T _coord,
-                                         vec<S, 4> value)
-{
-  tex.texture->write(value, uint2(_coord.xy), _coord.z);
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_2d_array<S, A> tex, T _coord, S value)
-{
-  tex.texture->write(value, uint2(_coord.xy), _coord.z);
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal(thread _mtl_sampler_3d<S, A> tex, T _coord, vec<S, 4> value)
-{
-  float w = tex.texture->get_width();
-  float h = tex.texture->get_height();
-  float d = tex.texture->get_depth();
-  if (_coord.x >= 0 && _coord.x < w && _coord.y >= 0 && _coord.y < h && _coord.z >= 0 &&
-      _coord.z < d)
-  {
-    tex.texture->write(value, uint3(_coord.xyz));
-  }
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_3d<S, A> tex,
-                                         T _coord,
-                                         vec<S, 4> value)
-{
-  tex.texture->write(value, uint3(_coord.xyz));
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_3d<S, A> tex, T _coord, S value)
-{
-  tex.texture->write(value, uint3(_coord.xyz));
-}
-
-/* Texture atomic operations are only supported in Metal 3.1 and onward (macOS 14.0 Sonoma). */
-#ifdef MTL_SUPPORTS_TEXTURE_ATOMICS
-
-/* Image atomic operations. */
-// #  define imageAtomicMin(tex, coord, data) _texture_image_atomic_min_internal(tex, coord, data)
-// #  define imageAtomicAdd(tex, coord, data) _texture_image_atomic_add_internal(tex, coord, data)
-// #  define imageAtomicExchange(tex, coord, data) \
-//     _texture_image_atomic_exchange_internal(tex, coord, data)
-// #  define imageAtomicXor(tex, coord, data) _texture_image_atomic_xor_internal(tex, coord, data)
-// #  define imageAtomicOr(tex, coord, data) _texture_image_atomic_or_internal(tex, coord, data)
-
-/* Atomic OR. */
-template<typename S, access A>
-S _texture_image_atomic_or_internal(thread _mtl_sampler_1d<S, A> tex, int coord, S data)
-{
-  return tex.texture->atomic_fetch_or(uint(coord), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_or_internal(thread _mtl_sampler_1d_array<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_or(uint(coord.x), uint(coord.y), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_or_internal(thread _mtl_sampler_2d<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_or(uint2(coord.xy), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_or_internal(thread _mtl_sampler_2d_array<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_or(uint2(coord.xy), uint(coord.z), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_or_internal(thread _mtl_sampler_3d<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_or(uint3(coord), vec<S, 4>(data)).x;
-}
-
-/* Atomic XOR. */
-template<typename S, access A>
-S _texture_image_atomic_xor_internal(thread _mtl_sampler_1d<S, A> tex, int coord, S data)
-{
-  return tex.texture->atomic_fetch_xor(uint(coord), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_xor_internal(thread _mtl_sampler_1d_array<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_xor(uint(coord.x), uint(coord.y), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_xor_internal(thread _mtl_sampler_2d<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_xor(uint2(coord.xy), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_xor_internal(thread _mtl_sampler_2d_array<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_xor(uint2(coord.xy), uint(coord.z), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_xor_internal(thread _mtl_sampler_3d<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_xor(uint3(coord), vec<S, 4>(data)).x;
-}
-
-/* Atomic Min. */
-template<typename S, access A>
-S _texture_image_atomic_min_internal(thread _mtl_sampler_1d<S, A> tex, int coord, S data)
-{
-  return tex.texture->atomic_fetch_min(uint(coord), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_min_internal(thread _mtl_sampler_1d_array<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_min(uint(coord.x), uint(coord.y), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_min_internal(thread _mtl_sampler_2d<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_min(uint2(coord.xy), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_min_internal(thread _mtl_sampler_2d_array<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_min(uint2(coord.xy), uint(coord.z), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_min_internal(thread _mtl_sampler_3d<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_min(uint3(coord), vec<S, 4>(data)).x;
-}
-
-/* Atomic Add. */
-template<typename S, access A>
-S _texture_image_atomic_add_internal(thread _mtl_sampler_1d<S, A> tex, int coord, S data)
-{
-  return tex.texture->atomic_fetch_add(uint(coord), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_add_internal(thread _mtl_sampler_1d_array<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_add(uint(coord.x), uint(coord.y), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_add_internal(thread _mtl_sampler_2d<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_fetch_add(uint2(coord.xy), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_add_internal(thread _mtl_sampler_2d_array<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_add(uint2(coord.xy), uint(coord.z), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_add_internal(thread _mtl_sampler_3d<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_fetch_add(uint3(coord), vec<S, 4>(data)).x;
-}
-
-/* Atomic Exchange. */
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal(thread _mtl_sampler_1d<S, A> tex, int coord, S data)
-{
-  return tex.texture->atomic_exchange(uint(coord), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal(thread _mtl_sampler_1d_array<S, A> tex,
-                                          int2 coord,
-                                          S data)
-{
-  return tex.texture->atomic_exchange(uint(coord.x), uint(coord.y), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal(thread _mtl_sampler_2d<S, A> tex, int2 coord, S data)
-{
-  return tex.texture->atomic_exchange(uint2(coord.xy), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal(thread _mtl_sampler_2d_array<S, A> tex,
-                                          int3 coord,
-                                          S data)
-{
-  return tex.texture->atomic_exchange(uint2(coord.xy), uint(coord.z), vec<S, 4>(data)).x;
-}
-
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal(thread _mtl_sampler_3d<S, A> tex, int3 coord, S data)
-{
-  return tex.texture->atomic_exchange(uint3(coord), vec<S, 4>(data)).x;
-}
-
-#else
-
-/**
- * Texture atomic fallback function entry points.
- * NOTE: When texture atomics are unsupported, the wrapped type contains a buffer-backed 2D
- * texture. Atomic operations happen directly on the underlying buffer, and texture coordinates are
- * remapped into 2D texture space from 2D Array or 3D texture coordinates.
- */
-
-/* Image atomic operations. */
-#  define imageAtomicMin(tex, coord, data) \
-    _texture_image_atomic_min_internal_fallback(tex, coord, data)
-#  define imageAtomicAdd(tex, coord, data) \
-    _texture_image_atomic_add_internal_fallack(tex, coord, data)
-#  define imageAtomicExchange(tex, coord, data) \
-    _texture_image_atomic_exchange_internal_fallack(tex, coord, data)
-#  define imageAtomicXor(tex, coord, data) \
-    _texture_image_atomic_xor_internal_fallack(tex, coord, data)
-#  define imageAtomicOr(tex, coord, data) \
-    _texture_image_atomic_or_internal_fallack(tex, coord, data)
-
-/** Pixel address location remapping. */
-
-/* Map 2D/3D texture coordinate into a linear pixel ID. */
-template<typename S, access A>
-uint tex_coord_to_linear_px(thread _mtl_sampler_2d_atomic<S, A> tex, uint2 coord)
-{
-  return (coord.x + coord.y * uint(tex.texture->get_width()));
-}
-template<typename S, access A>
-uint tex_coord_to_linear_px(thread _mtl_sampler_2d_atomic<S, A> tex, int2 coord)
-{
-  return tex_coord_to_linear_px(tex, uint2(coord));
-}
-
-template<typename S, access A>
-uint tex_coord_to_linear_px(thread _mtl_sampler_2d_array_atomic<S, A> tex, uint3 coord)
-{
-  return (coord.x + coord.y * tex.texture_size.x +
-          coord.z * (tex.texture_size.x * tex.texture_size.y));
-}
-template<typename S, access A>
-uint tex_coord_to_linear_px(thread _mtl_sampler_2d_array_atomic<S, A> tex, int3 coord)
-{
-  return tex_coord_to_linear_px(tex, uint3(coord));
-}
-
-template<typename S, access A>
-uint tex_coord_to_linear_px(thread _mtl_sampler_3d_atomic<S, A> tex, uint3 coord)
-{
-  return (coord.x + coord.y * tex.texture_size.x +
-          coord.z * (tex.texture_size.x * tex.texture_size.y));
-}
-template<typename S, access A>
-uint tex_coord_to_linear_px(thread _mtl_sampler_3d_atomic<S, A> tex, int3 coord)
-{
-  return tex_coord_to_linear_px(tex, uint3(coord));
-}
-
-/* Map 3D texture coordinate into 2D texture space. */
-template<typename S, access A>
-uint2 tex_coord_3d_to_2d(thread _mtl_sampler_2d_array_atomic<S, A> tex, uint3 coord)
-{
-  uint linear_id = tex_coord_to_linear_px(tex, coord);
-  uint tex_full_w = uint(tex.texture->get_width());
-  uint2 out_2dcoord;
-  out_2dcoord.y = linear_id / tex_full_w;
-  out_2dcoord.x = linear_id - (out_2dcoord.y * tex_full_w);
-  return out_2dcoord;
-}
-
-template<typename S, access A>
-uint2 tex_coord_3d_to_2d(thread _mtl_sampler_3d_atomic<S, A> tex, uint3 coord)
-{
-  uint linear_id = tex_coord_to_linear_px(tex, coord);
-  uint tex_full_w = uint(tex.texture->get_width());
-  uint2 out_2dcoord;
-  out_2dcoord.y = linear_id / tex_full_w;
-  out_2dcoord.x = linear_id - (out_2dcoord.y * tex_full_w);
-  return out_2dcoord;
-}
-
-template<int N> bool in_range(vec<int, N> value, vec<int, N> min, vec<int, N> max)
-{
-  return (all(value >= min) && all(value < max));
-}
-
-/* Map 2D/3D texture coordinate into buffer index, accounting for padded row widths. */
-template<typename S, access A>
-uint tex_coord_to_linear_buffer_id(thread _mtl_sampler_2d_atomic<S, A> tex, uint2 coord)
-{
-  return (coord.x + coord.y * uint(tex.aligned_width));
-}
-template<typename S, access A>
-uint tex_coord_to_linear_buffer_id(thread _mtl_sampler_2d_atomic<S, A> tex, int2 coord)
-{
-  return tex_coord_to_linear_buffer_id(tex, uint2(coord));
-}
-
-template<typename S, access A>
-uint tex_coord_to_linear_buffer_id(thread _mtl_sampler_2d_array_atomic<S, A> tex, uint3 coord)
-{
-  uint2 coord2d = tex_coord_3d_to_2d(tex, coord);
-  return (coord2d.x + coord2d.y * uint(tex.aligned_width));
-}
-template<typename S, access A>
-uint tex_coord_to_linear_buffer_id(thread _mtl_sampler_2d_array_atomic<S, A> tex, int3 coord)
-{
-  return tex_coord_to_linear_buffer_id(tex, uint3(coord));
-}
-
-template<typename S, access A>
-uint tex_coord_to_linear_buffer_id(thread _mtl_sampler_3d_atomic<S, A> tex, uint3 coord)
-{
-  uint2 coord2d = tex_coord_3d_to_2d(tex, coord);
-  return (coord2d.x + coord2d.y * uint(tex.aligned_width));
-}
-template<typename S, access A>
-uint tex_coord_to_linear_buffer_id(thread _mtl_sampler_3d_atomic<S, A> tex, int3 coord)
-{
-  return tex_coord_to_linear_buffer_id(tex, uint3(coord));
-}
-
-/* imageAtomicMin. */
-
-template<typename S, access A>
-S _texture_image_atomic_min_internal_fallback(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                              int2 coord,
-                                              S data)
-{
-  if (!in_range(coord.xy, int2(0, 0), int2(tex.texture->get_width(0), tex.texture->get_height(0))))
-  {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicMin(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_min_internal_fallback(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                              int3 coord,
-                                              S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicMin(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_min_internal_fallback(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                              int3 coord,
-                                              S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicMin(tex.buffer[linear_id], data);
-}
-
-/* imageAtomicAdd. */
-template<typename S, access A>
-S _texture_image_atomic_add_internal_fallack(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                             int2 coord,
-                                             S data)
-{
-  if (!in_range(coord.xy, int2(0, 0), int2(tex.texture->get_width(0), tex.texture->get_height(0))))
-  {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicAdd(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_add_internal_fallack(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                             int3 coord,
-                                             S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicAdd(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_add_internal_fallack(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                             int3 coord,
-                                             S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicAdd(tex.buffer[linear_id], data);
-}
-
-/* imageAtomicExchange. */
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal_fallack(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                                  int2 coord,
-                                                  S data)
-{
-  if (!in_range(coord.xy, int2(0, 0), int2(tex.texture->get_width(0), tex.texture->get_height(0))))
-  {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicExchange(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal_fallack(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                                  int3 coord,
-                                                  S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicExchange(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_exchange_internal_fallack(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                                  int3 coord,
-                                                  S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicExchange(tex.buffer[linear_id], data);
-}
-
-/* imageAtomicXor. */
-template<typename S, access A>
-S _texture_image_atomic_xor_internal_fallack(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                             int2 coord,
-                                             S data)
-{
-  if (!in_range(coord.xy, int2(0, 0), int2(tex.texture->get_width(0), tex.texture->get_height(0))))
-  {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicXor(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_xor_internal_fallack(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                             int3 coord,
-                                             S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicXor(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_xor_internal_fallack(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                             int3 coord,
-                                             S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicXor(tex.buffer[linear_id], data);
-}
-
-/* imageAtomicOr. */
-template<typename S, access A>
-S _texture_image_atomic_or_internal_fallack(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                            int2 coord,
-                                            S data)
-{
-  if (!in_range(coord.xy, int2(0, 0), int2(tex.texture->get_width(0), tex.texture->get_height(0))))
-  {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicOr(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_or_internal_fallack(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                            int3 coord,
-                                            S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicOr(tex.buffer[linear_id], data);
-}
-
-template<typename S, access A>
-S _texture_image_atomic_or_internal_fallack(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                            int3 coord,
-                                            S data)
-{
-  if (!in_range(coord.xyz, int3(0, 0, 0), int3(tex.texture_size.xyz))) {
-    return S(0);
-  }
-  uint linear_id = tex_coord_to_linear_buffer_id(tex, coord);
-  return atomicOr(tex.buffer[linear_id], data);
-}
-
-/** Texture sampling, reading and writing functions with layer mapping. */
-
-/* Texel Fetch. */
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d_atomic<S, access::sample> tex,
-                                      vec<T, 2> texel,
-                                      uint lod,
-                                      vec<T, 2> offset = vec<T, 2>(0))
-{
-  return tex.texture->sample(_point_sample_, float2(texel.xy + offset.xy), level(lod));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d_array_atomic<S, access::sample> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->sample(
-      _point_sample_, float2(tex_coord_3d_to_2d(tex, uint3(texel + offset))), level(lod));
-}
-
-template<typename S, typename T>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_3d_atomic<S, access::sample> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->sample(
-      _point_sample_, float2(tex_coord_3d_to_2d(tex, uint3(texel + offset))), level(lod));
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                      vec<T, 2> texel,
-                                      uint lod,
-                                      vec<T, 2> offset = vec<T, 2>(0))
-{
-
-  float w = tex.texture->get_width() >> lod;
-  float h = tex.texture->get_height() >> lod;
-  if ((texel.x + offset.x) >= 0 && (texel.x + offset.x) < w && (texel.y + offset.y) >= 0 &&
-      (texel.y + offset.y) < h)
-  {
-    return tex.texture->read(uint2(texel + offset), lod);
-  }
-  else {
-    return vec<S, 4>(0);
-  }
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->read(tex_coord_3d_to_2d(tex, uint3(texel + offset)), lod);
-}
-
-template<typename S, typename T, access A>
-inline vec<S, 4> _texelFetch_internal(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                      vec<T, 3> texel,
-                                      uint lod,
-                                      vec<T, 3> offset = vec<T, 3>(0))
-{
-  return tex.texture->read(tex_coord_3d_to_2d(tex, uint3(texel + offset)), lod);
-}
-
-/* imageStore. */
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                    T _coord,
-                                    vec<S, 4> value)
-{
-  float w = tex.texture_size.x;
-  float h = tex.texture_size.y;
-  if (_coord.x >= 0 && _coord.x < w && _coord.y >= 0 && _coord.y < h) {
-    tex.texture->write(value, uint2(_coord.xy));
-  }
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_2d_atomic<S, A> tex,
-                                         T _coord,
-                                         vec<S, 4> value)
-{
-  tex.texture->write(value, uint2(_coord.xy));
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                    T _coord,
-                                    vec<S, 4> value)
-{
-  float w = tex.texture_size.x;
-  float h = tex.texture_size.y;
-  float d = tex.texture_size.z;
-  if (_coord.x >= 0 && _coord.x < w && _coord.y >= 0 && _coord.y < h && _coord.z >= 0 &&
-      _coord.z < d)
-  {
-    tex.texture->write(value, tex_coord_3d_to_2d(tex, uint3(_coord)));
-  }
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_2d_array_atomic<S, A> tex,
-                                         T _coord,
-                                         vec<S, 4> value)
-{
-  tex.texture->write(value, tex_coord_3d_to_2d(tex, uint3(_coord)));
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                    T _coord,
-                                    vec<S, 4> value)
-{
-  float w = tex.texture_size.x;
-  float h = tex.texture_size.y;
-  float d = tex.texture_size.z;
-  if (_coord.x >= 0 && _coord.x < w && _coord.y >= 0 && _coord.y < h && _coord.z >= 0 &&
-      _coord.z < d)
-  {
-    tex.texture->write(value, tex_coord_3d_to_2d(tex, uint3(_coord)));
-  }
-}
-
-template<typename S, typename T, access A>
-inline void _texture_write_internal_fast(thread _mtl_sampler_3d_atomic<S, A> tex,
-                                         T _coord,
-                                         vec<S, 4> value)
-{
-  tex.texture->write(value, tex_coord_3d_to_2d(tex, uint3(_coord)));
-}
-
-#endif
 
 /* Matrix compare operators. */
 #define EQ_OP(type, ...) \

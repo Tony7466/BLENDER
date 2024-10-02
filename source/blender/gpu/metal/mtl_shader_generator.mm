@@ -3241,9 +3241,10 @@ std::string MSLGeneratorInterface::generate_msl_texture_vars(ShaderStage shader_
       if (tex_buf_id != -1) {
         MSLBufferBlock &ssbo = this->storage_blocks[tex_buf_id];
         out << "\t" << get_shader_stage_instance_name(shader_stage) << "."
-            << this->texture_samplers[i].name << ".buffer = " << ssbo.name << ";" << std::endl;
+            << this->texture_samplers[i].name << ".atomic.buffer = " << ssbo.name << ";"
+            << std::endl;
         out << "\t" << get_shader_stage_instance_name(shader_stage) << "."
-            << this->texture_samplers[i].name << ".aligned_width = uniforms->"
+            << this->texture_samplers[i].name << ".atomic.aligned_width = uniforms->"
             << this->texture_samplers[i].name << "_metadata.w;" << std::endl;
 
         /* Buffer-backed 2D Array and 3D texture types are not natively supported so texture size
@@ -3255,7 +3256,7 @@ std::string MSLGeneratorInterface::generate_msl_texture_vars(ShaderStage shader_
                  ImageType::INT_3D_ATOMIC))
         {
           out << "\t" << get_shader_stage_instance_name(shader_stage) << "."
-              << this->texture_samplers[i].name << ".texture_size = ushort3(uniforms->"
+              << this->texture_samplers[i].name << ".atomic.texture_size = ushort3(uniforms->"
               << this->texture_samplers[i].name << "_metadata.xyz);" << std::endl;
         }
       }
@@ -3782,7 +3783,7 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
         return "_mtl_sampler_2d";
       }
       else {
-        return "_mtl_sampler_2d_atomic_fallback";
+        return "_mtl_sampler_2d_atomic";
       }
     }
     case ImageType::INT_3D_ATOMIC:
@@ -3791,7 +3792,7 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
         return "_mtl_sampler_3d";
       }
       else {
-        return "_mtl_sampler_3d_atomic_fallback";
+        return "_mtl_sampler_3d_atomic";
       }
     }
     case ImageType::INT_2D_ARRAY_ATOMIC:
@@ -3800,7 +3801,7 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
         return "_mtl_sampler_2d_array";
       }
       else {
-        return "_mtl_sampler_2d_array_atomic_fallback";
+        return "_mtl_sampler_2d_array_atomic";
       }
     }
     default: {
