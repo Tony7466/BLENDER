@@ -7,11 +7,22 @@
 
 #include "util/boundbox.h"
 #include "util/task.h"
+#include <nanovdb/NanoVDB.h>
+
+#ifdef WITH_NANOVDB
+#  include <nanovdb/util/GridHandle.h>
+#  include <nanovdb/util/GridStats.h>
+#endif
+
+#include <map>
 
 CCL_NAMESPACE_BEGIN
 
 class BoundBox;
+class Geometry;
+class Mesh;
 class Object;
+class Octree;
 class Progress;
 class Scene;
 struct KernelOctreeNode;
@@ -33,9 +44,12 @@ struct OctreeNode {
   OctreeNode(BoundBox bbox_, int level_) : bbox(bbox_), level(level_) {}
   virtual ~OctreeNode() = default;
 
-  bool should_split();
+  bool should_split(const Octree *octree);
   /* TODO(weizhen): this is only for testing. Need to support procedural shaders. */
   float volume_density_scale(const Object *object);
+  template<typename T>
+  nanovdb::Extrema<typename nanovdb::NanoGrid<T>::ValueType> get_extrema(
+      const nanovdb::NanoGrid<T> *grid, const Transform *itfm);
 };
 
 struct OctreeInternalNode : public OctreeNode {
@@ -50,6 +64,8 @@ struct OctreeInternalNode : public OctreeNode {
 };
 
 class Octree {
+  friend struct OctreeNode;
+
  public:
   void build(Progress &progress);
   /* Represent octree nodes as empty boxes with Blender Python API. */
@@ -74,6 +90,10 @@ class Octree {
   std::atomic<int> num_nodes = 1;
 
   TaskPool task_pool;
+  nanovdb::GridHandle<> mesh_to_sdf_grid(const Mesh *mesh,
+                                         const float voxel_size,
+                                         const float half_width);
+  std::map<const Geometry *, nanovdb::GridHandle<>> vdb_map;
 };
 
 CCL_NAMESPACE_END
