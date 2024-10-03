@@ -1236,9 +1236,17 @@ static bool apply_grease_pencil_for_modifier_all_keyframes(Depsgraph *depsgraph,
     }
   }
 
+  Array<int> sorted_frame_times(layer_indices_to_apply_per_frame.size());
+  int i = 0;
+  for (const int key : layer_indices_to_apply_per_frame.keys()) {
+    sorted_frame_times[i++] = key;
+  }
+  std::sort(sorted_frame_times.begin(), sorted_frame_times.end());
+
   const int prev_frame = int(DEG_get_ctime(depsgraph));
   bool changed = false;
-  for (const auto &[eval_frame, layer_indices] : layer_indices_to_apply_per_frame.items()) {
+  for (const int eval_frame : sorted_frame_times) {
+    const Span<int> layer_indices = layer_indices_to_apply_per_frame.lookup(eval_frame).as_span();
     scene->r.cfra = eval_frame;
     BKE_scene_graph_update_for_newframe(depsgraph);
 
@@ -1263,8 +1271,7 @@ static bool apply_grease_pencil_for_modifier_all_keyframes(Depsgraph *depsgraph,
         *eval_geometry_set.get_component_for_write<GreasePencilComponent>().get_for_write();
 
     IndexMaskMemory memory;
-    const IndexMask orig_layers_to_apply = IndexMask::from_indices(layer_indices.as_span(),
-                                                                   memory);
+    const IndexMask orig_layers_to_apply = IndexMask::from_indices(layer_indices, memory);
     apply_eval_grease_pencil_data(
         grease_pencil_result, eval_frame, orig_layers_to_apply, grease_pencil_orig);
 
