@@ -3209,7 +3209,7 @@ static float2 anchor_offset_get(const TextVars *data, int width_max, int text_he
       anchor_offset.x = 0;
       break;
     case SEQ_TEXT_ALIGN_X_CENTER:
-      anchor_offset.x = -width_max / 2;
+      anchor_offset.x = -width_max / 2.0f;
       break;
     case SEQ_TEXT_ALIGN_X_RIGHT:
       anchor_offset.x = -width_max;
@@ -3220,7 +3220,7 @@ static float2 anchor_offset_get(const TextVars *data, int width_max, int text_he
       anchor_offset.y = 0;
       break;
     case SEQ_TEXT_ALIGN_Y_CENTER:
-      anchor_offset.y = text_height / 2;
+      anchor_offset.y = text_height / 2.0f;
       break;
     case SEQ_TEXT_ALIGN_Y_BOTTOM:
       anchor_offset.y = text_height;
