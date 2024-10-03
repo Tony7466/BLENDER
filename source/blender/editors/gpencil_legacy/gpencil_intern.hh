@@ -430,6 +430,8 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
 /* annotations ------ */
 
 void GPENCIL_OT_annotate(wmOperatorType *ot);
+void GPENCIL_OT_annotation_add(wmOperatorType *ot);
+void GPENCIL_OT_data_unlink(wmOperatorType *ot);
 
 /* Paint Modes for operator */
 enum eGPencil_PaintModes {
@@ -445,8 +447,6 @@ enum eGPencil_PaintModes {
 
 /* buttons editing --- */
 
-void GPENCIL_OT_annotation_add(wmOperatorType *ot);
-void GPENCIL_OT_data_unlink(wmOperatorType *ot);
 
 void GPENCIL_OT_layer_add(wmOperatorType *ot);
 void GPENCIL_OT_layer_remove(wmOperatorType *ot);

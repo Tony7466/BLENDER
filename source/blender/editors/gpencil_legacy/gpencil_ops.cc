@@ -54,11 +54,11 @@ void ED_operatortypes_gpencil_legacy()
   /* Annotations -------------------- */
 
   WM_operatortype_append(GPENCIL_OT_annotate);
+  WM_operatortype_append(GPENCIL_OT_annotation_add);
+  WM_operatortype_append(GPENCIL_OT_data_unlink);
 
   /* Editing (Buttons) ------------ */
 
-  WM_operatortype_append(GPENCIL_OT_annotation_add);
-  WM_operatortype_append(GPENCIL_OT_data_unlink);
 
   WM_operatortype_append(GPENCIL_OT_layer_add);
   WM_operatortype_append(GPENCIL_OT_layer_remove);
