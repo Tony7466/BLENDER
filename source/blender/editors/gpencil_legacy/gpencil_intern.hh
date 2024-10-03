@@ -471,8 +471,6 @@ enum {
   GP_MERGE_POINT = 1,
 };
 
-void GPENCIL_OT_extract_palette_vertex(wmOperatorType *ot);
-
 void GPENCIL_OT_transform_fill(wmOperatorType *ot);
 void GPENCIL_OT_reset_transform_fill(wmOperatorType *ot);
 
@@ -496,19 +494,8 @@ void GPENCIL_OT_primitive_polyline(wmOperatorType *ot);
 void GPENCIL_OT_primitive_circle(wmOperatorType *ot);
 void GPENCIL_OT_primitive_curve(wmOperatorType *ot);
 
-/* vertex groups ------------ */
-void GPENCIL_OT_vertex_group_assign(wmOperatorType *ot);
-void GPENCIL_OT_vertex_group_remove_from(wmOperatorType *ot);
-void GPENCIL_OT_vertex_group_select(wmOperatorType *ot);
-void GPENCIL_OT_vertex_group_deselect(wmOperatorType *ot);
-void GPENCIL_OT_vertex_group_invert(wmOperatorType *ot);
-void GPENCIL_OT_vertex_group_smooth(wmOperatorType *ot);
-void GPENCIL_OT_vertex_group_normalize(wmOperatorType *ot);
-void GPENCIL_OT_vertex_group_normalize_all(wmOperatorType *ot);
-
 /* color handle */
 void GPENCIL_OT_lock_layer(wmOperatorType *ot);
-void GPENCIL_OT_materials_copy_to_object(wmOperatorType *ot);
 
 /* convert old 2.7 files to 2.8 */
 void GPENCIL_OT_convert_old_files(wmOperatorType *ot);

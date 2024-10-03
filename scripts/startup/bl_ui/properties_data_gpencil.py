@@ -128,32 +128,6 @@ class DATA_PT_gpencil_onion_skinning_display(DataButtonsPanel, Panel):
         sub.prop(gpd, "use_onion_loop", text="Show Start Frame")
 
 
-class GPENCIL_MT_gpencil_vertex_group(Menu):
-    bl_label = "Grease Pencil Vertex Groups"
-
-    def draw(self, context):
-        layout = self.layout
-
-        layout.operator_context = 'EXEC_AREA'
-        layout.operator("object.vertex_group_add")
-
-        ob = context.active_object
-        if ob.vertex_groups.active:
-            layout.separator()
-
-            layout.operator("gpencil.vertex_group_assign", text="Assign to Active Group")
-            layout.operator("gpencil.vertex_group_remove_from", text="Remove from Active Group")
-
-            layout.separator()
-            layout.operator_menu_enum("object.vertex_group_set_active", "group", text="Set Active Group")
-            layout.operator("object.vertex_group_remove", text="Remove Active Group").all = False
-            layout.operator("object.vertex_group_remove", text="Remove All Groups").all = True
-
-            layout.separator()
-            layout.operator("gpencil.vertex_group_select", text="Select Points")
-            layout.operator("gpencil.vertex_group_deselect", text="Deselect Points")
-
-
 class GPENCIL_UL_vgroups(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         vgroup = item
@@ -164,46 +138,6 @@ class GPENCIL_UL_vgroups(UIList):
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
-
-
-class DATA_PT_gpencil_vertex_groups(ObjectButtonsPanel, Panel):
-    bl_label = "Vertex Groups"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        layout = self.layout
-
-        ob = context.object
-        group = ob.vertex_groups.active
-
-        rows = 2
-        if group:
-            rows = 4
-
-        row = layout.row()
-        row.template_list("GPENCIL_UL_vgroups", "", ob, "vertex_groups", ob.vertex_groups, "active_index", rows=rows)
-
-        col = row.column(align=True)
-        col.operator("object.vertex_group_add", icon='ADD', text="")
-        col.operator("object.vertex_group_remove", icon='REMOVE', text="").all = False
-
-        if group:
-            col.separator()
-            col.operator("object.vertex_group_move", icon='TRIA_UP', text="").direction = 'UP'
-            col.operator("object.vertex_group_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
-
-        if ob.vertex_groups:
-            row = layout.row()
-
-            sub = row.row(align=True)
-            sub.operator("gpencil.vertex_group_assign", text="Assign")
-            sub.operator("gpencil.vertex_group_remove_from", text="Remove")
-
-            sub = row.row(align=True)
-            sub.operator("gpencil.vertex_group_select", text="Select")
-            sub.operator("gpencil.vertex_group_deselect", text="Deselect")
-
-            layout.prop(context.tool_settings, "vertex_group_weight", text="Weight")
 
 
 class DATA_PT_gpencil_strokes(DataButtonsPanel, Panel):
@@ -286,7 +220,6 @@ classes = (
     DATA_PT_gpencil_onion_skinning,
     DATA_PT_gpencil_onion_skinning_custom_colors,
     DATA_PT_gpencil_onion_skinning_display,
-    DATA_PT_gpencil_vertex_groups,
     DATA_PT_gpencil_strokes,
     DATA_PT_gpencil_display,
     DATA_PT_gpencil_canvas,
@@ -294,8 +227,6 @@ classes = (
     DATA_PT_custom_props_gpencil,
 
     GPENCIL_UL_vgroups,
-
-    GPENCIL_MT_gpencil_vertex_group,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -62,21 +62,8 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_blank_frame_add);
   WM_operatortype_append(GPENCIL_OT_annotation_active_frame_delete);
 
-  WM_operatortype_append(GPENCIL_OT_extract_palette_vertex);
-  WM_operatortype_append(GPENCIL_OT_materials_copy_to_object);
-
   WM_operatortype_append(GPENCIL_OT_transform_fill);
   WM_operatortype_append(GPENCIL_OT_reset_transform_fill);
-
-  /* vertex groups */
-  WM_operatortype_append(GPENCIL_OT_vertex_group_assign);
-  WM_operatortype_append(GPENCIL_OT_vertex_group_remove_from);
-  WM_operatortype_append(GPENCIL_OT_vertex_group_select);
-  WM_operatortype_append(GPENCIL_OT_vertex_group_deselect);
-  WM_operatortype_append(GPENCIL_OT_vertex_group_invert);
-  WM_operatortype_append(GPENCIL_OT_vertex_group_smooth);
-  WM_operatortype_append(GPENCIL_OT_vertex_group_normalize);
-  WM_operatortype_append(GPENCIL_OT_vertex_group_normalize_all);
 
   /* color handle */
   WM_operatortype_append(GPENCIL_OT_lock_layer);

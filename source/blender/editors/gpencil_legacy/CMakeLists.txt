@@ -37,7 +37,6 @@ set(SRC
   gpencil_undo.cc
   gpencil_utils.cc
   gpencil_uv.cc
-  gpencil_vertex_ops.cc
 
   gpencil_intern.hh
 )
