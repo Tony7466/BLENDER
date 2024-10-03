@@ -652,6 +652,8 @@ typedef struct PreviewImage {
 #define ID_MISSING(_id) ((((const ID *)(_id))->tag & ID_TAG_MISSING) != 0)
 
 #define ID_IS_LINKED(_id) (((const ID *)(_id))->lib != NULL)
+#define ID_IS_DYNAMIC_LINKED(_id) (false)
+#define ID_IS_STATIC_LINKED(_id) (ID_IS_LINKED(_id))
 
 #define ID_TYPE_SUPPORTS_ASSET_EDITABLE(id_type) ELEM(id_type, ID_BR, ID_TE, ID_NT, ID_IM)
 

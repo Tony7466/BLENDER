@@ -1260,10 +1260,10 @@ static int write_id_direct_linked_data_process_cb(LibraryIDLinkCallbackData *cb_
   ID *id = *cb_data->id_pointer;
   const int cb_flag = cb_data->cb_flag;
 
-  if (id == nullptr || !ID_IS_LINKED(id)) {
+  if (id == nullptr || !ID_IS_DYNAMIC_LINKED(id)) {
     return IDWALK_RET_NOP;
   }
-  BLI_assert(!ID_IS_LINKED(self_id));
+  BLI_assert(!ID_IS_DYNAMIC_LINKED(self_id));
   BLI_assert((cb_flag & IDWALK_CB_INDIRECT_USAGE) == 0);
 
   if (self_id->tag & ID_TAG_RUNTIME) {
@@ -1380,9 +1380,15 @@ static bool write_file_handle(Main *mainvar,
   /* This outer loop allows to save first data-blocks from real mainvar,
    * then the temp ones from override process,
    * if needed, without duplicating whole code. */
-  Main *bmain = mainvar;
+  blender::Vector<Main *> bmains;
+  LISTBASE_FOREACH (Main *, bmain, &mainlist) {
+    bmains.append(bmain);
+  }
+  if (override_storage) {
+    bmains.append(override_storage);
+  }
   BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
-  do {
+  for (Main *bmain : bmains) {
     ListBase *lbarray[INDEX_ID_MAX];
     int a = set_listbasepointers(bmain, lbarray);
     while (a--) {
@@ -1475,7 +1481,7 @@ static bool write_file_handle(Main *mainvar,
 
       mywrite_flush(wd);
     }
-  } while ((bmain != override_storage) && (bmain = override_storage));
+  }
 
   BLO_write_destroy_id_buffer(&id_buffer);
 
