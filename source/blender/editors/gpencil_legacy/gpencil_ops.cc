@@ -57,22 +57,6 @@ void ED_operatortypes_gpencil_legacy()
 
   /* Editing (Strokes) ------------ */
 
-  WM_operatortype_append(GPENCIL_OT_select);
-  WM_operatortype_append(GPENCIL_OT_select_all);
-  WM_operatortype_append(GPENCIL_OT_select_circle);
-  WM_operatortype_append(GPENCIL_OT_select_box);
-  WM_operatortype_append(GPENCIL_OT_select_lasso);
-
-  WM_operatortype_append(GPENCIL_OT_select_linked);
-  WM_operatortype_append(GPENCIL_OT_select_grouped);
-  WM_operatortype_append(GPENCIL_OT_select_more);
-  WM_operatortype_append(GPENCIL_OT_select_less);
-  WM_operatortype_append(GPENCIL_OT_select_first);
-  WM_operatortype_append(GPENCIL_OT_select_last);
-  WM_operatortype_append(GPENCIL_OT_select_alternate);
-  WM_operatortype_append(GPENCIL_OT_select_random);
-  WM_operatortype_append(GPENCIL_OT_select_vertex_color);
-
   WM_operatortype_append(GPENCIL_OT_duplicate);
   WM_operatortype_append(GPENCIL_OT_delete);
   WM_operatortype_append(GPENCIL_OT_dissolve);

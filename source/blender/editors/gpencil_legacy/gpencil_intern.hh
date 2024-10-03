@@ -445,22 +445,6 @@ enum eGPencil_PaintModes {
 
 /* stroke editing ----- */
 
-void GPENCIL_OT_select(wmOperatorType *ot);
-void GPENCIL_OT_select_all(wmOperatorType *ot);
-void GPENCIL_OT_select_circle(wmOperatorType *ot);
-void GPENCIL_OT_select_box(wmOperatorType *ot);
-void GPENCIL_OT_select_lasso(wmOperatorType *ot);
-
-void GPENCIL_OT_select_linked(wmOperatorType *ot);
-void GPENCIL_OT_select_grouped(wmOperatorType *ot);
-void GPENCIL_OT_select_more(wmOperatorType *ot);
-void GPENCIL_OT_select_less(wmOperatorType *ot);
-void GPENCIL_OT_select_first(wmOperatorType *ot);
-void GPENCIL_OT_select_last(wmOperatorType *ot);
-void GPENCIL_OT_select_alternate(wmOperatorType *ot);
-void GPENCIL_OT_select_random(wmOperatorType *ot);
-void GPENCIL_OT_select_vertex_color(wmOperatorType *ot);
-
 void GPENCIL_OT_duplicate(wmOperatorType *ot);
 void GPENCIL_OT_delete(wmOperatorType *ot);
 void GPENCIL_OT_dissolve(wmOperatorType *ot);
