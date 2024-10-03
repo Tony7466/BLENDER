@@ -45,7 +45,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .make_available(
           [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_INTERSECT_PLANE; })
       .description("Direction of plane");
-  b.add_input<decl::Vector>("Plane Offset").subtype(PROP_DISTANCE).make_available([](bNode &node) {
+  b.add_input<decl::Vector>("Center").subtype(PROP_DISTANCE).make_available([](bNode &node) {
     node_storage(node).mode = GEO_NODE_CURVE_INTERSECT_PLANE;
   });
   b.add_input<decl::Float>("Distance")
@@ -76,13 +76,13 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *mesh = static_cast<bNodeSocket *>(node->inputs.first)->next;
   bNodeSocket *self = mesh->next;
   bNodeSocket *direction = self->next;
-  bNodeSocket *plane_offset = direction->next;
-  bNodeSocket *distance = plane_offset->next;
+  bNodeSocket *plane_center = direction->next;
+  bNodeSocket *distance = plane_center->next;
 
   bke::node_set_socket_availability(ntree, mesh, mode == GEO_NODE_CURVE_INTERSECT_SURFACE);
   bke::node_set_socket_availability(ntree, self, mode == GEO_NODE_CURVE_INTERSECT_ALL);
   bke::node_set_socket_availability(ntree, direction, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
-  bke::node_set_socket_availability(ntree, plane_offset, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
+  bke::node_set_socket_availability(ntree, plane_center, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
   bke::node_set_socket_availability(ntree,
                                     distance,
                                     mode != GEO_NODE_CURVE_INTERSECT_PLANE &&
@@ -272,7 +272,7 @@ static bool isect_line_plane_crossing(const float3 point_1,
 }
 
 static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
-                                          const float3 plane_offset,
+                                          const float3 plane_center,
                                           const float3 direction,
                                           IntersectionData &r_data)
 {
@@ -283,7 +283,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
   ThreadLocalData thread_storage;
   threading::parallel_for(src_curves.curves_range(), 1024, [&](IndexRange curve_range) {
     for (const int64_t curve_i : curve_range) {
-      IntersectionData &data = thread_storage.local();
+      IntersectionData &local_data = thread_storage.local();
       const IndexRange points = evaluated_points_by_curve[curve_i];
       const Span<float3> positions = src_curves.evaluated_positions().slice(points);
       if (positions.size() <= 1) {
@@ -299,11 +299,11 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
                              const float curve_length) {
         float3 closest = float3(0.0f);
         float lambda = 0.0f;
-        if (isect_line_plane_crossing(a, b, plane_offset, direction, closest, lambda)) {
+        if (isect_line_plane_crossing(a, b, plane_center, direction, closest, lambda)) {
           const float len_at_isect = math::interpolate(len_start, len_end, lambda);
           const float3 dir_of_isect = math::normalize(b - a);
           add_intersection_data(
-              data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, false);
+              local_data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, false);
         }
       };
 
@@ -342,7 +342,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
   ThreadLocalData thread_storage;
   threading::parallel_for(curve_segments.index_range(), 128, [&](IndexRange range) {
     for (const int64_t segment_index : range) {
-      IntersectionData &data = thread_storage.local();
+      IntersectionData &local_data = thread_storage.local();
       const Segment ab = curve_segments[segment_index];
       BLI_bvhtree_range_query_cpp(
           *bvhtree,
@@ -365,7 +365,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
               if (isectinfo.intersects && isectinfo.lambda_ab != 1.0f &&
                   isectinfo.lambda_cd != 1.0f) {
                 add_intersection_data(
-                    data,
+                    local_data,
                     isectinfo.closest_ab,
                     math::normalize(ab.end - ab.start),
                     ab.curve_index,
@@ -373,7 +373,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                     ab.curve_length,
                     false);
                 add_intersection_data(
-                    data,
+                    local_data,
                     isectinfo.closest_cd,
                     math::normalize(cd.end - cd.start),
                     cd.curve_index,
@@ -497,8 +497,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
       case GEO_NODE_CURVE_INTERSECT_PLANE: {
         const float3 direction = params.extract_input<float3>("Direction");
-        const float3 plane_offset = params.extract_input<float3>("Plane Offset");
-        set_curve_intersections_plane(src_curves, plane_offset, direction, r_data);
+        const float3 plane_center = params.extract_input<float3>("Center");
+        set_curve_intersections_plane(src_curves, plane_center, direction, r_data);
         break;
       }
       case GEO_NODE_CURVE_INTERSECT_SURFACE: {
