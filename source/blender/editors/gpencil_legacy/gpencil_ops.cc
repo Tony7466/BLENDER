@@ -57,14 +57,6 @@ void ED_operatortypes_gpencil_legacy()
 
   /* Editing (Strokes) ------------ */
 
-  WM_operatortype_append(GPENCIL_OT_editmode_toggle);
-  WM_operatortype_append(GPENCIL_OT_selectmode_toggle);
-  WM_operatortype_append(GPENCIL_OT_paintmode_toggle);
-  WM_operatortype_append(GPENCIL_OT_sculptmode_toggle);
-  WM_operatortype_append(GPENCIL_OT_weightmode_toggle);
-  WM_operatortype_append(GPENCIL_OT_vertexmode_toggle);
-  WM_operatortype_append(GPENCIL_OT_selection_opacity_toggle);
-
   WM_operatortype_append(GPENCIL_OT_select);
   WM_operatortype_append(GPENCIL_OT_select_all);
   WM_operatortype_append(GPENCIL_OT_select_circle);

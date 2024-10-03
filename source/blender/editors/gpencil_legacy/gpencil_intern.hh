@@ -445,14 +445,6 @@ enum eGPencil_PaintModes {
 
 /* stroke editing ----- */
 
-void GPENCIL_OT_editmode_toggle(wmOperatorType *ot);
-void GPENCIL_OT_selectmode_toggle(wmOperatorType *ot);
-void GPENCIL_OT_paintmode_toggle(wmOperatorType *ot);
-void GPENCIL_OT_sculptmode_toggle(wmOperatorType *ot);
-void GPENCIL_OT_weightmode_toggle(wmOperatorType *ot);
-void GPENCIL_OT_vertexmode_toggle(wmOperatorType *ot);
-void GPENCIL_OT_selection_opacity_toggle(wmOperatorType *ot);
-
 void GPENCIL_OT_select(wmOperatorType *ot);
 void GPENCIL_OT_select_all(wmOperatorType *ot);
 void GPENCIL_OT_select_circle(wmOperatorType *ot);
