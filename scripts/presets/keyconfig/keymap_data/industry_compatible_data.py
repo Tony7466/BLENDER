@@ -3548,7 +3548,7 @@ def km_transform_modal_map(_params):
         ("SNAP_TOGGLE", {"type": 'LEFT_CTRL', "value": 'ANY', "any": True}, None),
         ("SNAP_TOGGLE", {"type": 'RIGHT_CTRL', "value": 'ANY', "any": True}, None),
         ("SNAP_TOGGLE", {"type": 'TAB', "value": 'ANY', "shift": True}, None),
-        ("ADD_SNAP", {"type": 'A', "value": 'PRESS'}, None),
+        ("ADD_SNAP", {"type": 'A', "value": 'PRESS', "any": True}, None),
         ("REMOVE_SNAP", {"type": 'A', "value": 'PRESS', "alt": True}, None),
         ("PROPORTIONAL_SIZE_UP", {"type": 'PAGE_UP', "value": 'PRESS', "repeat": True}, None),
         ("PROPORTIONAL_SIZE_DOWN", {"type": 'PAGE_DOWN', "value": 'PRESS', "repeat": True}, None),
