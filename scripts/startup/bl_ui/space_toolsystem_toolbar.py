@@ -2175,8 +2175,8 @@ class _defs_grease_pencil_paint:
             gp_settings = brush.gpencil_settings
             row = layout.row()
             row.use_property_split = False
-            row.prop(gp_settings, "use_keep_caps_eraser")
             row.prop(gp_settings, "use_active_layer_only")
+            row.prop(gp_settings, "use_keep_caps_eraser")
 
         return dict(
             idname="builtin.trim",
@@ -2206,8 +2206,8 @@ class _defs_grease_pencil_paint:
             brush_basic__draw_color_selector,
         )
 
-        brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
-        brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
+        brush_basic__draw_color_selector(context, layout, brush, gp_settings)
+        brush_basic_grease_pencil_paint_settings(layout, context, brush, props, compact=True)
         return True
 
     @ToolDef.from_fn
@@ -2329,10 +2329,10 @@ class _defs_grease_pencil_paint:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("grease_pencil.interpolate")
             layout.prop(props, "layers")
-            layout.prop(props, "exclude_breakdowns")
             layout.prop(props, "flip")
             layout.prop(props, "smooth_factor")
             layout.prop(props, "smooth_steps")
+            layout.prop(props, "exclude_breakdowns")
 
         return dict(
             idname="builtin.interpolate",
@@ -2690,7 +2690,7 @@ class _defs_gpencil_paint:
             brush_basic__draw_color_selector,
         )
 
-        brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
+        brush_basic__draw_color_selector(context, layout, brush, gp_settings)
         brush_basic_gpencil_paint_settings(layout, context, brush, compact=True)
         return True
 
@@ -3412,22 +3412,6 @@ class _defs_sequencer_select:
             icon="ops.generic.select",
             widget=None,
             keymap="Sequencer Timeline Tool: Tweak",
-        )
-
-    @ToolDef.from_fn
-    def box_timeline():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("sequencer.select_box")
-            row = layout.row()
-            row.use_property_split = False
-            row.prop(props, "mode", text="", expand=True, icon_only=True)
-        return dict(
-            idname="builtin.select_box",
-            label="Select Box",
-            icon="ops.generic.select_box",
-            widget=None,
-            keymap="Sequencer Timeline Tool: Select Box",
-            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -4175,17 +4159,11 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
         ],
         'SEQUENCER': [
-            (
-                _defs_sequencer_select.select_timeline,
-                _defs_sequencer_select.box_timeline,
-            ),
+            _defs_sequencer_select.select_timeline,
             _defs_sequencer_generic.blade,
         ],
         'SEQUENCER_PREVIEW': [
-            (
-                _defs_sequencer_select.select_timeline,
-                _defs_sequencer_select.box_timeline,
-            ),
+            _defs_sequencer_select.select_timeline,
             *_tools_annotate,
             None,
             _defs_sequencer_generic.blade,
