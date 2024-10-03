@@ -69,6 +69,44 @@
 /* use bmesh operator flags for a few operators */
 #define BMO_ELE_TAG 1
 
+/* -------------------------------------------------------------------- */
+/** \name Common functions to count elements
+ * \{ */
+
+typedef enum eElementCountType {
+  COUNT_LESS,
+  COUNT_EQUAL,
+  COUNT_GREATER,
+  COUNT_NOT_EQUAL
+} eElementCountType;
+
+static const EnumPropertyItem element_count_type_items[] = {
+    {COUNT_LESS, "LESS", false, "Less Than", ""},
+    {COUNT_EQUAL, "EQUAL", false, "Equal To", ""},
+    {COUNT_GREATER, "GREATER", false, "Greater Than", ""},
+    {COUNT_NOT_EQUAL, "NOTEQUAL", false, "Not Equal To", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static inline bool is_count_a_match(eElementCountType type, int value, int reference)
+{
+  switch (type) {
+    case COUNT_LESS:
+      return (value < reference);
+    case COUNT_EQUAL:
+      return (value == reference);
+    case COUNT_GREATER:
+      return (value > reference);
+    case COUNT_NOT_EQUAL:
+      return (value != reference);
+    default:
+      BLI_assert_unreachable(); /* Bad value of selection type. */
+      return false;
+  }
+}
+
+/** \} */
+
 using blender::float3;
 using blender::Span;
 using blender::Vector;
@@ -3735,7 +3773,7 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
   const bool extend = RNA_boolean_get(op->ptr, "extend");
   const bool exclude_nonmanifold = RNA_boolean_get(op->ptr, "exclude_nonmanifold");
   const int pole_count = RNA_int_get(op->ptr, "pole_count");
-  const int type = RNA_enum_get(op->ptr, "type");
+  const eElementCountType type = static_cast<eElementCountType>(RNA_enum_get(op->ptr, "type"));
   const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C));
 
@@ -3754,28 +3792,9 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
     }
 
     BM_ITER_MESH (vert, &iter, em->bm, BM_VERTS_OF_MESH) {
-      bool select;
-
       int vert_edges = BM_vert_edge_count_at_most(vert, pole_count + 1);
 
-      switch (type) {
-        case 0:
-          select = (vert_edges < pole_count);
-          break;
-        case 1:
-          select = (vert_edges == pole_count);
-          break;
-        case 2:
-          select = (vert_edges > pole_count);
-          break;
-        case 3:
-          select = (vert_edges != pole_count);
-          break;
-        default:
-          BLI_assert_unreachable(); /* Bad value of selection type. */
-          select = false;
-          break;
-      }
+      bool select = is_count_a_match(type, vert_edges, pole_count);
 
       /* Exclude nonmanifold vertices (no edges) */
       if (exclude_nonmanifold && select) {
@@ -3784,7 +3803,7 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
         }
       }
 
-      /* Exclude vertices with nonmanifold edges */
+      /* Exclude vertices connected to nonmanifold edges */
       if (exclude_nonmanifold && select) {
         BM_ITER_ELEM (edge, &element_iter, vert, BM_EDGES_OF_VERT) {
           if (BM_edge_is_manifold(edge) == false) {
@@ -3827,14 +3846,6 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
 
 void MESH_OT_select_by_pole_count(wmOperatorType *ot)
 {
-  static const EnumPropertyItem type_items[] = {
-      {0, "LESS", false, "Less Than", ""},
-      {1, "EQUAL", false, "Equal To", ""},
-      {2, "GREATER", false, "Greater Than", ""},
-      {3, "NOTEQUAL", false, "Not Equal To", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   /* identifiers */
   ot->name = "Select By Pole Count";
   ot->description = "Select elements that touch a pole by the pole count";
@@ -3849,7 +3860,8 @@ void MESH_OT_select_by_pole_count(wmOperatorType *ot)
 
   /* properties */
   RNA_def_int(ot->srna, "pole_count", 4, 0, INT_MAX, "Pole Count", "", 0, INT_MAX);
-  RNA_def_enum(ot->srna, "type", type_items, 3, "Type", "Type of comparison to make");
+  RNA_def_enum(
+      ot->srna, "type", element_count_type_items, 3, "Type", "Type of comparison to make");
   RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
   RNA_def_boolean(ot->srna,
                   "exclude_nonmanifold",
@@ -3870,7 +3882,7 @@ static int edbm_select_face_by_sides_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const bool extend = RNA_boolean_get(op->ptr, "extend");
   const int numverts = RNA_int_get(op->ptr, "number");
-  const int type = RNA_enum_get(op->ptr, "type");
+  const eElementCountType type = static_cast<eElementCountType>(RNA_enum_get(op->ptr, "type"));
   const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C));
 
@@ -3884,28 +3896,7 @@ static int edbm_select_face_by_sides_exec(bContext *C, wmOperator *op)
     }
 
     BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-      bool select;
-
-      switch (type) {
-        case 0:
-          select = (efa->len < numverts);
-          break;
-        case 1:
-          select = (efa->len == numverts);
-          break;
-        case 2:
-          select = (efa->len > numverts);
-          break;
-        case 3:
-          select = (efa->len != numverts);
-          break;
-        default:
-          BLI_assert(0);
-          select = false;
-          break;
-      }
-
-      if (select) {
+      if (is_count_a_match(type, efa->len, numverts)) {
         BM_face_select_set(em->bm, efa, true);
       }
     }
@@ -3921,13 +3912,6 @@ static int edbm_select_face_by_sides_exec(bContext *C, wmOperator *op)
 
 void MESH_OT_select_face_by_sides(wmOperatorType *ot)
 {
-  static const EnumPropertyItem type_items[] = {
-      {0, "LESS", false, "Less Than", ""},
-      {1, "EQUAL", false, "Equal To", ""},
-      {2, "GREATER", false, "Greater Than", ""},
-      {3, "NOTEQUAL", false, "Not Equal To", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
 
   /* identifiers */
   ot->name = "Select Faces by Sides";
@@ -3943,7 +3927,8 @@ void MESH_OT_select_face_by_sides(wmOperatorType *ot)
 
   /* properties */
   RNA_def_int(ot->srna, "number", 4, 3, INT_MAX, "Number of Vertices", "", 3, INT_MAX);
-  RNA_def_enum(ot->srna, "type", type_items, 1, "Type", "Type of comparison to make");
+  RNA_def_enum(
+      ot->srna, "type", element_count_type_items, 1, "Type", "Type of comparison to make");
   RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend the selection");
 }
 
