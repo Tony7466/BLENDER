@@ -561,6 +561,8 @@ void Instance::render_frame(RenderEngine *engine, RenderLayer *render_layer, con
   this->render_read_result(render_layer, view_name);
 
   if (!info_.empty()) {
+    RE_engine_set_error_message(
+        engine, RPT_("Errors during render. See the System Console for more info."));
     printf("%s", info_.c_str());
     info_ = "";
   }
