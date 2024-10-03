@@ -336,7 +336,9 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
   /* Build bvh. */
   Vector<Segment> curve_segments;
   BVHTree *bvhtree = create_curve_segment_bvhtree(src_curves, &curve_segments);
-  float min_distance = math::max(curve_isect_eps, distance);
+  BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
+
+  const float min_distance = math::max(curve_isect_eps, distance);
 
   /* Loop through segments. */
   ThreadLocalData thread_storage;
@@ -386,7 +388,6 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
     }
   });
   gather_thread_storage(thread_storage, r_data);
-  BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
 }
 
 static void set_curve_intersections_mesh(GeometrySet &mesh_set,
@@ -398,6 +399,7 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
     /* Build bvh. */
     Vector<Segment> curve_segments;
     BVHTree *bvhtree = create_curve_segment_bvhtree(src_curves, &curve_segments);
+    BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
 
     /* Loop mesh data. */
     mesh_set.modify_geometry_sets([&](GeometrySet &mesh_set) {
@@ -409,14 +411,10 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
         return;
       }
       const Span<float3> positions = mesh.vert_positions();
-      if (positions.size() < 1) {
-        return;
-      }
-
       const Span<int> corner_verts = mesh.corner_verts();
       const Span<int3> corner_tris = mesh.corner_tris();
 
-      /* Loop data. */
+      /* Loop face data. */
       ThreadLocalData thread_storage;
       threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
         for (const int64_t face_index : range) {
@@ -461,7 +459,6 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
       });
       gather_thread_storage(thread_storage, r_data);
     });
-    BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
   }
 }
 
