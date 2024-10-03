@@ -58,6 +58,7 @@
 #include "BLI_map.hh"
 #include "BLI_memarena.h"
 #include "BLI_mempool.h"
+#include "BLI_multi_value_map.hh"
 #include "BLI_threads.h"
 #include "BLI_time.h"
 
@@ -2866,7 +2867,9 @@ static BHead *read_libblock(FileData *fd,
                             BHead *bhead,
                             int id_tag,
                             const bool placeholder_set_indirect_extern,
-                            ID **r_id)
+                            ID **r_id,
+                            blender::MultiValueMap<const void *, ID *>
+                                *r_static_linked_data_blocks_by_old_library = nullptr)
 {
   const bool do_partial_undo = (fd->skip_flags & BLO_READ_SKIP_UNDO_OLD_MAIN) == 0;
 
@@ -2955,6 +2958,10 @@ static BHead *read_libblock(FileData *fd,
     }
 
     return blo_bhead_next(fd, bhead);
+  }
+
+  if (!main->curlib && id->lib && r_static_linked_data_blocks_by_old_library) {
+    r_static_linked_data_blocks_by_old_library->add(id->lib, id);
   }
 
   /* Read datablock contents.
@@ -3578,6 +3585,9 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
     read_undo_reuse_noundo_local_ids(fd);
   }
 
+  /* Used to keep track of data-blocks that were statically linked. */
+  blender::MultiValueMap<const void *, ID *> static_linked_data_blocks_by_old_library;
+
   while (bhead) {
     switch (bhead->code) {
       case BLO_CODE_DATA:
@@ -3624,7 +3634,13 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
           bhead = blo_bhead_next(fd, bhead);
         }
         else {
-          bhead = read_libblock(fd, bfd->main, bhead, ID_TAG_LOCAL, false, nullptr);
+          bhead = read_libblock(fd,
+                                bfd->main,
+                                bhead,
+                                ID_TAG_LOCAL,
+                                false,
+                                nullptr,
+                                &static_linked_data_blocks_by_old_library);
         }
     }
 
@@ -3706,13 +3722,25 @@ BlendFileData *blo_read_file_internal(FileData *fd, const char *filepath)
       /* Yep, second splitting... but this is a very cheap operation, so no big deal. */
       blo_split_main(&mainlist, bfd->main);
       LISTBASE_FOREACH (Main *, mainvar, &mainlist) {
-        BLI_assert(mainvar->versionfile != 0);
+        if (mainvar->versionfile == 0) {
+          /* No data-block was loaded from this library, e.g. because all data-blocks were
+           * statically linked. */
+          continue;
+        }
         do_versions_after_linking((mainvar->curlib && mainvar->curlib->runtime.filedata) ?
                                       mainvar->curlib->runtime.filedata :
                                       fd,
                                   mainvar);
       }
       blo_join_main(&mainlist);
+
+      /* Restore lib pointer of statically linked data-blocks. */
+      for (const auto &&[old_lib_ptr, ids] : static_linked_data_blocks_by_old_library.items()) {
+        Library *new_lib = static_cast<Library *>(newlibadr(fd, nullptr, false, old_lib_ptr));
+        for (ID *id : ids) {
+          id->lib = new_lib;
+        }
+      }
 
       BKE_layer_collection_resync_forbid();
 
