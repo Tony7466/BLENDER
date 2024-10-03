@@ -612,6 +612,8 @@ def addons_panel_draw_items(
 
 def addons_panel_draw_error_duplicates(layout):
     import addon_utils
+    import os
+
     box = layout.box()
     row = box.row()
     row.label(text="Multiple add-ons with the same name found!")
@@ -621,8 +623,14 @@ def addons_panel_draw_error_duplicates(layout):
         box.separator()
         sub_col = box.column(align=True)
         sub_col.label(text=addon_name + ":")
-        sub_col.label(text="    " + addon_file)
-        sub_col.label(text="    " + addon_path)
+
+        sub_row = sub_col.row()
+        sub_row.label(text="    " + addon_file)
+        sub_row.operator("wm.path_open", text="", icon='FILE_FOLDER').filepath=os.path.dirname(addon_file)
+
+        sub_row = sub_col.row()
+        sub_row.label(text="    " + addon_path)
+        sub_row.operator("wm.path_open", text="", icon='FILE_FOLDER').filepath=os.path.dirname(addon_path)
 
 
 def addons_panel_draw_error_generic(layout, lines):
