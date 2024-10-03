@@ -194,7 +194,7 @@ _km_hierarchy = [
         ('Clip Dopesheet Editor', 'CLIP_EDITOR', 'WINDOW', []),
     ]),
 
-    ('Grease Pencil', 'EMPTY', 'WINDOW', [  # grease pencil stuff (per region)
+    ('Grease Pencil', 'EMPTY', 'WINDOW', [
         # Grease Pencil v3
         ('Grease Pencil Paint Mode', 'EMPTY', 'WINDOW', []),
         ('Grease Pencil Brush Stroke', 'EMPTY', 'WINDOW', []),
