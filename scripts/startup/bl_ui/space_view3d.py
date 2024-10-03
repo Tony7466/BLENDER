@@ -8289,20 +8289,6 @@ class VIEW3D_PT_greasepencil_weight_context_menu(Panel):
         # Weight settings
         brush_basic_grease_pencil_weight_settings(layout, context, brush)
 
-        # Layers
-        draw_gpencil_layer_active(context, layout)
-
-
-def draw_gpencil_layer_active(context, layout):
-    gpl = context.active_gpencil_layer
-    if gpl:
-        layout.label(text="Active Layer")
-        row = layout.row(align=True)
-        row.operator_context = 'EXEC_REGION_WIN'
-        row.operator_menu_enum("gpencil.layer_change", "layer", text="", icon='GREASEPENCIL')
-        row.prop(gpl, "info", text="")
-        row.operator("gpencil.layer_remove", text="", icon='X')
-
 
 def draw_gpencil_material_active(context, layout):
     ob = context.active_object

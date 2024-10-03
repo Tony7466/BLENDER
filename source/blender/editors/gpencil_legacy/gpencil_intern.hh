@@ -445,21 +445,6 @@ enum eGPencil_PaintModes {
 
 /* stroke editing ----- */
 
-void GPENCIL_OT_duplicate(wmOperatorType *ot);
-void GPENCIL_OT_delete(wmOperatorType *ot);
-void GPENCIL_OT_dissolve(wmOperatorType *ot);
-void GPENCIL_OT_copy(wmOperatorType *ot);
-void GPENCIL_OT_paste(wmOperatorType *ot);
-void GPENCIL_OT_extrude(wmOperatorType *ot);
-
-void GPENCIL_OT_move_to_layer(wmOperatorType *ot);
-void GPENCIL_OT_layer_change(wmOperatorType *ot);
-void GPENCIL_OT_layer_active(wmOperatorType *ot);
-
-void GPENCIL_OT_snap_to_grid(wmOperatorType *ot);
-void GPENCIL_OT_snap_to_cursor(wmOperatorType *ot);
-void GPENCIL_OT_snap_cursor_to_selected(wmOperatorType *ot);
-
 void GPENCIL_OT_reproject(wmOperatorType *ot);
 void GPENCIL_OT_recalc_geometry(wmOperatorType *ot);
 
@@ -618,7 +603,6 @@ void GPENCIL_OT_material_unlock_all(wmOperatorType *ot);
 void GPENCIL_OT_material_lock_unused(wmOperatorType *ot);
 void GPENCIL_OT_material_select(wmOperatorType *ot);
 void GPENCIL_OT_material_set(wmOperatorType *ot);
-void GPENCIL_OT_set_active_material(wmOperatorType *ot);
 void GPENCIL_OT_materials_copy_to_object(wmOperatorType *ot);
 
 /* convert old 2.7 files to 2.8 */

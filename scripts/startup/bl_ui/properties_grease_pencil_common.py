@@ -188,73 +188,6 @@ class GreasePencilBrushFalloff:
                 row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
 
 
-class GPENCIL_MT_snap(Menu):
-    bl_label = "Snap"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("gpencil.snap_to_grid", text="Selection to Grid")
-        layout.operator("gpencil.snap_to_cursor", text="Selection to Cursor").use_offset = False
-        layout.operator("gpencil.snap_to_cursor", text="Selection to Cursor (Keep Offset)").use_offset = True
-
-        layout.separator()
-
-        layout.operator("gpencil.snap_cursor_to_selected", text="Cursor to Selected")
-        layout.operator("view3d.snap_cursor_to_center", text="Cursor to World Origin")
-        layout.operator("view3d.snap_cursor_to_grid", text="Cursor to Grid")
-
-
-class GPENCIL_MT_snap_pie(Menu):
-    bl_label = "Snap"
-
-    def draw(self, _context):
-        layout = self.layout
-        pie = layout.menu_pie()
-
-        pie.operator("view3d.snap_cursor_to_grid", text="Cursor to Grid", icon='CURSOR')
-        pie.operator("gpencil.snap_to_grid", text="Selection to Grid", icon='RESTRICT_SELECT_OFF')
-        pie.operator("gpencil.snap_cursor_to_selected", text="Cursor to Selected", icon='CURSOR')
-        pie.operator(
-            "gpencil.snap_to_cursor",
-            text="Selection to Cursor",
-            icon='RESTRICT_SELECT_OFF',
-        ).use_offset = False
-        pie.operator(
-            "gpencil.snap_to_cursor",
-            text="Selection to Cursor (Keep Offset)",
-            icon='RESTRICT_SELECT_OFF',
-        ).use_offset = True
-        pie.separator()
-        pie.operator("view3d.snap_cursor_to_center", text="Cursor to World Origin", icon='CURSOR')
-        pie.separator()
-
-
-class GPENCIL_MT_move_to_layer(Menu):
-    bl_label = "Move to Layer"
-
-    def draw(self, context):
-        layout = self.layout
-        gpd = context.gpencil_data
-        if gpd:
-            layout.operator_context = 'INVOKE_REGION_WIN'
-            layout.operator("gpencil.move_to_layer", text="New Layer", icon='ADD').layer = -1
-
-            layout.separator()
-
-            gpl_active = context.active_gpencil_layer
-            tot_layers = len(gpd.layers)
-            i = tot_layers - 1
-            while i >= 0:
-                gpl = gpd.layers[i]
-                if gpl.info == gpl_active.info:
-                    icon = 'GREASEPENCIL'
-                else:
-                    icon = 'NONE'
-                layout.operator("gpencil.move_to_layer", text=gpl.info, icon=icon, translate=False).layer = i
-                i -= 1
-
-
 class GPENCIL_MT_layer_active(Menu):
     bl_label = "Change Active Layer"
 
@@ -354,18 +287,6 @@ class GPENCIL_MT_material_active(Menu):
             if mat and mat.id_data and mat.id_data.preview:
                 icon = mat.id_data.preview.icon_id
                 layout.operator("gpencil.material_set", text=mat.name, icon_value=icon).slot = mat.name
-
-
-class GPENCIL_MT_gpencil_draw_delete(Menu):
-    bl_label = "Delete"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)").type = 'FRAME'
-        layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframes (All Layers)")
 
 
 class GPENCIL_MT_cleanup(Menu):
@@ -1011,14 +932,10 @@ class GREASE_PENCIL_MT_snap_pie(Menu):
 
 
 classes = (
-    GPENCIL_MT_snap,
-    GPENCIL_MT_snap_pie,
     GPENCIL_MT_cleanup,
-    GPENCIL_MT_move_to_layer,
     GPENCIL_MT_layer_active,
     GPENCIL_MT_material_active,
 
-    GPENCIL_MT_gpencil_draw_delete,
     GPENCIL_MT_layer_mask_menu,
 
     GPENCIL_UL_annotation_layer,

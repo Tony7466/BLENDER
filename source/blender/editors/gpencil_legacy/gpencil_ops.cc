@@ -57,23 +57,6 @@ void ED_operatortypes_gpencil_legacy()
 
   /* Editing (Strokes) ------------ */
 
-  WM_operatortype_append(GPENCIL_OT_duplicate);
-  WM_operatortype_append(GPENCIL_OT_delete);
-  WM_operatortype_append(GPENCIL_OT_dissolve);
-  WM_operatortype_append(GPENCIL_OT_copy);
-  WM_operatortype_append(GPENCIL_OT_paste);
-  WM_operatortype_append(GPENCIL_OT_extrude);
-
-  WM_operatortype_append(GPENCIL_OT_move_to_layer);
-  WM_operatortype_append(GPENCIL_OT_layer_change);
-  WM_operatortype_append(GPENCIL_OT_layer_active);
-
-  WM_operatortype_append(GPENCIL_OT_set_active_material);
-
-  WM_operatortype_append(GPENCIL_OT_snap_to_grid);
-  WM_operatortype_append(GPENCIL_OT_snap_to_cursor);
-  WM_operatortype_append(GPENCIL_OT_snap_cursor_to_selected);
-
   WM_operatortype_append(GPENCIL_OT_reproject);
   WM_operatortype_append(GPENCIL_OT_recalc_geometry);
 
@@ -205,31 +188,6 @@ void ED_operatortypes_gpencil_legacy()
 
 void ED_operatormacros_gpencil()
 {
-  wmOperatorType *ot;
-  wmOperatorTypeMacro *otmacro;
-
-  /* Duplicate + Move = Interactively place newly duplicated strokes */
-  ot = WM_operatortype_append_macro(
-      "GPENCIL_OT_duplicate_move",
-      "Duplicate Strokes",
-      "Make copies of the selected Grease Pencil strokes and move them",
-      OPTYPE_UNDO | OPTYPE_REGISTER);
-  WM_operatortype_macro_define(ot, "GPENCIL_OT_duplicate");
-  otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
-  RNA_boolean_set(otmacro->ptr, "gpencil_strokes", true);
-  RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
-  RNA_boolean_set(otmacro->ptr, "mirror", false);
-
-  /* Extrude + Move = Interactively add new points */
-  ot = WM_operatortype_append_macro("GPENCIL_OT_extrude_move",
-                                    "Extrude Stroke Points",
-                                    "Extrude selected points and move them",
-                                    OPTYPE_UNDO | OPTYPE_REGISTER);
-  WM_operatortype_macro_define(ot, "GPENCIL_OT_extrude");
-  otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
-  RNA_boolean_set(otmacro->ptr, "gpencil_strokes", true);
-  RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
-  RNA_boolean_set(otmacro->ptr, "mirror", false);
 }
 
 /* ****************************************** */
