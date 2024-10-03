@@ -500,6 +500,7 @@ DefNode(GeometryNode, GEO_NODE_UV_UNWRAP, 0, "UV_UNWRAP", UVUnwrap, "UV Unwrap",
 DefNode(GeometryNode, GEO_NODE_VIEWER, 0, "VIEWER", Viewer, "Viewer", "Display the input data in the Spreadsheet Editor")
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, 0, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
+DefNode(GeometryNode, GEO_NODE_VORONOI, def_geo_voronoi, "VORONOI", Voronoi, "Voronoi", "Generate Voronoi Diagram")
 
 /* undefine macros */
 #undef DefNode

@@ -2024,6 +2024,11 @@ typedef struct NodeGeometryTransformGizmo {
   uint32_t flag;
 } NodeGeometryTransformGizmo;
 
+typedef struct NodeGeometryVoronoi {
+  /** #NodeGeometryTransformGizmoFlag.  */
+  uint32_t sites;
+} NodeGeometryVoronoi;
+
 typedef enum NodeGeometryTransformGizmoFlag {
   GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X = 1 << 0,
   GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_Y = 1 << 1,
