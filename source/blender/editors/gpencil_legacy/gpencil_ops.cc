@@ -57,7 +57,6 @@ void ED_operatortypes_gpencil_legacy()
 
   /* Drawing ----------------------- */
 
-  WM_operatortype_append(GPENCIL_OT_fill);
   WM_operatortype_append(GPENCIL_OT_vertex_paint);
   WM_operatortype_append(GPENCIL_OT_vertex_color_brightness_contrast);
   WM_operatortype_append(GPENCIL_OT_vertex_color_hsv);
