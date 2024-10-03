@@ -3780,7 +3780,6 @@ def generate_keymaps_impl(params=None):
         # Tool System.
         km_3d_view_tool_select(params),
         km_image_editor_tool_uv_select(params),
-        km_3d_view_tool_edit_gpencil_select(params),
         km_sequencer_editor_tool_select_preview(params),
         km_sequencer_editor_tool_select_timeline(params),
         km_3d_view_tool_interactive_add(params),
