@@ -60,20 +60,7 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_layer_annotation_remove);
   WM_operatortype_append(GPENCIL_OT_layer_annotation_move);
   WM_operatortype_append(GPENCIL_OT_blank_frame_add);
-
-  WM_operatortype_append(GPENCIL_OT_hide);
-  WM_operatortype_append(GPENCIL_OT_reveal);
-  WM_operatortype_append(GPENCIL_OT_lock_all);
-  WM_operatortype_append(GPENCIL_OT_unlock_all);
-
-
-  WM_operatortype_append(GPENCIL_OT_active_frame_delete);
   WM_operatortype_append(GPENCIL_OT_annotation_active_frame_delete);
-  WM_operatortype_append(GPENCIL_OT_active_frames_delete_all);
-  WM_operatortype_append(GPENCIL_OT_frame_duplicate);
-  WM_operatortype_append(GPENCIL_OT_frame_clean_fill);
-  WM_operatortype_append(GPENCIL_OT_frame_clean_loose);
-  WM_operatortype_append(GPENCIL_OT_frame_clean_duplicate);
 
   WM_operatortype_append(GPENCIL_OT_convert);
   WM_operatortype_append(GPENCIL_OT_bake_mesh_animation);

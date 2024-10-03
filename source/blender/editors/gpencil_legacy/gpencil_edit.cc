@@ -309,15 +309,6 @@ void GPENCIL_OT_blank_frame_add(wmOperatorType *ot)
 /** \name Delete Active Frame Operator
  * \{ */
 
-static bool gpencil_actframe_delete_poll(bContext *C)
-{
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
-  bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
-
-  /* only if there's an active layer with an active frame */
-  return (gpl && gpl->actframe);
-}
-
 static bool annotation_actframe_delete_poll(bContext *C)
 {
   bGPdata *gpd = ED_annotation_data_get_active(C);
@@ -361,20 +352,6 @@ static int gpencil_actframe_delete_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GPENCIL_OT_active_frame_delete(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Delete Active Frame";
-  ot->idname = "GPENCIL_OT_active_frame_delete";
-  ot->description = "Delete the active frame for the active Grease Pencil Layer";
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* callbacks */
-  ot->exec = gpencil_actframe_delete_exec;
-  ot->poll = gpencil_actframe_delete_poll;
-}
-
 void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot)
 {
   /* identifiers */
@@ -387,69 +364,6 @@ void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot)
   /* callbacks */
   ot->exec = gpencil_actframe_delete_exec;
   ot->poll = annotation_actframe_delete_poll;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Delete All Active Frames
- * \{ */
-
-static bool gpencil_actframe_delete_all_poll(bContext *C)
-{
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
-
-  /* 1) There must be grease pencil data
-   * 2) Hopefully some of the layers have stuff we can use
-   */
-  return (gpd && gpd->layers.first);
-}
-
-static int gpencil_actframe_delete_all_exec(bContext *C, wmOperator *op)
-{
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
-  Scene *scene = CTX_data_scene(C);
-
-  bool success = false;
-
-  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    /* try to get the "active" frame - but only if it actually occurs on this frame */
-    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, scene->r.cfra, GP_GETFRAME_USE_PREV);
-
-    if (gpf == nullptr) {
-      continue;
-    }
-
-    /* delete it... */
-    BKE_gpencil_layer_frame_delete(gpl, gpf);
-
-    /* we successfully modified something */
-    success = true;
-  }
-  CTX_DATA_END;
-
-  /* updates */
-  if (success) {
-    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
-    return OPERATOR_FINISHED;
-  }
-  BKE_report(op->reports, RPT_ERROR, "No active frame(s) to delete");
-  return OPERATOR_CANCELLED;
-}
-
-void GPENCIL_OT_active_frames_delete_all(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Delete All Active Frames";
-  ot->idname = "GPENCIL_OT_active_frames_delete_all";
-  ot->description = "Delete the active frame(s) of all editable Grease Pencil layers";
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* callbacks */
-  ot->exec = gpencil_actframe_delete_all_exec;
-  ot->poll = gpencil_actframe_delete_all_poll;
 }
 
 /** \} */

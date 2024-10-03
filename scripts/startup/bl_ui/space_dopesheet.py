@@ -824,10 +824,6 @@ class DOPESHEET_MT_context_menu(Menu):
         layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("action.delete")
 
-        if st.mode == 'GPENCIL':
-            layout.operator("gpencil.interpolate_reverse")
-            layout.operator("gpencil.frame_clean_duplicate", text="Delete Duplicate Frames")
-
         layout.separator()
 
         layout.operator_menu_enum("action.mirror", "type", text="Mirror")

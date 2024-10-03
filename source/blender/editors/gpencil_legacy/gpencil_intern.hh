@@ -432,6 +432,11 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
 void GPENCIL_OT_annotate(wmOperatorType *ot);
 void GPENCIL_OT_annotation_add(wmOperatorType *ot);
 void GPENCIL_OT_data_unlink(wmOperatorType *ot);
+void GPENCIL_OT_layer_annotation_add(wmOperatorType *ot);
+void GPENCIL_OT_layer_annotation_remove(wmOperatorType *ot);
+void GPENCIL_OT_layer_annotation_move(wmOperatorType *ot);
+void GPENCIL_OT_blank_frame_add(wmOperatorType *ot);
+void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot);
 
 /* Paint Modes for operator */
 enum eGPencil_PaintModes {
@@ -446,27 +451,6 @@ enum eGPencil_PaintModes {
 #define GP_STROKE_BUFFER_CHUNK 2048
 
 /* buttons editing --- */
-
-
-void GPENCIL_OT_layer_annotation_add(wmOperatorType *ot);
-void GPENCIL_OT_layer_annotation_remove(wmOperatorType *ot);
-void GPENCIL_OT_layer_annotation_move(wmOperatorType *ot);
-
-void GPENCIL_OT_hide(wmOperatorType *ot);
-void GPENCIL_OT_reveal(wmOperatorType *ot);
-
-void GPENCIL_OT_lock_all(wmOperatorType *ot);
-void GPENCIL_OT_unlock_all(wmOperatorType *ot);
-
-void GPENCIL_OT_blank_frame_add(wmOperatorType *ot);
-
-void GPENCIL_OT_active_frame_delete(wmOperatorType *ot);
-void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot);
-void GPENCIL_OT_active_frames_delete_all(wmOperatorType *ot);
-void GPENCIL_OT_frame_duplicate(wmOperatorType *ot);
-void GPENCIL_OT_frame_clean_fill(wmOperatorType *ot);
-void GPENCIL_OT_frame_clean_loose(wmOperatorType *ot);
-void GPENCIL_OT_frame_clean_duplicate(wmOperatorType *ot);
 
 void GPENCIL_OT_convert(wmOperatorType *ot);
 void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot);
