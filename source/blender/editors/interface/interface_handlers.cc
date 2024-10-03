@@ -706,8 +706,7 @@ static bool ui_rna_is_userdef(PointerRNA *ptr, PropertyRNA *prop)
               &RNA_AddonPreferences,
               &RNA_KeyConfigPreferences,
               &RNA_KeyMapItem,
-              &RNA_UserAssetLibrary,
-              &RNA_OperatorProperties);
+              &RNA_UserAssetLibrary);
 }
 
 bool UI_but_is_userdef(const uiBut *but)
