@@ -1032,7 +1032,7 @@ void Slot::set_expanded(const bool expanded)
     this->slot_flags |= uint8_t(Flags::Expanded);
   }
   else {
-    this->slot_flags &= ~(uint8_t(Flags::Expanded));
+    this->slot_flags &= ~uint8_t(Flags::Expanded);
   }
 }
 
@@ -1046,7 +1046,7 @@ void Slot::set_selected(const bool selected)
     this->slot_flags |= uint8_t(Flags::Selected);
   }
   else {
-    this->slot_flags &= ~(uint8_t(Flags::Selected));
+    this->slot_flags &= ~uint8_t(Flags::Selected);
   }
 }
 
@@ -1060,7 +1060,7 @@ void Slot::set_active(const bool active)
     this->slot_flags |= uint8_t(Flags::Active);
   }
   else {
-    this->slot_flags &= ~(uint8_t(Flags::Active));
+    this->slot_flags &= ~uint8_t(Flags::Active);
   }
 }
 
@@ -1230,11 +1230,17 @@ Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id)
     slot = &action.slot_add_for_id(animated_id);
   }
 
-  if (!assign_action(&action, animated_id)) {
+  /* Only try to assign the Action to the ID if it is not already assigned.
+   * Assignment can fail when the ID is in NLA Tweak mode. */
+  const std::optional<std::pair<Action *, Slot *>> assigned = get_action_slot_pair(animated_id);
+  const bool is_correct_action = assigned && assigned->first == &action;
+  if (!is_correct_action && !assign_action(&action, animated_id)) {
     return nullptr;
   }
 
-  if (assign_action_slot(slot, animated_id) != ActionSlotAssignmentResult::OK) {
+  const bool is_correct_slot = assigned && assigned->second == slot;
+  if (!is_correct_slot && assign_action_slot(slot, animated_id) != ActionSlotAssignmentResult::OK)
+  {
     /* This should never happen, as a few lines above a new slot is created for
      * this ID if the found one wasn't deemed suitable. */
     BLI_assert_unreachable();
@@ -1282,7 +1288,6 @@ bool generic_assign_action(ID &animated_id,
 
   /* Un-assign any previously-assigned Action first. */
   if (action_ptr_ref) {
-#ifdef WITH_ANIM_BAKLAVA
     /* Un-assign the slot. This will always succeed, so no need to check the result. */
     if (slot_handle_ref != Slot::unassigned) {
       const ActionSlotAssignmentResult result = generic_assign_action_slot(
@@ -1290,9 +1295,6 @@ bool generic_assign_action(ID &animated_id,
       BLI_assert(result == ActionSlotAssignmentResult::OK);
       UNUSED_VARS_NDEBUG(result);
     }
-#else
-    UNUSED_VARS(slot_handle_ref);
-#endif /* WITH_ANIM_BAKLAVA */
 
     /* Un-assign the Action itself. */
     id_us_min(&action_ptr_ref->id);
@@ -1308,7 +1310,6 @@ bool generic_assign_action(ID &animated_id,
   action_ptr_ref = action_to_assign;
   id_us_plus(&action_ptr_ref->id);
 
-#ifdef WITH_ANIM_BAKLAVA
   /* Assign the slot. Legacy Actions do not have slots, so for those `slot` will always be
    * `nullptr`, which is perfectly acceptable for generic_assign_action_slot(). */
   Slot *slot = action_to_assign->wrap().find_suitable_slot_for(animated_id);
@@ -1316,7 +1317,6 @@ bool generic_assign_action(ID &animated_id,
       slot, animated_id, action_ptr_ref, slot_handle_ref, slot_name);
   BLI_assert(result == ActionSlotAssignmentResult::OK);
   UNUSED_VARS_NDEBUG(result);
-#endif
 
   return true;
 }
