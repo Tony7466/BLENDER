@@ -2,3 +2,4 @@ Referenced by pull request #127907, Fix: GPv3: Clone tool crashes due to index r
 Referenced by commit 057a6c3efd068eacc080029f2d409f088a1218a1, Fix: GPv3: Clone tool crashes due to index range regression
 Referenced by pull request #128472, Fix #128461: GPv3: Crash importing svg with more than one drawing
 Referenced by pull request #128523, Fix: Crash in evelope modifier
+Referenced by commit 9c6488ca42bbc65285a0e903a8e28182673242d2, Fix: GPv3: Crash in evelope modifier
