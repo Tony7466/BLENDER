@@ -280,6 +280,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
   const OffsetIndices evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
   src_curves.ensure_evaluated_lengths();
 
+  ThreadLocalData thread_storage;
   threading::parallel_for(src_curves.curves_range(), 1024, [&](IndexRange curve_range) {
     for (const int64_t curve_i : curve_range) {
       const IndexRange points = evaluated_points_by_curve[curve_i];
@@ -322,6 +323,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
       }
     }
   });
+  gather_thread_storage(thread_storage, r_data);
 }
 
 static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
@@ -465,7 +467,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
 
-  // lazy_threading::send_hint();
+  lazy_threading::send_hint();
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (!geometry_set.has_curves()) {
@@ -477,7 +479,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (src_curves.curves_range().is_empty()) {
       return;
     }
+
     IntersectionData r_data;
+
     switch (mode) {
       case GEO_NODE_CURVE_INTERSECT_SELF: {
         const float distance = params.extract_input<float>("Distance");
@@ -507,43 +511,48 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
     }
 
-    geometry_set.remove_geometry_during_modify();
+    if (r_data.position.size() > 0) {
 
-    PointCloud *pointcloud = BKE_pointcloud_new_nomain(r_data.position.size());
-    MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
+      geometry_set.remove_geometry_during_modify();
 
-    geometry_set.replace_pointcloud(pointcloud);
+      PointCloud *pointcloud = BKE_pointcloud_new_nomain(r_data.position.size());
+      MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
 
-    SpanAttributeWriter<float3> point_positions =
-        point_attributes.lookup_or_add_for_write_only_span<float3>("position", AttrDomain::Point);
-    point_positions.span.copy_from(r_data.position);
-    point_positions.finish();
+      geometry_set.replace_pointcloud(pointcloud);
 
-    point_attributes.add<int>("curve_index",
-                              bke::AttrDomain::Point,
-                              bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.curve_id)));
+      SpanAttributeWriter<float3> point_positions =
+          point_attributes.lookup_or_add_for_write_only_span<float3>("position",
+                                                                     AttrDomain::Point);
+      point_positions.span.copy_from(r_data.position);
+      point_positions.finish();
 
-    point_attributes.add<float>(
-        "factor",
-        AttrDomain::Point,
-        blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.factor)));
+      point_attributes.add<int>("curve_index",
+                                bke::AttrDomain::Point,
+                                bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.curve_id)));
 
-    point_attributes.add<float>(
-        "length",
-        AttrDomain::Point,
-        blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.length)));
+      point_attributes.add<float>(
+          "factor",
+          AttrDomain::Point,
+          blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.factor)));
 
-    point_attributes.add<float3>(
-        "direction",
-        AttrDomain::Point,
-        bke::AttributeInitVArray(VArray<float3>::ForSpan(r_data.direction)));
+      point_attributes.add<float>(
+          "length",
+          AttrDomain::Point,
+          blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.length)));
 
-    point_attributes.add<bool>("duplicate",
-                               AttrDomain::Point,
-                               bke::AttributeInitVArray(VArray<bool>::ForSpan(r_data.duplicate)));
+      point_attributes.add<float3>(
+          "direction",
+          AttrDomain::Point,
+          bke::AttributeInitVArray(VArray<float3>::ForSpan(r_data.direction)));
 
-    point_attributes.add<int>(
-        "id", bke::AttrDomain::Point, bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.id)));
+      point_attributes.add<bool>(
+          "duplicate",
+          AttrDomain::Point,
+          bke::AttributeInitVArray(VArray<bool>::ForSpan(r_data.duplicate)));
+
+      point_attributes.add<int>(
+          "id", bke::AttrDomain::Point, bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.id)));
+    }
   });
 
   params.set_output("Points", std::move(geometry_set));
