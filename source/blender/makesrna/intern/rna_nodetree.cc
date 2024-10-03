@@ -2402,6 +2402,36 @@ void rna_Node_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
+void rna_Node_Crop_update(Main *bmain, Scene */*scene*/, PointerRNA *ptr)
+{
+  /* Prevent users from creating an invalid rect. */
+  int max_y = RNA_int_get(ptr, "max_y");
+  int min_y = RNA_int_get(ptr, "min_y");
+  if (max_y > min_y) {
+    RNA_int_set(ptr, "max_y", min_y);
+  }
+
+  int max_x = RNA_int_get(ptr, "max_x");
+  int min_x = RNA_int_get(ptr, "min_x");
+  if (min_x > max_x) {
+    RNA_int_set(ptr, "min_x", max_x);
+  }
+
+  float rel_max_x = RNA_float_get(ptr, "rel_max_x");
+  float rel_min_x = RNA_float_get(ptr, "rel_min_x");
+  if (rel_min_x > rel_max_x) {
+    RNA_float_set(ptr, "rel_min_x", rel_max_x);
+  }
+
+  float rel_max_y = RNA_float_get(ptr, "rel_max_y");
+  float rel_min_y = RNA_float_get(ptr, "rel_min_y");
+  if (rel_max_y > rel_min_y) {
+    RNA_float_set(ptr, "rel_max_y", rel_min_y);
+  }
+
+  rna_Node_update(bmain, nullptr, ptr);
+}
+
 void rna_Node_update_relations(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Node_update(bmain, scene, ptr);
@@ -7621,49 +7651,49 @@ static void def_cmp_crop(StructRNA *srna)
   RNA_def_property_int_sdna(prop, nullptr, "x1");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "X1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 
   prop = RNA_def_property(srna, "max_x", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "x2");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "X2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 
   prop = RNA_def_property(srna, "min_y", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "y1");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "Y1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 
   prop = RNA_def_property(srna, "max_y", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "y2");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "Y2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 
   prop = RNA_def_property(srna, "rel_min_x", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_x1");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "X1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 
   prop = RNA_def_property(srna, "rel_max_x", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_x2");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "X2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 
   prop = RNA_def_property(srna, "rel_min_y", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_y1");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "Y1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 
   prop = RNA_def_property(srna, "rel_max_y", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_y2");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "Y2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
 }
 
 static void def_cmp_dblur(StructRNA *srna)
