@@ -19,8 +19,8 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.hh"
 
-#include "ED_undo.hh"
 #include "ED_grease_pencil.hh"
+#include "ED_undo.hh"
 
 #include "WM_api.hh"
 

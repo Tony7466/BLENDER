@@ -26,7 +26,7 @@
 
 namespace blender::ed::greasepencil {
 
-bool grease_pencil_context_poll(bContext* C)
+bool grease_pencil_context_poll(bContext *C)
 {
   GreasePencil *grease_pencil = blender::ed::greasepencil::from_context(*C);
   return grease_pencil != nullptr;
