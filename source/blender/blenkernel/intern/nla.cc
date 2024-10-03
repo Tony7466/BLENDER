@@ -2184,7 +2184,10 @@ void BKE_nla_action_pushdown(const OwnedAnimData owned_adt, const bool is_libove
   animrig::nla::assign_action_slot_handle(*strip, adt->slot_handle, owned_adt.owner_id);
 
   /* Clear reference to action now that we've pushed it onto the stack. */
-  animrig::unassign_action(owned_adt.owner_id);
+  const bool unassign_ok = animrig::unassign_action(owned_adt.owner_id);
+  BLI_assert_msg(unassign_ok,
+                 "Expecting un-assigning an action to always work when pushing down an NLA strip");
+  UNUSED_VARS_NDEBUG(unassign_ok);
 
   /* copy current "action blending" settings from adt to the strip,
    * as it was keyframed with these settings, so omitting them will
@@ -2269,7 +2272,7 @@ static void nla_tweakmode_find_active(const ListBase /*NlaTrack*/ *nla_tracks,
 
 bool BKE_nla_tweakmode_enter(const OwnedAnimData owned_adt)
 {
-  NlaTrack *nlt, *activeTrack = nullptr;
+  NlaTrack *activeTrack = nullptr;
   NlaStrip *activeStrip = nullptr;
   AnimData &adt = owned_adt.adt;
 
@@ -2318,7 +2321,7 @@ bool BKE_nla_tweakmode_enter(const OwnedAnimData owned_adt)
    */
   activeTrack->flag |= NLATRACK_DISABLED;
   if ((adt.flag & ADT_NLA_EVAL_UPPER_TRACKS) == 0) {
-    for (nlt = activeTrack->next; nlt; nlt = nlt->next) {
+    for (NlaTrack *nlt = activeTrack->next; nlt; nlt = nlt->next) {
       nlt->flag |= NLATRACK_DISABLED;
     }
   }
@@ -2344,7 +2347,12 @@ bool BKE_nla_tweakmode_enter(const OwnedAnimData owned_adt)
     animrig::Action &strip_action = activeStrip->act->wrap();
     if (strip_action.is_action_layered()) {
       animrig::Slot *strip_slot = strip_action.slot_for_handle(activeStrip->action_slot_handle);
-      strip_action.assign_id(strip_slot, owned_adt.owner_id);
+      if (animrig::assign_action_and_slot(&strip_action, strip_slot, owned_adt.owner_id) !=
+          animrig::ActionSlotAssignmentResult::OK)
+      {
+        printf("NLA tweak-mode enter - could not assign slot %s\n",
+               strip_slot ? strip_slot->name : "-unassigned-");
+      }
     }
     else {
       adt.action = activeStrip->act;
@@ -2426,7 +2434,20 @@ void BKE_nla_tweakmode_exit(const OwnedAnimData owned_adt)
 
   if (owned_adt.adt.action) {
     /* The Action will be replaced with adt->tmpact, and thus needs to be unassigned first. */
-    animrig::unassign_action(owned_adt.owner_id);
+
+    /* The high-level function animrig::unassign_action() will check whether NLA tweak mode is
+     * enabled, and if so, refuse to work (and rightfully so). However, exiting tweak mode is not
+     * just setting a flag (see BKE_animdata_action_editable(), it checks for the tmpact pointer as
+     * well). Because of that, here we call the low-level generic assignment function, to
+     * circumvent that check and unconditionally unassign the tweaked Action. */
+    const bool unassign_ok = animrig::generic_assign_action(owned_adt.owner_id,
+                                                            nullptr,
+                                                            owned_adt.adt.action,
+                                                            owned_adt.adt.slot_handle,
+                                                            owned_adt.adt.slot_name);
+    BLI_assert_msg(unassign_ok,
+                   "When exiting tweak mode, unassigning the tweaked Action should work");
+    UNUSED_VARS_NDEBUG(unassign_ok);
   }
 
   nla_tweakmode_exit_sync_strip_lengths(&owned_adt.adt);
@@ -2660,7 +2681,7 @@ static bool visit_strip(NlaStrip *strip, blender::FunctionRef<bool(NlaStrip *)> 
 
   /* Recurse into sub-strips. */
   LISTBASE_FOREACH (NlaStrip *, sub_strip, &strip->strips) {
-    if (!visit_strip(strip, callback)) {
+    if (!visit_strip(sub_strip, callback)) {
       return false;
     }
   }
@@ -2671,7 +2692,7 @@ namespace blender::bke::nla {
 
 bool foreach_strip(ID *id, blender::FunctionRef<bool(NlaStrip *)> callback)
 {
-  AnimData *adt = BKE_animdata_from_id(id);
+  const AnimData *adt = BKE_animdata_from_id(id);
   if (!adt) {
     /* Having no NLA trivially means that we've looped through all the strips. */
     return true;

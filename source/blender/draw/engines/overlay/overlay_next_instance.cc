@@ -115,11 +115,13 @@ void Instance::begin_sync()
   resources.begin_sync();
 
   background.begin_sync(resources, state);
+  motion_paths.begin_sync(resources, state);
   origins.begin_sync(state);
   outline.begin_sync(resources, state);
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.armatures.begin_sync(resources, state);
+    layer.attribute_viewer.begin_sync(resources, state);
     layer.bounds.begin_sync();
     layer.cameras.begin_sync(resources, state, view);
     layer.curves.begin_sync(resources, state, view);
@@ -214,13 +216,12 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_ARMATURE:
         layer.armatures.edit_object_sync(ob_ref, resources, shapes, state);
         break;
+      case OB_SURF:
       case OB_CURVES_LEGACY:
         layer.curves.edit_object_sync_legacy(manager, ob_ref, resources);
         break;
       case OB_CURVES:
         layer.curves.edit_object_sync(manager, ob_ref, resources);
-        break;
-      case OB_SURF:
         break;
       case OB_LATTICE:
         layer.lattices.edit_object_sync(manager, ob_ref, resources);
@@ -277,6 +278,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.speakers.object_sync(ob_ref, resources, state);
         break;
     }
+    layer.attribute_viewer.object_sync(ob_ref, state, manager);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.facing.object_sync(manager, ob_ref, state);
     layer.fade.object_sync(manager, ob_ref, state);
@@ -285,6 +287,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     layer.particles.object_sync(manager, ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
 
+    motion_paths.object_sync(ob_ref, resources, state);
     origins.object_sync(ob_ref, resources, state);
 
     if (object_is_selected(ob_ref) && !in_edit_paint_mode) {
@@ -471,11 +474,13 @@ void Instance::draw(Manager &manager)
     layer.relations.draw(framebuffer, manager, view);
     layer.fluids.draw(framebuffer, manager, view);
     layer.particles.draw(framebuffer, manager, view);
+    layer.attribute_viewer.draw(framebuffer, manager, view);
     layer.armatures.draw(framebuffer, manager, view);
     layer.sculpts.draw(framebuffer, manager, view);
     layer.grease_pencil.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
     layer.mesh_uvs.draw(framebuffer, manager, view);
+    layer.curves.draw(framebuffer, manager, view);
   };
 
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
@@ -491,6 +496,7 @@ void Instance::draw(Manager &manager)
   overlay_fb_draw(infront, resources.overlay_in_front_fb);
   draw_layer(infront, resources.overlay_line_in_front_fb);
 
+  motion_paths.draw_color_only(resources.overlay_color_only_fb, manager, view);
   xray_fade.draw(resources.overlay_color_only_fb, manager, view);
   grid.draw(resources.overlay_color_only_fb, manager, view);
 

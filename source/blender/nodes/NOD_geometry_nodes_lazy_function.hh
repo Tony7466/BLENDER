@@ -150,10 +150,10 @@ class GeoNodesBakeParams {
 struct GeoNodesSideEffectNodes {
   MultiValueMap<ComputeContextHash, const lf::FunctionNode *> nodes_by_context;
   /**
-   * The repeat zone is identified by the compute context of the parent and the identifier of the
-   * repeat output node.
+   * The repeat/foreach zone is identified by the compute context of the parent and the identifier
+   * of the repeat output node.
    */
-  MultiValueMap<std::pair<ComputeContextHash, int32_t>, int> iterations_by_repeat_zone;
+  MultiValueMap<std::pair<ComputeContextHash, int32_t>, int> iterations_by_iteration_zone;
 };
 
 /**
@@ -470,5 +470,32 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
  */
 const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_graph(
     const bNodeTree &btree);
+
+/**
+ * Utility to measure the time that is spend in a specific compute context during geometry nodes
+ * evaluation.
+ */
+class ScopedComputeContextTimer {
+ private:
+  lf::Context &context_;
+  geo_eval_log::TimePoint start_;
+
+ public:
+  ScopedComputeContextTimer(lf::Context &entered_context) : context_(entered_context)
+  {
+    start_ = geo_eval_log::Clock::now();
+  }
+
+  ~ScopedComputeContextTimer()
+  {
+    const geo_eval_log::TimePoint end = geo_eval_log::Clock::now();
+    auto &user_data = static_cast<GeoNodesLFUserData &>(*context_.user_data);
+    auto &local_user_data = static_cast<GeoNodesLFLocalUserData &>(*context_.local_user_data);
+    if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(user_data))
+    {
+      tree_logger->execution_time += (end - start_);
+    }
+  }
+};
 
 }  // namespace blender::nodes
