@@ -430,6 +430,55 @@ static void foreach_toplevel_grid_coord(
   });
 }
 
+/**
+ * When propagating changes from a lower level subdivision to a higher one, we want to avoid
+ * processing grid coordinates at the face corners, as these elements have already been modified
+ * by a brush stroke.
+ */
+static void foreach_toplevel_grid_coord_without_corners(
+    const MultiresReshapeSmoothContext *reshape_smooth_context,
+    blender::FunctionRef<void(const PTexCoord *, const GridCoord *)> callback)
+{
+  using namespace blender;
+  const MultiresReshapeContext *reshape_context = reshape_smooth_context->reshape_context;
+  const int level_difference = (reshape_context->top.level - reshape_context->reshape.level);
+
+  const int inner_grid_size = (1 << level_difference) + 1;
+  const int far_idx = inner_grid_size - 1;
+  const float inner_grid_size_1_inv = 1.0f / float(inner_grid_size - 1);
+
+  const int num_faces = reshape_smooth_context->geometry.num_faces;
+  threading::parallel_for(IndexRange(num_faces), 1, [&](const IndexRange range) {
+    for (const int face_index : range) {
+      const Face *face = &reshape_smooth_context->geometry.faces[face_index];
+      const GridCoord *face_grid_coords[4];
+      grid_coords_from_face_verts(reshape_smooth_context, face, face_grid_coords);
+
+      for (int y = 0; y < inner_grid_size; ++y) {
+        const float ptex_v = float(y) * inner_grid_size_1_inv;
+        for (int x = 0; x < inner_grid_size; ++x) {
+          if ((x == 0 && y == 0) || (x == 0 && y == far_idx) || (x == far_idx && y == far_idx) ||
+              (x == far_idx && y == 0))
+          {
+            continue;
+          }
+          const float ptex_u = float(x) * inner_grid_size_1_inv;
+
+          PTexCoord ptex_coord;
+          ptex_coord.ptex_face_index = face_index;
+          ptex_coord.u = ptex_u;
+          ptex_coord.v = ptex_v;
+
+          GridCoord grid_coord;
+          interpolate_grid_coord(&grid_coord, face_grid_coords, ptex_u, ptex_v);
+
+          callback(&ptex_coord, &grid_coord);
+        }
+      }
+    }
+  });
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1355,7 +1404,7 @@ static void evaluate_higher_grid_positions_with_details(
     const MultiresReshapeSmoothContext *reshape_smooth_context)
 {
   const MultiresReshapeContext *reshape_context = reshape_smooth_context->reshape_context;
-  foreach_toplevel_grid_coord(
+  foreach_toplevel_grid_coord_without_corners(
       reshape_smooth_context, [&](const PTexCoord *ptex_coord, const GridCoord *grid_coord) {
         /* Position of the original vertex at top level. */
         float orig_final_P[3];
