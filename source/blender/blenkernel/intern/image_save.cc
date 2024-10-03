@@ -382,6 +382,19 @@ static bool image_save_single(ReportList *reports,
   const bool is_multilayer = is_exr_rr && (imf->imtype == R_IMF_IMTYPE_MULTILAYER);
   const int layer = (iuser && !is_multilayer) ? iuser->layer : -1;
 
+  /* Don't write permanently into the render-result. */
+  double rr_ppm_prev[2] = {0, 0};
+  double ppm[2] = {0, 0};
+
+  if (save_as_render) {
+    if (iuser && iuser->scene) {
+      BKE_scene_ppm_get(&iuser->scene->r, ppm);
+    }
+    if (rr) {
+      copy_v2_v2_db(rr_ppm_prev, ppm);
+    }
+  }
+
   /* error handling */
   if (rr == nullptr) {
     if (imf->imtype == R_IMF_IMTYPE_MULTILAYER) {
@@ -591,6 +604,10 @@ static bool image_save_single(ReportList *reports,
   }
 
   if (rr) {
+    if (save_as_render) {
+      copy_v2_v2_db(rr->ppm, rr_ppm_prev);
+    }
+
     BKE_image_release_renderresult(opts->scene, ima, rr);
   }
 
@@ -1001,7 +1018,7 @@ bool BKE_image_render_write_exr(ReportList *reports,
   const int compress = (imf ? imf->exr_codec : 0);
   const int quality = (imf ? imf->quality : 90);
   bool success = IMB_exr_begin_write(
-      exrhandle, filepath, rr->rectx, rr->recty, compress, quality, rr->stamp_data);
+      exrhandle, filepath, rr->rectx, rr->recty, rr->ppm, compress, quality, rr->stamp_data);
   if (success) {
     IMB_exr_write_channels(exrhandle);
   }

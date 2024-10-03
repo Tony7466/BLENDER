@@ -137,6 +137,9 @@ typedef struct RenderResult {
   /* for render results in Image, verify validity for sequences */
   int framenr;
 
+  /* Pixels per meter (for image output). */
+  double ppm[2];
+
   /* for acquire image, to indicate if it there is a combined layer */
   bool have_combined;
 

@@ -892,6 +892,7 @@ bool IMB_exr_begin_write(void *handle,
                          const char *filepath,
                          int width,
                          int height,
+                         const double ppm[2],
                          int compress,
                          int quality,
                          const StampData *stamp)
@@ -922,6 +923,11 @@ bool IMB_exr_begin_write(void *handle,
 
   if (is_multiview) {
     addMultiView(header, *data->multiView);
+  }
+
+  if (ppm[0] != 0.0 && ppm[1] != 0.0) {
+    addXDensity(header, ppm[0] * 0.0254);
+    header.pixelAspectRatio() = blender::math::safe_divide(ppm[1], ppm[0]);
   }
 
   /* avoid crash/abort when we don't have permission to write here */
@@ -2080,10 +2086,27 @@ static bool imb_exr_is_multi(MultiPartInputFile &file)
   return false;
 }
 
+static bool exr_get_ppm(MultiPartInputFile &file, double ppm[2])
+{
+  const Header& header = file.header(0);
+  if (!hasXDensity(header)) {
+    return false;
+  }
+  ppm[0] = double(xDensity(header)) / 0.0254;
+  ppm[1] = ppm[0] * double(header.pixelAspectRatio());
+  return true;
+}
+
 bool IMB_exr_has_multilayer(void *handle)
 {
   ExrHandle *data = (ExrHandle *)handle;
   return imb_exr_is_multi(*data->ifile);
+}
+
+bool IMB_exr_get_ppm(void *handle, double ppm[2])
+{
+  ExrHandle *data = (ExrHandle *)handle;
+  return exr_get_ppm(*data->ifile, ppm);
 }
 
 ImBuf *imb_load_openexr(const uchar *mem, size_t size, int flags, char colorspace[IM_MAX_SPACE])
@@ -2127,11 +2150,7 @@ ImBuf *imb_load_openexr(const uchar *mem, size_t size, int flags, char colorspac
       ibuf = IMB_allocImBuf(width, height, is_alpha ? 32 : 24, 0);
       ibuf->flags |= exr_is_half_float(*file) ? IB_halffloat : 0;
 
-      if (hasXDensity(file->header(0))) {
-        /* Convert inches to meters. */
-        ibuf->ppm[0] = double(xDensity(file->header(0))) / 0.0254;
-        ibuf->ppm[1] = ibuf->ppm[0] * double(file->header(0).pixelAspectRatio());
-      }
+      exr_get_ppm(*file, ibuf->ppm);
 
       ibuf->ftype = IMB_FTYPE_OPENEXR;
 

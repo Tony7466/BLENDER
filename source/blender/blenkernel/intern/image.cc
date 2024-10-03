@@ -4072,6 +4072,7 @@ static ImBuf *image_load_sequence_multilayer(Image *ima, ImageUser *iuser, int e
       IMB_refImBuf(ibuf);
 
       BKE_imbuf_stamp_info(ima->rr, ibuf);
+      copy_v2_v2_db(ibuf->ppm, ima->rr->ppm);
 
       image_init_after_load(ima, iuser, ibuf);
       image_assign_ibuf(ima, ibuf, iuser ? iuser->multi_index : 0, entry);
@@ -4375,6 +4376,7 @@ static ImBuf *image_get_ibuf_multilayer(Image *ima, ImageUser *iuser)
       image_init_after_load(ima, iuser, ibuf);
 
       BKE_imbuf_stamp_info(ima->rr, ibuf);
+      copy_v2_v2_db(ibuf->ppm, ima->rr->ppm);
 
       image_assign_ibuf(ima, ibuf, iuser ? iuser->multi_index : IMA_NO_INDEX, 0);
     }
