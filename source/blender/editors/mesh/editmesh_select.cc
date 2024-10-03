@@ -3848,7 +3848,11 @@ void MESH_OT_select_by_pole_count(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Select By Pole Count";
-  ot->description = "Select elements that touch a pole by the pole count";
+  ot->description =
+      "Select all elements that are connected to a pole, by the pole count.\n"
+      "In vertex selection mode, each pole vertex is selected.\n"
+      "In edge selection mode, each pole vertex and all their connected edges are selected.\n"
+      "In face selection mode, each pole vertex and all their connected faces are selected.";
   ot->idname = "MESH_OT_select_by_pole_count";
 
   /* api callbacks */

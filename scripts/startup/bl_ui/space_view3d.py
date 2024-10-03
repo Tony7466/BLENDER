@@ -2050,14 +2050,7 @@ class VIEW3D_MT_edit_mesh_select_by_trait(Menu):
         layout.operator("mesh.select_loose", text="Loose Geometry")
         layout.operator("mesh.select_interior_faces", text="Interior Faces")
         layout.operator("mesh.select_face_by_sides", text="Faces by Sides")
-
-        # Multiple selection modes may be active. Name it per the finest-grained choice.
-        if is_vert_mode:
-            layout.operator("mesh.select_by_pole_count", text="Vertices by Pole Count")
-        elif is_edge_mode:
-            layout.operator("mesh.select_by_pole_count", text="Edges Touching Poles by Pole Count")
-        else:
-            layout.operator("mesh.select_by_pole_count", text="Faces Touching Poles by Pole Count")
+        layout.operator("mesh.select_by_pole_count", text="Poles by Count")
 
         layout.separator()
 
