@@ -3779,6 +3779,7 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
 
   for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    bool selection_flush_needed = false;
 
     BMIter iter;
     BMIter element_iter;
@@ -3789,6 +3790,7 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
 
     if (!extend) {
       EDBM_flag_disable_all(em, BM_ELEM_SELECT);
+      /* since all elements are consistently unselected,  EDBM_selectmode_flush is not needed. */
     }
 
     BM_ITER_MESH (vert, &iter, em->bm, BM_VERTS_OF_MESH) {
@@ -3815,6 +3817,7 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
 
       /* Multiple selection modes may be active. Select elements per the finest-grained choice. */
       if (select) {
+        selection_flush_needed = true;
 
         if (em->selectmode & SCE_SELECT_VERTEX) {
           BM_vert_select_set(em->bm, vert, true);
@@ -3835,10 +3838,16 @@ static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
       }
     }
 
-    EDBM_selectmode_flush(em);
+    /* If elements were selected, synchronize vertex and edge selctions to edges and faces. */
+    if (selection_flush_needed) {
+      EDBM_selectmode_flush(em);
+    }
 
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
-    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    /* If elements were selected or the selection was cleared, update the UI */
+    if (selection_flush_needed || extend == false) {
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
   }
 
   return OPERATOR_FINISHED;
@@ -3892,23 +3901,33 @@ static int edbm_select_face_by_sides_exec(bContext *C, wmOperator *op)
 
   for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    bool selection_flush_needed = false;
+
     BMFace *efa;
     BMIter iter;
 
     if (!extend) {
       EDBM_flag_disable_all(em, BM_ELEM_SELECT);
+      /* since all elements are consistently unselected,  EDBM_selectmode_flush is not needed. */
     }
 
     BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
       if (is_count_a_match(type, efa->len, numverts)) {
+        selection_flush_needed = true;
         BM_face_select_set(em->bm, efa, true);
       }
     }
 
-    EDBM_selectmode_flush(em);
+    /* If elements were selected, synchronize vertex and edge selctions to edges and faces. */
+    if (selection_flush_needed) {
+      EDBM_selectmode_flush(em);
+    }
 
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
-    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    /* If elements were selected or the selection was cleared, update the UI */
+    if (selection_flush_needed || extend == false) {
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+      WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+    }
   }
 
   return OPERATOR_FINISHED;
