@@ -16,6 +16,7 @@
 #include "ED_keyframing.hh"
 
 #include "ANIM_action.hh"
+#include "ANIM_action_legacy.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 
@@ -55,12 +56,14 @@ static void ensure_action_and_slot_for_id(Main *bmain, ID &id)
 {
   bAction *dna_action = blender::animrig::id_action_ensure(bmain, &id);
   BLI_assert(dna_action != nullptr);
-  blender::animrig::Action &action = dna_action->wrap();
 
-  blender::animrig::Slot *slot = blender::animrig::assign_action_ensure_slot_for_keying(action,
-                                                                                        id);
-  BLI_assert(slot != nullptr);
-  UNUSED_VARS_NDEBUG(slot);
+  if (!blender::animrig::legacy::action_treat_as_legacy(*dna_action)) {
+    blender::animrig::Action &action = dna_action->wrap();
+    blender::animrig::Slot *slot = blender::animrig::assign_action_ensure_slot_for_keying(action,
+                                                                                          id);
+    BLI_assert(slot != nullptr);
+    UNUSED_VARS_NDEBUG(slot);
+  }
 }
 
 FCurve *AnimationImporter::create_fcurve(int array_index, const char *rna_path)
