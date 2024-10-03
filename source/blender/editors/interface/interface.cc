@@ -491,6 +491,47 @@ static void ui_block_bounds_calc_centered(wmWindow *window, uiBlock *block)
   ui_block_bounds_calc(block);
 }
 
+static void ui_block_bounds_calc_post_centered(wmWindow *window,
+                                               uiBlock *block,
+                                               uiBlock *block_old)
+{
+  /* NOTE: This is used for the spalsh screen after it has been dragged to prevent reset to
+   * center. */
+
+  const blender::int2 win_size = WM_window_native_pixel_size(window);
+
+  /* Calculate initial bounds. */
+  ui_block_bounds_calc(block);
+
+  /* Get old bounds. */
+  rcti rect;
+  BLI_rcti_rctf_copy(&rect, &block_old->safety);
+
+  /* We have safety, but we want rect, so undo rect->safety conversion */
+  uiBut *bt = static_cast<uiBut *>(block->buttons.first);
+  const int xof = ((bt && STRPREFIX(bt->str.c_str(), "ERROR")) ? 10 : 40) * UI_SCALE_FAC;
+
+  rect.xmin += xof;
+  rect.ymin += xof;
+
+  /* Clamp to window size. */
+  rcti rect_bounds;
+  const int margin = UI_SCREEN_MARGIN;
+  rect_bounds.xmin = margin;
+  rect_bounds.ymin = margin;
+  rect_bounds.xmax = win_size[0] - margin;
+  rect_bounds.ymax = win_size[1] - UI_POPUP_MENU_TOP;
+
+  int ofs_dummy[2];
+  BLI_rcti_clamp(&rect, &rect_bounds, ofs_dummy);
+
+  /* Finally, translate to the old position. */
+  UI_block_translate(block, rect.xmin - block->rect.xmin, rect.ymin - block->rect.ymin);
+
+  /* Now recompute bounds and safety. */
+  ui_block_bounds_calc(block);
+}
+
 static void ui_block_bounds_calc_centered_pie(uiBlock *block)
 {
   const int xy[2] = {
@@ -1919,7 +1960,11 @@ bool ui_but_context_poll_operator(bContext *C, wmOperatorType *ot, const uiBut *
   return ui_but_context_poll_operator_ex(C, but, &params);
 }
 
-void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_xy[2])
+void UI_block_end_ex(const bContext *C,
+                     uiBlock *block,
+                     const int xy[2],
+                     std::optional<uiBlock *> block_old,
+                     int r_xy[2])
 {
   wmWindow *window = CTX_wm_window(C);
   Scene *scene = CTX_data_scene(C);
@@ -1994,7 +2039,12 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
       ui_block_bounds_calc_text(block, 0.0f);
       break;
     case UI_BLOCK_BOUNDS_POPUP_CENTER:
-      ui_block_bounds_calc_centered(window, block);
+      if (block_old.has_value()) {
+        ui_block_bounds_calc_post_centered(window, block, block_old.value());
+      }
+      else {
+        ui_block_bounds_calc_centered(window, block);
+      }
       break;
     case UI_BLOCK_BOUNDS_PIE_CENTER:
       ui_block_bounds_calc_centered_pie(block);
@@ -2029,7 +2079,7 @@ void UI_block_end(const bContext *C, uiBlock *block)
 {
   wmWindow *window = CTX_wm_window(C);
 
-  UI_block_end_ex(C, block, window->eventstate->xy, nullptr);
+  UI_block_end_ex(C, block, window->eventstate->xy, std::nullopt, nullptr);
 }
 
 /* ************** BLOCK DRAWING FUNCTION ************* */

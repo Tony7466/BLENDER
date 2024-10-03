@@ -52,6 +52,9 @@ void ui_popup_translate(ARegion *region, const int mdiff[2])
     /* Make empty, will be initialized on next use, see #60608. */
     BLI_rctf_init(&handle->prev_block_rect, 0, 0, 0, 0);
 
+    /* Save translation to safety, can be used by new block through oldblock. */
+    BLI_rctf_translate(&block->safety, UNPACK2(mdiff));
+
     LISTBASE_FOREACH (uiSafetyRct *, saferct, &block->saferct) {
       BLI_rctf_translate(&saferct->parent, UNPACK2(mdiff));
       BLI_rctf_translate(&saferct->safety, UNPACK2(mdiff));
@@ -706,8 +709,16 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   block->oldblock = nullptr;
 
   if (!block->endblock) {
-    UI_block_end_ex(
-        C, block, handle->popup_create_vars.event_xy, handle->popup_create_vars.event_xy);
+    std::optional<uiBlock *> is_refresh_block_old = std::nullopt;
+    /* We only prevent centering if the block has been grabbed before. */
+    if (handle->refresh && !(handle->grab_xy_prev[0] == 0 && handle->grab_xy_prev[1] == 0)) {
+      is_refresh_block_old = block_old;
+    }
+    UI_block_end_ex(C,
+                    block,
+                    handle->popup_create_vars.event_xy,
+                    is_refresh_block_old,
+                    handle->popup_create_vars.event_xy);
   }
 
   /* if this is being created from a button */
