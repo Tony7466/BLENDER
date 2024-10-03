@@ -1333,31 +1333,12 @@ class VIEW3D_MT_editor_menus(Menu):
         obj = context.active_object
         mode_string = context.mode
         edit_object = context.edit_object
-        gp_edit = obj and obj.type == 'GPENCIL' and obj.mode in {
-            'EDIT_GPENCIL',
-            'PAINT_GPENCIL',
-            'SCULPT_GPENCIL',
-            'SCULPT_GREASE_PENCIL',
-            'WEIGHT_GPENCIL',
-            'VERTEX_GPENCIL',
-        }
         tool_settings = context.tool_settings
 
         layout.menu("VIEW3D_MT_view")
 
         # Select Menu
-        if gp_edit:
-            use_gpencil_masking = (tool_settings.use_gpencil_select_mask_point or
-                                   tool_settings.use_gpencil_select_mask_stroke or
-                                   tool_settings.use_gpencil_select_mask_segment)
-            if mode_string in {
-                'EDIT_GPENCIL',
-                'VERTEX_GPENCIL'} or (
-                mode_string in {
-                    'SCULPT_GPENCIL',
-                    'SCULPT_GREASE_PENCIL'} and use_gpencil_masking):
-                layout.menu("VIEW3D_MT_select_edit_gpencil")
-        elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
+        if mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             mesh = obj.data
             if mesh.use_paint_mask:
                 layout.menu("VIEW3D_MT_select_paint_mask")
@@ -1369,9 +1350,7 @@ class VIEW3D_MT_editor_menus(Menu):
         }:
             layout.menu("VIEW3D_MT_select_" + mode_string.lower())
 
-        if gp_edit:
-            pass
-        elif mode_string == 'OBJECT':
+        if mode_string == 'OBJECT':
             layout.menu("VIEW3D_MT_add")
         elif mode_string == 'EDIT_MESH':
             layout.menu("VIEW3D_MT_mesh_add", text="Add", text_ctxt=i18n_contexts.operator_default)
@@ -1386,19 +1365,7 @@ class VIEW3D_MT_editor_menus(Menu):
         elif mode_string == 'EDIT_ARMATURE':
             layout.menu("TOPBAR_MT_edit_armature_add", text="Add", text_ctxt=i18n_contexts.operator_default)
 
-        if gp_edit:
-            if obj and obj.mode == 'PAINT_GPENCIL':
-                layout.menu("VIEW3D_MT_draw_gpencil")
-            elif obj and obj.mode == 'EDIT_GPENCIL':
-                layout.menu("VIEW3D_MT_edit_gpencil")
-                layout.menu("VIEW3D_MT_edit_gpencil_stroke")
-                layout.menu("VIEW3D_MT_edit_gpencil_point")
-            elif obj and obj.mode == 'WEIGHT_GPENCIL':
-                layout.menu("VIEW3D_MT_weight_gpencil")
-            if obj and obj.mode == 'VERTEX_GPENCIL':
-                layout.menu("VIEW3D_MT_paint_gpencil")
-
-        elif edit_object:
+        if edit_object:
             layout.menu("VIEW3D_MT_edit_" + edit_object.type.lower())
 
             if mode_string == 'EDIT_MESH':
@@ -2435,21 +2402,6 @@ class VIEW3D_MT_paint_grease_pencil(Menu):
         layout.separator()
 
         layout.operator("paint.sample_color")
-
-
-class VIEW3D_MT_paint_gpencil(Menu):
-    bl_label = "Paint"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator("gpencil.vertex_color_set", text="Set Color Attribute")
-        layout.operator("gpencil.stroke_reset_vertex_color")
-        layout.separator()
-        layout.operator("gpencil.vertex_color_invert", text="Invert")
-        layout.operator("gpencil.vertex_color_levels", text="Levels")
-        layout.operator("gpencil.vertex_color_hsv", text="Hue/Saturation/Value")
-        layout.operator("gpencil.vertex_color_brightness_contrast", text="Brightness/Contrast")
 
 
 class VIEW3D_MT_paint_vertex_grease_pencil(Menu):
@@ -9835,7 +9787,6 @@ classes = (
     VIEW3D_MT_edit_mesh_showhide,
     VIEW3D_MT_greasepencil_material_active,
     VIEW3D_MT_paint_grease_pencil,
-    VIEW3D_MT_paint_gpencil,
     VIEW3D_MT_paint_vertex_grease_pencil,
     VIEW3D_MT_draw_gpencil,
     VIEW3D_MT_assign_material,
