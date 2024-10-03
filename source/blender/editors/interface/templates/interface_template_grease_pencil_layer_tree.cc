@@ -461,7 +461,11 @@ void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C)
 {
   using namespace blender;
 
-  GreasePencil *grease_pencil = grease_pencil_context(C);
+  GreasePencil *grease_pencil = blender::ed::greasepencil::from_context(*C);
+
+  if (grease_pencil == nullptr) {
+    return;
+  }
 
   uiBlock *block = uiLayoutGetBlock(layout);
 

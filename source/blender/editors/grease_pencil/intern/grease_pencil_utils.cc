@@ -1582,18 +1582,18 @@ float4x2 calculate_texture_space(const Scene *scene,
                                   float4(v_dir, -math::dot(v_dir, origin))));
 }
 
-}  // namespace blender::ed::greasepencil
-
-GreasePencil *grease_pencil_context(bContext *C)
+GreasePencil *from_context(bContext &C)
 {
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(
-      CTX_data_pointer_get_type(C, "grease_pencil", &RNA_GreasePencilv3).data);
+      CTX_data_pointer_get_type(&C, "grease_pencil", &RNA_GreasePencilv3).data);
 
   if (grease_pencil == nullptr) {
-    Object *object = CTX_data_active_object(C);
+    Object *object = CTX_data_active_object(&C);
     if (object && object->type == OB_GREASE_PENCIL) {
       grease_pencil = static_cast<GreasePencil *>(object->data);
     }
   }
   return grease_pencil;
 }
+
+}  // namespace blender::ed::greasepencil

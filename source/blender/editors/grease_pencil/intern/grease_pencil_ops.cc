@@ -54,7 +54,7 @@ bool editable_grease_pencil_poll(bContext *C)
 
 bool active_grease_pencil_layer_poll(bContext *C)
 {
-  const GreasePencil *grease_pencil = grease_pencil_context(C);
+  const GreasePencil *grease_pencil = blender::ed::greasepencil::from_context(*C);
   return grease_pencil && grease_pencil->has_active_layer();
 }
 

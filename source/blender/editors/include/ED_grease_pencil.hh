@@ -880,6 +880,5 @@ void set_lineart_modifier_limits(GreasePencilLineartModifierData &lmd,
 
 GreasePencilLineartModifierData *get_first_lineart_modifier(const Object &ob);
 
+GreasePencil *from_context(bContext &C);
 }  // namespace blender::ed::greasepencil
-
-GreasePencil *grease_pencil_context(bContext *C);
