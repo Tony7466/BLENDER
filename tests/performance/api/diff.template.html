@@ -1,0 +1,74 @@
+<html>
+<head>
+	<title>Benchmarks</title>
+  <meta charset="UTF-8">
+	<style type="text/css">
+		body               { margin: 40px auto;
+		                     font-family: Arial;
+		                     font-size: 14px;
+		                     color: #333;
+                         max-width: 900px; }
+		a                  { text-decoration: none; color: #06b; }
+	</style>
+	<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script>
+    google.charts.load('current', {'packages':['bar']});
+    google.charts.setOnLoadCallback(draw_charts);
+
+    function draw_charts()
+    {
+      /* Load JSON data. */
+      var json_data = %JSON_DATA%;
+
+      /* Clear contents. */
+      charts_elem = document.getElementById("charts");
+      while(charts_elem.firstChild)
+      {
+        charts_elem.removeChild(charts_elem.firstChild);
+      }
+
+      /* Draw charts for each device. */
+      for (var i = 0; i < json_data.length; i++)
+      {
+        device = json_data[i];
+
+        /* Build revision coloring */
+        num_revisions = device["data"][0].length - 1;
+        if (num_revisions == 0)
+          continue;
+        colors = [];
+        for (var j = 0; j < num_revisions-1; j++) {
+          colors = colors.concat((j % 2 == 0)? 'e0e0e0' : 'd0d0d0');
+        }
+        colors = colors.concat('007fff');
+
+        /* Chart drawing options. */
+        var options = {
+          chart: {title: device["name"], subtitle: device['device']},
+          legend: { position: "none" },
+          height: 500,
+          colors: colors,
+          vAxis: {format: 'percent'},
+        };
+        console.log(options);
+
+        /* Create chart div. */
+        elem = document.createElement('div');
+        elem.id = device["id"];
+        charts_elem.appendChild(elem)
+
+        /* Create chart. */
+        var data = new google.visualization.arrayToDataTable(device["data"]);
+        var chart = new google.charts.Bar(elem);
+        chart.draw(data, google.charts.Bar.convertOptions(options));
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Benchmarks</h1>
+  <div id="charts">
+    ...
+  </div>
+</body>
+</html>

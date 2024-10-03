@@ -330,21 +330,34 @@ def cmd_graph(argv: List):
     graph.write(pathlib.Path(args.output))
 
 
+def cmd_diff(argv: List):
+    # Create diff from a given JSON results file.
+    parser = argparse.ArgumentParser()
+    parser.add_argument('base_file')
+    parser.add_argument('new_file')
+    parser.add_argument('-o', '--output', type=str, required=True)
+    args = parser.parse_args(argv)
+
+    diff = api.TestDiff(pathlib.Path(args.base_file), pathlib.Path(args.new_file))
+    diff.write(pathlib.Path(args.output))
+
+
 def main():
     usage = ('benchmark <command> [<args>]\n'
              '\n'
              'Commands:\n'
-             '  init [--build]                       Init benchmarks directory and default config\n'
-             '                                       Optionally with automated revision building setup\n'
+             '  init [--build]                        Init benchmarks directory and default config\n'
+             '                                        Optionally with automated revision building setup\n'
              '  \n'
-             '  list                                 List available tests, devices and configurations\n'
+             '  list                                  List available tests, devices and configurations\n'
              '  \n'
-             '  run [<config>] [<test>]              Execute all tests in configuration\n'
-             '  update [<config>] [<test>]           Execute only queued and outdated tests\n'
-             '  reset [<config>] [<test>]            Clear tests results in configuration\n'
-             '  status [<config>] [<test>]           List configurations and their tests\n'
+             '  run [<config>] [<test>]               Execute all tests in configuration\n'
+             '  update [<config>] [<test>]            Execute only queued and outdated tests\n'
+             '  reset [<config>] [<test>]             Clear tests results in configuration\n'
+             '  status [<config>] [<test>]            List configurations and their tests\n'
              '  \n'
-             '  graph a.json b.json... -o out.html   Create graph from results in JSON files\n')
+             '  graph a.json b.json... -o out.html    Create graph from results in JSON files\n'
+             '  diff base.json new.json -o out.html   Create diff from results in JSON files\n')
 
     parser = argparse.ArgumentParser(
         description='Blender performance testing',
@@ -361,6 +374,10 @@ def main():
 
     if args.command == 'graph':
         cmd_graph(argv)
+        sys.exit(0)
+
+    if args.command == 'diff':
+        cmd_diff(argv)
         sys.exit(0)
 
     base_dir = get_tests_base_dir(blender_git_dir)
