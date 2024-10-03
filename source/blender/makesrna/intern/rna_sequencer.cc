@@ -3438,7 +3438,7 @@ static void rna_def_text(StructRNA *srna)
   prop = RNA_def_property(srna, "alignment_x", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "align");
   RNA_def_property_enum_items(prop, text_alignment_x_items);
-  RNA_def_property_ui_text(prop, "Align X", "Align the text along the X axis");
+  RNA_def_property_ui_text(prop, "Align X", "Horizontal text alignment");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "anchor_x", PROP_ENUM, PROP_NONE);
