@@ -3245,7 +3245,7 @@ static void apply_text_alignment(const TextVars *data,
 
   for (LineInfo &line : runtime.lines) {
     const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
-    const float2 alignment = image_center + line_height_offset + alignment_x + anchor;
+    const float2 alignment = math::round(image_center + line_height_offset + alignment_x + anchor);
 
     for (CharInfo &character : line.characters) {
       character.position += alignment;
