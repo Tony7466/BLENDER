@@ -433,7 +433,6 @@ void GPENCIL_OT_annotate(wmOperatorType *ot);
 
 /* drawing ---------- */
 
-void GPENCIL_OT_draw(wmOperatorType *ot);
 void GPENCIL_OT_fill(wmOperatorType *ot);
 
 /* Vertex Paint. */
