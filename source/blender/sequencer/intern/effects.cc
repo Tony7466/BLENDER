@@ -12,6 +12,9 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "BLI_vector.hh"
+#include "DNA_curve_types.h"
+#include "DNA_vec_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
@@ -3238,6 +3241,8 @@ static void apply_text_alignment(const TextVars *data,
   const float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
   const float2 anchor = anchor_offset_get(data, width_max, text_height);
 
+  Vector<rcti> line_boxes;
+
   for (LineInfo &line : runtime.lines) {
     const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
     const float2 alignment = image_center + line_height_offset + alignment_x + anchor;
@@ -3245,12 +3250,21 @@ static void apply_text_alignment(const TextVars *data,
     for (CharInfo &character : line.characters) {
       character.position += alignment;
     }
+
+    /* Get text box for line. This has to be done, because some fonts do not use descenders, but
+     * define their height. In that case, box has unwanted offset in Y axis. */
+    rcti line_box;
+    size_t str_len = line.characters.last().str_ptr - line.characters.first().str_ptr;
+    BLF_boundbox(runtime.font, line.characters.first().str_ptr, str_len, &line_box, nullptr);
+    BLI_rcti_translate(
+        &line_box, line.characters.first().position.x, line.characters.first().position.y);
+    line_boxes.append(line_box);
   }
 
-  runtime.text_boundbox.xmin = anchor.x + image_center.x;
-  runtime.text_boundbox.xmax = anchor.x + image_center.x + width_max;
-  runtime.text_boundbox.ymax = anchor.y + image_center.y + runtime.font_descender / 2;
-  runtime.text_boundbox.ymin = anchor.y + image_center.y - text_height;
+  runtime.text_boundbox = line_boxes.first();
+  for (rcti box : line_boxes) {
+    BLI_rcti_union(&runtime.text_boundbox, &box);
+  }
 }
 
 static void calc_text_runtime(const Sequence *seq,
