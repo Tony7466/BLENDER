@@ -204,7 +204,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(tui.editor_outline_active);
   }
 
-  if (!USER_VERSION_ATLEAST(403, 29)) {
+  if (!USER_VERSION_ATLEAST(404, 2)) {
     FROM_DEFAULT_V4_UCHAR(space_node.node_zone_closure);
   }
 
