@@ -150,10 +150,6 @@ static void seq_animation_duplicate(Sequence *seq,
                                     animrig::slot_handle_t dst_slot_handle,
                                     SeqAnimationBackup *src)
 {
-  if (BLI_listbase_is_empty(&src->curves) && src->channel_bag.fcurves().is_empty()) {
-    return;
-  }
-
   if (seq->type == SEQ_TYPE_META) {
     LISTBASE_FOREACH (Sequence *, meta_child, &seq->seqbase) {
       seq_animation_duplicate(meta_child, dst, dst_slot_handle, src);
@@ -191,10 +187,6 @@ static void seq_animation_duplicate(Sequence *seq,
  */
 static void seq_drivers_duplicate(Sequence *seq, AnimData *dst, SeqAnimationBackup *src)
 {
-  if (BLI_listbase_is_empty(&src->drivers)) {
-    return;
-  }
-
   if (seq->type == SEQ_TYPE_META) {
     LISTBASE_FOREACH (Sequence *, meta_child, &seq->seqbase) {
       seq_drivers_duplicate(meta_child, dst, src);
@@ -215,9 +207,15 @@ void SEQ_animation_duplicate_backup_to_scene(Scene *scene,
                                              SeqAnimationBackup *backup)
 {
   BLI_assert(scene != nullptr);
-  BLI_assert(scene->adt != nullptr);
-  BLI_assert(scene->adt->action != nullptr);
 
-  seq_animation_duplicate(seq, scene->adt->action->wrap(), scene->adt->slot_handle, backup);
-  seq_drivers_duplicate(seq, scene->adt, backup);
+  if (!BLI_listbase_is_empty(&backup->curves) || !backup->channel_bag.fcurves().is_empty()) {
+    BLI_assert(scene->adt != nullptr);
+    BLI_assert(scene->adt->action != nullptr);
+    seq_animation_duplicate(seq, scene->adt->action->wrap(), scene->adt->slot_handle, backup);
+  }
+
+  if (!BLI_listbase_is_empty(&backup->drivers)) {
+    BLI_assert(scene->adt != nullptr);
+    seq_drivers_duplicate(seq, scene->adt, backup);
+  }
 }
