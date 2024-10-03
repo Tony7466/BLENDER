@@ -55,10 +55,6 @@ void ED_operatortypes_gpencil_legacy()
 
   WM_operatortype_append(GPENCIL_OT_annotate);
 
-  /* Guides ----------------------- */
-
-  WM_operatortype_append(GPENCIL_OT_guide_rotate);
-
   /* Editing (Strokes) ------------ */
 
   WM_operatortype_append(GPENCIL_OT_editmode_toggle);

@@ -431,10 +431,6 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
 
 void GPENCIL_OT_annotate(wmOperatorType *ot);
 
-/* Guides ----------------------- */
-
-void GPENCIL_OT_guide_rotate(wmOperatorType *ot);
-
 /* Paint Modes for operator */
 enum eGPencil_PaintModes {
   GP_PAINTMODE_DRAW = 0,

@@ -38,7 +38,6 @@ set(SRC
   gpencil_mesh.cc
   gpencil_ops.cc
   gpencil_ops_versioning.cc
-  gpencil_paint.cc
   gpencil_primitive.cc
   gpencil_sculpt_paint.cc
   gpencil_select.cc
