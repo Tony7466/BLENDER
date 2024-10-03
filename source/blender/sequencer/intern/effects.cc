@@ -13,7 +13,6 @@
 #include <cstring>
 
 #include "BLI_vector.hh"
-#include "DNA_curve_types.h"
 #include "DNA_vec_types.h"
 #include "MEM_guardedalloc.h"
 
@@ -3104,10 +3103,11 @@ static int text_effect_font_init(const SeqRenderData *context, const Sequence *s
 static blender::Vector<CharInfo> build_character_info(const TextVars *data, int font)
 {
   blender::Vector<CharInfo> characters;
+  const size_t len_max = BLI_strnlen(data->text, sizeof(data->text));
   int byte_offset = 0;
-  while (byte_offset <= BLI_strnlen(data->text, sizeof(data->text))) {
+  while (byte_offset <= len_max) {
     const char *str = data->text + byte_offset;
-    const int char_length = BLI_str_utf8_size_or_error(str);
+    const int char_length = BLI_str_utf8_size_safe(str);
 
     CharInfo char_info;
     char_info.str_ptr = str;
@@ -3174,7 +3174,7 @@ static void apply_word_wrapping(const TextVars *data,
   }
 }
 
-static int text_box_width_get(const blender::Vector<LineInfo> lines)
+static int text_box_width_get(const blender::Vector<LineInfo> &lines)
 {
   int width_max = 0;
 
@@ -3262,7 +3262,7 @@ static void apply_text_alignment(const TextVars *data,
   }
 
   runtime.text_boundbox = line_boxes.first();
-  for (rcti box : line_boxes) {
+  for (const rcti &box : line_boxes) {
     BLI_rcti_union(&runtime.text_boundbox, &box);
   }
 }

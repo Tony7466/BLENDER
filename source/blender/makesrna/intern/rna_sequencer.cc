@@ -3445,14 +3445,14 @@ static void rna_def_text(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "anchor_x");
   RNA_def_property_enum_items(prop, text_anchor_x_items);
   RNA_def_property_ui_text(
-      prop, "Anchor X", "Position of the text box relative to image center in X axis");
+      prop, "Anchor X", "Horizontal position of the text box relative to Location");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "anchor_y", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "anchor_y");
   RNA_def_property_enum_items(prop, text_anchor_y_items);
   RNA_def_property_ui_text(
-      prop, "Anchor Y", "Position of the text box relative to image center in Y axis");
+      prop, "Anchor Y", "Vertical position of the text box relative to Location");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "text", PROP_STRING, PROP_NONE);
