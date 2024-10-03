@@ -24,6 +24,8 @@ set(INC
   ../../io/ply
   ../../io/stl
   ../../io/wavefront_obj
+  ../../io/ply
+  /usr/local/include/voro++
   # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -32,6 +34,7 @@ set(INC_SYS
 )
 
 set(SRC
+  nodes/node_geo_voronoi.cc
   nodes/node_geo_accumulate_field.cc
   nodes/node_geo_attribute_capture.cc
   nodes/node_geo_attribute_domain_size.cc
@@ -340,6 +343,14 @@ add_node_discovery(
 
 list(APPEND LIB
   bf_nodes_geometry_generated
+)
+
+list(APPEND LIB
+  /usr/local/lib/libvoro++.a
+)
+
+list(APPEND LIB
+  /usr/local/lib/libvoro++.a
 )
 
 # If compiling with MSVC clang we need to add the `D_LIBCPP_VERSION` define

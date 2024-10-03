@@ -216,6 +216,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeBake")
         node_add_menu.add_node_type(layout, "GeometryNodeBoundBox")
         node_add_menu.add_node_type(layout, "GeometryNodeConvexHull")
+        node_add_menu.add_node_type(layout, "GeometryNodeVoronoi")
         node_add_menu.add_node_type(layout, "GeometryNodeDeleteGeometry")
         node_add_menu.add_node_type(layout, "GeometryNodeDuplicateElements")
         node_add_menu.add_node_type(layout, "GeometryNodeMergeByDistance")
