@@ -237,32 +237,6 @@ class GREASE_PENCIL_MT_layer_active(Menu):
             layout.operator("grease_pencil.layer_active", text=layer.name, icon=icon).layer = i
 
 
-class GPENCIL_MT_material_active(Menu):
-    bl_label = "Change Active Material"
-
-    @classmethod
-    def poll(cls, context):
-        ob = context.active_object
-        if ob is None or len(ob.material_slots) == 0:
-            return False
-
-        return True
-
-    def draw(self, context):
-        layout = self.layout
-        layout.operator_context = 'INVOKE_REGION_WIN'
-        ob = context.active_object
-
-        for slot in ob.material_slots:
-            mat = slot.material
-            if not mat:
-                continue
-            mat.id_data.preview_ensure()
-            if mat and mat.id_data and mat.id_data.preview:
-                icon = mat.id_data.preview.icon_id
-                layout.operator("gpencil.material_set", text=mat.name, icon_value=icon).slot = mat.name
-
-
 class GPENCIL_UL_annotation_layer(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         # assert(isinstance(item, bpy.types.GPencilLayer)
@@ -474,12 +448,6 @@ class GreasePencilMaterialsPanel:
 
                 col.operator("object.material_slot_move", icon='TRIA_UP', text="").direction = 'UP'
                 col.operator("object.material_slot_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
-
-                col.separator()
-
-                sub = col.column(align=True)
-                sub.operator("gpencil.material_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
-                sub.operator("gpencil.material_isolate", icon='LOCKED', text="").affect_visibility = False
 
             if show_full_ui:
                 row = layout.row()
@@ -827,8 +795,6 @@ class GREASE_PENCIL_MT_snap_pie(Menu):
 
 
 classes = (
-    GPENCIL_MT_material_active,
-
     GPENCIL_UL_annotation_layer,
     GPENCIL_UL_layer,
     GPENCIL_UL_masks,

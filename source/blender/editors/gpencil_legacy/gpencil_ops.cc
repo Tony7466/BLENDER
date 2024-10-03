@@ -62,12 +62,6 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_blank_frame_add);
   WM_operatortype_append(GPENCIL_OT_annotation_active_frame_delete);
 
-#ifdef WITH_POTRACE
-  WM_operatortype_append(GPENCIL_OT_trace_image);
-#endif
-  WM_operatortype_append(GPENCIL_OT_material_lock_unused);
-
-  WM_operatortype_append(GPENCIL_OT_material_to_vertex_color);
   WM_operatortype_append(GPENCIL_OT_extract_palette_vertex);
   WM_operatortype_append(GPENCIL_OT_materials_copy_to_object);
 
@@ -86,13 +80,6 @@ void ED_operatortypes_gpencil_legacy()
 
   /* color handle */
   WM_operatortype_append(GPENCIL_OT_lock_layer);
-  WM_operatortype_append(GPENCIL_OT_material_isolate);
-  WM_operatortype_append(GPENCIL_OT_material_hide);
-  WM_operatortype_append(GPENCIL_OT_material_reveal);
-  WM_operatortype_append(GPENCIL_OT_material_lock_all);
-  WM_operatortype_append(GPENCIL_OT_material_unlock_all);
-  WM_operatortype_append(GPENCIL_OT_material_select);
-  WM_operatortype_append(GPENCIL_OT_material_set);
 
   /* Editing (Time) --------------- */
 

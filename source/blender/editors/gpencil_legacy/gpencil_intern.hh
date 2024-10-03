@@ -452,8 +452,6 @@ enum eGPencil_PaintModes {
 
 /* buttons editing --- */
 
-void GPENCIL_OT_trace_image(wmOperatorType *ot);
-
 enum {
   GP_STROKE_JOIN = -1,
   GP_STROKE_JOINCOPY = 1,
@@ -473,7 +471,6 @@ enum {
   GP_MERGE_POINT = 1,
 };
 
-void GPENCIL_OT_material_to_vertex_color(wmOperatorType *ot);
 void GPENCIL_OT_extract_palette_vertex(wmOperatorType *ot);
 
 void GPENCIL_OT_transform_fill(wmOperatorType *ot);
@@ -511,14 +508,6 @@ void GPENCIL_OT_vertex_group_normalize_all(wmOperatorType *ot);
 
 /* color handle */
 void GPENCIL_OT_lock_layer(wmOperatorType *ot);
-void GPENCIL_OT_material_isolate(wmOperatorType *ot);
-void GPENCIL_OT_material_hide(wmOperatorType *ot);
-void GPENCIL_OT_material_reveal(wmOperatorType *ot);
-void GPENCIL_OT_material_lock_all(wmOperatorType *ot);
-void GPENCIL_OT_material_unlock_all(wmOperatorType *ot);
-void GPENCIL_OT_material_lock_unused(wmOperatorType *ot);
-void GPENCIL_OT_material_select(wmOperatorType *ot);
-void GPENCIL_OT_material_set(wmOperatorType *ot);
 void GPENCIL_OT_materials_copy_to_object(wmOperatorType *ot);
 
 /* convert old 2.7 files to 2.8 */

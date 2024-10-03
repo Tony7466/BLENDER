@@ -40,7 +40,6 @@ set(SRC
   gpencil_vertex_ops.cc
 
   gpencil_intern.hh
-  gpencil_trace.h
 )
 
 set(LIB
@@ -52,20 +51,6 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )
-
-if(WITH_POTRACE)
-  list(APPEND SRC
-    gpencil_trace_ops.cc
-    gpencil_trace_utils.cc
-  )
-  list(APPEND INC
-    ${POTRACE_INCLUDE_DIRS}
-  )
-  list(APPEND LIB
-    ${POTRACE_LIBRARIES}
-  )
-  add_definitions(-DWITH_POTRACE)
-endif()
 
 
 blender_add_lib(bf_editor_gpencil_legacy "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
