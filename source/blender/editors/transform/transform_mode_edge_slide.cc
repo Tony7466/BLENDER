@@ -810,9 +810,9 @@ static void applyEdgeSlide(TransInfo *t)
 
   WorkspaceStatus status(t->context);
   status.opmodal(IFACE_("Confirm"), op->type, TFM_MODAL_CONFIRM);
-  status.opmodal(IFACE_("Cancel"), op->type, TFM_MODAL_CONFIRM);
-  status.opmodal(IFACE_("Snap Toggle"), op->type, TFM_MODAL_SNAP_TOGGLE, is_snap);
+  status.opmodal(IFACE_("Cancel"), op->type, TFM_MODAL_CANCEL);
   status.opmodal(IFACE_("Set Snap Base"), op->type, TFM_MODAL_SET_SNAP_BASE);
+  status.opmodal(IFACE_("Snap Toggle"), op->type, TFM_MODAL_SNAP_TOGGLE, is_snap);
   status.opmodal(IFACE_("Move"), op->type, TFM_MODAL_TRANSLATE);
   status.opmodal(IFACE_("Rotate"), op->type, TFM_MODAL_ROTATE);
   status.opmodal(IFACE_("Resize"), op->type, TFM_MODAL_RESIZE);

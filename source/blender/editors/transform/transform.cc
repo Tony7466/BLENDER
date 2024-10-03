@@ -1130,13 +1130,17 @@ int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
         handled = true;
         break;
       case TFM_MODAL_SNAP_TOGGLE:
-        if (!is_event_toggling(event)) {
-          break;
+        if (is_event_toggling(event)) {
+          t->modifiers ^= MOD_SNAP;
+          transform_snap_flag_from_modifiers_set(t);
+          t->redraw |= TREDRAW_HARD;
+          handled = true;
         }
-        t->modifiers ^= MOD_SNAP;
-        transform_snap_flag_from_modifiers_set(t);
-        t->redraw |= TREDRAW_HARD;
-        handled = true;
+        else if (t->mode == TFM_EDGE_SLIDE) {
+          /* For Edge Slide we call the operator to update the Status Bar. */
+          t->redraw |= TREDRAW_HARD;
+          handled = true;
+        }
         break;
       case TFM_MODAL_AXIS_X:
       case TFM_MODAL_AXIS_Y:
