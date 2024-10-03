@@ -448,27 +448,15 @@ enum eGPencil_PaintModes {
 /* buttons editing --- */
 
 
-void GPENCIL_OT_layer_add(wmOperatorType *ot);
-void GPENCIL_OT_layer_remove(wmOperatorType *ot);
-void GPENCIL_OT_layer_move(wmOperatorType *ot);
 void GPENCIL_OT_layer_annotation_add(wmOperatorType *ot);
 void GPENCIL_OT_layer_annotation_remove(wmOperatorType *ot);
 void GPENCIL_OT_layer_annotation_move(wmOperatorType *ot);
-void GPENCIL_OT_layer_duplicate(wmOperatorType *ot);
-void GPENCIL_OT_layer_duplicate_object(wmOperatorType *ot);
-
-void GPENCIL_OT_layer_mask_add(wmOperatorType *ot);
-void GPENCIL_OT_layer_mask_remove(wmOperatorType *ot);
-void GPENCIL_OT_layer_mask_move(wmOperatorType *ot);
 
 void GPENCIL_OT_hide(wmOperatorType *ot);
 void GPENCIL_OT_reveal(wmOperatorType *ot);
 
 void GPENCIL_OT_lock_all(wmOperatorType *ot);
 void GPENCIL_OT_unlock_all(wmOperatorType *ot);
-
-void GPENCIL_OT_layer_isolate(wmOperatorType *ot);
-void GPENCIL_OT_layer_merge(wmOperatorType *ot);
 
 void GPENCIL_OT_blank_frame_add(wmOperatorType *ot);
 

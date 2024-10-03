@@ -188,32 +188,6 @@ class GreasePencilBrushFalloff:
                 row.operator("brush.curve_preset", icon='NOCURVE', text="").shape = 'MAX'
 
 
-class GPENCIL_MT_layer_active(Menu):
-    bl_label = "Change Active Layer"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.operator_context = 'INVOKE_REGION_WIN'
-
-        gpd = context.gpencil_data
-        if gpd:
-            layout.operator("gpencil.layer_add", text="New Layer", icon='ADD').layer = -1
-
-            layout.separator()
-
-            gpl_active = context.active_gpencil_layer
-            tot_layers = len(gpd.layers)
-            i = tot_layers - 1
-            while i >= 0:
-                gpl = gpd.layers[i]
-                if gpl.info == gpl_active.info:
-                    icon = 'GREASEPENCIL'
-                else:
-                    icon = 'NONE'
-                layout.operator("gpencil.layer_active", text=gpl.info, icon=icon).layer = i
-                i -= 1
-
-
 class GREASE_PENCIL_MT_move_to_layer(Menu):
     bl_label = "Move to Layer"
 
@@ -707,58 +681,6 @@ class GPENCIL_UL_masks(UIList):
             layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
 
 
-class GPENCIL_MT_layer_mask_menu(Menu):
-    bl_label = "Layer Specials"
-
-    def draw(self, context):
-        layout = self.layout
-        ob = context.object
-        gpd = ob.data
-        gpl_active = gpd.layers.active
-        done = False
-        for gpl in gpd.layers:
-            if gpl != gpl_active and gpl.info not in gpl_active.mask_layers:
-                done = True
-                layout.operator("gpencil.layer_mask_add", text=gpl.info).name = gpl.info
-
-        if done is False:
-            layout.label(text="No layers to add")
-
-
-class GreasePencilLayerMasksPanel:
-    def draw_header(self, context):
-        ob = context.active_object
-        gpd = ob.data
-        gpl = gpd.layers.active
-
-        self.layout.prop(gpl, "use_mask_layer", text="")
-
-    def draw(self, context):
-        ob = context.active_object
-        gpd = ob.data
-        gpl = gpd.layers.active
-
-        layout = self.layout
-        layout.enabled = gpl.use_mask_layer
-
-        if gpl:
-            rows = 4
-            row = layout.row()
-            col = row.column()
-            col.template_list("GPENCIL_UL_masks", "", gpl, "mask_layers", gpl.mask_layers,
-                              "active_mask_index", rows=rows, sort_lock=True)
-
-            col2 = row.column(align=True)
-            col2.menu("GPENCIL_MT_layer_mask_menu", icon='ADD', text="")
-            col2.operator("gpencil.layer_mask_remove", icon='REMOVE', text="")
-
-            col2.separator()
-
-            sub = col2.column(align=True)
-            sub.operator("gpencil.layer_mask_move", icon='TRIA_UP', text="").type = 'UP'
-            sub.operator("gpencil.layer_mask_move", icon='TRIA_DOWN', text="").type = 'DOWN'
-
-
 class GreasePencilLayerRelationsPanel:
 
     def draw(self, context):
@@ -905,10 +827,7 @@ class GREASE_PENCIL_MT_snap_pie(Menu):
 
 
 classes = (
-    GPENCIL_MT_layer_active,
     GPENCIL_MT_material_active,
-
-    GPENCIL_MT_layer_mask_menu,
 
     GPENCIL_UL_annotation_layer,
     GPENCIL_UL_layer,

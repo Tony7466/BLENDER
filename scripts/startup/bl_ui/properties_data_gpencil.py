@@ -7,14 +7,6 @@ from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
 from .space_properties import PropertiesAnimationMixin
 
-from bl_ui.properties_grease_pencil_common import (
-    GreasePencilLayerMasksPanel,
-    GreasePencilLayerTransformPanel,
-    GreasePencilLayerAdjustmentsPanel,
-    GreasePencilLayerRelationsPanel,
-    GreasePencilLayerDisplayPanel,
-)
-
 ###############################
 # Base-Classes (for shared stuff - e.g. poll, attributes, etc.)
 
@@ -68,142 +60,6 @@ class DATA_PT_context_gpencil(DataButtonsPanel, Panel):
             layout.template_ID(ob, "data")
         else:
             layout.template_ID(space, "pin_id")
-
-
-class GPENCIL_MT_layer_context_menu(Menu):
-    bl_label = "Layer Specials"
-
-    def draw(self, context):
-        layout = self.layout
-        ob = context.object
-        gpd = ob.data
-        gpl = gpd.layers.active
-
-        layout.operator("gpencil.layer_duplicate", text="Duplicate", icon='DUPLICATE').mode = 'ALL'
-        layout.operator("gpencil.layer_duplicate", text="Duplicate Empty Keyframes").mode = 'EMPTY'
-
-        layout.separator()
-
-        layout.operator("gpencil.reveal", icon='RESTRICT_VIEW_OFF', text="Show All")
-        layout.operator("gpencil.hide", icon='RESTRICT_VIEW_ON', text="Hide Others").unselected = True
-
-        layout.separator()
-
-        layout.operator("gpencil.lock_all", icon='LOCKED', text="Lock All")
-        layout.operator("gpencil.unlock_all", icon='UNLOCKED', text="Unlock All")
-        layout.prop(gpd, "use_autolock_layers", text="Autolock Inactive Layers")
-        layout.prop(gpl, "lock_material")
-
-        layout.separator()
-
-        layout.operator("gpencil.layer_merge", icon='SORT_ASC', text="Merge Down").mode = 'ACTIVE'
-        layout.operator("gpencil.layer_merge", text="Merge All").mode = 'ALL'
-
-        layout.separator()
-        layout.operator("gpencil.layer_duplicate_object", text="Copy Layer to Selected").only_active = True
-        layout.operator("gpencil.layer_duplicate_object", text="Copy All Layers to Selected").only_active = False
-
-
-class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
-    bl_label = "Layers"
-
-    def draw(self, context):
-        layout = self.layout
-        # layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        gpd = context.gpencil
-
-        # Grease Pencil data...
-        if (gpd is None) or (not gpd.layers):
-            layout.operator("gpencil.layer_add", text="New Layer")
-        else:
-            self.draw_layers(context, layout, gpd)
-
-    def draw_layers(self, _context, layout, gpd):
-
-        gpl = gpd.layers.active
-
-        row = layout.row()
-        layer_rows = 7
-
-        col = row.column()
-        col.template_list(
-            "GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
-            rows=layer_rows, sort_reverse=True, sort_lock=True,
-        )
-
-        col = row.column()
-        sub = col.column(align=True)
-        sub.operator("gpencil.layer_add", icon='ADD', text="")
-        sub.operator("gpencil.layer_remove", icon='REMOVE', text="")
-
-        sub.separator()
-
-        if gpl:
-            sub.menu("GPENCIL_MT_layer_context_menu", icon='DOWNARROW_HLT', text="")
-
-            if len(gpd.layers) > 1:
-                col.separator()
-
-                sub = col.column(align=True)
-                sub.operator("gpencil.layer_move", icon='TRIA_UP', text="").type = 'UP'
-                sub.operator("gpencil.layer_move", icon='TRIA_DOWN', text="").type = 'DOWN'
-
-                col.separator()
-
-                sub = col.column(align=True)
-                sub.operator("gpencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
-                sub.operator("gpencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
-
-        # Layer main properties
-        row = layout.row()
-        col = layout.column(align=True)
-
-        if gpl:
-            layout = self.layout
-            layout.use_property_split = True
-            layout.use_property_decorate = True
-            col = layout.column(align=True)
-
-            col = layout.row(align=True)
-            col.prop(gpl, "blend_mode", text="Blend")
-
-            col = layout.row(align=True)
-            col.prop(gpl, "opacity", text="Opacity", slider=True)
-
-            col = layout.row(align=True)
-            col.prop(gpl, "use_lights", text="Lights")
-
-
-class DATA_PT_gpencil_layer_masks(LayerDataButtonsPanel, GreasePencilLayerMasksPanel, Panel):
-    bl_label = "Masks"
-    bl_parent_id = "DATA_PT_gpencil_layers"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DATA_PT_gpencil_layer_transform(LayerDataButtonsPanel, GreasePencilLayerTransformPanel, Panel):
-    bl_label = "Transform"
-    bl_parent_id = "DATA_PT_gpencil_layers"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DATA_PT_gpencil_layer_adjustments(LayerDataButtonsPanel, GreasePencilLayerAdjustmentsPanel, Panel):
-    bl_label = "Adjustments"
-    bl_parent_id = "DATA_PT_gpencil_layers"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DATA_PT_gpencil_layer_relations(LayerDataButtonsPanel, GreasePencilLayerRelationsPanel, Panel):
-    bl_label = "Relations"
-    bl_parent_id = "DATA_PT_gpencil_layers"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DATA_PT_gpencil_layer_display(LayerDataButtonsPanel, GreasePencilLayerDisplayPanel, Panel):
-    bl_label = "Display"
-    bl_parent_id = "DATA_PT_gpencil_layers"
-    bl_options = {'DEFAULT_CLOSED'}
 
 
 class DATA_PT_gpencil_onion_skinning(DataButtonsPanel, Panel):
@@ -427,15 +283,9 @@ class DATA_PT_custom_props_gpencil(DataButtonsPanel, PropertyPanel, Panel):
 
 classes = (
     DATA_PT_context_gpencil,
-    DATA_PT_gpencil_layers,
     DATA_PT_gpencil_onion_skinning,
     DATA_PT_gpencil_onion_skinning_custom_colors,
     DATA_PT_gpencil_onion_skinning_display,
-    DATA_PT_gpencil_layer_masks,
-    DATA_PT_gpencil_layer_transform,
-    DATA_PT_gpencil_layer_adjustments,
-    DATA_PT_gpencil_layer_relations,
-    DATA_PT_gpencil_layer_display,
     DATA_PT_gpencil_vertex_groups,
     DATA_PT_gpencil_strokes,
     DATA_PT_gpencil_display,
@@ -445,7 +295,6 @@ classes = (
 
     GPENCIL_UL_vgroups,
 
-    GPENCIL_MT_layer_context_menu,
     GPENCIL_MT_gpencil_vertex_group,
 )
 

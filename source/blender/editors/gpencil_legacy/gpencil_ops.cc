@@ -56,31 +56,16 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_annotate);
   WM_operatortype_append(GPENCIL_OT_annotation_add);
   WM_operatortype_append(GPENCIL_OT_data_unlink);
-
-  /* Editing (Buttons) ------------ */
-
-
-  WM_operatortype_append(GPENCIL_OT_layer_add);
-  WM_operatortype_append(GPENCIL_OT_layer_remove);
-  WM_operatortype_append(GPENCIL_OT_layer_move);
   WM_operatortype_append(GPENCIL_OT_layer_annotation_add);
   WM_operatortype_append(GPENCIL_OT_layer_annotation_remove);
   WM_operatortype_append(GPENCIL_OT_layer_annotation_move);
-  WM_operatortype_append(GPENCIL_OT_layer_duplicate);
-  WM_operatortype_append(GPENCIL_OT_layer_duplicate_object);
-
-  WM_operatortype_append(GPENCIL_OT_layer_mask_add);
-  WM_operatortype_append(GPENCIL_OT_layer_mask_remove);
-  WM_operatortype_append(GPENCIL_OT_layer_mask_move);
+  WM_operatortype_append(GPENCIL_OT_blank_frame_add);
 
   WM_operatortype_append(GPENCIL_OT_hide);
   WM_operatortype_append(GPENCIL_OT_reveal);
   WM_operatortype_append(GPENCIL_OT_lock_all);
   WM_operatortype_append(GPENCIL_OT_unlock_all);
-  WM_operatortype_append(GPENCIL_OT_layer_isolate);
-  WM_operatortype_append(GPENCIL_OT_layer_merge);
 
-  WM_operatortype_append(GPENCIL_OT_blank_frame_add);
 
   WM_operatortype_append(GPENCIL_OT_active_frame_delete);
   WM_operatortype_append(GPENCIL_OT_annotation_active_frame_delete);

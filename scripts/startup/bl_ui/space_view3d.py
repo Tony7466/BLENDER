@@ -222,28 +222,6 @@ class VIEW3D_HT_tool_header(Header):
             layout.popover_group(context=".particlemode", **popover_kw)
         elif mode_string == 'OBJECT':
             layout.popover_group(context=".objectmode", **popover_kw)
-        elif mode_string in {
-                'PAINT_GPENCIL',
-                'EDIT_GPENCIL',
-                'SCULPT_GPENCIL',
-                'WEIGHT_GPENCIL',
-        }:
-            # Grease pencil layer.
-            gpl = context.active_gpencil_layer
-            if gpl and gpl.info is not None:
-                text = gpl.info
-                maxw = 25
-                if len(text) > maxw:
-                    text = text[:maxw - 5] + '..' + text[-3:]
-            else:
-                text = ""
-
-            layout.label(text="Layer:")
-            sub = layout.row()
-            sub.popover(
-                panel="TOPBAR_PT_gpencil_layers",
-                text=text,
-            )
 
         if mode_string in {
             'EDIT_GREASE_PENCIL',

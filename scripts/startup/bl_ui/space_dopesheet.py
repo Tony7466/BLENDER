@@ -9,14 +9,6 @@ from bpy.types import (
     Panel,
 )
 
-from bl_ui.properties_grease_pencil_common import (
-    GreasePencilLayerMasksPanel,
-    GreasePencilLayerTransformPanel,
-    GreasePencilLayerAdjustmentsPanel,
-    GreasePencilLayerRelationsPanel,
-    GreasePencilLayerDisplayPanel,
-)
-
 from bl_ui.properties_data_grease_pencil import (
     GreasePencil_LayerMaskPanel,
     GreasePencil_LayerTransformPanel,
@@ -950,61 +942,6 @@ class GreasePencilLayersDopeSheetPanel:
         return False
 
 
-class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
-    # bl_space_type = 'DOPESHEET_EDITOR'
-    # bl_region_type = 'UI'
-    # bl_category = "View"
-    bl_label = "Layer"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        ob = context.object
-        gpd = ob.data
-        gpl = gpd.layers.active
-        if gpl:
-            row = layout.row(align=True)
-            row.prop(gpl, "blend_mode", text="Blend")
-
-            row = layout.row(align=True)
-            row.prop(gpl, "opacity", text="Opacity", slider=True)
-
-            row = layout.row(align=True)
-            row.prop(gpl, "use_lights", text="Lights")
-
-
-class DOPESHEET_PT_gpencil_layer_masks(LayersDopeSheetPanel, GreasePencilLayerMasksPanel, Panel):
-    bl_label = "Masks"
-    bl_parent_id = "DOPESHEET_PT_gpencil_mode"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DOPESHEET_PT_gpencil_layer_transform(LayersDopeSheetPanel, GreasePencilLayerTransformPanel, Panel):
-    bl_label = "Transform"
-    bl_parent_id = "DOPESHEET_PT_gpencil_mode"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DOPESHEET_PT_gpencil_layer_adjustments(LayersDopeSheetPanel, GreasePencilLayerAdjustmentsPanel, Panel):
-    bl_label = "Adjustments"
-    bl_parent_id = "DOPESHEET_PT_gpencil_mode"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DOPESHEET_PT_gpencil_layer_relations(LayersDopeSheetPanel, GreasePencilLayerRelationsPanel, Panel):
-    bl_label = "Relations"
-    bl_parent_id = "DOPESHEET_PT_gpencil_mode"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
-class DOPESHEET_PT_gpencil_layer_display(LayersDopeSheetPanel, GreasePencilLayerDisplayPanel, Panel):
-    bl_label = "Display"
-    bl_parent_id = "DOPESHEET_PT_gpencil_mode"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
 class DOPESHEET_PT_grease_pencil_mode(GreasePencilLayersDopeSheetPanel, Panel):
     bl_label = "Layer"
 
@@ -1073,12 +1010,6 @@ classes = (
     DOPESHEET_PT_filters,
     DOPESHEET_PT_action,
     DOPESHEET_PT_action_slot,
-    DOPESHEET_PT_gpencil_mode,
-    DOPESHEET_PT_gpencil_layer_masks,
-    DOPESHEET_PT_gpencil_layer_transform,
-    DOPESHEET_PT_gpencil_layer_adjustments,
-    DOPESHEET_PT_gpencil_layer_relations,
-    DOPESHEET_PT_gpencil_layer_display,
     DOPESHEET_PT_custom_props_action,
     DOPESHEET_PT_snapping,
     DOPESHEET_PT_grease_pencil_mode,
