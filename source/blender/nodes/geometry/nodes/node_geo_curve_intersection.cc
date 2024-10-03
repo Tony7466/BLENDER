@@ -417,45 +417,50 @@ static void set_curve_mesh_intersections(GeometrySet &mesh_set,
       const Span<int3> corner_tris = mesh.corner_tris();
 
       /* Loop data. */
-      for (const int face_index : corner_tris.index_range()) {
-        const int3 &tri = corner_tris[face_index];
-        const int v0_loop = tri[0];
-        const int v1_loop = tri[1];
-        const int v2_loop = tri[2];
-        const float3 &v0_pos = positions[corner_verts[v0_loop]];
-        const float3 &v1_pos = positions[corner_verts[v1_loop]];
-        const float3 &v2_pos = positions[corner_verts[v2_loop]];
+      ThreadLocalData thread_storage;
+      threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
+        for (const int64_t face_index : range) {
+          IntersectionData &local_data = thread_storage.local();
+          // for (const int face_index : corner_tris.index_range()) {
+          const int3 &tri = corner_tris[face_index];
+          const int v0_loop = tri[0];
+          const int v1_loop = tri[1];
+          const int v2_loop = tri[2];
+          const float3 &v0_pos = positions[corner_verts[v0_loop]];
+          const float3 &v1_pos = positions[corner_verts[v1_loop]];
+          const float3 &v2_pos = positions[corner_verts[v2_loop]];
 
-        float3 cent_pos;
-        interp_v3_v3v3v3(cent_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
-        const float distance = math::max(
-            math::max(math::distance(cent_pos, v0_pos), math::distance(cent_pos, v1_pos)),
-            math::distance(cent_pos, v2_pos));
-        BLI_bvhtree_range_query_cpp(
-            *bvhtree,
-            cent_pos,
-            distance + curve_isect_eps,
-            [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
-              const Segment seg = curve_segments[index];
-              float lambda = 0.0f;
-              if (isect_line_segment_tri_v3(
-                      seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, nullptr))
-              {
-                const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
-                const float3 dir_of_isect = math::normalize(seg.end - seg.start);
-                const float3 closest = math::interpolate(seg.start, seg.end, lambda);
-                add_intersection_data(r_data,
-                                      closest,
-                                      dir_of_isect,
-                                      seg.curve_index,
-                                      len_at_isect,
-                                      seg.curve_length,
-                                      false);
-              }
-            });
-      }
+          float3 cent_pos;
+          interp_v3_v3v3v3(cent_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
+          const float distance = math::max(
+              math::max(math::distance(cent_pos, v0_pos), math::distance(cent_pos, v1_pos)),
+              math::distance(cent_pos, v2_pos));
+          BLI_bvhtree_range_query_cpp(
+              *bvhtree,
+              cent_pos,
+              distance + curve_isect_eps,
+              [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
+                const Segment seg = curve_segments[index];
+                float lambda = 0.0f;
+                if (isect_line_segment_tri_v3(
+                        seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, nullptr))
+                {
+                  const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
+                  const float3 dir_of_isect = math::normalize(seg.end - seg.start);
+                  const float3 closest = math::interpolate(seg.start, seg.end, lambda);
+                  add_intersection_data(local_data,
+                                        closest,
+                                        dir_of_isect,
+                                        seg.curve_index,
+                                        len_at_isect,
+                                        seg.curve_length,
+                                        false);
+                }
+              });
+        }
+      });
+      gather_thread_storage(thread_storage, r_data);
     });
-
     BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
   }
 }
