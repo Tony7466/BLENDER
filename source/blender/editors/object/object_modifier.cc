@@ -1049,13 +1049,19 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
       mapped_original_layers.add_new(&layer_orig);
     }
 
-    /* Remove all the unmapped layers from the original geometry. */
-    /* IMPORTANT: We copy the span of pointers into a local array here, because the runtime cache
-     * of the layers actually changes while we remove the layers. */
-    const Array<Layer *> original_layers = orig_grease_pencil.layers_for_write();
-    for (Layer *layer_orig : original_layers) {
+    /* Clear keyframes of unmapped layers. */
+    for (Layer *layer_orig : orig_grease_pencil.layers_for_write()) {
       if (!mapped_original_layers.contains(layer_orig)) {
-        orig_grease_pencil.remove_layer(*layer_orig);
+        Drawing *drawing_orig = orig_grease_pencil.get_drawing_at(*layer_orig, eval_frame);
+        if (drawing_orig == nullptr) {
+          /* Insert an empty frame. */
+          orig_grease_pencil.insert_frame(*layer_orig, eval_frame);
+        }
+        else {
+          /* Clear the existing drawing. */
+          drawing_orig->strokes_for_write() = {};
+          drawing_orig->tag_topology_changed();
+        }
       }
     }
   }
