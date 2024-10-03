@@ -389,7 +389,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
   BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
 }
 
-static void set_curve_mesh_intersections(GeometrySet &mesh_set,
+static void set_curve_intersections_mesh(GeometrySet &mesh_set,
                                          const bke::CurvesGeometry &src_curves,
                                          IntersectionData &r_data)
 {
@@ -508,7 +508,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
       case GEO_NODE_CURVE_INTERSECT_SURFACE: {
         GeometrySet mesh_set = params.extract_input<GeometrySet>("Mesh");
-        set_curve_mesh_intersections(mesh_set, src_curves, r_data);
+        set_curve_intersections_mesh(mesh_set, src_curves, r_data);
         break;
       }
       default: {
