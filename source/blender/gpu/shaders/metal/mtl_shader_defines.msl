@@ -19,6 +19,8 @@
 #define gpu_BaseInstance gl_BaseInstanceARB
 #define gpu_InstanceIndex (gl_InstanceID + gpu_BaseInstance)
 
+#define gl_WorkGroupSize uint3(MTL_WORKGROUP_SIZE_X, MTL_WORKGROUP_SIZE_Y, MTL_WORKGROUP_SIZE_Z)
+
 /* Type definitions. */
 /* int implicitly cast to bool in MSL. */
 using bool32_t = int32_t;
@@ -51,63 +53,8 @@ using bvec3 = bool3;
 using bvec4 = bool4;
 
 /* Compute decorators. */
-#define TG threadgroup
 #define barrier() \
   threadgroup_barrier(mem_flags::mem_threadgroup | mem_flags::mem_device | mem_flags::mem_texture)
-
-#ifdef MTL_USE_WORKGROUP_SIZE
-/* Compute work-group size. */
-struct constexp_uvec3 {
-  /* Type union to cover all syntax accessors:
-   * .x, .y, .z, .xy, .xyz
-   * Swizzle types invalid.*/
-  union {
-    struct {
-      uint x, y, z;
-    };
-    struct {
-      uint2 xy;
-    };
-    uint3 xyz;
-  };
-
-  constexpr constexp_uvec3(uint _x, uint _y, uint _z) : x(_x), y(_y), z(_z) {}
-  constexpr uint operator[](int i)
-  {
-    /* Note: Need to switch on each elem value as array accessor triggers
-     * non-constant sizing error. This will be statically evaluated at compile time. */
-    switch (i) {
-      case 0:
-        return x;
-      case 1:
-        return y;
-      case 2:
-        return z;
-      default:
-        return 0;
-    }
-  }
-  constexpr inline operator uint3() const
-  {
-    return xyz;
-  }
-  constexpr inline operator uint2() const
-  {
-    return xy;
-  }
-  constexpr inline operator uint() const
-  {
-    return x;
-  }
-};
-
-constexpr constexp_uvec3 __internal_workgroupsize_get()
-{
-  return constexp_uvec3(MTL_WORKGROUP_SIZE_X, MTL_WORKGROUP_SIZE_Y, MTL_WORKGROUP_SIZE_Z);
-}
-
-#  define gl_WorkGroupSize __internal_workgroupsize_get()
-#endif
 
 /** Shader atomics:
  * In order to emulate GLSL-style atomic operations, wherein variables can be used within atomic
