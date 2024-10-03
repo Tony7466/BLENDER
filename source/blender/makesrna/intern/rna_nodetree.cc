@@ -2402,7 +2402,7 @@ void rna_Node_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
-void rna_Node_Crop_update(Main *bmain, Scene */*scene*/, PointerRNA *ptr)
+void rna_Node_Crop_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   /* Prevent users from creating an invalid rect. */
   int max_y = RNA_int_get(ptr, "max_y");
