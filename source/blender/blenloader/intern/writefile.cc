@@ -1093,7 +1093,9 @@ static void write_libraries(WriteData *wd, Main *main)
                          id->name,
                          main->curlib->runtime.filepath_abs);
             }
-            writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
+            if (ID_IS_DYNAMIC_LINKED(id)) {
+              writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
+            }
           }
         }
       }
