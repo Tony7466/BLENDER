@@ -431,13 +431,6 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
 
 void GPENCIL_OT_annotate(wmOperatorType *ot);
 
-/* Vertex Paint. */
-void GPENCIL_OT_vertex_color_brightness_contrast(wmOperatorType *ot);
-void GPENCIL_OT_vertex_color_hsv(wmOperatorType *ot);
-void GPENCIL_OT_vertex_color_invert(wmOperatorType *ot);
-void GPENCIL_OT_vertex_color_levels(wmOperatorType *ot);
-void GPENCIL_OT_vertex_color_set(wmOperatorType *ot);
-
 /* Guides ----------------------- */
 
 void GPENCIL_OT_guide_rotate(wmOperatorType *ot);
