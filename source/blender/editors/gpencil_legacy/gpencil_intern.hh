@@ -443,26 +443,6 @@ enum eGPencil_PaintModes {
 /* chunk size for gp-session buffer (the total size is a multiple of this number) */
 #define GP_STROKE_BUFFER_CHUNK 2048
 
-/* stroke editing ----- */
-
-void GPENCIL_OT_reproject(wmOperatorType *ot);
-void GPENCIL_OT_recalc_geometry(wmOperatorType *ot);
-
-/* stroke editcurve */
-
-void GPENCIL_OT_stroke_enter_editcurve_mode(wmOperatorType *ot);
-void GPENCIL_OT_stroke_editcurve_set_handle_type(wmOperatorType *ot);
-
-/* stroke sculpting -- */
-
-/**
- * Also used for weight paint.
- */
-void GPENCIL_OT_sculpt_paint(wmOperatorType *ot);
-void GPENCIL_OT_weight_paint(wmOperatorType *ot);
-void GPENCIL_OT_weight_toggle_direction(wmOperatorType *ot);
-void GPENCIL_OT_weight_sample(wmOperatorType *ot);
-
 /* buttons editing --- */
 
 void GPENCIL_OT_annotation_add(wmOperatorType *ot);

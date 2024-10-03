@@ -32,19 +32,16 @@ set(SRC
   gpencil_convert.cc
   gpencil_data.cc
   gpencil_edit.cc
-  gpencil_edit_curve.cc
   gpencil_interpolate.cc
   gpencil_merge.cc
   gpencil_mesh.cc
   gpencil_ops.cc
   gpencil_ops_versioning.cc
   gpencil_primitive.cc
-  gpencil_sculpt_paint.cc
   gpencil_undo.cc
   gpencil_utils.cc
   gpencil_uv.cc
   gpencil_vertex_ops.cc
-  gpencil_weight_paint.cc
 
   gpencil_intern.hh
   gpencil_trace.h

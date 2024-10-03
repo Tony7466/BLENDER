@@ -289,33 +289,6 @@ class GPENCIL_MT_material_active(Menu):
                 layout.operator("gpencil.material_set", text=mat.name, icon_value=icon).slot = mat.name
 
 
-class GPENCIL_MT_cleanup(Menu):
-    bl_label = "Clean Up"
-
-    def draw(self, context):
-
-        ob = context.active_object
-
-        layout = self.layout
-
-        layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes").mode = 'ACTIVE'
-        layout.operator("gpencil.frame_clean_fill", text="Boundary Strokes all Frames").mode = 'ALL'
-
-        layout.separator()
-
-        layout.operator("gpencil.frame_clean_loose", text="Delete Loose Points")
-
-        if ob.mode != 'PAINT_GPENCIL':
-            layout.operator("gpencil.stroke_merge_by_distance", text="Merge by Distance")
-
-        layout.separator()
-
-        layout.operator("gpencil.frame_clean_duplicate", text="Delete Duplicate Frames")
-        layout.operator("gpencil.recalc_geometry", text="Recalculate Geometry")
-        if ob.mode != 'PAINT_GPENCIL':
-            layout.operator("gpencil.reproject")
-
-
 class GPENCIL_UL_annotation_layer(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         # assert(isinstance(item, bpy.types.GPencilLayer)
@@ -932,7 +905,6 @@ class GREASE_PENCIL_MT_snap_pie(Menu):
 
 
 classes = (
-    GPENCIL_MT_cleanup,
     GPENCIL_MT_layer_active,
     GPENCIL_MT_material_active,
 

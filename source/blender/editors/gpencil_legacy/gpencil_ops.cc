@@ -55,21 +55,6 @@ void ED_operatortypes_gpencil_legacy()
 
   WM_operatortype_append(GPENCIL_OT_annotate);
 
-  /* Editing (Strokes) ------------ */
-
-  WM_operatortype_append(GPENCIL_OT_reproject);
-  WM_operatortype_append(GPENCIL_OT_recalc_geometry);
-
-  WM_operatortype_append(GPENCIL_OT_sculpt_paint);
-  WM_operatortype_append(GPENCIL_OT_weight_paint);
-  WM_operatortype_append(GPENCIL_OT_weight_toggle_direction);
-  WM_operatortype_append(GPENCIL_OT_weight_sample);
-
-  /* Edit stroke editcurve */
-
-  WM_operatortype_append(GPENCIL_OT_stroke_enter_editcurve_mode);
-  WM_operatortype_append(GPENCIL_OT_stroke_editcurve_set_handle_type);
-
   /* Editing (Buttons) ------------ */
 
   WM_operatortype_append(GPENCIL_OT_annotation_add);
