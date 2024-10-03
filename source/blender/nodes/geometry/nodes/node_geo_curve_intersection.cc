@@ -283,6 +283,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
   ThreadLocalData thread_storage;
   threading::parallel_for(src_curves.curves_range(), 1024, [&](IndexRange curve_range) {
     for (const int64_t curve_i : curve_range) {
+      IntersectionData &data = thread_storage.local();
       const IndexRange points = evaluated_points_by_curve[curve_i];
       const Span<float3> positions = src_curves.evaluated_positions().slice(points);
       if (positions.size() <= 1) {
@@ -302,7 +303,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
           const float len_at_isect = math::interpolate(len_start, len_end, lambda);
           const float3 dir_of_isect = math::normalize(b - a);
           add_intersection_data(
-              r_data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, false);
+              data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, false);
         }
       };
 
