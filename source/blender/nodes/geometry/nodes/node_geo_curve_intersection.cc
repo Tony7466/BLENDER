@@ -394,72 +394,69 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
                                          const bke::CurvesGeometry &src_curves,
                                          IntersectionData &r_data)
 {
-  if (mesh_set.has_mesh()) {
+  /* Build bvh. */
+  Vector<Segment> curve_segments;
+  BVHTree *bvhtree = create_curve_segment_bvhtree(src_curves, &curve_segments);
+  BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
 
-    /* Build bvh. */
-    Vector<Segment> curve_segments;
-    BVHTree *bvhtree = create_curve_segment_bvhtree(src_curves, &curve_segments);
-    BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
+  /* Loop mesh data. */
+  mesh_set.modify_geometry_sets([&](GeometrySet &mesh_set) {
+    if (!mesh_set.has_mesh()) {
+      return;
+    }
+    const Mesh &mesh = *mesh_set.get_mesh();
+    if (mesh.faces_num < 1) {
+      return;
+    }
+    const Span<float3> positions = mesh.vert_positions();
+    const Span<int> corner_verts = mesh.corner_verts();
+    const Span<int3> corner_tris = mesh.corner_tris();
 
-    /* Loop mesh data. */
-    mesh_set.modify_geometry_sets([&](GeometrySet &mesh_set) {
-      if (!mesh_set.has_mesh()) {
-        return;
+    /* Loop face data. */
+    ThreadLocalData thread_storage;
+    threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
+      for (const int64_t face_index : range) {
+        IntersectionData &local_data = thread_storage.local();
+        // for (const int face_index : corner_tris.index_range()) {
+        const int3 &tri = corner_tris[face_index];
+        const int v0_loop = tri[0];
+        const int v1_loop = tri[1];
+        const int v2_loop = tri[2];
+        const float3 &v0_pos = positions[corner_verts[v0_loop]];
+        const float3 &v1_pos = positions[corner_verts[v1_loop]];
+        const float3 &v2_pos = positions[corner_verts[v2_loop]];
+
+        float3 cent_pos;
+        interp_v3_v3v3v3(cent_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
+        const float distance = math::max(
+            math::max(math::distance(cent_pos, v0_pos), math::distance(cent_pos, v1_pos)),
+            math::distance(cent_pos, v2_pos));
+        BLI_bvhtree_range_query_cpp(
+            *bvhtree,
+            cent_pos,
+            distance + curve_isect_eps,
+            [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
+              const Segment seg = curve_segments[index];
+              float lambda = 0.0f;
+              if (isect_line_segment_tri_v3(
+                      seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, nullptr))
+              {
+                const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
+                const float3 dir_of_isect = math::normalize(seg.end - seg.start);
+                const float3 closest = math::interpolate(seg.start, seg.end, lambda);
+                add_intersection_data(local_data,
+                                      closest,
+                                      dir_of_isect,
+                                      seg.curve_index,
+                                      len_at_isect,
+                                      seg.curve_length,
+                                      false);
+              }
+            });
       }
-      const Mesh &mesh = *mesh_set.get_mesh();
-      if (mesh.faces_num < 1) {
-        return;
-      }
-      const Span<float3> positions = mesh.vert_positions();
-      const Span<int> corner_verts = mesh.corner_verts();
-      const Span<int3> corner_tris = mesh.corner_tris();
-
-      /* Loop face data. */
-      ThreadLocalData thread_storage;
-      threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
-        for (const int64_t face_index : range) {
-          IntersectionData &local_data = thread_storage.local();
-          // for (const int face_index : corner_tris.index_range()) {
-          const int3 &tri = corner_tris[face_index];
-          const int v0_loop = tri[0];
-          const int v1_loop = tri[1];
-          const int v2_loop = tri[2];
-          const float3 &v0_pos = positions[corner_verts[v0_loop]];
-          const float3 &v1_pos = positions[corner_verts[v1_loop]];
-          const float3 &v2_pos = positions[corner_verts[v2_loop]];
-
-          float3 cent_pos;
-          interp_v3_v3v3v3(cent_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
-          const float distance = math::max(
-              math::max(math::distance(cent_pos, v0_pos), math::distance(cent_pos, v1_pos)),
-              math::distance(cent_pos, v2_pos));
-          BLI_bvhtree_range_query_cpp(
-              *bvhtree,
-              cent_pos,
-              distance + curve_isect_eps,
-              [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
-                const Segment seg = curve_segments[index];
-                float lambda = 0.0f;
-                if (isect_line_segment_tri_v3(
-                        seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, nullptr))
-                {
-                  const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
-                  const float3 dir_of_isect = math::normalize(seg.end - seg.start);
-                  const float3 closest = math::interpolate(seg.start, seg.end, lambda);
-                  add_intersection_data(local_data,
-                                        closest,
-                                        dir_of_isect,
-                                        seg.curve_index,
-                                        len_at_isect,
-                                        seg.curve_length,
-                                        false);
-                }
-              });
-        }
-      });
-      gather_thread_storage(thread_storage, r_data);
     });
-  }
+    gather_thread_storage(thread_storage, r_data);
+  });
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -505,7 +502,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
       case GEO_NODE_CURVE_INTERSECT_SURFACE: {
         GeometrySet mesh_set = params.extract_input<GeometrySet>("Mesh");
-        set_curve_intersections_mesh(mesh_set, src_curves, r_data);
+        if (mesh_set.has_mesh()) {
+          set_curve_intersections_mesh(mesh_set, src_curves, r_data);
+        }
         break;
       }
       default: {
@@ -514,9 +513,10 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
     }
 
-    if (r_data.position.size() > 0) {
+    geometry_set.remove_geometry_during_modify();
 
-      geometry_set.remove_geometry_during_modify();
+    /* Gather data for attributes */
+    if (r_data.position.size() > 0) {
 
       PointCloud *pointcloud = BKE_pointcloud_new_nomain(r_data.position.size());
       MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
