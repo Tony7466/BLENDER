@@ -2845,208 +2845,6 @@ class _defs_gpencil_paint:
         )
 
 
-class _defs_gpencil_edit:
-    def is_segment(context):
-        tool_settings = context.scene.tool_settings
-        if context.mode == 'EDIT_GPENCIL':
-            return tool_settings.gpencil_selectmode_edit == 'SEGMENT'
-        elif context.mode == 'SCULPT_GPENCIL':
-            return tool_settings.use_gpencil_select_mask_segment
-        elif context.mode == 'VERTEX_GPENCIL':
-            return tool_settings.use_gpencil_vertex_select_mask_segment
-        else:
-            return False
-
-    @ToolDef.from_fn
-    def bend():
-        return dict(
-            idname="builtin.bend",
-            label="Bend",
-            icon="ops.gpencil.edit_bend",
-            widget=None,
-            keymap=(),
-        )
-
-    @ToolDef.from_fn
-    def select():
-        def draw_settings(context, layout, _tool):
-            if _defs_gpencil_edit.is_segment(context):
-                layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
-        return dict(
-            idname="builtin.select",
-            label="Tweak",
-            icon="ops.generic.select",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def box_select():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("gpencil.select_box")
-            row = layout.row()
-            row.use_property_split = False
-            row.prop(props, "mode", text="", expand=True, icon_only=True)
-            if _defs_gpencil_edit.is_segment(context):
-                layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
-        return dict(
-            idname="builtin.select_box",
-            label="Select Box",
-            icon="ops.generic.select_box",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def lasso_select():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("gpencil.select_lasso")
-            row = layout.row()
-            row.use_property_split = False
-            row.prop(props, "mode", text="", expand=True, icon_only=True)
-            if _defs_gpencil_edit.is_segment(context):
-                layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
-        return dict(
-            idname="builtin.select_lasso",
-            label="Select Lasso",
-            icon="ops.generic.select_lasso",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def circle_select():
-        def draw_settings(context, layout, tool):
-            props = tool.operator_properties("gpencil.select_circle")
-            row = layout.row()
-            row.use_property_split = False
-            row.prop(props, "mode", text="", expand=True, icon_only=True)
-            layout.prop(props, "radius")
-            if _defs_gpencil_edit.is_segment(context):
-                layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
-
-        def draw_cursor(_context, tool, xy):
-            from gpu_extras.presets import draw_circle_2d
-            props = tool.operator_properties("gpencil.select_circle")
-            radius = props.radius
-            draw_circle_2d(xy, (1.0,) * 4, radius, segments=32)
-
-        return dict(
-            idname="builtin.select_circle",
-            label="Select Circle",
-            icon="ops.generic.select_circle",
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-            draw_cursor=draw_cursor,
-        )
-
-    @ToolDef.from_fn
-    def radius():
-        return dict(
-            idname="builtin.radius",
-            label="Radius",
-            description=(
-                "Expand or contract the radius of the selected points"
-            ),
-            icon="ops.gpencil.radius",
-
-            widget=None,
-            keymap=(),
-        )
-
-    @ToolDef.from_fn
-    def shear():
-        return dict(
-            idname="builtin.shear",
-            label="Shear",
-            icon="ops.gpencil.edit_shear",
-            widget=None,
-            keymap=(),
-        )
-
-    @ToolDef.from_fn
-    def tosphere():
-        return dict(
-            idname="builtin.to_sphere",
-            label="To Sphere",
-            icon="ops.transform.tosphere",
-            widget=None,
-            keymap=(),
-        )
-
-    @ToolDef.from_fn
-    def extrude():
-        return dict(
-            idname="builtin.extrude",
-            label="Extrude",
-            icon="ops.gpencil.extrude_move",
-            widget="VIEW3D_GGT_xform_extrude",
-            keymap=(),
-            draw_settings=_template_widget.VIEW3D_GGT_xform_extrude.draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def transform_fill():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("gpencil.transform_fill")
-            row = layout.row()
-            row.use_property_split = False
-            row.prop(props, "mode", expand=True)
-
-        return dict(
-            idname="builtin.transform_fill",
-            label="Transform Fill",
-            icon="ops.gpencil.transform_fill",
-            cursor='DEFAULT',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def interpolate():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("gpencil.interpolate")
-            layout.prop(props, "layers")
-            layout.prop(props, "interpolate_selected_only")
-            layout.prop(props, "exclude_breakdowns")
-            layout.prop(props, "flip")
-            layout.prop(props, "smooth_factor")
-            layout.prop(props, "smooth_steps")
-
-        return dict(
-            idname="builtin.interpolate",
-            label="Interpolate",
-            icon="ops.pose.breakdowner",
-            cursor='DEFAULT',
-            widget=None,
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-
-class _defs_gpencil_sculpt:
-
-    @staticmethod
-    def poll_select_mask(context):
-        if context is None:
-            return True
-        ob = context.active_object
-        tool_settings = context.scene.tool_settings
-        return (
-            ob is not None and
-            ob.type == 'GPENCIL' and (
-                tool_settings.use_gpencil_select_mask_point or
-                tool_settings.use_gpencil_select_mask_stroke or
-                tool_settings.use_gpencil_select_mask_segment
-            )
-        )
-
-
 class _defs_grease_pencil_sculpt:
     @staticmethod
     def poll_select_mask(context):
@@ -3056,7 +2854,7 @@ class _defs_grease_pencil_sculpt:
         tool_settings = context.scene.tool_settings
         return (
             ob is not None and
-            ob.type in {'GPENCIL', 'GREASEPENCIL'} and (
+            ob.type == 'GREASEPENCIL' and (
                 tool_settings.use_gpencil_select_mask_point or
                 tool_settings.use_gpencil_select_mask_stroke or
                 tool_settings.use_gpencil_select_mask_segment
@@ -3208,24 +3006,6 @@ class _defs_curves_sculpt:
             icon="ops.curves.sculpt_delete",
             options={'USE_BRUSHES'},
             brush_type='DELETE',
-        )
-
-
-class _defs_gpencil_vertex:
-
-    @staticmethod
-    def poll_select_mask(context):
-        if context is None:
-            return True
-        ob = context.active_object
-        tool_settings = context.scene.tool_settings
-        return (
-            ob is not None and
-            ob.type == 'GPENCIL' and (
-                tool_settings.use_gpencil_vertex_select_mask_point or
-                tool_settings.use_gpencil_vertex_select_mask_stroke or
-                tool_settings.use_gpencil_vertex_select_mask_segment
-            )
         )
 
 
@@ -3668,15 +3448,6 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ),
     )
 
-    _tools_gpencil_select = (
-        (
-            _defs_gpencil_edit.select,
-            _defs_gpencil_edit.box_select,
-            _defs_gpencil_edit.circle_select,
-            _defs_gpencil_edit.lasso_select,
-        ),
-    )
-
     _tools_grease_pencil_primitives = (
         (
             _defs_grease_pencil_paint.box,
@@ -4000,59 +3771,6 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_grease_pencil_paint.interpolate,
         ],
-        'PAINT_GPENCIL': [
-            _defs_view3d_generic.cursor,
-            None,
-            _brush_tool,
-            _defs_gpencil_paint.cutter,
-            None,
-            _defs_gpencil_paint.eyedropper,
-            None,
-            _defs_gpencil_paint.line,
-            _defs_gpencil_paint.polyline,
-            _defs_gpencil_paint.arc,
-            _defs_gpencil_paint.curve,
-            _defs_gpencil_paint.box,
-            _defs_gpencil_paint.circle,
-            None,
-            _defs_gpencil_paint.interpolate,
-            None,
-            *_tools_annotate,
-        ],
-        'EDIT_GPENCIL': [
-            *_tools_gpencil_select,
-            _defs_view3d_generic.cursor,
-            None,
-            *_tools_transform,
-            None,
-            _defs_gpencil_edit.extrude,
-            _defs_gpencil_edit.radius,
-            _defs_gpencil_edit.bend,
-            (
-                _defs_gpencil_edit.shear,
-                _defs_gpencil_edit.tosphere,
-            ),
-            _defs_gpencil_edit.transform_fill,
-            None,
-            _defs_gpencil_edit.interpolate,
-            None,
-            *_tools_annotate,
-        ],
-        'SCULPT_GPENCIL': [
-            _brush_tool,
-            None,
-            *_tools_annotate,
-            lambda context: (
-                VIEW3D_PT_tools_active._tools_gpencil_select
-                if _defs_gpencil_sculpt.poll_select_mask(context)
-                else ()
-            ),
-        ],
-        'WEIGHT_GPENCIL': [
-            _brush_tool,
-            None,
-            *_tools_annotate,
-        ],
         'WEIGHT_GREASE_PENCIL': [
             _brush_tool,
             _defs_grease_pencil_weight.blur,
@@ -4060,17 +3778,6 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_grease_pencil_weight.smear,
             None,
             *_tools_annotate,
-        ],
-        'VERTEX_GPENCIL': [
-            _brush_tool,
-            None,
-            *_tools_annotate,
-            None,
-            lambda context: (
-                VIEW3D_PT_tools_active._tools_gpencil_select
-                if _defs_gpencil_vertex.poll_select_mask(context)
-                else ()
-            ),
         ],
         'VERTEX_GREASE_PENCIL': [
             _brush_tool,
