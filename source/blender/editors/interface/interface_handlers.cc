@@ -501,6 +501,9 @@ struct uiAfterFunc {
   void *rename_arg1;
   void *rename_orig;
 
+  std::function<void(std::string &new_name)> rename_full_func = nullptr;
+  std::string rename_full_new;
+
   uiBlockHandleFunc handle_func;
   void *handle_func_arg;
   int retval;
@@ -831,8 +834,9 @@ static void popup_check(bContext *C, wmOperator *op)
  */
 static bool ui_afterfunc_check(const uiBlock *block, const uiBut *but)
 {
-  return (but->func || but->apply_func || but->funcN || but->rename_func || but->optype ||
-          but->rnaprop || block->handle_func || (block->handle && block->handle->popup_op));
+  return (but->func || but->apply_func || but->funcN || but->rename_func ||
+          but->rename_full_func || but->optype || but->rnaprop || block->handle_func ||
+          (block->handle && block->handle->popup_op));
 }
 
 /**
@@ -870,6 +874,10 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
   after->rename_func = but->rename_func;
   after->rename_arg1 = but->rename_arg1;
   after->rename_orig = but->rename_orig; /* needs free! */
+
+  after->rename_full_func = but->rename_full_func;
+  after->rename_full_new = std::move(but->rename_full_new);
+  but->rename_full_new = "";
 
   after->handle_func = block->handle_func;
   after->handle_func_arg = block->handle_func_arg;
@@ -1067,6 +1075,11 @@ static void ui_apply_but_funcs_after(bContext *C)
 
     if (after.context) {
       CTX_store_set(C, nullptr);
+    }
+
+    if (after.rename_full_func) {
+      BLI_assert(!after.rename_func);
+      after.rename_full_func(after.rename_full_new);
     }
 
     if (after.func) {
@@ -10612,7 +10625,7 @@ static int ui_handle_menu_event(bContext *C,
   /* check if mouse is inside block */
   const bool inside = BLI_rctf_isect_pt(&block->rect, mx, my);
   /* check for title dragging */
-  const bool inside_title = inside && ((my + (UI_UNIT_Y * 1.5f)) > block->rect.ymax);
+  const bool inside_title = inside && ((my + (UI_UNIT_Y * 1.4f)) > block->rect.ymax);
 
   /* if there's an active modal button, don't check events or outside, except for search menu */
   but = ui_region_find_active_but(region);
@@ -10629,14 +10642,19 @@ static int ui_handle_menu_event(bContext *C,
 
   wmWindow *win = CTX_wm_window(C);
 
-  if (!menu->is_grab && is_floating && (!but || but->type == UI_BTYPE_IMAGE)) {
-    if (event->type == LEFTMOUSE && event->val == KM_PRESS && inside_title) {
-      /* Initial press before starting to drag. */
-      WM_cursor_set(win, PopupTitleDragCursor);
+  if (!menu->is_grab && is_floating) {
+    if (inside_title && (!but || but->type == UI_BTYPE_IMAGE)) {
+      if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
+        /* Initial press before starting to drag. */
+        WM_cursor_set(win, PopupTitleDragCursor);
+      }
+      else if (event->type == MOUSEMOVE && !win->modalcursor) {
+        /* Hover over draggable area. */
+        WM_cursor_set(win, PopupTitleHoverCursor);
+      }
     }
-    else if (event->type == MOUSEMOVE && !win->modalcursor) {
-      /* Hover over draggable area. */
-      WM_cursor_set(win, inside_title ? PopupTitleHoverCursor : WM_CURSOR_DEFAULT);
+    else if (win->cursor == PopupTitleHoverCursor) {
+      WM_cursor_set(win, WM_CURSOR_DEFAULT);
     }
   }
 

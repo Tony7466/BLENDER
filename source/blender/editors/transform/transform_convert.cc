@@ -1199,11 +1199,9 @@ void animrecord_check_state(TransInfo *t, ID *id)
       /* Perform push-down manually with some differences
        * NOTE: #BKE_nla_action_pushdown() sync warning. */
       if ((adt->action) && !(adt->flag & ADT_NLA_EDIT_ON)) {
-        float astart, aend;
-
         /* Only push down if action is more than 1-2 frames long. */
-        BKE_action_frame_range_calc(adt->action, true, &astart, &aend);
-        if (aend > astart + 2.0f) {
+        const float2 frame_range = adt->action->wrap().get_frame_range_of_keys(true);
+        if (frame_range[1] > frame_range[0] + 2.0f) {
           /* TODO: call BKE_nla_action_pushdown() instead?  */
 
           /* Add a new NLA strip to the track, which references the active action + slot.*/
@@ -1213,7 +1211,11 @@ void animrecord_check_state(TransInfo *t, ID *id)
           animrig::nla::assign_action_slot_handle(*strip, adt->slot_handle, *id);
 
           /* Clear reference to action now that we've pushed it onto the stack. */
-          animrig::unassign_action(*id);
+          const bool unassign_ok = animrig::unassign_action(*id);
+          BLI_assert_msg(
+              unassign_ok,
+              "Expecting un-assigning an action to always work when pushing down an NLA strip");
+          UNUSED_VARS_NDEBUG(unassign_ok);
 
           /* Adjust blending + extend so that they will behave correctly. */
           strip->extendmode = NLASTRIP_EXTEND_NOTHING;

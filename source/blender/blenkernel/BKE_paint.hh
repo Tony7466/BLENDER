@@ -23,11 +23,13 @@
 
 #include "DNA_brush_enums.h"
 #include "DNA_customdata_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_object_enums.h"
 
 #include "BKE_pbvh.hh"
 #include "BKE_subdiv_ccg.hh"
 
+struct AssetWeakReference;
 struct BMFace;
 struct BMLog;
 struct BMVert;
@@ -198,6 +200,8 @@ const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(PaintMode mode);
 uint BKE_paint_get_brush_type_offset_from_paintmode(PaintMode mode);
 std::optional<int> BKE_paint_get_brush_type_from_obmode(const Brush *brush,
                                                         const eObjectMode ob_mode);
+std::optional<int> BKE_paint_get_brush_type_from_paintmode(const Brush *brush,
+                                                           const PaintMode mode);
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer);
 Paint *BKE_paint_get_active_from_context(const bContext *C);
 PaintMode BKE_paintmode_get_active_from_context(const bContext *C);
@@ -207,19 +211,40 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref);
 
 Brush *BKE_paint_brush(Paint *paint);
 const Brush *BKE_paint_brush_for_read(const Paint *paint);
-Brush *BKE_paint_brush_from_essentials(Main *bmain, const char *name);
+Brush *BKE_paint_brush_from_essentials(Main *bmain, eObjectMode obmode, const char *name);
+
+/**
+ * Check if brush \a brush may be set/activated for \a paint. Passing null for \a brush will return
+ * true.
+ */
+bool BKE_paint_brush_poll(const Paint *paint, const Brush *brush);
 
 /**
  * Activates \a brush for painting, and updates #Paint.brush_asset_reference so the brush can be
- * restored after file read.
+ * restored after file read. No change is done if #BKE_paint_brush_poll() returns false.
  *
  * \return True on success. If \a brush is already active, this is considered a success (the brush
  * asset reference will still be updated).
+ *
+ * \note #WM_toolsystem_activate_brush_and_tool() might be the preferable way to change the active
+ * brush. It also lets the tool-system decide if the active tool should be changed given the type
+ * of brush, and it updates the "last used brush" for the previous tool.
+ * #BKE_paint_brush_set() should only be called to force a brush to be active,
+ * circumventing the tool system.
  */
 bool BKE_paint_brush_set(Paint *paint, Brush *brush);
+/**
+ * Version of #BKE_paint_brush_set() that takes an asset reference instead of a brush, importing
+ * the brush if necessary.
+ */
+bool BKE_paint_brush_set(Main *bmain,
+                         Paint *paint,
+                         const AssetWeakReference *brush_asset_reference);
 bool BKE_paint_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
 
+std::optional<AssetWeakReference> BKE_paint_brush_type_default_reference(
+    eObjectMode ob_mode, std::optional<int> brush_type);
 void BKE_paint_brushes_set_default_references(ToolSettings *ts);
 void BKE_paint_brushes_validate(Main *bmain, Paint *paint);
 
@@ -227,9 +252,9 @@ void BKE_paint_brushes_validate(Main *bmain, Paint *paint);
 
 Brush *BKE_paint_eraser_brush(Paint *paint);
 const Brush *BKE_paint_eraser_brush_for_read(const Paint *paint);
-Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, const char *name);
 
 bool BKE_paint_eraser_brush_set(Paint *paint, Brush *brush);
+Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, eObjectMode ob_mode, const char *name);
 bool BKE_paint_eraser_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_eraser_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
 
@@ -247,6 +272,10 @@ bool BKE_paint_select_face_test(const Object *ob);
  * Return true when in vertex/weight paint + vertex-select mode?
  */
 bool BKE_paint_select_vert_test(const Object *ob);
+/**
+ * Return true when in grease pencil sculpt mode.
+ */
+bool BKE_paint_select_grease_pencil_test(const Object *ob);
 /**
  * used to check if selection is possible
  * (when we don't care if its face or vert)
@@ -314,8 +343,6 @@ struct SculptBoundaryPreview {
 };
 
 struct SculptFakeNeighbors {
-  bool use_fake_neighbors;
-
   /* Max distance used to calculate neighborhood information. */
   float current_max_distance;
 
@@ -341,22 +368,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
     int level = 0;
   } multires = {};
 
-  /* Depsgraph for the Cloth Brush solver to get the colliders. */
-  Depsgraph *depsgraph = nullptr;
-
-  /* These are always assigned to base mesh data when using Type::Mesh. */
-  blender::OffsetIndices<int> faces;
-  blender::Span<int> corner_verts;
-
-  /* These contain the vertex and poly counts of the final mesh. */
-  int totvert = 0;
-  int faces_num = 0;
-
   KeyBlock *shapekey_active = nullptr;
-
-  /* Mesh connectivity maps. */
-  /* Vertices to adjacent polys. */
-  blender::GroupedSpan<int> vert_to_face_map;
 
   /* Edges to adjacent faces. */
   blender::Array<int> edge_to_face_offsets;
@@ -367,21 +379,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   blender::Array<int> vert_to_edge_offsets;
   blender::Array<int> vert_to_edge_indices;
   blender::GroupedSpan<int> vert_to_edge_map;
-
-  /* Mesh Face Sets */
-  /* Total number of faces of the base mesh. */
-  int totfaces = 0;
-
-  /* The 0 ID is not used by the tools or the visibility system, it is just used when creating new
-   * geometry (the trim tool, for example) to detect which geometry was just added, so it can be
-   * assigned a valid Face Set after creation. Tools are not intended to run with Face Sets IDs set
-   * to 0. */
-  const int *face_sets = nullptr;
-  /**
-   * A reference to the ".hide_poly" attribute, to store whether (base) faces are hidden.
-   * May be null.
-   */
-  const bool *hide_poly = nullptr;
 
   /* BMesh for dynamic topology sculpting */
   BMesh *bm = nullptr;
@@ -416,8 +413,8 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   blender::ed::sculpt_paint::expand::Cache *expand_cache = nullptr;
 
   /* Cursor data and active vertex for tools */
-  int active_face_index = -1;
-  int active_grid_index = -1;
+  std::optional<int> active_face_index;
+  std::optional<int> active_grid_index;
 
   /* When active, the cursor draws with faded colors, indicating that there is an action
    * enabled.
@@ -432,7 +429,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* TODO(jbakker): Replace rv3d and v3d with ViewContext */
   RegionView3D *rv3d = nullptr;
   View3D *v3d = nullptr;
-  Scene *scene = nullptr;
 
   /* Dynamic mesh preview */
   blender::Array<int> preview_verts;
@@ -466,7 +462,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
 
       /* Needed to continuously re-apply over the same weights (BRUSH_ACCUMULATE disabled).
        * Lazy initialize as needed (flag is set to 1 to tag it as uninitialized). */
-      MDeformVert *dvert_prev;
+      blender::Array<MDeformVert> dvert_prev;
     } wpaint;
 
     /* TODO: identify sculpt-only fields */
@@ -516,10 +512,8 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   SculptSession();
   ~SculptSession();
 
-  PBVHVertRef active_vert_ref() const;
   ActiveVert active_vert() const;
 
-  PBVHVertRef last_active_vert_ref() const;
   ActiveVert last_active_vert() const;
 
   /**
@@ -532,6 +526,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    * \returns -1 if there is no currently active vertex.
    */
   int active_vert_index() const;
+  int last_active_vert_index() const;
 
   /**
    * Retrieves the active vertex position.
@@ -554,7 +549,6 @@ void BKE_sculptsession_free_vwpaint_data(SculptSession *ss);
 void BKE_sculptsession_free_pbvh(Object &object);
 void BKE_sculptsession_bm_to_me(Object *ob, bool reorder);
 void BKE_sculptsession_bm_to_me_for_render(Object *object);
-int BKE_sculptsession_vertex_count(const SculptSession *ss);
 
 /**
  * Create new color layer on object if it doesn't have one and if experimental feature set has
@@ -574,11 +568,6 @@ void BKE_sculpt_update_object_after_eval(Depsgraph *depsgraph, Object *ob_eval);
  * it's the last modifier on the stack and it is not on the first level.
  */
 MultiresModifierData *BKE_sculpt_multires_active(const Scene *scene, Object *ob);
-/**
- * Update the pointer to the ".hide_poly" attribute. This is necessary because it is dynamically
- * created, removed, and made mutable.
- */
-void BKE_sculpt_hide_poly_pointer_update(Object &object);
 
 /**
  * Ensures a mask layer exists. If depsgraph and bmain are non-null,
@@ -607,9 +596,10 @@ namespace blender::bke::object {
 pbvh::Tree &pbvh_ensure(Depsgraph &depsgraph, Object &object);
 
 /**
- * Access the acceleration structure for raycasting, nearest queries, and spatially contiguous mesh
- * updates and drawing. The BVH tree is used by sculpt, vertex paint, and weight paint object
- * modes. This just accesses the BVH, to ensure it's built, use #pbvh_ensure.
+ * Access the acceleration structure for ray-casting,
+ * nearest queries, and spatially contiguous mesh updates and drawing.
+ * The BVH tree is used by sculpt, vertex paint, and weight paint object modes.
+ * This just accesses the BVH, to ensure it's built, use #pbvh_ensure.
  */
 pbvh::Tree *pbvh_get(Object &object);
 const pbvh::Tree *pbvh_get(const Object &object);
