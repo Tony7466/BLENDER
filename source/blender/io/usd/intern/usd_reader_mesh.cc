@@ -71,6 +71,10 @@ static pxr::UsdShadeMaterial compute_bound_material(const pxr::UsdPrim &prim,
   switch (mtl_purpose) {
     case USD_MTL_PURPOSE_FULL:
       mtl = api.ComputeBoundMaterial(pxr::UsdShadeTokens->full);
+      if (!mtl) {
+        /* Add an additional Blender-specific fallback to help with oddly authored USD files. */
+        mtl = api.ComputeBoundMaterial(pxr::UsdShadeTokens->preview);
+      }
       break;
     case USD_MTL_PURPOSE_PREVIEW:
       mtl = api.ComputeBoundMaterial(pxr::UsdShadeTokens->preview);

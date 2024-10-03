@@ -188,7 +188,7 @@ const EnumPropertyItem rna_enum_usd_mtl_purpose_items[] = {
      0,
      "Full",
      "Attempt to import 'full' materials. "
-     "Load 'allPurpose' materials as a fallback"},
+     "Load 'allPurpose' or 'preview' materials, in that order, as a fallback"},
     {0, NULL, 0, NULL, NULL},
 };
 
