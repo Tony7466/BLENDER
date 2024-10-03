@@ -241,7 +241,7 @@ class Instance {
   {
     std::string fmt_msg = fmt::format(RPT_(msg), args...) + "\n";
     /* Don't print the same error twice. */
-    if (!BLI_str_endswith(info_.c_str(), fmt_msg.c_str())) {
+    if (info_ != fmt_msg && !BLI_str_endswith(info_.c_str(), fmt_msg.c_str())) {
       info_ += fmt_msg;
     }
   }
