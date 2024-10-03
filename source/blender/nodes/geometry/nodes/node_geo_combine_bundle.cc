@@ -4,14 +4,78 @@
 
 #include "node_geometry_util.hh"
 
+#include "NOD_geo_bundle.hh"
+#include "NOD_socket_items_ops.hh"
+#include "NOD_socket_items_ui.hh"
+
+#include "BLO_read_write.hh"
+
+#include "UI_interface.hh"
+
 namespace blender::nodes::node_geo_combine_bundle_cc {
+
+NODE_STORAGE_FUNCS(NodeGeometryCombineBundle);
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("A");
-  b.add_input<decl::Geometry>("B");
+  const bNodeTree *tree = b.tree_or_null();
+  const bNode *node = b.node_or_null();
+  if (tree && node) {
+    const NodeGeometryCombineBundle &storage = node_storage(*node);
+    for (const int i : IndexRange(storage.items_num)) {
+      const NodeGeometryCombineBundleItem &item = storage.items[i];
+      const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+      const StringRef name = item.name ? item.name : "";
+      const std::string identifier = CombineBundleItemsAccessor::socket_identifier_for_item(item);
+      b.add_input(socket_type, name, identifier)
+          .socket_name_ptr(&tree->id, CombineBundleItemsAccessor::item_srna, &item, "name");
+    }
+  }
   b.add_input<decl::Extend>("", "__extend__");
   b.add_output<decl::Bundle>("Bundle");
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  auto *storage = MEM_cnew<NodeGeometryCombineBundle>(__func__);
+  node->storage = storage;
+}
+
+static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
+{
+  const NodeGeometryCombineBundle &src_storage = node_storage(*src_node);
+  auto *dst_storage = MEM_cnew<NodeGeometryCombineBundle>(__func__, src_storage);
+  dst_node->storage = dst_storage;
+
+  socket_items::copy_array<CombineBundleItemsAccessor>(*src_node, *dst_node);
+}
+
+static void node_free_storage(bNode *node)
+{
+  socket_items::destruct_array<CombineBundleItemsAccessor>(*node);
+  MEM_freeN(node->storage);
+}
+
+static bool node_insert_link(bNodeTree *tree, bNode *node, bNodeLink *link)
+{
+  return socket_items::try_add_item_via_any_extend_socket<CombineBundleItemsAccessor>(
+      *tree, *node, *node, *link);
+}
+
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *node_ptr)
+{
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(node_ptr->owner_id);
+  bNode &node = *static_cast<bNode *>(node_ptr->data);
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "bundle_items", false, TIP_("Bundle Items"))) {
+    socket_items::ui::draw_items_list_with_operators<CombineBundleItemsAccessor>(
+        C, panel, ntree, node);
+  }
+}
+
+static void node_operators()
+{
+  socket_items::ops::make_common_operators<CombineBundleItemsAccessor>();
 }
 
 class LazyFunctionForCombineBundle : public LazyFunction {
@@ -37,29 +101,7 @@ class LazyFunctionForCombineBundle : public LazyFunction {
     }
   }
 
-  void execute_impl(lf::Params & /*params*/, const lf::Context & /*context*/) const final
-  {
-    // const int inputs_num = node_.input_sockets().size();
-    // const int bundle_param = 0;
-    // if (!params.output_was_set(bundle_param)) {
-    //   const std::optional<IndexRange> dynamic_indices = params.try_add_dynamic_outputs(
-    //       bundle_param, inputs_num);
-    //   BLI_assert(dynamic_indices.has_value() && dynamic_indices->size() == inputs_num);
-    //   params.set_output(bundle_param, GeometrySet());
-    // }
-    // for (const int i : IndexRange(inputs_num)) {
-    //   const lf::Slot input_slot{i};
-    //   const lf::Slot output_slot{bundle_param, i};
-    //   if (params.get_output_usage(output_slot) != lf::ValueUsage::Used) {
-    //     continue;
-    //   }
-    //   if (GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(
-    //           input_slot))
-    //   {
-    //     params.set_output(output_slot, std::move(*geometry));
-    //   }
-    // }
-  }
+  void execute_impl(lf::Params & /*params*/, const lf::Context & /*context*/) const final {}
 };
 
 static void node_register()
@@ -68,6 +110,12 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_COMBINE_BUNDLE, "Combine Bundle", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
+  ntype.initfunc = node_init;
+  ntype.insert_link = node_insert_link;
+  ntype.draw_buttons_ex = node_layout_ex;
+  ntype.register_operators = node_operators;
+  bke::node_type_storage(
+      &ntype, "NodeGeometryCombineBundle", node_free_storage, node_copy_storage);
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
@@ -81,6 +129,21 @@ std::unique_ptr<LazyFunction> get_combine_bundle_lazy_function(
 {
   using namespace node_geo_combine_bundle_cc;
   return std::make_unique<LazyFunctionForCombineBundle>(node, lf_graph_info);
+}
+
+StructRNA *CombineBundleItemsAccessor::item_srna = &RNA_NodeGeometryCombineBundleItem;
+int CombineBundleItemsAccessor::node_type = GEO_NODE_COMBINE_BUNDLE;
+int CombineBundleItemsAccessor::item_dna_type = SDNA_TYPE_FROM_STRUCT(
+    NodeGeometryCombineBundleItem);
+
+void CombineBundleItemsAccessor::blend_write_item(BlendWriter *writer, const ItemT &item)
+{
+  BLO_write_string(writer, item.name);
+}
+
+void CombineBundleItemsAccessor::blend_read_data_item(BlendDataReader *reader, ItemT &item)
+{
+  BLO_read_string(reader, &item.name);
 }
 
 }  // namespace blender::nodes

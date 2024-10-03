@@ -2173,6 +2173,36 @@ typedef struct NodeGeometryBake {
   char _pad[4];
 } NodeGeometryBake;
 
+typedef struct NodeGeometryCombineBundleItem {
+  char *name;
+  int identifier;
+  int16_t socket_type;
+  char _pad[2];
+} NodeGeometryCombineBundleItem;
+
+typedef struct NodeGeometryCombineBundle {
+  NodeGeometryCombineBundleItem *items;
+  int items_num;
+  int next_identifier;
+  int active_index;
+  char _pad[4];
+} NodeGeometryCombineBundle;
+
+typedef struct NodeGeometrySeparateBundleItem {
+  char *name;
+  int identifier;
+  int16_t socket_type;
+  char _pad[2];
+} NodeGeometrySeparateBundleItem;
+
+typedef struct NodeGeometrySeparateBundle {
+  NodeGeometrySeparateBundleItem *items;
+  int items_num;
+  int next_identifier;
+  int active_index;
+  char _pad[4];
+} NodeGeometrySeparateBundle;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
