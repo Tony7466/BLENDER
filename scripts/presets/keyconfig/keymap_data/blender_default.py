@@ -3706,7 +3706,7 @@ def km_annotate(params):
     return keymap
 
 
-# Grease Pencil v3
+# Grease Pencil
 def km_grease_pencil_paint_mode(params):
     items = []
     keymap = (
@@ -4013,7 +4013,7 @@ def km_grease_pencil_vertex_paint(params):
 
     return keymap
 
-# Grease Pencil v3 Fill Tool.
+# Grease Pencil Fill Tool.
 
 
 def km_grease_pencil_fill_tool(_params):
@@ -8058,9 +8058,9 @@ def generate_keymaps(params=None):
         km_animation_channels(params),
 
         # Modes.
-        # Grease Pencil v2
+        # Annotations
         km_annotate(params),
-        # Grease Pencil v3
+        # Grease Pencil
         km_grease_pencil_paint_mode(params),
         km_grease_pencil_edit_mode(params),
         km_grease_pencil_sculpt_mode(params),
