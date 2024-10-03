@@ -2815,7 +2815,6 @@ class VIEW3D_MT_object_animation(Menu):
         layout.separator()
 
         layout.operator("nla.bake", text="Bake Action...")
-        layout.operator("gpencil.bake_mesh_animation", text="Bake Mesh to Grease Pencil...")
         layout.operator("grease_pencil.bake_grease_pencil_animation", text="Bake Object Transform to Grease Pencil...")
 
 
@@ -3030,9 +3029,6 @@ class VIEW3D_MT_object_context_menu(Menu):
 
             if obj.type in {'MESH', 'CURVE', 'CURVES', 'SURFACE', 'POINTCLOUD', 'META', 'FONT'}:
                 layout.operator_menu_enum("object.convert", "target")
-
-            if obj.type == 'GPENCIL':
-                layout.operator_menu_enum("gpencil.convert", "type", text="Convert To")
 
             if (obj.type in {
                 'MESH', 'CURVE', 'CURVES', 'SURFACE', 'GPENCIL', 'LATTICE', 'ARMATURE', 'META', 'FONT', 'POINTCLOUD',
@@ -5600,21 +5596,6 @@ class VIEW3D_MT_edit_armature_delete(Menu):
 
 
 # ********** Grease Pencil menus **********
-
-class VIEW3D_MT_assign_material(Menu):
-    bl_label = "Assign Material"
-
-    def draw(self, context):
-        layout = self.layout
-        ob = context.active_object
-        mat_active = ob.active_material
-
-        for slot in ob.material_slots:
-            mat = slot.material
-            if mat:
-                layout.operator("gpencil.stroke_change_color", text=mat.name,
-                                icon='LAYER_ACTIVE' if mat == mat_active else 'BLANK1').material = mat.name
-
 
 class VIEW3D_MT_weight_grease_pencil(Menu):
     bl_label = "Weights"
@@ -8918,7 +8899,6 @@ classes = (
     VIEW3D_MT_greasepencil_material_active,
     VIEW3D_MT_paint_grease_pencil,
     VIEW3D_MT_paint_vertex_grease_pencil,
-    VIEW3D_MT_assign_material,
     VIEW3D_MT_edit_greasepencil_showhide,
     VIEW3D_MT_edit_greasepencil_cleanup,
     VIEW3D_MT_weight_grease_pencil,

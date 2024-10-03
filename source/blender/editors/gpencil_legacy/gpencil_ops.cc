@@ -62,38 +62,10 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_blank_frame_add);
   WM_operatortype_append(GPENCIL_OT_annotation_active_frame_delete);
 
-  WM_operatortype_append(GPENCIL_OT_convert);
-  WM_operatortype_append(GPENCIL_OT_bake_mesh_animation);
-  WM_operatortype_append(GPENCIL_OT_bake_grease_pencil_animation);
-
-  WM_operatortype_append(GPENCIL_OT_image_to_grease_pencil);
 #ifdef WITH_POTRACE
   WM_operatortype_append(GPENCIL_OT_trace_image);
 #endif
-  WM_operatortype_append(GPENCIL_OT_stroke_arrange);
-  WM_operatortype_append(GPENCIL_OT_stroke_change_color);
   WM_operatortype_append(GPENCIL_OT_material_lock_unused);
-  WM_operatortype_append(GPENCIL_OT_stroke_apply_thickness);
-  WM_operatortype_append(GPENCIL_OT_stroke_cyclical_set);
-  WM_operatortype_append(GPENCIL_OT_stroke_caps_set);
-  WM_operatortype_append(GPENCIL_OT_stroke_join);
-  WM_operatortype_append(GPENCIL_OT_stroke_flip);
-  WM_operatortype_append(GPENCIL_OT_stroke_start_set);
-  WM_operatortype_append(GPENCIL_OT_stroke_subdivide);
-  WM_operatortype_append(GPENCIL_OT_stroke_simplify);
-  WM_operatortype_append(GPENCIL_OT_stroke_simplify_fixed);
-  WM_operatortype_append(GPENCIL_OT_stroke_separate);
-  WM_operatortype_append(GPENCIL_OT_stroke_split);
-  WM_operatortype_append(GPENCIL_OT_stroke_smooth);
-  WM_operatortype_append(GPENCIL_OT_stroke_sample);
-  WM_operatortype_append(GPENCIL_OT_stroke_merge);
-  WM_operatortype_append(GPENCIL_OT_stroke_cutter);
-  WM_operatortype_append(GPENCIL_OT_stroke_trim);
-  WM_operatortype_append(GPENCIL_OT_stroke_merge_by_distance);
-  WM_operatortype_append(GPENCIL_OT_stroke_merge_material);
-  WM_operatortype_append(GPENCIL_OT_stroke_reset_vertex_color);
-  WM_operatortype_append(GPENCIL_OT_stroke_normalize);
-  WM_operatortype_append(GPENCIL_OT_stroke_outline);
 
   WM_operatortype_append(GPENCIL_OT_material_to_vertex_color);
   WM_operatortype_append(GPENCIL_OT_extract_palette_vertex);

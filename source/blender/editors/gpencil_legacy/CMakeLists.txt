@@ -28,13 +28,9 @@ set(SRC
   gpencil_add_monkey.cc
   gpencil_add_stroke.cc
   gpencil_armature.cc
-  gpencil_bake_animation.cc
-  gpencil_convert.cc
   gpencil_data.cc
   gpencil_edit.cc
   gpencil_interpolate.cc
-  gpencil_merge.cc
-  gpencil_mesh.cc
   gpencil_ops.cc
   gpencil_ops_versioning.cc
   gpencil_primitive.cc

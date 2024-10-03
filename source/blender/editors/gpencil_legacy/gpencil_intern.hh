@@ -452,11 +452,6 @@ enum eGPencil_PaintModes {
 
 /* buttons editing --- */
 
-void GPENCIL_OT_convert(wmOperatorType *ot);
-void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot);
-void GPENCIL_OT_bake_grease_pencil_animation(wmOperatorType *ot);
-
-void GPENCIL_OT_image_to_grease_pencil(wmOperatorType *ot);
 void GPENCIL_OT_trace_image(wmOperatorType *ot);
 
 enum {
@@ -477,37 +472,6 @@ enum {
   GP_MERGE_STROKE = -1,
   GP_MERGE_POINT = 1,
 };
-
-void GPENCIL_OT_stroke_arrange(wmOperatorType *ot);
-void GPENCIL_OT_stroke_change_color(wmOperatorType *ot);
-void GPENCIL_OT_stroke_apply_thickness(wmOperatorType *ot);
-/**
- * Similar to #CURVE_OT_cyclic_toggle or #MASK_OT_cyclic_toggle, but with
- * option to force opened/closed strokes instead of just toggle behavior.
- */
-void GPENCIL_OT_stroke_cyclical_set(wmOperatorType *ot);
-/**
- * Change Stroke caps mode Rounded or Flat
- */
-void GPENCIL_OT_stroke_caps_set(wmOperatorType *ot);
-void GPENCIL_OT_stroke_join(wmOperatorType *ot);
-void GPENCIL_OT_stroke_start_set(wmOperatorType *ot);
-void GPENCIL_OT_stroke_flip(wmOperatorType *ot);
-void GPENCIL_OT_stroke_subdivide(wmOperatorType *ot);
-void GPENCIL_OT_stroke_simplify(wmOperatorType *ot);
-void GPENCIL_OT_stroke_simplify_fixed(wmOperatorType *ot);
-void GPENCIL_OT_stroke_separate(wmOperatorType *ot);
-void GPENCIL_OT_stroke_split(wmOperatorType *ot);
-void GPENCIL_OT_stroke_smooth(wmOperatorType *ot);
-void GPENCIL_OT_stroke_sample(wmOperatorType *ot);
-void GPENCIL_OT_stroke_merge(wmOperatorType *ot);
-void GPENCIL_OT_stroke_cutter(wmOperatorType *ot);
-void GPENCIL_OT_stroke_trim(wmOperatorType *ot);
-void GPENCIL_OT_stroke_merge_by_distance(wmOperatorType *ot);
-void GPENCIL_OT_stroke_merge_material(wmOperatorType *ot);
-void GPENCIL_OT_stroke_reset_vertex_color(wmOperatorType *ot);
-void GPENCIL_OT_stroke_normalize(wmOperatorType *ot);
-void GPENCIL_OT_stroke_outline(wmOperatorType *ot);
 
 void GPENCIL_OT_material_to_vertex_color(wmOperatorType *ot);
 void GPENCIL_OT_extract_palette_vertex(wmOperatorType *ot);
@@ -721,8 +685,5 @@ struct GP_EditableStrokes_Iter {
   } \
   } \
   (void)0
-
-/* Reused items for bake operators. */
-extern const EnumPropertyItem rna_gpencil_reproject_type_items[];
 
 /* ****************************************************** */

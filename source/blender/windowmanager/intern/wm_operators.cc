@@ -4350,7 +4350,6 @@ static void gesture_lasso_modal_keymap(wmKeyConfig *keyconf)
 
   /* Assign map to operators. */
   WM_modalkeymap_assign(keymap, "VIEW3D_OT_select_lasso");
-  WM_modalkeymap_assign(keymap, "GPENCIL_OT_stroke_cutter");
   WM_modalkeymap_assign(keymap, "MASK_OT_select_lasso");
   WM_modalkeymap_assign(keymap, "PAINT_OT_mask_lasso_gesture");
   WM_modalkeymap_assign(keymap, "SCULPT_OT_face_set_lasso_gesture");
