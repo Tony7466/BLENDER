@@ -1017,8 +1017,9 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
       /* Check if the original geometry has a layer with the same name. */
       TreeNode *node_orig = orig_grease_pencil.find_node_by_name(layer_eval->name());
       if (!node_orig || node_orig->is_group()) {
-        /* No layer with the same name found. Create a new layer. */
-        Layer &layer_orig = orig_grease_pencil.add_layer(layer_eval->name());
+        /* No layer with the same name found. Create a new layer.
+         * Note: This name might be empty! This has to be resolved at a later stage! */
+        Layer &layer_orig = orig_grease_pencil.add_layer(layer_eval->name(), false);
         /* Make sure to add a new keyframe with a new drawing. */
         orig_grease_pencil.insert_frame(layer_orig, eval_frame);
         node_orig = &layer_orig.as_node();
@@ -1206,6 +1207,12 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
                                 grease_pencil_orig);
 
   Main *bmain = DEG_get_bmain(depsgraph);
+  /* There might be layers with empty names after evaluation. Make sure to rename them. */
+  for (Layer *layer : grease_pencil_orig.layers_for_write()) {
+    if (layer->name().is_empty()) {
+      grease_pencil_orig.rename_node(*bmain, layer->as_node(), DATA_("Layer"));
+    }
+  }
   BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
   return true;
 }
@@ -1281,6 +1288,13 @@ static bool apply_grease_pencil_for_modifier_all_keyframes(Depsgraph *depsgraph,
 
   scene->r.cfra = prev_frame;
   BKE_scene_graph_update_for_newframe(depsgraph);
+
+  /* There might be layers with empty names after evaluation. Make sure to rename them. */
+  for (Layer *layer : grease_pencil_orig.layers_for_write()) {
+    if (layer->name().is_empty()) {
+      grease_pencil_orig.rename_node(*bmain, layer->as_node(), DATA_("Layer"));
+    }
+  }
 
   WM_cursor_wait(false);
   return changed;
