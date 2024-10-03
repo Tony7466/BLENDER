@@ -1123,6 +1123,25 @@ static void GREASE_PENCIL_OT_stroke_switch_direction(wmOperatorType *ot)
 }
 
 /** \} */
+/* -------------------------------------------------------------------- */
+/** \name Switch Direction Operator
+ * \{ */
+static int grease_pencil_set_start_point_exec(bContext *C, wmOperator *)
+{
+  // execution goes here
+}
+static void GREASE_PENCIL_OT_set_start_point(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Start Point";
+  ot->idname = "GREASE_PENCIL_OT_set_start_point";
+  ot->description = "Select which point is the beginning of the curve";
+
+  /* callbacks */
+  ot->exec = grease_pencil_set_start_point_exec;
+  ot->poll = editable_grease_pencil_poll;
+}
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Set Curve Caps Operator
@@ -3706,6 +3725,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_cyclical_set);
   WM_operatortype_append(GREASE_PENCIL_OT_set_active_material);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_switch_direction);
+  WM_operatortype_append(GREASE_PENCIL_OT_set_start_point);
   WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_thickness);
   WM_operatortype_append(GREASE_PENCIL_OT_set_uniform_opacity);
   WM_operatortype_append(GREASE_PENCIL_OT_caps_set);
