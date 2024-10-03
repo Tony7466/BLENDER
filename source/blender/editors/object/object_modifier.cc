@@ -989,7 +989,8 @@ static void remove_invalid_attribute_strings(Mesh &mesh)
 
 static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
                                           const int eval_frame,
-                                          GreasePencil &dst_grease_pencil)
+                                          const IndexMask &orig_layers_to_apply,
+                                          GreasePencil &orig_grease_pencil)
 {
   using namespace bke;
   using namespace bke::greasepencil;
@@ -1014,13 +1015,21 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
     const Span<const Layer *> result_layers = merged_layers_grease_pencil.layers();
     for (const Layer *layer_eval : result_layers) {
       /* Check if the original geometry has a layer with the same name. */
-      TreeNode *node_orig = dst_grease_pencil.find_node_by_name(layer_eval->name());
+      TreeNode *node_orig = orig_grease_pencil.find_node_by_name(layer_eval->name());
       if (!node_orig || node_orig->is_group()) {
         /* No layer with the same name found. Create a new layer. */
-        Layer &layer_orig = dst_grease_pencil.add_layer(layer_eval->name());
+        Layer &layer_orig = orig_grease_pencil.add_layer(layer_eval->name());
         /* Make sure to add a new keyframe with a new drawing. */
-        dst_grease_pencil.insert_frame(layer_orig, eval_frame);
+        orig_grease_pencil.insert_frame(layer_orig, eval_frame);
         node_orig = &layer_orig.as_node();
+      }
+      else if (node_orig->is_layer()) {
+        const int orig_layer_index = *orig_grease_pencil.get_layer_index(node_orig->as_layer());
+        if (!orig_layers_to_apply.contains(orig_layer_index)) {
+          /* Mark as mapped so it won't be removed. */
+          mapped_original_layers.add_new(&node_orig->as_layer());
+          continue;
+        }
       }
       BLI_assert(node_orig != nullptr);
       Layer &layer_orig = node_orig->as_layer();
@@ -1030,7 +1039,7 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
       /* Insert the updated node after the previous node. This keeps the layer order consistent. */
       if (previous_node) {
         BLI_assert(node_orig != nullptr);
-        dst_grease_pencil.move_node_after(*node_orig, *previous_node);
+        orig_grease_pencil.move_node_after(*node_orig, *previous_node);
       }
       previous_node = node_orig;
 
@@ -1042,10 +1051,10 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
     /* Remove all the unmapped layers from the original geometry. */
     /* IMPORTANT: We copy the span of pointers into a local array here, because the runtime cache
      * of the layers actually changes while we remove the layers. */
-    const Array<Layer *> original_layers = dst_grease_pencil.layers_for_write();
+    const Array<Layer *> original_layers = orig_grease_pencil.layers_for_write();
     for (Layer *layer_orig : original_layers) {
       if (!mapped_original_layers.contains(layer_orig)) {
-        dst_grease_pencil.remove_layer(*layer_orig);
+        orig_grease_pencil.remove_layer(*layer_orig);
       }
     }
   }
@@ -1055,7 +1064,7 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
   for (auto [layer_eval, layer_orig] : eval_to_orig_layer_map.items()) {
     const Drawing *drawing_eval = merged_layers_grease_pencil.get_drawing_at(*layer_eval,
                                                                              eval_frame);
-    Drawing *drawing_orig = dst_grease_pencil.get_drawing_at(*layer_orig, eval_frame);
+    Drawing *drawing_orig = orig_grease_pencil.get_drawing_at(*layer_orig, eval_frame);
     if (drawing_orig && drawing_eval) {
       /* Write the data to the original drawing. */
       drawing_orig->strokes_for_write() = std::move(drawing_eval->strokes());
@@ -1081,9 +1090,9 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
    * result geometry are already correct, but this might not be the case for all drawings in the
    * original geometry (like for drawings that are not visible on the frame that the modifier is
    * being applied on). */
-  Array<int> material_indices_map(dst_grease_pencil.material_array_num);
-  for (const int mat_i : IndexRange(dst_grease_pencil.material_array_num)) {
-    Material *material = dst_grease_pencil.material_array[mat_i];
+  Array<int> material_indices_map(orig_grease_pencil.material_array_num);
+  for (const int mat_i : IndexRange(orig_grease_pencil.material_array_num)) {
+    Material *material = orig_grease_pencil.material_array[mat_i];
     const int map_index = original_materials.index_of_try(material);
     if (map_index != -1) {
       material_indices_map[mat_i] = map_index;
@@ -1093,9 +1102,9 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
   /* Remap material indices for all other drawings. */
   if (!material_indices_map.is_empty() &&
       !array_utils::indices_are_range(material_indices_map,
-                                      IndexRange(dst_grease_pencil.material_array_num)))
+                                      IndexRange(orig_grease_pencil.material_array_num)))
   {
-    for (GreasePencilDrawingBase *base : dst_grease_pencil.drawings()) {
+    for (GreasePencilDrawingBase *base : orig_grease_pencil.drawings()) {
       if (base->type != GP_DRAWING) {
         continue;
       }
@@ -1120,17 +1129,19 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
   }
 
   /* Convert the layer map into an index mapping. */
-  Array<int> eval_to_orig_layer_indices_map(merged_layers_grease_pencil.layers().size());
+  Map<int, int> eval_to_orig_layer_indices_map;
   for (const int layer_eval_i : merged_layers_grease_pencil.layers().index_range()) {
     const Layer *layer_eval = &merged_layers_grease_pencil.layer(layer_eval_i);
-    const Layer *layer_orig = eval_to_orig_layer_map.lookup(layer_eval);
-    const int layer_orig_index = *dst_grease_pencil.get_layer_index(*layer_orig);
-    eval_to_orig_layer_indices_map[layer_eval_i] = layer_orig_index;
+    if (eval_to_orig_layer_map.contains(layer_eval)) {
+      const Layer *layer_orig = eval_to_orig_layer_map.lookup(layer_eval);
+      const int layer_orig_index = *orig_grease_pencil.get_layer_index(*layer_orig);
+      eval_to_orig_layer_indices_map.add(layer_eval_i, layer_orig_index);
+    }
   }
 
   /* Propagate layer attributes. */
   AttributeAccessor src_attributes = merged_layers_grease_pencil.attributes();
-  MutableAttributeAccessor dst_attributes = dst_grease_pencil.attributes_for_write();
+  MutableAttributeAccessor dst_attributes = orig_grease_pencil.attributes_for_write();
   src_attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
     /* Anonymous attributes shouldn't be available on original geometry. */
     if (attribute_name_is_anonymous(iter.name)) {
@@ -1147,8 +1158,11 @@ static void apply_eval_grease_pencil_data(const GreasePencil &src_grease_pencil,
     }
     attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
       using T = decltype(dummy);
-      array_utils::scatter(
-          src.typed<T>(), eval_to_orig_layer_indices_map.as_span(), dst.span.typed<T>());
+      Span<T> src_span = src.typed<T>();
+      MutableSpan<T> dst_span = dst.span.typed<T>();
+      for (const auto [src_i, dst_i] : eval_to_orig_layer_indices_map.items()) {
+        dst_span[dst_i] = src_span[src_i];
+      }
     });
     dst.finish();
   });
@@ -1186,7 +1200,10 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
   GreasePencil &grease_pencil_result =
       *eval_geometry_set.get_component_for_write<GreasePencilComponent>().get_for_write();
 
-  apply_eval_grease_pencil_data(grease_pencil_result, eval_frame, grease_pencil_orig);
+  apply_eval_grease_pencil_data(grease_pencil_result,
+                                eval_frame,
+                                grease_pencil_orig.layers().index_range(),
+                                grease_pencil_orig);
 
   Main *bmain = DEG_get_bmain(depsgraph);
   BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
@@ -1205,24 +1222,23 @@ static bool apply_grease_pencil_for_modifier_all_keyframes(Depsgraph *depsgraph,
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md_eval->type));
 
   WM_cursor_wait(true);
-  /* Get all the frames at which to evaluated the object. */
-  Array<int> sorted_frame_times;
+
+  Map<int, Vector<int>> layer_indices_to_apply_per_frame;
   {
-    VectorSet<int> all_keys;
-    for (const Layer *layer : grease_pencil_orig.layers()) {
-      for (const auto &[key, value] : layer->frames().items()) {
-        if (!value.is_end()) {
-          all_keys.add(key);
+    for (const int layer_i : grease_pencil_orig.layers().index_range()) {
+      const Layer &layer = grease_pencil_orig.layer(layer_i);
+      for (const auto &[key, value] : layer.frames().items()) {
+        if (value.is_end()) {
+          continue;
         }
+        layer_indices_to_apply_per_frame.lookup_or_add(key, {}).append(layer_i);
       }
     }
-    sorted_frame_times = all_keys.as_span();
-    std::sort(sorted_frame_times.begin(), sorted_frame_times.end());
   }
 
   const int prev_frame = int(DEG_get_ctime(depsgraph));
   bool changed = false;
-  for (const int eval_frame : sorted_frame_times) {
+  for (const auto &[eval_frame, layer_indices] : layer_indices_to_apply_per_frame.items()) {
     scene->r.cfra = eval_frame;
     BKE_scene_graph_update_for_newframe(depsgraph);
 
@@ -1246,7 +1262,11 @@ static bool apply_grease_pencil_for_modifier_all_keyframes(Depsgraph *depsgraph,
     GreasePencil &grease_pencil_result =
         *eval_geometry_set.get_component_for_write<GreasePencilComponent>().get_for_write();
 
-    apply_eval_grease_pencil_data(grease_pencil_result, eval_frame, grease_pencil_orig);
+    IndexMaskMemory memory;
+    const IndexMask orig_layers_to_apply = IndexMask::from_indices(layer_indices.as_span(),
+                                                                   memory);
+    apply_eval_grease_pencil_data(
+        grease_pencil_result, eval_frame, orig_layers_to_apply, grease_pencil_orig);
 
     BKE_object_material_from_eval_data(bmain, ob, &grease_pencil_result.id);
     changed = true;
