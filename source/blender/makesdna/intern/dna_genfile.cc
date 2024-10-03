@@ -2054,16 +2054,18 @@ void DNA_sdna_alias_data_ensure_structs_map(SDNA *sdna)
 
 void DNA_struct_debug_print(const SDNA &sdna,
                             const SDNA_Struct &sdna_struct,
-                            const void *data,
+                            const void *initial_data,
+                            const void *address,
                             int indent,
                             std::ostream &stream)
 {
   using namespace blender;
   std::string indentation = StringRef("                              ").substr(0, indent);
+  const void *data = initial_data;
 
   const char *struct_name = sdna.types[sdna_struct.type_index];
   if (indent == 0) {
-    stream << indentation << "<" << struct_name << ">\n";
+    stream << indentation << "<" << struct_name << "> " << address << "\n";
   }
   for (const int member_i : IndexRange(sdna_struct.members_num)) {
     const SDNA_StructMember &member = sdna_struct.members[member_i];
@@ -2081,9 +2083,12 @@ void DNA_struct_debug_print(const SDNA &sdna,
         const SDNA_Struct &sub_sdna_struct = *sdna.structs[substruct_i];
         int substruct_size = sdna.types_size[member.type_index];
         for (int elem_i = 0; elem_i < array_elem_num; elem_i++) {
+          const void *sub_data = POINTER_OFFSET(data, elem_i * substruct_size);
+          const intptr_t subdata_offset = intptr_t(sub_data) - intptr_t(initial_data);
           DNA_struct_debug_print(sdna,
                                  sub_sdna_struct,
-                                 POINTER_OFFSET(data, elem_i * substruct_size),
+                                 sub_data,
+                                 POINTER_OFFSET(address, subdata_offset),
                                  indent + 2,
                                  stream);
           break;

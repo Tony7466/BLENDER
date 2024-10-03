@@ -304,7 +304,7 @@ static bool library_foreach_ID_link(Main *bmain,
      * In that case, we do not want to generate those 'generic flags' from our current sub-data ID
      * (the node tree), but re-use those generated for the 'owner' ID (the material). */
     if (inherit_data == nullptr) {
-      data.cb_flag = ID_IS_LINKED(id) ? IDWALK_CB_INDIRECT_USAGE : 0;
+      data.cb_flag = ID_IS_DYNAMIC_LINKED(id) ? IDWALK_CB_INDIRECT_USAGE : 0;
       /* When an ID is defined as not reference-counting its ID usages, it should never do it. */
       data.cb_flag_clear = (id->tag & ID_TAG_NO_USER_REFCOUNT) ?
                                IDWALK_CB_USER | IDWALK_CB_USER_ONE :

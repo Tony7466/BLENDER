@@ -749,7 +749,7 @@ static void writestruct_at_address_nr(
   }
 
   if (wd->debug_dst) {
-    DNA_struct_debug_print(*wd->sdna, *wd->sdna->structs[struct_nr], data, 0, *wd->debug_dst);
+    DNA_struct_debug_print(*wd->sdna, *wd->sdna->structs[struct_nr], data, adr, 0, *wd->debug_dst);
   }
 
   mywrite(wd, &bh, sizeof(BHead));
@@ -1266,10 +1266,10 @@ static int write_id_direct_linked_data_process_cb(LibraryIDLinkCallbackData *cb_
   ID *id = *cb_data->id_pointer;
   const int cb_flag = cb_data->cb_flag;
 
-  if (id == nullptr || !ID_IS_DYNAMIC_LINKED(id)) {
+  if (id == nullptr || !ID_IS_LINKED(id)) {
     return IDWALK_RET_NOP;
   }
-  BLI_assert(!ID_IS_DYNAMIC_LINKED(self_id));
+  BLI_assert(!ID_IS_LINKED(self_id) || ID_IS_STATIC_LINKED(self_id));
   BLI_assert((cb_flag & IDWALK_CB_INDIRECT_USAGE) == 0);
 
   if (self_id->tag & ID_TAG_RUNTIME) {
@@ -1284,7 +1284,7 @@ static int write_id_direct_linked_data_process_cb(LibraryIDLinkCallbackData *cb_
     return IDWALK_RET_NOP;
   }
 
-  if (cb_flag & IDWALK_CB_DIRECT_WEAK_LINK) {
+  if (cb_flag & IDWALK_CB_DIRECT_WEAK_LINK && ID_IS_DYNAMIC_LINKED(id)) {
     id_lib_indirect_weak_link(id);
   }
   else {

@@ -266,6 +266,7 @@ void DNA_sdna_alias_data_ensure_structs_map(struct SDNA *sdna);
 void DNA_struct_debug_print(const SDNA &sdna,
                             const SDNA_Struct &sdna_struct,
                             const void *data,
+                            const void *address,
                             int indent,
                             std::ostream &stream);
 #endif
