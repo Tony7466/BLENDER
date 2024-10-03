@@ -54,6 +54,11 @@ enum {
 /** \name C Wrappers
  * \{ */
 
+/**
+ * Join selected objects. Called from #OBJECT_OT_join.
+ */
+int ED_grease_pencil_join_objects_exec(bContext *C, wmOperator *op);
+
 void ED_operatortypes_grease_pencil();
 void ED_operatortypes_grease_pencil_draw();
 void ED_operatortypes_grease_pencil_frames();
@@ -62,6 +67,7 @@ void ED_operatortypes_grease_pencil_select();
 void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_join();
 void ED_operatortypes_grease_pencil_material();
+void ED_operatortypes_grease_pencil_modes();
 void ED_operatortypes_grease_pencil_primitives();
 void ED_operatortypes_grease_pencil_weight_paint();
 void ED_operatortypes_grease_pencil_vertex_paint();
@@ -854,6 +860,10 @@ bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
                                         const Vector<Vector<int>> &selected_points_in_curves,
                                         bool keep_caps);
 };  // namespace trim
+
+void merge_layers(const GreasePencil &src_grease_pencil,
+                  const Span<Vector<int>> src_layer_indices_by_dst_layer,
+                  GreasePencil &dst_grease_pencil);
 
 /* Lineart */
 
