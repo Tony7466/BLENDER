@@ -10,7 +10,7 @@
 
 #include <Python.h>
 
-#include "mathutils.h"
+#include "mathutils.hh"
 
 #include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
@@ -18,8 +18,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "../generic/py_capi_utils.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/py_capi_utils.hh"
+#include "../generic/python_utildefines.hh"
 
 #ifndef MATH_STANDALONE
 #  include "BLI_dynstr.h"
@@ -706,9 +706,7 @@ PyDoc_STRVAR(
     Quaternion_identity_doc,
     ".. function:: identity()\n"
     "\n"
-    "   Set the quaternion to an identity quaternion.\n"
-    "\n"
-    "   :rtype: :class:`Quaternion`\n");
+    "   Set the quaternion to an identity quaternion.\n");
 static PyObject *Quaternion_identity(QuaternionObject *self)
 {
   if (BaseMath_ReadCallback_ForWrite(self) == -1) {
@@ -732,9 +730,7 @@ PyDoc_STRVAR(
     Quaternion_negate_doc,
     ".. function:: negate()\n"
     "\n"
-    "   Set the quaternion to its negative.\n"
-    "\n"
-    "   :rtype: :class:`Quaternion`\n");
+    "   Set the quaternion to its negative.\n");
 static PyObject *Quaternion_negate(QuaternionObject *self)
 {
   if (BaseMath_ReadCallback_ForWrite(self) == -1) {

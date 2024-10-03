@@ -10,15 +10,15 @@
 
 #include <Python.h>
 
-#include "mathutils.h"
+#include "mathutils.hh"
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "../generic/py_capi_utils.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/py_capi_utils.hh"
+#include "../generic/python_utildefines.hh"
 
 #ifndef MATH_STANDALONE
 #  include "BLI_dynstr.h"
@@ -2172,9 +2172,7 @@ PyDoc_STRVAR(
     Matrix_zero_doc,
     ".. method:: zero()\n"
     "\n"
-    "   Set all the matrix values to zero.\n"
-    "\n"
-    "   :rtype: :class:`Matrix`\n");
+    "   Set all the matrix values to zero.\n");
 static PyObject *Matrix_zero(MatrixObject *self)
 {
   if (BaseMath_Prepare_ForWrite(self) == -1) {

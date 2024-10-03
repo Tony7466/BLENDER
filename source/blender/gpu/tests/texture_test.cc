@@ -9,8 +9,8 @@
 #include "BLI_math_vector.hh"
 #include "BLI_vector.hh"
 
-#include "GPU_context.h"
-#include "GPU_texture.h"
+#include "GPU_context.hh"
+#include "GPU_texture.hh"
 
 #include "gpu_texture_private.hh"
 
@@ -65,6 +65,11 @@ GPU_TEST(texture_read)
 
 static void test_texture_1d()
 {
+  if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) &&
+      G.debug & G_DEBUG_GPU_FORCE_WORKAROUNDS)
+  {
+    GTEST_SKIP() << "OpenGL texture clearing workaround doesn't support 1d textures.";
+  }
   const int SIZE = 32;
   GPU_render_begin();
 

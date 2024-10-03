@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
-#include "usd.h"
+#include "usd.hh"
 #include "usd_reader_xform.hh"
+
+struct Main;
 
 namespace blender::io::usd {
 

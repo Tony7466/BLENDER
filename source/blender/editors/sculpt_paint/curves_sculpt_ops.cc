@@ -17,6 +17,8 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 
+#include "BLT_translation.hh"
+
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
@@ -46,10 +48,10 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -118,28 +120,28 @@ static std::unique_ptr<CurvesSculptStrokeOperation> start_brush_operation(
   const Scene &scene = *CTX_data_scene(&C);
   const CurvesSculpt &curves_sculpt = *scene.toolsettings->curves_sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&curves_sculpt.paint);
-  switch (brush.curves_sculpt_tool) {
-    case CURVES_SCULPT_TOOL_COMB:
+  switch (brush.curves_sculpt_brush_type) {
+    case CURVES_SCULPT_BRUSH_TYPE_COMB:
       return new_comb_operation();
-    case CURVES_SCULPT_TOOL_DELETE:
+    case CURVES_SCULPT_BRUSH_TYPE_DELETE:
       return new_delete_operation();
-    case CURVES_SCULPT_TOOL_SNAKE_HOOK:
+    case CURVES_SCULPT_BRUSH_TYPE_SNAKE_HOOK:
       return new_snake_hook_operation();
-    case CURVES_SCULPT_TOOL_ADD:
+    case CURVES_SCULPT_BRUSH_TYPE_ADD:
       return new_add_operation();
-    case CURVES_SCULPT_TOOL_GROW_SHRINK:
+    case CURVES_SCULPT_BRUSH_TYPE_GROW_SHRINK:
       return new_grow_shrink_operation(mode, C);
-    case CURVES_SCULPT_TOOL_SELECTION_PAINT:
+    case CURVES_SCULPT_BRUSH_TYPE_SELECTION_PAINT:
       return new_selection_paint_operation(mode, C);
-    case CURVES_SCULPT_TOOL_PINCH:
+    case CURVES_SCULPT_BRUSH_TYPE_PINCH:
       return new_pinch_operation(mode, C);
-    case CURVES_SCULPT_TOOL_SMOOTH:
+    case CURVES_SCULPT_BRUSH_TYPE_SMOOTH:
       return new_smooth_operation();
-    case CURVES_SCULPT_TOOL_PUFF:
+    case CURVES_SCULPT_BRUSH_TYPE_PUFF:
       return new_puff_operation();
-    case CURVES_SCULPT_TOOL_DENSITY:
+    case CURVES_SCULPT_BRUSH_TYPE_DENSITY:
       return new_density_operation(mode, C, stroke_start);
-    case CURVES_SCULPT_TOOL_SLIDE:
+    case CURVES_SCULPT_BRUSH_TYPE_SLIDE:
       return new_slide_operation();
   }
   BLI_assert_unreachable();
@@ -282,7 +284,8 @@ static void curves_sculptmode_enter(bContext *C)
   wmMsgBus *mbus = CTX_wm_message_bus(C);
 
   Object *ob = CTX_data_active_object(C);
-  BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
+  BKE_paint_ensure(
+      CTX_data_main(C), scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
   CurvesSculpt *curves_sculpt = scene->toolsettings->curves_sculpt;
 
   ob->mode = OB_MODE_SCULPT_CURVES;
@@ -296,7 +299,7 @@ static void curves_sculptmode_enter(bContext *C)
   paint_init_pivot(ob, scene);
 
   /* Necessary to change the object mode on the evaluated object. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 }
@@ -315,7 +318,7 @@ static int curves_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = ob->mode == OB_MODE_SCULPT_CURVES;
 
   if (is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, OB_MODE_SCULPT_CURVES, op->reports)) {
+    if (!object::mode_compat_set(C, ob, OB_MODE_SCULPT_CURVES, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -330,7 +333,7 @@ static int curves_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   WM_toolsystem_update_from_context_view3d(C);
 
   /* Necessary to change the object mode on the evaluated object. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
   return OPERATOR_FINISHED;
@@ -459,10 +462,10 @@ static void select_random_ui(bContext * /*C*/, wmOperator *op)
   uiItemR(layout, op->ptr, "partial", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_boolean_get(op->ptr, "partial")) {
-    uiItemR(layout, op->ptr, "min", UI_ITEM_R_SLIDER, "Min", ICON_NONE);
+    uiItemR(layout, op->ptr, "min", UI_ITEM_R_SLIDER, IFACE_("Min"), ICON_NONE);
   }
   else {
-    uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, "Probability", ICON_NONE);
+    uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, IFACE_("Probability"), ICON_NONE);
   }
 }
 
@@ -679,7 +682,7 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
             });
       });
 
-  float4x4 curves_to_world_mat = float4x4(curves_ob.object_to_world);
+  const float4x4 &curves_to_world_mat = curves_ob.object_to_world();
   float4x4 world_to_curves_mat = math::invert(curves_to_world_mat);
 
   const float4x4 projection = ED_view3d_ob_project_mat_get(&rv3d, &curves_ob);
@@ -823,7 +826,7 @@ static bool min_distance_edit_poll(bContext *C)
   if (brush == nullptr) {
     return false;
   }
-  if (brush->curves_sculpt_tool != CURVES_SCULPT_TOOL_DENSITY) {
+  if (brush->curves_sculpt_brush_type != CURVES_SCULPT_BRUSH_TYPE_DENSITY) {
     return false;
   }
   return true;
@@ -1098,7 +1101,7 @@ static int min_distance_edit_modal(bContext *C, wmOperator *op, const wmEvent *e
   auto finish = [&]() {
     wmWindowManager *wm = CTX_wm_manager(C);
 
-    /* Remove own cursor. */
+    /* Remove cursor. */
     WM_paint_cursor_end(static_cast<wmPaintCursor *>(op_data.cursor));
     /* Restore original paint cursors. */
     wm->paintcursors = op_data.orig_paintcursors;
