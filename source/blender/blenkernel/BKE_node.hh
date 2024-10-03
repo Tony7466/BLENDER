@@ -1383,6 +1383,7 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define GEO_NODE_SEPARATE_BUNDLE 2152
 #define GEO_NODE_CLOSURE_INPUT 2153
 #define GEO_NODE_CLOSURE_OUTPUT 2154
+#define GEO_NODE_EVALUATE_CLOSURE 2155
 
 /** \} */
 

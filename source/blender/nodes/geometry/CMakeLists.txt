@@ -83,6 +83,7 @@ set(SRC
   nodes/node_geo_edge_split.cc
   nodes/node_geo_edges_to_face_groups.cc
   nodes/node_geo_evaluate_at_index.cc
+  nodes/node_geo_evaluate_closure.cc
   nodes/node_geo_evaluate_on_domain.cc
   nodes/node_geo_extrude_mesh.cc
   nodes/node_geo_flip_faces.cc
