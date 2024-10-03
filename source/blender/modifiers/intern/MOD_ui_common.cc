@@ -219,10 +219,18 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
   uiLayoutSetUnitsX(layout, 4.0f);
 
   /* Apply. */
-  uiItemO(layout,
-          CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
-          ICON_CHECKMARK,
-          "OBJECT_OT_modifier_apply");
+  if (ob->type == OB_GREASE_PENCIL) {
+    uiItemO(layout,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply (Active Keyframe)"),
+            ICON_CHECKMARK,
+            "OBJECT_OT_modifier_apply");
+  }
+  else {
+    uiItemO(layout,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
+            ICON_CHECKMARK,
+            "OBJECT_OT_modifier_apply");
+  }
 
   if (ob->type == OB_GREASE_PENCIL) {
     uiItemFullO(layout,
