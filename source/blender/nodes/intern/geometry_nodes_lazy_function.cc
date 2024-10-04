@@ -1938,6 +1938,9 @@ struct GeometryNodesLazyFunctionBuilder {
         case GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT:
           this->build_foreach_geometry_element_zone_function(zone);
           break;
+        case GEO_NODE_CLOSURE_OUTPUT:
+          this->build_closure_zone_function(zone);
+          break;
         default: {
           BLI_assert_unreachable();
           break;
@@ -2124,6 +2127,15 @@ struct GeometryNodesLazyFunctionBuilder {
     /* Wrap the loop body in another function that implements the foreach behavior. */
     auto &zone_fn = build_foreach_geometry_element_zone_lazy_function(
         scope_, btree_, zone, zone_info, body_fn);
+    zone_info.lazy_function = &zone_fn;
+  }
+
+  void build_closure_zone_function(const bNodeTreeZone &zone)
+  {
+    ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
+    /* Build a function for the closure body. */
+    ZoneBodyFunction &body_fn = this->build_zone_body_function(zone, "Closure Body");
+    auto &zone_fn = build_closure_zone_lazy_function(scope_, btree_, zone, zone_info, body_fn);
     zone_info.lazy_function = &zone_fn;
   }
 
@@ -4203,13 +4215,6 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
   for (const bNodeTreeInterfaceSocket *interface_bsocket : btree.interface_outputs()) {
     const bke::bNodeSocketType *typeinfo = interface_bsocket->socket_typeinfo();
     if (typeinfo->geometry_nodes_cpp_type == nullptr) {
-      return nullptr;
-    }
-  }
-
-  /* TODO: Support closure zones in evaluation. */
-  for (const std::unique_ptr<bNodeTreeZone> &zone : tree_zones->zones) {
-    if (zone->output_node->type == GEO_NODE_CLOSURE_OUTPUT) {
       return nullptr;
     }
   }

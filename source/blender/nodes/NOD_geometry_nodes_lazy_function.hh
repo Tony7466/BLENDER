@@ -565,6 +565,12 @@ LazyFunction &build_foreach_geometry_element_zone_lazy_function(ResourceScope &s
                                                                 ZoneBuildInfo &zone_info,
                                                                 const ZoneBodyFunction &body_fn);
 
+LazyFunction &build_closure_zone_lazy_function(ResourceScope &scope,
+                                               const bNodeTree &btree,
+                                               const bke::bNodeTreeZone &zone,
+                                               ZoneBuildInfo &zone_info,
+                                               const ZoneBodyFunction &body_fn);
+
 void initialize_zone_wrapper(const bke::bNodeTreeZone &zone,
                              ZoneBuildInfo &zone_info,
                              const ZoneBodyFunction &body_fn,

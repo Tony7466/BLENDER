@@ -77,6 +77,7 @@ set(INC_SYS
 
 set(SRC
   intern/derived_node_tree.cc
+  intern/geometry_nodes_closure_zone.cc
   intern/geometry_nodes_execute.cc
   intern/geometry_nodes_foreach_geometry_element_zone.cc
   intern/geometry_nodes_gizmos.cc
