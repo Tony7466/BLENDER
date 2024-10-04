@@ -421,12 +421,13 @@ ccl_device_inline void volume_shader_motion_blur(KernelGlobals kg,
 
 /* Volume Evaluation */
 
-template<const bool shadow, typename ConstIntegratorGenericState>
+template<const bool shadow, typename StackReadOp, typename ConstIntegratorGenericState>
 ccl_device_inline void volume_shader_eval(KernelGlobals kg,
                                           ConstIntegratorGenericState state,
                                           ccl_private ShaderData *ccl_restrict sd,
                                           const uint32_t path_flag,
-                                          const ccl_global KernelOctreeNode *knode)
+                                          const ccl_global KernelOctreeNode *knode,
+                                          StackReadOp stack_read)
 {
   /* If path is being terminated, we are tracing a shadow ray or evaluating
    * emission, then we don't need to store closures. The emission and shadow
@@ -446,17 +447,31 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
   sd->flag = SD_IS_VOLUME_SHADER_EVAL;
   sd->object_flag = 0;
 
-  for (int i = 0; i < MAX_VOLUME_STACK_SIZE; i++) {
-    if (knode->shaders[i] == SHADER_NONE) {
-      break;
+  bool leaf_node_processed = false;
+  for (int i = 0;; i++) {
+    /* Process volume octree. */
+    if (!leaf_node_processed) {
+      sd->object = knode->objects[i];
+      sd->shader = knode->shaders[i];
+      if (sd->object == OBJECT_NONE) {
+        leaf_node_processed = true;
+        i = 0;
+      }
     }
 
-    /* Setup shader-data from stack. it's mostly setup already in
-     * shader_setup_from_volume, this switching should be quick. */
-    sd->object = knode->objects[i];
-    sd->lamp = LAMP_NONE;
-    sd->shader = knode->shaders[i];
+    /* Process volume stack. */
+    if (leaf_node_processed) {
+      const VolumeStack entry = stack_read(i);
+      if (entry.shader == SHADER_NONE) {
+        break;
+      }
+      /* Setup shader-data from stack. it's mostly setup already in shader_setup_from_volume, this
+       * switching should be quick. */
+      sd->object = entry.object;
+      sd->shader = entry.shader;
+    }
 
+    sd->lamp = LAMP_NONE;
     sd->flag &= ~SD_SHADER_FLAGS;
     sd->flag |= kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
     sd->object_flag &= ~SD_OBJECT_FLAGS;

@@ -134,6 +134,7 @@ ccl_device int volume_voxel_get(KernelGlobals kg,
           knode->bbox, ray->P, vstate.inv_ray_D, &t_range);
       /* TODO(weizhen): fix this numerical issue. */
       vstate.tmax = has_intersection ? t_range.y : vstate.tmin + 1e-4f;
+      vstate.tmax = fminf(vstate.tmax, ray->tmax);
       return node_index;
     }
     node_index = knode->children[volume_tree_get_octant(knode->bbox, ray, P)];
@@ -165,7 +166,15 @@ ccl_device_inline Spectrum volume_shader_eval_extinction(KernelGlobals kg,
                                                          ccl_private ShaderData *ccl_restrict sd,
                                                          const ccl_global KernelOctreeNode *knode)
 {
-  volume_shader_eval<shadow>(kg, state, sd, PATH_RAY_SHADOW, knode);
+  if constexpr (shadow) {
+    VOLUME_READ_LAMBDA(integrator_state_read_shadow_volume_stack(state, i))
+    volume_shader_eval<true>(kg, state, sd, PATH_RAY_SHADOW, knode, volume_read_lambda_pass);
+  }
+  else {
+    VOLUME_READ_LAMBDA(integrator_state_read_volume_stack(state, i))
+    volume_shader_eval<false>(kg, state, sd, PATH_RAY_SHADOW, knode, volume_read_lambda_pass);
+  }
+
   return (sd->flag & SD_EXTINCTION) ? sd->closure_transparent_extinction : zero_spectrum();
 }
 
@@ -177,7 +186,8 @@ ccl_device_inline bool volume_shader_sample(KernelGlobals kg,
                                             ccl_private VolumeShaderCoefficients *coeff)
 {
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
-  volume_shader_eval<false>(kg, state, sd, path_flag, knode);
+  VOLUME_READ_LAMBDA(integrator_state_read_volume_stack(state, i))
+  volume_shader_eval<false>(kg, state, sd, path_flag, knode, volume_read_lambda_pass);
 
   if (!(sd->flag & (SD_EXTINCTION | SD_SCATTER | SD_EMISSION))) {
     return false;
@@ -394,6 +404,7 @@ ccl_device Spectrum volume_unbiased_ray_marching(KernelGlobals kg,
 
   /* TODO(weizhen): check if `ray->tmax == FLT_MAX` is correctly handled. */
   const int steps_left = kernel_data.integrator.volume_max_steps - step;
+  /* TODO(weizhen): detect homogenous mesh volume. */
   const float sigma_c = knode->sigma_max - knode->sigma_min;
   const int M = min(volume_tuple_size(sigma_c * ray_length), steps_left);
   step += M;
@@ -754,7 +765,9 @@ ccl_device void volume_integrate_step_scattering(
     }
   }
 
-  if (!result.direct_scatter) {
+  if (!result.direct_scatter &&
+      (vstate.use_mis || (vstate.direct_sample_method == VOLUME_SAMPLE_EQUIANGULAR)))
+  {
     const float3 extinction = volume_unbiased_ray_marching<false>(
         kg, state, ray, sd, vstate.tmin, vstate.tmax, vstate.step, knode, rng_state);
     if (vstate.use_mis) {
@@ -1356,6 +1369,29 @@ ccl_device void integrator_shade_volume(KernelGlobals kg,
   /* Setup shader data. */
   Ray ray ccl_optional_struct_init;
   integrator_state_read_ray(state, &ray);
+
+  Intersection isect ccl_optional_struct_init;
+  integrator_state_read_isect(state, &isect);
+
+  /* Set ray length to current segment. */
+  ray.tmax = (isect.prim != PRIM_NONE) ? isect.t : FLT_MAX;
+
+  /* Clean volume stack for background rays. */
+  if (isect.prim == PRIM_NONE) {
+    volume_stack_clean(kg, state);
+  }
+
+  if (integrator_state_volume_stack_is_empty(kg, state)) {
+    /* Intersect with volume Octree and refine ray segment. */
+    /* TODO(weizhen): refine segment to skip zero density? */
+    /* TODO(weizhen): refine segment if there is only mesh volume. */
+    const ccl_global KernelOctreeNode *kroot = &kernel_data_fetch(volume_tree_nodes, 0);
+    float2 t_range = make_float2(ray.tmin, ray.tmax);
+    if (ray_aabb_intersect(kroot->bbox, ray.P, rcp(ray.D), &t_range)) {
+      ray.tmin = t_range.x;
+      ray.tmax = t_range.y;
+    }
+  }
 
   const VolumeIntegrateEvent event = volume_integrate(kg, state, &ray, render_buffer);
   if (event == VOLUME_PATH_MISSED) {
