@@ -9,9 +9,11 @@
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 
+#include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_bvh.hh"
 #include "BKE_unit.hh"
+#include "BKE_workspace.hh"
 
 #include "GPU_immediate.hh"
 #include "GPU_matrix.hh"
@@ -92,6 +94,7 @@ struct EdgeSlideParams {
 
   bool use_even;
   bool flipped;
+  bool update_status_bar;
 };
 
 /**
@@ -410,11 +413,14 @@ static eRedrawFlag handleEventEdgeSlide(TransInfo *t, const wmEvent *event)
   EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(t->custom.mode.data);
 
   if (slp) {
+    bool is_event_handled = t->redraw && (event->type != MOUSEMOVE);
+    slp->update_status_bar = is_event_handled;
     switch (event->type) {
       case EVT_EKEY:
         if (event->val == KM_PRESS) {
           slp->use_even = !slp->use_even;
           calcEdgeSlideCustomPoints(t);
+          slp->update_status_bar = true;
           return TREDRAW_HARD;
         }
         break;
@@ -422,6 +428,7 @@ static eRedrawFlag handleEventEdgeSlide(TransInfo *t, const wmEvent *event)
         if (event->val == KM_PRESS) {
           slp->flipped = !slp->flipped;
           calcEdgeSlideCustomPoints(t);
+          slp->update_status_bar = true;
           return TREDRAW_HARD;
         }
         break;
@@ -430,6 +437,7 @@ static eRedrawFlag handleEventEdgeSlide(TransInfo *t, const wmEvent *event)
         if (event->val == KM_PRESS) {
           t->flag ^= T_ALT_TRANSFORM;
           calcEdgeSlideCustomPoints(t);
+          slp->update_status_bar = true;
           return TREDRAW_HARD;
         }
         break;
@@ -809,20 +817,27 @@ static void applyEdgeSlide(TransInfo *t)
     return;
   }
 
-  WorkspaceStatus status(t->context);
-  status.opmodal(IFACE_("Confirm"), op->type, TFM_MODAL_CONFIRM);
-  status.opmodal(IFACE_("Cancel"), op->type, TFM_MODAL_CONFIRM);
-  status.opmodal(IFACE_("Snap"), op->type, TFM_MODAL_SNAP_TOGGLE, is_snap);
-  status.opmodal(IFACE_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON, is_snap_invert);
-  status.opmodal(IFACE_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
-  status.opmodal(IFACE_("Move"), op->type, TFM_MODAL_TRANSLATE);
-  status.opmodal(IFACE_("Rotate"), op->type, TFM_MODAL_ROTATE);
-  status.opmodal(IFACE_("Resize"), op->type, TFM_MODAL_RESIZE);
-  status.opmodal(IFACE_("Precision Mode"), op->type, TFM_MODAL_PRECISION, is_precision);
-  status.item_bool(IFACE_("Clamp"), is_clamp, ICON_EVENT_C, ICON_EVENT_ALT);
-  status.item_bool(IFACE_("Even"), use_even, ICON_EVENT_E);
-  if (use_even) {
-    status.item_bool(IFACE_("Flipped"), flipped, ICON_EVENT_F);
+  if (slp->update_status_bar) {
+    WorkSpace *workspace = CTX_wm_workspace(t->context);
+    BKE_workspace_status_clear(workspace);
+
+    WorkspaceStatus status(t->context);
+    status.opmodal(IFACE_("Confirm"), op->type, TFM_MODAL_CONFIRM);
+    status.opmodal(IFACE_("Cancel"), op->type, TFM_MODAL_CANCEL);
+    status.opmodal(IFACE_("Snap"), op->type, TFM_MODAL_SNAP_TOGGLE, is_snap);
+    status.opmodal(IFACE_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON, is_snap_invert);
+    status.opmodal(IFACE_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
+    status.opmodal(IFACE_("Move"), op->type, TFM_MODAL_TRANSLATE);
+    status.opmodal(IFACE_("Rotate"), op->type, TFM_MODAL_ROTATE);
+    status.opmodal(IFACE_("Resize"), op->type, TFM_MODAL_RESIZE);
+    status.opmodal(IFACE_("Precision Mode"), op->type, TFM_MODAL_PRECISION, is_precision);
+    status.item_bool(IFACE_("Clamp"), is_clamp, ICON_EVENT_C, ICON_EVENT_ALT);
+    status.item_bool(IFACE_("Even"), use_even, ICON_EVENT_E);
+    if (use_even) {
+      status.item_bool(IFACE_("Flipped"), flipped, ICON_EVENT_F);
+    }
+
+    WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
   }
 }
 

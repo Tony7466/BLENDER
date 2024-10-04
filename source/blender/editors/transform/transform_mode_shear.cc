@@ -15,10 +15,13 @@
 #include "BLI_string.h"
 #include "BLI_task.h"
 
+#include "BKE_context.hh"
 #include "BKE_unit.hh"
+#include "BKE_workspace.hh"
 
 #include "ED_screen.hh"
 
+#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "UI_interface.hh"
@@ -173,6 +176,10 @@ static eRedrawFlag handleEventShear(TransInfo *t, const wmEvent *event)
     status = TREDRAW_HARD;
   }
 
+  bool is_event_handled = (event->type != MOUSEMOVE) && (status || t->redraw);
+  bool update_status_bar = t->custom.mode.data || is_event_handled;
+  t->custom.mode.data = POINTER_FROM_INT(update_status_bar);
+
   return status;
 }
 
@@ -315,13 +322,23 @@ static void apply_shear(TransInfo *t)
 
   ED_area_status_text(t->area, str);
 
-  WorkspaceStatus status(t->context);
-  status.item(IFACE_("Confirm"), ICON_MOUSE_LMB);
-  status.item(IFACE_("Cancel"), ICON_MOUSE_RMB);
-  status.item_bool({}, t->orient_axis_ortho == (t->orient_axis + 1) % 3, ICON_EVENT_X);
-  status.item_bool({}, t->orient_axis_ortho == (t->orient_axis + 2) % 3, ICON_EVENT_Y);
-  status.item(IFACE_("Shear Axis"), ICON_NONE);
-  status.item(IFACE_("Swap Axes"), ICON_MOUSE_MMB);
+  bool update_status_bar = POINTER_AS_INT(t->custom.mode.data);
+  if (update_status_bar) {
+    t->custom.mode.data = POINTER_FROM_INT(0);
+
+    WorkSpace *workspace = CTX_wm_workspace(t->context);
+    BKE_workspace_status_clear(workspace);
+
+    WorkspaceStatus status(t->context);
+    status.item(IFACE_("Confirm"), ICON_MOUSE_LMB);
+    status.item(IFACE_("Cancel"), ICON_MOUSE_RMB);
+    status.item_bool({}, t->orient_axis_ortho == (t->orient_axis + 1) % 3, ICON_EVENT_X);
+    status.item_bool({}, t->orient_axis_ortho == (t->orient_axis + 2) % 3, ICON_EVENT_Y);
+    status.item(IFACE_("Shear Axis"), ICON_NONE);
+    status.item(IFACE_("Swap Axes"), ICON_MOUSE_MMB);
+
+    WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
+  }
 }
 
 static void initShear(TransInfo *t, wmOperator * /*op*/)
@@ -343,6 +360,9 @@ static void initShear(TransInfo *t, wmOperator * /*op*/)
   copy_v3_fl(t->num.val_inc, t->snap[0]);
   t->num.unit_sys = t->scene->unit.system;
   t->num.unit_type[0] = B_UNIT_NONE; /* Don't think we have any unit here? */
+
+  bool update_status_bar = true;
+  t->custom.mode.data = POINTER_FROM_INT(update_status_bar);
 
   transform_mode_default_modal_orientation_set(t, V3D_ORIENT_VIEW);
 }
