@@ -34,7 +34,7 @@ BLI_CPP_TYPE_MAKE(Material *, CPPTypeFlags::BasicType)
 
 BLI_CPP_TYPE_MAKE(MStringProperty, CPPTypeFlags::None);
 BLI_CPP_TYPE_MAKE(blender::bke::BundlePtr, CPPTypeFlags::None);
-BLI_CPP_TYPE_MAKE(blender::bke::Closure, CPPTypeFlags::None);
+BLI_CPP_TYPE_MAKE(blender::bke::ClosurePtr, CPPTypeFlags::None);
 
 BLI_CPP_TYPE_MAKE(blender::bke::AnonymousAttributeSet, CPPTypeFlags::None);
 BLI_CPP_TYPE_MAKE(blender::bke::SocketValueVariant, CPPTypeFlags::Printable);
@@ -57,7 +57,7 @@ void BKE_cpp_types_init()
 
   BLI_CPP_TYPE_REGISTER(MStringProperty);
   BLI_CPP_TYPE_REGISTER(blender::bke::BundlePtr);
-  BLI_CPP_TYPE_REGISTER(blender::bke::Closure);
+  BLI_CPP_TYPE_REGISTER(blender::bke::ClosurePtr);
 
   BLI_CPP_TYPE_REGISTER(blender::bke::AnonymousAttributeSet);
   BLI_CPP_TYPE_REGISTER(blender::bke::SocketValueVariant);

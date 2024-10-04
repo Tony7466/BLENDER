@@ -15,6 +15,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_nodes_bundle_fwd.hh"
+#include "BKE_geometry_nodes_closure_fwd.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_volume_grid_fwd.hh"
@@ -109,7 +110,7 @@ class GeoNodeExecParams {
   template<typename T>
   static inline constexpr bool stored_as_SocketValueVariant_v =
       is_field_base_type_v<T> || fn::is_field_v<T> || bke::is_VolumeGrid_v<T> ||
-      is_same_any_v<T, GField, bke::GVolumeGrid, bke::BundlePtr>;
+      is_same_any_v<T, GField, bke::GVolumeGrid, bke::BundlePtr, bke::ClosurePtr>;
 
   /**
    * Get the input value for the input socket with the given identifier.
