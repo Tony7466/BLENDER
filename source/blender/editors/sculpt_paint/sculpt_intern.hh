@@ -45,8 +45,8 @@ struct IKChain;
 namespace undo {
 struct Node;
 enum class Type : int8_t;
-}
-}
+}  // namespace undo
+}  // namespace blender::ed::sculpt_paint
 struct BMLog;
 struct Dial;
 struct DistRayAABB_Precalc;
@@ -118,29 +118,12 @@ enum class UpdateType {
   FaceSet,
 };
 
-}
+}  // namespace blender::ed::sculpt_paint
 
 struct SculptCursorGeometryInfo {
   blender::float3 location;
   blender::float3 normal;
   blender::float3 active_vertex_co;
-};
-
-#define SCULPT_VERTEX_NEIGHBOR_FIXED_CAPACITY 256
-
-struct SculptVertexNeighborIter {
-  /* Storage */
-  blender::Vector<PBVHVertRef, SCULPT_VERTEX_NEIGHBOR_FIXED_CAPACITY> neighbors;
-  blender::Vector<int, SCULPT_VERTEX_NEIGHBOR_FIXED_CAPACITY> neighbor_indices;
-
-  /* Internal iterator. */
-  int num_duplicates;
-  int i;
-
-  /* Public */
-  int index;
-  PBVHVertRef vertex;
-  bool is_duplicate;
 };
 
 /* Factor of brush to have rake point following behind
@@ -375,7 +358,7 @@ struct StrokeCache {
   ~StrokeCache();
 };
 
-}
+}  // namespace blender::ed::sculpt_paint
 
 /** \} */
 
@@ -424,7 +407,7 @@ void flush_update_step(bContext *C, UpdateType update_type);
  */
 void flush_update_done(const bContext *C, Object &ob, UpdateType update_type);
 
-}
+}  // namespace blender::ed::sculpt_paint
 
 /**
  * Should be used after modifying the mask or Face Sets IDs.
@@ -523,9 +506,6 @@ void sculpt_project_v3_normal_align(const SculptSession &ss,
 void SCULPT_vertex_random_access_ensure(Object &object);
 
 int SCULPT_vertex_count_get(const Object &object);
-const float *SCULPT_vertex_co_get(const Depsgraph &depsgraph,
-                                  const Object &object,
-                                  PBVHVertRef vertex);
 
 bool SCULPT_vertex_is_occluded(const Depsgraph &depsgraph,
                                const Object &object,
@@ -539,43 +519,6 @@ namespace blender::ed::sculpt_paint {
  */
 Span<float3> vert_positions_for_grab_active_get(const Depsgraph &depsgraph, const Object &object);
 
-}
-
-void SCULPT_vertex_neighbors_get(const Object &object,
-                                 PBVHVertRef vertex,
-                                 bool include_duplicates,
-                                 SculptVertexNeighborIter *iter);
-
-/** Iterator over neighboring vertices. */
-#define SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN(object, v_index, neighbor_iterator) \
-  SCULPT_vertex_neighbors_get(object, v_index, false, &neighbor_iterator); \
-  for (neighbor_iterator.i = 0; neighbor_iterator.i < neighbor_iterator.neighbors.size(); \
-       neighbor_iterator.i++) \
-  { \
-    neighbor_iterator.vertex = neighbor_iterator.neighbors[neighbor_iterator.i]; \
-    neighbor_iterator.index = neighbor_iterator.neighbor_indices[neighbor_iterator.i];
-
-/**
- * Iterate over neighboring and duplicate vertices (for blender::bke::pbvh::Type::Grids).
- * Duplicates come first since they are nearest for flood-fill.
- */
-#define SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN(object, v_index, neighbor_iterator) \
-  SCULPT_vertex_neighbors_get(object, v_index, true, &neighbor_iterator); \
-  for (neighbor_iterator.i = neighbor_iterator.neighbors.size() - 1; neighbor_iterator.i >= 0; \
-       neighbor_iterator.i--) \
-  { \
-    neighbor_iterator.vertex = neighbor_iterator.neighbors[neighbor_iterator.i]; \
-    neighbor_iterator.index = neighbor_iterator.neighbor_indices[neighbor_iterator.i]; \
-    neighbor_iterator.is_duplicate = (neighbor_iterator.i >= \
-                                      neighbor_iterator.neighbors.size() - \
-                                          neighbor_iterator.num_duplicates);
-
-#define SCULPT_VERTEX_NEIGHBORS_ITER_END(neighbor_iterator) \
-  } \
-  ((void)0)
-
-namespace blender::ed::sculpt_paint {
-
 Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
 Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
 
@@ -585,15 +528,20 @@ Span<int> vert_neighbors_get_mesh(OffsetIndices<int> faces,
                                   Span<bool> hide_poly,
                                   int vert,
                                   Vector<int> &r_neighbors);
-}
+}  // namespace blender::ed::sculpt_paint
 
 /* Fake Neighbors */
 
 #define FAKE_NEIGHBOR_NONE -1
 
-void SCULPT_fake_neighbors_ensure(const Depsgraph &depsgraph, Object &ob, float max_dist);
-void SCULPT_fake_neighbors_enable(Object &ob);
-void SCULPT_fake_neighbors_disable(Object &ob);
+/**
+ * This allows the sculpt brushes to work on meshes with multiple connected components as if they
+ * had only one connected component. These neighbors are calculated for each vertex using the
+ * minimum distance to a vertex that is in a different connected component.
+ */
+blender::Span<int> SCULPT_fake_neighbors_ensure(const Depsgraph &depsgraph,
+                                                Object &ob,
+                                                float max_dist);
 void SCULPT_fake_neighbors_free(Object &ob);
 
 /** \} */
@@ -634,11 +582,6 @@ void calc_area_center(const Depsgraph &depsgraph,
                       const IndexMask &node_mask,
                       float r_area_co[3]);
 
-PBVHVertRef nearest_vert_calc(const Depsgraph &depsgraph,
-                              const Object &object,
-                              const float3 &location,
-                              float max_distance,
-                              bool use_original);
 std::optional<int> nearest_vert_calc_mesh(const bke::pbvh::Tree &pbvh,
                                           Span<float3> vert_positions,
                                           Span<bool> hide_vert,
@@ -654,7 +597,7 @@ std::optional<BMVert *> nearest_vert_calc_bmesh(const bke::pbvh::Tree &pbvh,
                                                 const float3 &location,
                                                 float max_distance,
                                                 bool use_original);
-}
+}  // namespace blender::ed::sculpt_paint
 
 float SCULPT_brush_plane_offset_get(const Sculpt &sd, const SculptSession &ss);
 
@@ -679,6 +622,25 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
 
 namespace blender::ed::sculpt_paint {
 
+/**
+ * Utility functions to get the closest vertices after flipping an original vertex position for
+ * all symmetry passes. The returned vector is sorted.
+ */
+Vector<int> find_symm_verts_mesh(const Depsgraph &depsgraph,
+                                 const Object &object,
+                                 int original_vert,
+                                 float max_distance = std::numeric_limits<float>::max());
+Vector<int> find_symm_verts_grids(const Object &object,
+                                  int original_vert,
+                                  float max_distance = std::numeric_limits<float>::max());
+Vector<int> find_symm_verts_bmesh(const Object &object,
+                                  int original_vert,
+                                  float max_distance = std::numeric_limits<float>::max());
+Vector<int> find_symm_verts(const Depsgraph &depsgraph,
+                            const Object &object,
+                            int original_vert,
+                            float max_distance = std::numeric_limits<float>::max());
+
 bool node_fully_masked_or_hidden(const bke::pbvh::Node &node);
 bool node_in_sphere(const bke::pbvh::Node &node,
                     const float3 &location,
@@ -689,7 +651,7 @@ bool node_in_cylinder(const DistRayAABB_Precalc &dist_ray_precalc,
                       float radius_sq,
                       bool original);
 
-}
+}  // namespace blender::ed::sculpt_paint
 
 const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSession &ss,
                                                               char falloff_shape);
@@ -800,11 +762,9 @@ std::optional<Span<float>> orig_mask_data_lookup_mesh(const Object &object,
 std::optional<Span<float>> orig_mask_data_lookup_grids(const Object &object,
                                                        const bke::pbvh::GridsNode &node);
 
-}
+}  // namespace blender::ed::sculpt_paint
 
 /** \} */
-
-void SCULPT_vertcos_to_key(Object &ob, KeyBlock *kb, blender::Span<blender::float3> vertCos);
 
 /**
  * Get a screen-space rectangle of the modified area.
@@ -825,7 +785,7 @@ namespace blender::ed::sculpt_paint::expand {
 void SCULPT_OT_expand(wmOperatorType *ot);
 void modal_keymap(wmKeyConfig *keyconf);
 
-}
+}  // namespace blender::ed::sculpt_paint::expand
 
 /** \} */
 
@@ -838,7 +798,7 @@ void SCULPT_OT_trim_lasso_gesture(wmOperatorType *ot);
 void SCULPT_OT_trim_box_gesture(wmOperatorType *ot);
 void SCULPT_OT_trim_line_gesture(wmOperatorType *ot);
 void SCULPT_OT_trim_polyline_gesture(wmOperatorType *ot);
-}
+}  // namespace blender::ed::sculpt_paint::trim
 
 /** \} */
 
@@ -859,7 +819,7 @@ void SCULPT_OT_face_set_box_gesture(wmOperatorType *ot);
 void SCULPT_OT_face_set_line_gesture(wmOperatorType *ot);
 void SCULPT_OT_face_set_polyline_gesture(wmOperatorType *ot);
 
-}
+}  // namespace blender::ed::sculpt_paint::face_set
 
 /** \} */
 
@@ -884,7 +844,7 @@ namespace blender::ed::sculpt_paint::filter {
 void SCULPT_OT_mesh_filter(wmOperatorType *ot);
 wmKeyMap *modal_keymap(wmKeyConfig *keyconf);
 
-}
+}  // namespace blender::ed::sculpt_paint::filter
 
 namespace blender::ed::sculpt_paint::cloth {
 void SCULPT_OT_cloth_filter(wmOperatorType *ot);
@@ -905,7 +865,7 @@ namespace blender::ed::sculpt_paint::mask {
 void SCULPT_OT_mask_filter(wmOperatorType *ot);
 void SCULPT_OT_mask_init(wmOperatorType *ot);
 
-}
+}  // namespace blender::ed::sculpt_paint::mask
 
 /** \} */
 
@@ -922,7 +882,7 @@ void SCULPT_OT_sample_detail_size(wmOperatorType *ot);
 void SCULPT_OT_dyntopo_detail_size_edit(wmOperatorType *ot);
 void SCULPT_OT_dynamic_topology_toggle(wmOperatorType *ot);
 
-}
+}  // namespace blender::ed::sculpt_paint::dyntopo
 
 /** \} */
 
@@ -966,7 +926,7 @@ float clay_thumb_get_stabilized_pressure(const blender::ed::sculpt_paint::Stroke
 
 void SCULPT_OT_brush_stroke(wmOperatorType *ot);
 
-}
+}  // namespace blender::ed::sculpt_paint
 
 inline bool SCULPT_brush_type_is_paint(int tool)
 {
