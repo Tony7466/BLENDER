@@ -143,9 +143,9 @@ static void bm_edge_to_quad_verts(const BMEdge *e, const BMVert *r_v_quad[4])
   BLI_assert(BM_edge_is_manifold(e));
   BLI_assert(e->l->f->len == 3 && e->l->radial_next->f->len == 3);
   r_v_quad[0] = e->l->v;
-  r_v_quad[1] = e->l->prev->v;
+  r_v_quad[1] = e->l->radial_next->prev->v;
   r_v_quad[2] = e->l->next->v;
-  r_v_quad[3] = e->l->radial_next->prev->v;
+  r_v_quad[3] = e->l->prev->v;
 }
 
 /* -------------------------------------------------------------------- */
