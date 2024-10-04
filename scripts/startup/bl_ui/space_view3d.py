@@ -449,7 +449,7 @@ class _draw_tool_settings_context_mode:
             from bl_ui.properties_paint_common import (
                 brush_basic__draw_color_selector,
             )
-            brush_basic__draw_color_selector(context, layout, brush, gp_settings, None)
+            brush_basic__draw_color_selector(context, layout, brush, gp_settings)
 
         if ob and brush.gpencil_tool == 'TINT':
             row.separator(factor=0.4)
@@ -780,7 +780,7 @@ class _draw_tool_settings_context_mode:
             from bl_ui.properties_paint_common import (
                 brush_basic__draw_color_selector,
             )
-            brush_basic__draw_color_selector(context, layout, brush, brush.gpencil_settings, None)
+            brush_basic__draw_color_selector(context, layout, brush, brush.gpencil_settings)
 
         if grease_pencil_tool == 'TINT':
             row.separator(factor=0.4)
@@ -790,7 +790,7 @@ class _draw_tool_settings_context_mode:
             brush_basic_grease_pencil_paint_settings,
         )
 
-        brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
+        brush_basic_grease_pencil_paint_settings(layout, context, brush, None, compact=True)
 
         return True
 
@@ -3650,6 +3650,10 @@ class VIEW3D_MT_make_links(Menu):
 
         layout.operator("object.data_transfer")
         layout.operator("object.datalayout_transfer")
+
+        layout.separator()
+        layout.operator_menu_enum("object.light_linking_receivers_link", "link_state")
+        layout.operator_menu_enum("object.light_linking_blockers_link", "link_state")
 
 
 class VIEW3D_MT_paint_vertex(Menu):
@@ -8822,7 +8826,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
             col.operator("transform.shear", text="Shear")
             col.operator("transform.bend", text="Bend")
             col.operator("transform.push_pull", text="Push/Pull")
-            col.operator("transform.transform", text="Radius").mode = 'GPENCIL_SHRINKFATTEN'
+            col.operator("transform.transform", text="Shrink/Fatten").mode = 'CURVE_SHRINKFATTEN'
             col.operator("grease_pencil.stroke_smooth", text="Smooth Points")
 
             col.separator()
@@ -8864,7 +8868,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             # Deform Operators
             col.operator("grease_pencil.stroke_smooth", text="Smooth")
-            col.operator("transform.transform", text="Radius").mode = 'CURVE_SHRINKFATTEN'
+            col.operator("transform.transform", text="Shrink/Fatten").mode = 'CURVE_SHRINKFATTEN'
 
             col.separator()
 
@@ -9042,6 +9046,25 @@ class VIEW3D_PT_greasepencil_vertex_paint_context_menu(Panel):
             row.operator("grease_pencil.layer_remove", text="", icon='X')
 
 
+class VIEW3D_PT_greasepencil_weight_context_menu(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_label = "Weight Paint"
+    bl_ui_units_x = 12
+
+    def draw(self, context):
+        tool_settings = context.tool_settings
+        settings = tool_settings.gpencil_weight_paint
+        brush = settings.brush
+        layout = self.layout
+
+        # Weight settings
+        brush_basic_grease_pencil_weight_settings(layout, context, brush)
+
+        # Layers
+        draw_gpencil_layer_active(context, layout)
+
+
 def draw_gpencil_layer_active(context, layout):
     gpl = context.active_gpencil_layer
     if gpl:
@@ -9119,11 +9142,7 @@ class VIEW3D_PT_gpencil_weight_context_menu(Panel):
         layout = self.layout
 
         # Weight settings
-        if context.mode == 'WEIGHT_GPENCIL':
-            brush_basic_gpencil_weight_settings(layout, context, brush)
-        else:
-            # Grease Pencil v3
-            brush_basic_grease_pencil_weight_settings(layout, context, brush)
+        brush_basic_gpencil_weight_settings(layout, context, brush)
 
         # Layers
         draw_gpencil_layer_active(context, layout)
@@ -9987,6 +10006,7 @@ classes = (
     VIEW3D_PT_greasepencil_draw_context_menu,
     VIEW3D_PT_greasepencil_sculpt_context_menu,
     VIEW3D_PT_greasepencil_vertex_paint_context_menu,
+    VIEW3D_PT_greasepencil_weight_context_menu,
 )
 
 
