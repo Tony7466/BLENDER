@@ -11,6 +11,7 @@
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_threads.h"
 
 #include "BKE_global.hh"
 
@@ -24,6 +25,7 @@
 #include "gpu_shader_create_info_private.hh"
 #include "gpu_shader_dependency_private.hh"
 
+#undef GPU_SHADER_NAMED_INTERFACE_INFO
 #undef GPU_SHADER_INTERFACE_INFO
 #undef GPU_SHADER_CREATE_INFO
 
@@ -99,6 +101,11 @@ void ShaderCreateInfo::finalize()
     return;
   }
   finalized_ = true;
+
+#if 0
+  /* TODO(Miguel Pozo): This triggers for image renders. */
+  BLI_assert(BLI_thread_is_main());
+#endif
 
   Set<StringRefNull> deps_merged;
 
@@ -445,6 +452,12 @@ void gpu_shader_create_info_init()
 {
   g_create_infos = new CreateInfoDictionnary();
   g_interfaces = new InterfaceDictionnary();
+
+#define GPU_SHADER_NAMED_INTERFACE_INFO(_interface, _inst_name) \
+  StageInterfaceInfo *ptr_##_interface = new StageInterfaceInfo(#_interface, #_inst_name); \
+  StageInterfaceInfo &_interface = *ptr_##_interface; \
+  g_interfaces->add_new(#_interface, ptr_##_interface); \
+  _interface
 
 #define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) \
   StageInterfaceInfo *ptr_##_interface = new StageInterfaceInfo(#_interface, _inst_name); \

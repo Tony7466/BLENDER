@@ -1207,18 +1207,18 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     version_node_socket_index_animdata(bmain, NTREE_SHADER, SH_NODE_BSDF_PRINCIPLED, 7, 1, 30);
   }
 
+  /* Keeping this block is without a `MAIN_VERSION_FILE_ATLEAST` until the experimental flag is
+   * removed. */
+  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
+    version_legacy_actions_to_layered(bmain);
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-
-  /* Keeping this block is without a `MAIN_VERSION_FILE_ATLEAST` until the experimental flag is
-   * removed. */
-  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
-    version_legacy_actions_to_layered(bmain);
-  }
 }
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
@@ -3056,6 +3056,20 @@ static void hide_simulation_node_skip_socket_value(Main &bmain)
       default_value->value = false;
     }
   }
+}
+
+static bool versioning_convert_seq_text_anchor(Sequence *seq, void * /*user_data*/)
+{
+  if (seq->type != SEQ_TYPE_TEXT || seq->effectdata == nullptr) {
+    return true;
+  }
+
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  data->anchor_x = data->align;
+  data->anchor_y = data->align_y;
+  data->align = SEQ_TEXT_ALIGN_X_LEFT;
+
+  return true;
 }
 
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
@@ -4898,6 +4912,45 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+      LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+        if (node->type == CMP_NODE_VIEWER || node->type == CMP_NODE_COMPOSITE) {
+          node->flag &= ~NODE_PREVIEW;
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 29)) {
+    /* Open warnings panel by default. */
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+        if (md->type == eModifierType_Nodes) {
+          md->layout_panel_open_flag |= 1 << NODES_MODIFIER_PANEL_WARNINGS;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 404, 1)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, versioning_convert_seq_text_anchor, nullptr);
+      }
+    }
+  }
+
+  /* Always run this versioning; meshes are written with the legacy format which always needs to
+   * be converted to the new format on file load. Can be moved to a subversion check in a larger
+   * breaking release. */
+  LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
+    blender::bke::mesh_sculpt_mask_to_generic(*mesh);
   }
 
   /**
@@ -4906,11 +4959,4 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
-
-  /* Always run this versioning; meshes are written with the legacy format which always needs to
-   * be converted to the new format on file load. Can be moved to a subversion check in a larger
-   * breaking release. */
-  LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-    blender::bke::mesh_sculpt_mask_to_generic(*mesh);
-  }
 }
