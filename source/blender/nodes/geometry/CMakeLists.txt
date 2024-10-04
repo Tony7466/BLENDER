@@ -349,10 +349,6 @@ list(APPEND LIB
   /usr/local/lib/libvoro++.a
 )
 
-list(APPEND LIB
-  /usr/local/lib/libvoro++.a
-)
-
 # If compiling with MSVC clang we need to add the `D_LIBCPP_VERSION` define
 # so we don't run into TBB errors when compiling with lib.
 if(WITH_TBB AND MSVC_CLANG)
