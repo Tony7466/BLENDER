@@ -13,15 +13,17 @@
 
 #pragma once
 
-#include "BLI_hash.hh"
-#include "BLI_string_ref.hh"
-#include "BLI_utildefines_variadic.h"
-#include "BLI_vector.hh"
-#include "GPU_common_types.hh"
-#include "GPU_material.hh"
-#include "GPU_texture.hh"
+#if !defined(GLSL_CPP_STUBS)
+#  include "BLI_hash.hh"
+#  include "BLI_string_ref.hh"
+#  include "BLI_utildefines_variadic.h"
+#  include "BLI_vector.hh"
+#  include "GPU_common_types.hh"
+#  include "GPU_material.hh"
+#  include "GPU_texture.hh"
 
-#include <iostream>
+#  include <iostream>
+#endif
 
 /* Force enable `printf` support in release build. */
 #define GPU_FORCE_ENABLE_SHADER_PRINTF 0
