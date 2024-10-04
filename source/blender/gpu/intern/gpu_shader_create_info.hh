@@ -48,7 +48,7 @@ namespace blender::gpu::shader {
     _inst_name; \
     }
 
-#  define GPU_SHADER_INTERFACE_INFO(_interface) namespace _interface {
+#  define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) namespace _interface {
 #  define GPU_SHADER_INTERFACE_END() }
 
 #  define GPU_SHADER_CREATE_INFO(_info) \
@@ -80,8 +80,8 @@ namespace blender::gpu::shader {
 #  define GPU_SHADER_NAMED_INTERFACE_INFO(_interface, _inst_name) \
     StageInterfaceInfo _interface(#_interface, _inst_name); \
     _interface
-#  define GPU_SHADER_INTERFACE_INFO(_interface) \
-    StageInterfaceInfo _interface(#_interface); \
+#  define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) \
+    StageInterfaceInfo _interface(#_interface, _inst_name); \
     _interface
 #  define GPU_SHADER_CREATE_INFO(_info) \
     ShaderCreateInfo _info(#_info); \
