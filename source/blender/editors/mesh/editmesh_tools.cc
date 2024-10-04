@@ -5230,6 +5230,10 @@ void MESH_OT_quads_convert_to_tris(wmOperatorType *ot)
 /** \name Convert to Quads Operator
  * \{ */
 
+#ifndef NDEBUG
+#  define JOIN_TRIANGLE_TESTING_API
+#endif
+
 static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
@@ -5263,6 +5267,14 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
     }
   }
 
+#ifdef JOIN_TRIANGLE_TESTING_API
+  int merge_cap = RNA_int_get(op->ptr, "merge_cap");
+  int neighbor_debug = RNA_int_get(op->ptr, "neighbor_debug");
+#endif
+
+  float topology_influence = RNA_float_get(op->ptr, "topology_influence");
+  const bool select_leftover_triangles = RNA_boolean_get(op->ptr, "select_leftover_triangles");
+
   for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
 
@@ -5272,13 +5284,25 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 
     BM_custom_loop_normals_to_vector_layer(em->bm);
 
+    bool extend_selection = (select_leftover_triangles == false);
+
+#ifdef JOIN_TRIANGLE_TESTING_API
+    if (merge_cap != -1) {
+      extend_selection = false;
+    }
+#endif
+
     if (!EDBM_op_call_and_selectf(
             em,
             op,
             "faces.out",
-            true,
+            extend_selection,
             "join_triangles faces=%hf angle_face_threshold=%f angle_shape_threshold=%f "
-            "cmp_seam=%b cmp_sharp=%b cmp_uvs=%b cmp_vcols=%b cmp_materials=%b",
+            "cmp_seam=%b cmp_sharp=%b cmp_uvs=%b cmp_vcols=%b cmp_materials=%b "
+#ifdef JOIN_TRIANGLE_TESTING_API
+            "merge_cap=%i neighbor_debug=%i "
+#endif
+            "topology_influence=%f select_leftover_triangles=%b",
             BM_ELEM_SELECT,
             angle_face_threshold,
             angle_shape_threshold,
@@ -5286,7 +5310,13 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
             do_sharp,
             do_uvs,
             do_vcols,
-            do_materials))
+            do_materials,
+#ifdef JOIN_TRIANGLE_TESTING_API
+            merge_cap + 1,
+            neighbor_debug,
+#endif
+            topology_influence,
+            select_leftover_triangles))
     {
       continue;
     }
@@ -5306,6 +5336,30 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 static void join_triangle_props(wmOperatorType *ot)
 {
   PropertyRNA *prop;
+
+#ifdef JOIN_TRIANGLE_TESTING_API
+  prop = RNA_def_int(ot->srna,
+                     "merge_cap",
+                     0,
+                     -1,
+                     2147483647,
+                     "Merge Cap",
+                     "Maximum number of merges",
+                     -1,
+                     2147483647);
+  RNA_def_property_int_default(prop, -1);
+
+  prop = RNA_def_int(ot->srna,
+                     "neighbor_debug",
+                     0,
+                     0,
+                     2147483647,
+                     "Neighbor Debug",
+                     "Neighbor to highlight",
+                     0,
+                     2147483647);
+  RNA_def_property_int_default(prop, 0);
+#endif
 
   prop = RNA_def_float_rotation(ot->srna,
                                 "face_threshold",
@@ -5331,11 +5385,30 @@ static void join_triangle_props(wmOperatorType *ot)
                                 DEG2RADF(180.0f));
   RNA_def_property_float_default(prop, DEG2RADF(40.0f));
 
+  prop = RNA_def_float_percentage(ot->srna,
+                                  "topology_influence",
+                                  0.0f,
+                                  0.0f,
+                                  200.0f,
+                                  "Topology Influence",
+                                  "How much to prioritize regular grids of quads, and how much to "
+                                  "priorise generating quads that touch pre-existing quads",
+                                  0.0f,
+                                  200.0f);
+
   RNA_def_boolean(ot->srna, "uvs", false, "Compare UVs", "");
   RNA_def_boolean(ot->srna, "vcols", false, "Compare Color Attributes", "");
   RNA_def_boolean(ot->srna, "seam", false, "Compare Seam", "");
   RNA_def_boolean(ot->srna, "sharp", false, "Compare Sharp", "");
   RNA_def_boolean(ot->srna, "materials", false, "Compare Materials", "");
+
+  RNA_def_boolean(
+      ot->srna,
+      "select_leftover_triangles",
+      false,
+      "Select Only Leftover Triangles",
+      "If false, the selection will be preserved.\n"
+      "If true, the selection will be changed to highlight the remaining unmergable triangles ");
 }
 
 void MESH_OT_tris_convert_to_quads(wmOperatorType *ot)

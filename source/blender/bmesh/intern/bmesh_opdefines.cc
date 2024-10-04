@@ -557,6 +557,10 @@ static BMOpDefine bmo_join_triangles_def = {
    {"cmp_materials", BMO_OP_SLOT_BOOL}, /* compare materials */
    {"angle_face_threshold", BMO_OP_SLOT_FLT},
    {"angle_shape_threshold", BMO_OP_SLOT_FLT},
+   {"topology_influence", BMO_OP_SLOT_FLT},
+   {"select_leftover_triangles", BMO_OP_SLOT_BOOL},
+   {"merge_cap", BMO_OP_SLOT_INT},       /* Unused in release builds, but left in for consistent API. */
+   {"neighbor_debug", BMO_OP_SLOT_INT},  /* Unused in release builds, but left in for consistent API. */
    {{'\0'}},
   },
   /*slot_types_out*/
