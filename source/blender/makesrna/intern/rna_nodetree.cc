@@ -10056,6 +10056,11 @@ static void rna_def_geo_capture_attribute(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
+static void def_geo_evaluate_closure(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeGeometryEvaluateClosure", "storage");
+}
+
 static void rna_def_geo_bake_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;
