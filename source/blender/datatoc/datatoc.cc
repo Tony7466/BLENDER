@@ -94,17 +94,8 @@ int main(int argc, char **argv)
       fprintf(fpout, "\n");
     }
 
-    const bool mutate = mutations.back().position == ftell(fpin);
-
     // fprintf(fpout, "\\x%02x", getc(fpin));
-    fprintf(fpout, "%3d,", (mutate) ? mutations.back().new_char : getc(fpin));
-
-    if (mutate) {
-      /* Skip the input char. */
-      getc(fpin);
-      /* Consider next mutation. */
-      mutations.pop_back();
-    }
+    fprintf(fpout, "%3d,", getc(fpin));
   }
 
   /* Trailing nullptr terminator, this isn't needed in some cases and
