@@ -539,6 +539,11 @@ static void node_geo_exec(GeoNodeExecParams params)
       point_positions.span.copy_from(r_data.position);
       point_positions.finish();
 
+      SpanAttributeWriter<float> point_radii =
+          point_attributes.lookup_or_add_for_write_only_span<float>("radius", AttrDomain::Point);
+      point_radii.span.fill(0.05f);
+      point_radii.finish();
+
       point_attributes.add<int>("curve_index",
                                 bke::AttrDomain::Point,
                                 bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.curve_id)));
