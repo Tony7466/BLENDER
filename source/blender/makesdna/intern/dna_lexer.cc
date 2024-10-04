@@ -5,41 +5,33 @@
 
 namespace blender::dna::lex {
 
-static std::string_view string_view_from_range(const std::string_view::iterator first,
-                                               const std::string_view::iterator last)
+void TokenIterator::eval_space(const char *&itr, const char *end)
 {
-  return std::string_view{&*first, size_t(last - first)};
-}
-
-void TokenIterator::eval_space(std::string_view::iterator &itr, std::string_view::iterator last)
-{
-  while (itr < last && itr[0] != '\n' && std::isspace(itr[0])) {
+  while (itr < end && itr[0] != '\n' && std::isspace(itr[0])) {
     itr++;
   }
 }
 
-void TokenIterator::eval_break_line(std::string_view::iterator &itr,
-                                    std::string_view::iterator /*last*/)
+void TokenIterator::eval_break_line(const char *&itr, const char * /*end*/)
 {
   if (itr[0] != '\n') {
     return;
   }
-  this->append(BreakLineToken{string_view_from_range(itr, itr + 1)});
+  this->append(BreakLineToken{StringRef(itr, itr + 1)});
   itr++;
 }
 
-void TokenIterator::eval_identifier(std::string_view::iterator &itr,
-                                    std::string_view::iterator last)
+void TokenIterator::eval_identifier(const char *&itr, const char *end)
 {
   if (!(std::isalpha(itr[0]) || itr[0] == '_')) {
     return;
   }
-  std::string_view::iterator start{itr++};
-  while (itr < last && (std::isalnum(itr[0]) || itr[0] == '_')) {
+  const char *start = itr++;
+  while (itr < end && (std::isalnum(itr[0]) || itr[0] == '_')) {
     itr++;
   }
   struct KeywordItem {
-    std::string_view word;
+    StringRef word;
     KeywordType type;
   };
   static constexpr KeywordItem keywords[]{
@@ -85,7 +77,7 @@ void TokenIterator::eval_identifier(std::string_view::iterator &itr,
       {"DNA_DEPRECATED_ALLOW", KeywordType::DNADeprecatedAllow},
       {"ENUM_OPERATORS", KeywordType::EnumOperators},
   };
-  std::string_view str = string_view_from_range(start, itr);
+  StringRef str = StringRef(start, itr);
   auto test_keyword_fn = [str](const KeywordItem &val) -> bool { return val.word == str; };
   const KeywordItem *keyword_itr = std::find_if(
       std::begin(keywords), std::end(keywords), test_keyword_fn);
@@ -96,39 +88,36 @@ void TokenIterator::eval_identifier(std::string_view::iterator &itr,
   this->append(IdentifierToken{str});
 }
 
-void TokenIterator::eval_line_comment(std::string_view::iterator &itr,
-                                      std::string_view::iterator last)
+void TokenIterator::eval_line_comment(const char *&itr, const char *end)
 {
-  if (last - itr < 2) {
+  if (end - itr < 2) {
     return;
   }
   if (!(itr[0] == '/' && itr[1] == '/')) {
     return;
   }
-  while (itr != last && itr[0] != '\n') {
+  while (itr != end && itr[0] != '\n') {
     itr++;
   }
 }
 
-void TokenIterator::eval_int_literal(std::string_view::iterator &itr,
-                                     std::string_view::iterator last)
+void TokenIterator::eval_int_literal(const char *&itr, const char *end)
 {
-  const std::string_view::iterator start{itr};
-  while (itr < last && std::isdigit(itr[0])) {
+  const char *start = itr;
+  while (itr < end && std::isdigit(itr[0])) {
     itr++;
   }
   if (itr == start) {
     return;
   }
-  int val{};
+  int val = 0;
   std::from_chars(&*start, &*itr, val);
-  this->append(IntLiteralToken{string_view_from_range(start, itr), val});
+  this->append(IntLiteralToken{StringRef(start, itr), val});
 }
 
-void TokenIterator::eval_multiline_comment(std::string_view::iterator &itr,
-                                           std::string_view::iterator last)
+void TokenIterator::eval_multiline_comment(const char *&itr, const char *end)
 {
-  if (last - itr < +2) {
+  if (end - itr < +2) {
     return;
   }
   if (!(itr[0] == '/' && itr[1] == '*')) {
@@ -136,17 +125,16 @@ void TokenIterator::eval_multiline_comment(std::string_view::iterator &itr,
   }
   char carry = itr[0];
   itr += 2;
-  while (itr < last && !(carry == '*' && itr[0] == '/')) {
+  while (itr < end && !(carry == '*' && itr[0] == '/')) {
     carry = itr[0];
     itr++;
   }
-  if (itr < last) {
+  if (itr < end) {
     itr++;
   }
 }
 
-void TokenIterator::eval_symbol(std::string_view::iterator &itr,
-                                std::string_view::iterator /*last*/)
+void TokenIterator::eval_symbol(const char *&itr, const char * /* end */)
 {
   static constexpr SymbolType symbols[] = {
       SymbolType::Colon,     SymbolType::Semicolon, SymbolType::LParen,   SymbolType::RParen,
@@ -158,42 +146,40 @@ void TokenIterator::eval_symbol(std::string_view::iterator &itr,
       SymbolType::Backslash, SymbolType::Slash,
   };
   if (std::find(std::begin(symbols), std::end(symbols), SymbolType(itr[0])) != std::end(symbols)) {
-    this->append(SymbolToken{string_view_from_range(itr, itr + 1), SymbolType(itr[0])});
+    this->append(SymbolToken{StringRef(itr, itr + 1), SymbolType(itr[0])});
     itr++;
   }
 }
 
-void TokenIterator::eval_string_literal(std::string_view::iterator &itr,
-                                        std::string_view::iterator last)
+void TokenIterator::eval_string_literal(const char *&itr, const char *end)
 {
   const char opening = itr[0];
   if (!(opening == '"' || opening == '\'')) {
     return;
   }
-  const std::string_view::iterator start{itr++};
-  bool scape{false};
-  while (itr < last && !(!scape && itr[0] == opening)) {
+  const char *start = itr++;
+  bool scape = false;
+  while (itr < end && !(!scape && itr[0] == opening)) {
     scape = itr[0] == '\\' && !scape;
     itr++;
   }
-  if (!(itr < last)) {
+  if (!(itr < end)) {
     itr = start;
     return;
   }
   itr++;
-  this->append(StringLiteralToken{string_view_from_range(start, itr)});
+  this->append(StringLiteralToken{StringRef(start, itr)});
 }
 
-void TokenIterator::print_unkown_token(std::string_view filepath,
-                                       std::string_view::iterator start,
-                                       std::string_view::iterator where)
+void TokenIterator::print_unkown_token(StringRef filepath, StringRef text, const char *where)
 {
   size_t line = 1;
-  while (start < where) {
-    if (start[0] == '\n') {
+  const char *itr = text.begin();
+  while (itr < where) {
+    if (itr[0] == '\n') {
       line++;
     }
-    start++;
+    itr++;
   }
   fmt::print("{}({}) Unknown token: ({})\n", filepath, line, where[0]);
 }
@@ -205,20 +191,19 @@ void TokenIterator::skip_break_lines()
   }
 }
 
-void TokenIterator::process_text(std::string_view filepath, std::string_view text)
+void TokenIterator::process_text(StringRef filepath, StringRef text)
 {
-  std::string_view::iterator itr = text.begin();
-  const std::string_view::iterator end = text.end();
+  const char *itr = text.begin();
+  const char *end = text.end();
   const auto eval_token_type =
-      [this, &itr, end](void (TokenIterator::*fn)(std::string_view::iterator &,
-                                                  std::string_view::iterator)) -> bool {
-    std::string_view::iterator current = itr;
+      [this, &itr, end](void (TokenIterator::*fn)(const char *&, const char *)) -> bool {
+    const char *current = itr;
     (this->*fn)(itr, end);
     return current != itr;
   };
 
   while (itr != text.end()) {
-    const std::string_view::iterator current = itr;
+    const char *current = itr;
 
     if (eval_token_type(&TokenIterator::eval_space) ||
         eval_token_type(&TokenIterator::eval_line_comment) ||
@@ -233,7 +218,7 @@ void TokenIterator::process_text(std::string_view filepath, std::string_view tex
     }
     /* Unknown token found. */
     if (current == itr) {
-      print_unkown_token(filepath, text.begin(), itr);
+      print_unkown_token(filepath, text, itr);
       token_stream_.clear();
       break;
     }

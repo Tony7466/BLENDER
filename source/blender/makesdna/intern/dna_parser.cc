@@ -340,7 +340,7 @@ template<KeywordType Type> struct Parser<MacroCall<Type>> {
 
 /** Parses a string literal. */
 struct StringLiteral {
-  std::string_view value;
+  StringRef value;
 };
 template<> struct Parser<StringLiteral> {
   static ParseResult<StringLiteral> parse(TokenIterator &token_iterator)
@@ -368,7 +368,7 @@ template<> struct Parser<IntLiteral> {
 
 /** Parses a identifier. */
 struct Identifier {
-  std::string_view str;
+  StringRef str;
 };
 template<> struct Parser<Identifier> {
   static ParseResult<Identifier> parse(TokenIterator &token_iterator)
@@ -438,7 +438,7 @@ template<> struct Parser<DefineInt> {
 
 /** Parses most c++ primitive types. */
 struct PrimitiveType {
-  std::string_view str;
+  StringRef str;
 };
 template<> struct Parser<PrimitiveType> {
   static ParseResult<PrimitiveType> parse(TokenIterator &token_iterator)
@@ -484,8 +484,8 @@ template<> struct Parser<PrimitiveType> {
  * custom type.
  */
 struct Type {
-  bool const_tag{false};
-  std::string_view str;
+  bool const_tag = false;
+  StringRef str;
 };
 template<> struct Parser<Type> {
   static ParseResult<Type> parse(TokenIterator &token_iterator)
@@ -510,10 +510,10 @@ template<> struct Parser<Type> {
  * Parses variable array size declarations: in `int num[3][4][FILE_MAX];`
  * parses `[3][4][FILE_MAX]`.
  * */
-static Vector<std::variant<std::string_view, int32_t>> variable_array_size_parse(
+static Vector<std::variant<StringRef, int32_t>> variable_array_size_parse(
     TokenIterator &token_iterator)
 {
-  Vector<std::variant<std::string_view, int32_t>> result;
+  Vector<std::variant<StringRef, int32_t>> result;
   /* Dynamic array. */
   if (parse_t<Sequence<LBracketSymbol, RBracketSymbol>>(token_iterator).success()) {
     result.append("");
@@ -553,16 +553,16 @@ template<> struct Parser<Variable> {
     variable.type = type.value().str;
 
     while (true) {
-      std::string start;
+      std::string star;
       for (; parse_t<StarSymbol>(token_iterator).success();) {
-        start += '*';
+        star += '*';
       }
       ParseResult<Identifier> name = parse_t<Identifier>(token_iterator);
       if (!name.success()) {
         return parse_failed;
       }
       Variable::Item item{};
-      item.ptr = !start.empty() ? std::optional{start} : std::nullopt;
+      item.ptr = !star.empty() ? std::optional{star} : std::nullopt;
       item.name = name.value().str;
       item.array_size = variable_array_size_parse(token_iterator);
       variable.items.append(std::move(item));
@@ -742,7 +742,7 @@ template<> struct Parser<Struct> {
     if (std::get<1>(struct_end.value()).has_value()) {
       result.member_name = std::get<1>(struct_end.value()).value().str;
     }
-    if (result.member_name == result.name && result.name.empty()) {
+    if (result.member_name == result.name && result.name.is_empty()) {
       return parse_failed;
     }
     return result;
@@ -821,12 +821,12 @@ template<> struct Parser<Enum> {
 
 namespace blender::dna::parser {
 
-static void print_unhandled_token_error(std::string_view filepath,
-                                        std::string_view text,
+static void print_unhandled_token_error(StringRef filepath,
+                                        StringRef text,
                                         lex::TokenVariant *what)
 {
   const auto visit_fn = [text, filepath](auto &&token) {
-    std::string_view::iterator itr = text.begin();
+    const char *itr = text.begin();
     size_t line = 1;
     while (itr < token.where.begin()) {
       if (itr[0] == '\n') {
@@ -839,7 +839,7 @@ static void print_unhandled_token_error(std::string_view filepath,
   std::visit(visit_fn, *what);
 }
 
-std::string read_file(std::string_view filepath)
+std::string read_file(StringRef filepath)
 {
   std::ifstream file(filepath.data());
   if (!file.is_open()) {
@@ -851,7 +851,7 @@ std::string read_file(std::string_view filepath)
   return buffer.str();
 }
 
-std::optional<CppFile> parse_file(std::string_view filepath)
+std::optional<CppFile> parse_file(StringRef filepath)
 {
   using namespace ast;
   CppFile cpp_file;
@@ -904,9 +904,9 @@ std::optional<CppFile> parse_file(std::string_view filepath)
       BLI_assert(dna_deprecated_allow_count >= 0);
     }
   }
-#ifdef DNA_DEBUG_PRINT
-  constexpr std::string_view debug_file = "DNA_action_types.h";
-  if (!debug_file.empty() && filepath.find(debug_file) != filepath.npos) {
+#if true
+  constexpr StringRef debug_file = "DNA_action_types.h";
+  if (!debug_file.is_empty() && filepath.find(debug_file) != filepath.not_found) {
     printf("%s", to_string(cpp_file).c_str());
   }
 #endif

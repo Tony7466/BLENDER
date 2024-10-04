@@ -496,6 +496,7 @@ static bool str_startswith(const char *__restrict str, const char *__restrict st
   return (*start == '\0');
 }
 
+using namespace blender;
 using namespace blender::dna::parser::ast;
 
 struct StrucMemberRegister {
@@ -505,7 +506,7 @@ struct StrucMemberRegister {
   short *sp = nullptr;
   const char *filepath = nullptr;
 
-  std::optional<int> add_member_type(std::string_view type)
+  std::optional<int> add_member_type(StringRef type)
   {
     /* TODO: Check if type is enum, if so replace it to its fixed size. */
     const std::string type_str = fmt::format("{}", type);
@@ -578,7 +579,7 @@ struct StrucMemberRegister {
     for (auto &var_item : var.items) {
       std::string name_str = fmt::format("{}{}", var_item.ptr.value_or(""), var_item.name);
       for (auto &size : var_item.array_size) {
-        if (std::holds_alternative<std::string_view>(size)) {
+        if (std::holds_alternative<StringRef>(size)) {
           /* TODO: Add support to looking through detected #defines to find const int values. */
           BLI_assert_unreachable();
           return false;
@@ -1089,8 +1090,9 @@ static int make_structDNA(const char *base_directory,
     char str[SDNA_MAX_FILENAME_LENGTH];
     SNPRINTF(str, "%s%s", base_directory, includefiles[i]);
     DEBUG_PRINTF(0, "\t|-- Converting %s\n", str);
-    /* `DNA_genfile.h` only contains functions declarations that can't be parsed at the moment. */
-    if (ELEM(includefiles[i], std::string_view{"DNA_defs.h"}, std::string_view{"DNA_genfile.h"})) {
+    /* `DNA_genfile.h` and `DNA_defs.h` only contains functions declarations that can't be parsed
+     * at the moment. */
+    if (ELEM(StringRef(includefiles[i]), StringRef("DNA_defs.h"), StringRef("DNA_genfile.h"))) {
       continue;
     }
     if (convert_include(str)) {

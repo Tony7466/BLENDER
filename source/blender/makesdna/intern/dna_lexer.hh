@@ -1,6 +1,6 @@
 #pragma once
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
-#include <string_view>
 #include <variant>
 
 namespace blender::dna::lex {
@@ -80,7 +80,7 @@ enum class KeywordType : int8_t {
 };
 
 struct Token {
-  std::string_view where;
+  StringRef where;
 };
 
 struct BreakLineToken : public Token {};
@@ -90,7 +90,7 @@ struct IdentifierToken : public Token {};
 struct StringLiteralToken : public Token {};
 
 struct IntLiteralToken : public Token {
-  int32_t val{0};
+  int32_t val;
 };
 
 struct SymbolToken : public Token {
@@ -121,15 +121,13 @@ struct TokenIterator {
   TokenVariant *next_{nullptr};
 
   /** Print the line where an unkown token was found. */
-  void print_unkown_token(std::string_view filepath,
-                          std::string_view::iterator start,
-                          std::string_view::iterator where);
+  void print_unkown_token(StringRef filepath, StringRef text, const char *where);
 
   void skip_break_lines();
 
  public:
   /** Iterates over the input text looking for tokens. */
-  void process_text(std::string_view filepath, std::string_view text);
+  void process_text(StringRef filepath, StringRef text);
 
   /**
    * Add the current token as waypoint, in case the token parser needs the iterator to roll
@@ -177,21 +175,21 @@ struct TokenIterator {
 
  private:
   /** Match any whitespace except break lines. */
-  void eval_space(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_space(const char *&itr, const char *end);
   /** Match break lines. */
-  void eval_break_line(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_break_line(const char *&itr, const char *end);
   /** Match identifiers and `C++` keywords. */
-  void eval_identifier(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_identifier(const char *&itr, const char *end);
   /** Match single-line comment. */
-  void eval_line_comment(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_line_comment(const char *&itr, const char *end);
   /** Match a int literal. */
-  void eval_int_literal(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_int_literal(const char *&itr, const char *end);
   /** Match a multi-line comment. */
-  void eval_multiline_comment(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_multiline_comment(const char *&itr, const char *end);
   /** Match a symbol. */
-  void eval_symbol(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_symbol(const char *&itr, const char *end);
   /** Match a string or char literal. */
-  void eval_string_literal(std::string_view::iterator &itr, std::string_view::iterator last);
+  void eval_string_literal(const char *&itr, const char *end);
 
   /** Appends a token. */
   template<class TokenType> void append(TokenType &&token)
