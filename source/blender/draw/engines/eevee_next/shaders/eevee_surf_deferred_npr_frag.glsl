@@ -59,14 +59,23 @@ void npr_refraction_impl(out TextureHandle combined_color, out TextureHandle pos
   position = TextureHandle(TEX_HANDLE_BACK_POSITION, 0);
 }
 
-vec4 TextureHandle_eval_impl(TextureHandle tex, ivec2 texel_offset)
+vec4 TextureHandle_eval_impl(TextureHandle tex, vec2 offset, bool texel_offset)
 {
   if (tex.type == TEX_HANDLE_NULL) {
     return vec4(0.0);
   }
 
-  /* TODO(NPR): Texel-based offset is pretty bad UX design. */
-  ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
+  ivec2 texel = ivec2(gl_FragCoord.xy);
+  if (texel_offset) {
+    texel += ivec2(offset);
+  }
+  else {
+    /* View-space offset. */
+    vec3 vP = drw_point_world_to_view(g_data.P);
+    vec2 uv = drw_point_view_to_screen(vP + vec3(offset, 0.0)).xy;
+    texel = ivec2(uv * uniform_buf.film.render_extent);
+  }
+
   texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
@@ -123,16 +132,16 @@ vec4 TextureHandle_eval_impl(TextureHandle tex, ivec2 texel_offset)
   }
 }
 
-vec4 TextureHandle_eval(TextureHandle tex, vec2 texel_offset)
+vec4 TextureHandle_eval(TextureHandle tex, vec2 offset, bool texel_offset)
 {
-  vec4 result = TextureHandle_eval_impl(tex, ivec2(texel_offset));
+  vec4 result = TextureHandle_eval_impl(tex, offset, texel_offset);
   result.a = 1.0 - saturate(result.a);
   return result;
 }
 
 vec4 TextureHandle_eval(TextureHandle tex)
 {
-  return TextureHandle_eval(tex, ivec2(0));
+  return TextureHandle_eval(tex, vec2(0.0), true);
 }
 
 void main()
