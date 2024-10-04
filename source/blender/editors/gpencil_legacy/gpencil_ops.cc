@@ -31,23 +31,10 @@
 
 #include "gpencil_intern.hh"
 
-/* ****************************************** */
-/* Grease Pencil Keymaps */
-
-/* Generic Drawing Keymap - Annotations */
-static void ed_keymap_gpencil_general(wmKeyConfig *keyconf)
+void ED_keymap_gpencil_legacy(wmKeyConfig *keyconf)
 {
   WM_keymap_ensure(keyconf, "Grease Pencil", SPACE_EMPTY, RGN_TYPE_WINDOW);
 }
-
-/* ==================== */
-
-void ED_keymap_gpencil_legacy(wmKeyConfig *keyconf)
-{
-  ed_keymap_gpencil_general(keyconf);
-}
-
-/* ****************************************** */
 
 void ED_operatortypes_gpencil_legacy()
 {
@@ -64,7 +51,3 @@ void ED_operatortypes_gpencil_legacy()
 
   /* Editing (Time) --------------- */
 }
-
-void ED_operatormacros_gpencil() {}
-
-/* ****************************************** */
