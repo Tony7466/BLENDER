@@ -9,6 +9,7 @@
  */
 
 #include "gpu_shader_math_base_lib.glsl"
+#include "gpu_shader_math_matrix_lib.glsl"
 
 /* -------------------------------------------------------------------- */
 /** \name Panoramic Projections

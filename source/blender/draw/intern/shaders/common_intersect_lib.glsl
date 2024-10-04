@@ -11,6 +11,7 @@
 
 #include "common_shape_lib.glsl"
 #include "draw_math_geom_lib.glsl"
+#include "gpu_shader_utildefines_lib.glsl"
 
 /* ---------------------------------------------------------------------- */
 /** \name Plane extraction functions.

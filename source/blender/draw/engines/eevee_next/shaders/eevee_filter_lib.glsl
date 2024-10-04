@@ -9,6 +9,7 @@
  */
 
 #include "gpu_shader_math_base_lib.glsl"
+#include "gpu_shader_utildefines_lib.glsl"
 
 /**
  * Return the factor to filter_gaussian_weight. This is handy utility function to compute your

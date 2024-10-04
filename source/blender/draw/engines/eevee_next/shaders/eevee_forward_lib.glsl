@@ -13,6 +13,7 @@
 #include "eevee_colorspace_lib.glsl"
 #include "eevee_light_eval_lib.glsl"
 #include "eevee_lightprobe_eval_lib.glsl"
+#include "eevee_nodetree_lib.glsl"
 #include "eevee_subsurface_lib.glsl"
 #include "gpu_shader_codegen_lib.glsl"
 
