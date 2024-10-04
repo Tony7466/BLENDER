@@ -665,6 +665,8 @@ using blender::nodes::CaptureAttributeItemsAccessor;
 using blender::nodes::ClosureInputItemsAccessor;
 using blender::nodes::ClosureOutputItemsAccessor;
 using blender::nodes::CombineBundleItemsAccessor;
+using blender::nodes::EvaluateClosureInputItemsAccessor;
+using blender::nodes::EvaluateClosureOutputItemsAccessor;
 using blender::nodes::ForeachGeometryElementGenerationItemsAccessor;
 using blender::nodes::ForeachGeometryElementInputItemsAccessor;
 using blender::nodes::ForeachGeometryElementMainItemsAccessor;
@@ -10056,9 +10058,71 @@ static void rna_def_geo_capture_attribute(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
+static void rna_def_geo_evaluate_closure_input_item(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "NodeGeometryEvaluateClosureInputItem", nullptr);
+  RNA_def_struct_ui_text(srna, "Input Item", "");
+
+  rna_def_node_item_array_socket_item_common(srna, "EvaluateClosureInputItemsAccessor", true);
+}
+
+static void rna_def_geo_evaluate_closure_input_items(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "NodeGeometryEvaluateClosureInputItems", nullptr);
+  RNA_def_struct_ui_text(srna, "Input Items", "");
+  RNA_def_struct_sdna(srna, "bNode");
+
+  rna_def_node_item_array_new_with_socket_and_name(
+      srna, "NodeGeometryEvaluateClosureInputItem", "EvaluateClosureInputItemsAccessor");
+  rna_def_node_item_array_common_functions(
+      srna, "NodeGeometryEvaluateClosureInputItem", "EvaluateClosureInputItemsAccessor");
+}
+
+static void rna_def_geo_evaluate_closure_output_item(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "NodeGeometryEvaluateClosureOutputItem", nullptr);
+  RNA_def_struct_ui_text(srna, "Output Item", "");
+
+  rna_def_node_item_array_socket_item_common(srna, "EvaluateClosureOutputItemsAccessor", true);
+}
+
+static void rna_def_geo_evaluate_closure_output_items(BlenderRNA *brna)
+{
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "NodeGeometryEvaluateClosureOutputItems", nullptr);
+  RNA_def_struct_ui_text(srna, "Output Items", "");
+  RNA_def_struct_sdna(srna, "bNode");
+
+  rna_def_node_item_array_new_with_socket_and_name(
+      srna, "NodeGeometryEvaluateClosureOutputItem", "EvaluateClosureOutputItemsAccessor");
+  rna_def_node_item_array_common_functions(
+      srna, "NodeGeometryEvaluateClosureOutputItem", "EvaluateClosureOutputItemsAccessor");
+}
+
 static void def_geo_evaluate_closure(StructRNA *srna)
 {
+  PropertyRNA *prop;
+
   RNA_def_struct_sdna_from(srna, "NodeGeometryEvaluateClosure", "storage");
+
+  prop = RNA_def_property(srna, "input_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "input_items.items", "input_items.items_num");
+  RNA_def_property_struct_type(prop, "NodeGeometryEvaluateClosureInputItem");
+  RNA_def_property_ui_text(prop, "Input Items", "");
+  RNA_def_property_srna(prop, "NodeGeometryEvaluateClosureInputItems");
+
+  prop = RNA_def_property(srna, "output_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "output_items.items", "output_items.items_num");
+  RNA_def_property_struct_type(prop, "NodeGeometryEvaluateClosureOutputItem");
+  RNA_def_property_ui_text(prop, "Output Items", "");
+  RNA_def_property_srna(prop, "NodeGeometryEvaluateClosureOutputItems");
 }
 
 static void rna_def_geo_bake_item(BlenderRNA *brna)
@@ -11789,6 +11853,8 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geo_separate_bundle_item(brna);
   rna_def_geo_closure_input_item(brna);
   rna_def_geo_closure_output_item(brna);
+  rna_def_geo_evaluate_closure_input_item(brna);
+  rna_def_geo_evaluate_closure_output_item(brna);
   rna_def_geo_capture_attribute_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
@@ -11852,6 +11918,8 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geo_separate_bundle_items(brna);
   rna_def_geo_closure_input_items(brna);
   rna_def_geo_closure_output_items(brna);
+  rna_def_geo_evaluate_closure_input_items(brna);
+  rna_def_geo_evaluate_closure_output_items(brna);
   rna_def_geo_capture_attribute_items(brna);
 
   rna_def_node_instance_hash(brna);

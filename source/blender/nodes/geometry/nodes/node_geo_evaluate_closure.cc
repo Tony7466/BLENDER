@@ -5,6 +5,12 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_geo_closure.hh"
+#include "NOD_socket_items_ops.hh"
+#include "NOD_socket_items_ui.hh"
+
+#include "BLO_read_write.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_evaluate_closure_cc {
@@ -13,9 +19,29 @@ NODE_STORAGE_FUNCS(NodeGeometryEvaluateClosure)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Extend>("", "__extend__");
   b.add_input<decl::Closure>("Closure");
+
+  const bNode *node = b.node_or_null();
+  if (node) {
+    const auto &storage = node_storage(*node);
+    for (const int i : IndexRange(storage.input_items.items_num)) {
+      const NodeGeometryEvaluateClosureInputItem &item = storage.input_items.items[i];
+      const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+      const std::string identifier = EvaluateClosureInputItemsAccessor::socket_identifier_for_item(
+          item);
+      b.add_input(socket_type, item.name, identifier);
+    }
+    for (const int i : IndexRange(storage.output_items.items_num)) {
+      const NodeGeometryEvaluateClosureOutputItem &item = storage.output_items.items[i];
+      const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+      const std::string identifier =
+          EvaluateClosureOutputItemsAccessor::socket_identifier_for_item(item);
+      b.add_output(socket_type, item.name, identifier);
+    }
+  }
+
   b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__");
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -29,11 +55,26 @@ static void node_copy_storage(bNodeTree * /*tree*/, bNode *dst_node, const bNode
   const NodeGeometryEvaluateClosure &src_storage = node_storage(*src_node);
   auto *dst_storage = MEM_cnew<NodeGeometryEvaluateClosure>(__func__, src_storage);
   dst_node->storage = dst_storage;
+
+  socket_items::copy_array<EvaluateClosureInputItemsAccessor>(*src_node, *dst_node);
+  socket_items::copy_array<EvaluateClosureOutputItemsAccessor>(*src_node, *dst_node);
 }
 
 static void node_free_storage(bNode *node)
 {
+  socket_items::destruct_array<EvaluateClosureInputItemsAccessor>(*node);
+  socket_items::destruct_array<EvaluateClosureOutputItemsAccessor>(*node);
   MEM_freeN(node->storage);
+}
+
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  if (link->tonode == node) {
+    return socket_items::try_add_item_via_any_extend_socket<EvaluateClosureInputItemsAccessor>(
+        *ntree, *node, *node, *link);
+  }
+  return socket_items::try_add_item_via_any_extend_socket<EvaluateClosureOutputItemsAccessor>(
+      *ntree, *node, *node, *link);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -49,6 +90,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
+  ntype.insert_link = node_insert_link;
   bke::node_type_storage(
       &ntype, "NodeGeometryEvaluateClosure", node_free_storage, node_copy_storage);
   blender::bke::node_register_type(&ntype);
@@ -56,3 +98,39 @@ static void node_register()
 NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_geo_evaluate_closure_cc
+
+namespace blender::nodes {
+
+StructRNA *EvaluateClosureInputItemsAccessor::item_srna =
+    &RNA_NodeGeometryEvaluateClosureInputItem;
+int EvaluateClosureInputItemsAccessor::node_type = GEO_NODE_EVALUATE_CLOSURE;
+int EvaluateClosureInputItemsAccessor::item_dna_type = SDNA_TYPE_FROM_STRUCT(
+    NodeGeometryEvaluateClosureInputItem);
+
+void EvaluateClosureInputItemsAccessor::blend_write_item(BlendWriter *writer, const ItemT &item)
+{
+  BLO_write_string(writer, item.name);
+}
+
+void EvaluateClosureInputItemsAccessor::blend_read_data_item(BlendDataReader *reader, ItemT &item)
+{
+  BLO_read_string(reader, &item.name);
+}
+
+StructRNA *EvaluateClosureOutputItemsAccessor::item_srna =
+    &RNA_NodeGeometryEvaluateClosureOutputItem;
+int EvaluateClosureOutputItemsAccessor::node_type = GEO_NODE_EVALUATE_CLOSURE;
+int EvaluateClosureOutputItemsAccessor::item_dna_type = SDNA_TYPE_FROM_STRUCT(
+    NodeGeometryEvaluateClosureOutputItem);
+
+void EvaluateClosureOutputItemsAccessor::blend_write_item(BlendWriter *writer, const ItemT &item)
+{
+  BLO_write_string(writer, item.name);
+}
+
+void EvaluateClosureOutputItemsAccessor::blend_read_data_item(BlendDataReader *reader, ItemT &item)
+{
+  BLO_read_string(reader, &item.name);
+}
+
+}  // namespace blender::nodes

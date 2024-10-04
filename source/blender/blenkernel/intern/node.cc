@@ -922,6 +922,10 @@ void node_tree_blend_write(BlendWriter *writer, bNodeTree *ntree)
       nodes::socket_items::blend_write<nodes::ClosureInputItemsAccessor>(writer, *node);
       nodes::socket_items::blend_write<nodes::ClosureOutputItemsAccessor>(writer, *node);
     }
+    if (node->type == GEO_NODE_EVALUATE_CLOSURE) {
+      nodes::socket_items::blend_write<nodes::EvaluateClosureInputItemsAccessor>(writer, *node);
+      nodes::socket_items::blend_write<nodes::EvaluateClosureOutputItemsAccessor>(writer, *node);
+    }
     if (node->type == GEO_NODE_MENU_SWITCH) {
       nodes::socket_items::blend_write<nodes::MenuSwitchItemsAccessor>(writer, *node);
     }
@@ -1230,6 +1234,13 @@ void node_tree_blend_read_data(BlendDataReader *reader, ID *owner_id, bNodeTree 
         case GEO_NODE_CLOSURE_OUTPUT: {
           nodes::socket_items::blend_read_data<nodes::ClosureInputItemsAccessor>(reader, *node);
           nodes::socket_items::blend_read_data<nodes::ClosureOutputItemsAccessor>(reader, *node);
+          break;
+        }
+        case GEO_NODE_EVALUATE_CLOSURE: {
+          nodes::socket_items::blend_read_data<nodes::EvaluateClosureInputItemsAccessor>(reader,
+                                                                                         *node);
+          nodes::socket_items::blend_read_data<nodes::EvaluateClosureOutputItemsAccessor>(reader,
+                                                                                          *node);
           break;
         }
         case GEO_NODE_SEPARATE_BUNDLE: {

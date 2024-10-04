@@ -2079,23 +2079,58 @@ typedef struct NodeGeometryClosureInputItems {
   NodeGeometryClosureInputItem *items;
   int items_num;
   int active_index;
+  int next_identifier;
+  char _pad[4];
 } NodeGeometryClosureInputItems;
 
 typedef struct NodeGeometryClosureOutputItems {
   NodeGeometryClosureOutputItem *items;
   int items_num;
   int active_index;
+  int next_identifier;
+  char _pad[4];
 } NodeGeometryClosureOutputItems;
 
 typedef struct NodeGeometryClosureOutput {
   NodeGeometryClosureInputItems input_items;
   NodeGeometryClosureOutputItems output_items;
-  int next_identifier;
-  char _pad[4];
 } NodeGeometryClosureOutput;
 
+typedef struct NodeGeometryEvaluateClosureInputItem {
+  char *name;
+  /** #eNodeSocketDatatype */
+  short socket_type;
+  char _pad[2];
+  int identifier;
+} NodeGeometryEvaluateClosureInputItem;
+
+typedef struct NodeGeometryEvaluateClosureOutputItem {
+  char *name;
+  /** #eNodeSocketDatatype */
+  short socket_type;
+  char _pad[2];
+  int identifier;
+} NodeGeometryEvaluateClosureOutputItem;
+
+typedef struct NodeGeometryEvaluateClosureInputItems {
+  NodeGeometryEvaluateClosureInputItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+} NodeGeometryEvaluateClosureInputItems;
+
+typedef struct NodeGeometryEvaluateClosureOutputItems {
+  NodeGeometryEvaluateClosureOutputItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+} NodeGeometryEvaluateClosureOutputItems;
+
 typedef struct NodeGeometryEvaluateClosure {
-  char _pad;
+  NodeGeometryEvaluateClosureInputItems input_items;
+  NodeGeometryEvaluateClosureOutputItems output_items;
 } NodeGeometryEvaluateClosure;
 
 typedef struct IndexSwitchItem {
