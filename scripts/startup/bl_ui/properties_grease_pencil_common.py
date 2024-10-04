@@ -140,7 +140,7 @@ class GreasePencilDisplayPanel:
             if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
                 col.prop(brush, "cursor_color_subtract", text="Inverse Color")
 
-        elif ob.mode == 'WEIGHT_GPENCIL' or ob.mode == 'WEIGHT_GREASE_PENCIL':
+        elif ob.mode == 'WEIGHT_GREASE_PENCIL':
             col = layout.column(align=True)
             col.active = settings.show_brush
 

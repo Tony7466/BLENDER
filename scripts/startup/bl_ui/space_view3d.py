@@ -732,7 +732,7 @@ class VIEW3D_HT_header(Header):
             if has_pose_mode or (object_mode not in {
                     'SCULPT', 'SCULPT_CURVES',
                     'VERTEX_PAINT', 'WEIGHT_PAINT', 'TEXTURE_PAINT',
-                    'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GREASE_PENCIL',
+                    'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL', 'VERTEX_GREASE_PENCIL',
             }):
                 show_snap = True
             else:
@@ -1013,11 +1013,11 @@ class VIEW3D_HT_header(Header):
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_color_attributes", icon='GROUP_VCOL')
 
-        elif object_mode in {'WEIGHT_PAINT', 'WEIGHT_GPENCIL'}:
+        elif object_mode in {'WEIGHT_PAINT', 'WEIGHT_GREASE_PENCIL'}:
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_vertex_groups", icon='GROUP_VERTEX')
 
-            if object_mode != 'WEIGHT_GPENCIL':
+            if object_mode != 'WEIGHT_GREASE_PENCIL':
                 layout.popover(
                     panel="VIEW3D_PT_sculpt_snapping",
                     icon="SNAP_INCREMENT",
@@ -7724,7 +7724,7 @@ class VIEW3D_PT_overlay_grease_pencil_options(Panel):
         sub.prop(overlay, "gpencil_fade_objects", text="Fade Inactive Objects", slider=True)
         sub.prop(overlay, "use_gpencil_fade_gp_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
-        if ob.mode in {'EDIT', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GREASE_PENCIL'}:
+        if ob.mode in {'EDIT', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL', 'VERTEX_GREASE_PENCIL'}:
             split = layout.split()
             col = split.column()
             col.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
@@ -8756,7 +8756,7 @@ class VIEW3D_AST_brush_gpencil_vertex(AssetShelfHiddenByDefault, View3DAssetShel
 
 
 class VIEW3D_AST_brush_gpencil_weight(AssetShelfHiddenByDefault, View3DAssetShelf, bpy.types.AssetShelf):
-    mode = 'WEIGHT_GPENCIL'
+    mode = 'WEIGHT_GREASE_PENCIL'
     mode_prop = "use_weight_grease_pencil"
     brush_type_prop = "gpencil_weight_brush_type"
     tool_prop = "gpencil_weight_tool"
