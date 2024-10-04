@@ -77,9 +77,38 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       *ntree, *node, *node, *link);
 }
 
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  bNodeTree &tree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode &node = *static_cast<bNode *>(ptr->data);
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "input_items", false, IFACE_("Input Items"))) {
+    socket_items::ui::draw_items_list_with_operators<EvaluateClosureInputItemsAccessor>(
+        C, panel, tree, node);
+    socket_items::ui::draw_active_item_props<EvaluateClosureInputItemsAccessor>(
+        tree, node, [&](PointerRNA *item_ptr) {
+          uiItemR(panel, item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+        });
+  }
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "output_items", false, IFACE_("Output Items"))) {
+    socket_items::ui::draw_items_list_with_operators<EvaluateClosureOutputItemsAccessor>(
+        C, panel, tree, node);
+    socket_items::ui::draw_active_item_props<EvaluateClosureOutputItemsAccessor>(
+        tree, node, [&](PointerRNA *item_ptr) {
+          uiItemR(panel, item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+        });
+  }
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   params.set_default_remaining_outputs();
+}
+
+static void node_operators()
+{
+  socket_items::ops::make_common_operators<EvaluateClosureInputItemsAccessor>();
+  socket_items::ops::make_common_operators<EvaluateClosureOutputItemsAccessor>();
 }
 
 static void node_register()
@@ -91,6 +120,8 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.insert_link = node_insert_link;
+  ntype.draw_buttons_ex = node_layout_ex;
+  ntype.register_operators = node_operators;
   bke::node_type_storage(
       &ntype, "NodeGeometryEvaluateClosure", node_free_storage, node_copy_storage);
   blender::bke::node_register_type(&ntype);

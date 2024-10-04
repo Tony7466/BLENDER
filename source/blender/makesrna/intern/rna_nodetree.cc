@@ -10123,6 +10123,20 @@ static void def_geo_evaluate_closure(StructRNA *srna)
   RNA_def_property_struct_type(prop, "NodeGeometryEvaluateClosureOutputItem");
   RNA_def_property_ui_text(prop, "Output Items", "");
   RNA_def_property_srna(prop, "NodeGeometryEvaluateClosureOutputItems");
+
+  prop = RNA_def_property(srna, "active_input_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "input_items.active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "active_output_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "output_items.active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
 static void rna_def_geo_bake_item(BlenderRNA *brna)
