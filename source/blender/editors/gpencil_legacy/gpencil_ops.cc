@@ -70,12 +70,6 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_primitive_polyline);
   WM_operatortype_append(GPENCIL_OT_primitive_circle);
   WM_operatortype_append(GPENCIL_OT_primitive_curve);
-
-  /* convert old 2.7 files to 2.8 */
-  WM_operatortype_append(GPENCIL_OT_convert_old_files);
-
-  /* armatures */
-  WM_operatortype_append(GPENCIL_OT_generate_weights);
 }
 
 void ED_operatormacros_gpencil() {}

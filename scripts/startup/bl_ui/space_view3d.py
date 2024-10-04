@@ -1186,7 +1186,7 @@ class VIEW3D_MT_editor_menus(Menu):
             layout.menu("VIEW3D_MT_metaball_add", text="Add", text_ctxt=i18n_contexts.operator_default)
         elif mode_string == 'EDIT_ARMATURE':
             layout.menu("TOPBAR_MT_edit_armature_add", text="Add", text_ctxt=i18n_contexts.operator_default)
-
+        
         if edit_object:
             layout.menu("VIEW3D_MT_edit_" + edit_object.type.lower())
 
@@ -5598,8 +5598,6 @@ class VIEW3D_MT_edit_armature_delete(Menu):
 
         layout.operator("armature.dissolve", text="Dissolve Bones")
 
-
-# ********** Grease Pencil menus **********
 
 class VIEW3D_MT_weight_grease_pencil(Menu):
     bl_label = "Weights"

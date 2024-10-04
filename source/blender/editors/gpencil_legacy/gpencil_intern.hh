@@ -485,12 +485,6 @@ void GPENCIL_OT_primitive_polyline(wmOperatorType *ot);
 void GPENCIL_OT_primitive_circle(wmOperatorType *ot);
 void GPENCIL_OT_primitive_curve(wmOperatorType *ot);
 
-/* convert old 2.7 files to 2.8 */
-void GPENCIL_OT_convert_old_files(wmOperatorType *ot);
-
-/* armatures */
-void GPENCIL_OT_generate_weights(wmOperatorType *ot);
-
 /* ****************************************************** */
 /* Stroke Iteration Utilities */
 
