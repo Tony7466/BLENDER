@@ -93,13 +93,13 @@ static void node_update(bNodeTree *ntree, bNode *node)
 }
 
 struct IntersectionData {
+  Vector<std::string> sortkey;
   Vector<float3> position;
   Vector<int> curve_id;
   Vector<float> length;
   Vector<float> factor;
   Vector<float3> direction;
   Vector<bool> duplicate;
-  Vector<int> id;
 };
 
 using ThreadLocalData = threading::EnumerableThreadSpecific<IntersectionData>;
@@ -112,13 +112,14 @@ static void add_intersection_data(IntersectionData &data,
                                   const float curve_length,
                                   const bool duplicate)
 {
+  data.sortkey.append(std::to_string(curve_id) + ":" + std::to_string(length) + ":" +
+                      std::to_string(duplicate));
   data.position.append(position);
   data.curve_id.append(curve_id);
   data.length.append(length);
   data.factor.append(math::safe_divide(length, curve_length));
   data.direction.append(direction);
   data.duplicate.append(duplicate);
-  data.id.append(noise::hash(noise::hash_float(length), curve_id, int(duplicate)));
 }
 
 static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionData &r_data)
@@ -131,7 +132,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     BLI_assert(local_data.factor.size() == local_size);
     BLI_assert(local_data.direction.size() == local_size);
     BLI_assert(local_data.duplicate.size() == local_size);
-    BLI_assert(local_data.id.size() == local_size);
+    BLI_assert(local_data.sortkey.size() == local_size);
     total_intersections += local_size;
   }
   const int64_t start_index = r_data.position.size();
@@ -142,7 +143,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
   r_data.factor.reserve(new_size);
   r_data.direction.reserve(new_size);
   r_data.duplicate.reserve(new_size);
-  r_data.id.reserve(new_size);
+  r_data.sortkey.reserve(new_size);
 
   for (IntersectionData &local_data : thread_storage) {
     r_data.position.extend(local_data.position);
@@ -151,7 +152,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     r_data.factor.extend(local_data.factor);
     r_data.direction.extend(local_data.direction);
     r_data.duplicate.extend(local_data.duplicate);
-    r_data.id.extend(local_data.id);
+    r_data.sortkey.extend(local_data.sortkey);
   }
 }
 
@@ -474,6 +475,48 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
   });
 }
 
+/* Sorting intersections by sortkey (which is curve_id, length (postion on curve) and duplicate
+ * point), should not be too impactfull as the number of intersections is likely to be low. */
+static IntersectionData sort_intersection_data(IntersectionData &data)
+{
+  const int64_t data_size = data.position.size();
+
+  Vector<std::pair<int64_t, std::string>> sort_index;
+  sort_index.reserve(data_size);
+
+  for (int64_t i = 0; i < data_size; i++) {
+    const std::string value = data.sortkey[i];
+    sort_index.append(std::pair(i, value));
+  }
+
+  std::sort(sort_index.begin(),
+            sort_index.end(),
+            [&](const std::pair<int64_t, std::string> &a,
+                const std::pair<int64_t, std::string> &b) { return (a.second < b.second); });
+
+  IntersectionData r_data;
+  r_data.position.reserve(data_size);
+  r_data.curve_id.reserve(data_size);
+  r_data.length.reserve(data_size);
+  r_data.factor.reserve(data_size);
+  r_data.direction.reserve(data_size);
+  r_data.duplicate.reserve(data_size);
+  r_data.sortkey.reserve(data_size);
+
+  for (const std::pair key_val : sort_index) {
+    const int64_t key_index = key_val.first;
+    r_data.position.append(data.position[key_index]);
+    r_data.curve_id.append(data.curve_id[key_index]);
+    r_data.length.append(data.length[key_index]);
+    r_data.factor.append(data.factor[key_index]);
+    r_data.direction.append(data.direction[key_index]);
+    r_data.duplicate.append(data.duplicate[key_index]);
+    r_data.sortkey.append(data.sortkey[key_val.first]);
+  }
+  BLI_assert(data.position.size() == r_data.position.size());
+  return r_data;
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const NodeGeometryCurveIntersections &storage = node_storage(params.node());
@@ -533,7 +576,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     /* Gather data for attributes */
     if (r_data.position.size() > 0) {
 
-      PointCloud *pointcloud = BKE_pointcloud_new_nomain(r_data.position.size());
+      IntersectionData sorted_data = sort_intersection_data(r_data);
+
+      PointCloud *pointcloud = BKE_pointcloud_new_nomain(sorted_data.position.size());
       MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
 
       geometry_set.replace_pointcloud(pointcloud);
@@ -541,7 +586,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       SpanAttributeWriter<float3> point_positions =
           point_attributes.lookup_or_add_for_write_only_span<float3>("position",
                                                                      AttrDomain::Point);
-      point_positions.span.copy_from(r_data.position);
+      point_positions.span.copy_from(sorted_data.position);
       point_positions.finish();
 
       SpanAttributeWriter<float> point_radii =
@@ -549,32 +594,30 @@ static void node_geo_exec(GeoNodeExecParams params)
       point_radii.span.fill(0.05f);
       point_radii.finish();
 
-      point_attributes.add<int>("curve_index",
-                                bke::AttrDomain::Point,
-                                bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.curve_id)));
+      point_attributes.add<int>(
+          "curve_index",
+          bke::AttrDomain::Point,
+          bke::AttributeInitVArray(VArray<int>::ForSpan(sorted_data.curve_id)));
 
       point_attributes.add<float>(
           "factor",
           AttrDomain::Point,
-          blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.factor)));
+          blender::bke::AttributeInitVArray(VArray<float>::ForSpan(sorted_data.factor)));
 
       point_attributes.add<float>(
           "length",
           AttrDomain::Point,
-          blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.length)));
+          blender::bke::AttributeInitVArray(VArray<float>::ForSpan(sorted_data.length)));
 
       point_attributes.add<float3>(
           "direction",
           AttrDomain::Point,
-          bke::AttributeInitVArray(VArray<float3>::ForSpan(r_data.direction)));
+          bke::AttributeInitVArray(VArray<float3>::ForSpan(sorted_data.direction)));
 
       point_attributes.add<bool>(
           "duplicate",
           AttrDomain::Point,
-          bke::AttributeInitVArray(VArray<bool>::ForSpan(r_data.duplicate)));
-
-      point_attributes.add<int>(
-          "id", bke::AttrDomain::Point, bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.id)));
+          bke::AttributeInitVArray(VArray<bool>::ForSpan(sorted_data.duplicate)));
 
       geometry::debug_randomize_point_order(pointcloud);
     }
