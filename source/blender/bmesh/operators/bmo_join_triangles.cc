@@ -13,6 +13,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_heap.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
@@ -35,6 +36,9 @@
 #else
 #  define ASSERT_VALID_ERROR_METRIC(val)
 #endif
+
+#define FACE_OUT (1 << 0)
+#define FACE_INPUT (1 << 2)
 
 /**
  * Computes error of a proposed merge quad. Quads with the lowest error are merged first.
@@ -332,11 +336,6 @@ static bool bm_edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
 
 /** \} */
 
-#define EDGE_MARK (1 << 0)
-
-#define FACE_OUT (1 << 0)
-#define FACE_INPUT (1 << 2)
-
 /** Given a manifold edge, join the triangles on either side to form a quad.
  *
  *  \param e: the edge to merge.  It must be manifold.
@@ -375,71 +374,56 @@ static BMFace *join_edge(BMEdge *e, BMesh *bm)
 /** Given a mesh, convert triangles to quads. */
 void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 {
-  BMIter iter;
   BMOIter siter;
   BMFace *f;
+
+  BMIter iter;
   BMEdge *e;
-  /* data: edge-to-join, sort_value: error weight */
-  SortPtrByFloat *jedges;
-  uint i, totedge;
-  uint totedge_tag = 0;
 
-  const DelimitData delimit_data = bm_edge_delmimit_data_from_op(bm, op);
+  Heap *join_edges_heap = BLI_heap_new();
 
-  /* flag all edges of all input face */
+  DelimitData delimit_data = bm_edge_delmimit_data_from_op(bm, op);
+
+  /* Go through every face in the input slot. Mark triangles for processing. */
   BMO_ITER (f, &siter, op->slots_in, "faces", BM_FACE) {
     if (f->len == 3) {
       BMO_face_flag_enable(bm, f, FACE_INPUT);
     }
   }
 
-  /* flag edges surrounded by 2 flagged triangles */
+  /* Go through every edge in the bmesh, Mark any mergable edges. */
   BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
     BMFace *f_a, *f_b;
-    if (BM_edge_face_pair(e, &f_a, &f_b) &&
-        (BMO_face_flag_test(bm, f_a, FACE_INPUT) && BMO_face_flag_test(bm, f_b, FACE_INPUT)))
+
+    /* If the edge is manifold, has a tagged input tri on both sides, and is NOT delmit ...
+     * then it's a candidate to merge.*/
+    if (BM_edge_face_pair(e, &f_a, &f_b) && BMO_face_flag_test(bm, f_a, FACE_INPUT) &&
+        BMO_face_flag_test(bm, f_b, FACE_INPUT) && !bm_edge_is_delimit(e, &delimit_data))
     {
-      if (!bm_edge_is_delimit(e, &delimit_data)) {
-        BMO_edge_flag_enable(bm, e, EDGE_MARK);
-        totedge_tag++;
-      }
+      /* Compute the error that would result from a merge */
+      const BMVert *verts[4];
+      bm_edge_to_quad_verts(e, verts);
+      float merge_error = quad_calc_error(verts[0]->co, verts[1]->co, verts[2]->co, verts[3]->co);
+
+      /* Record the candidate merge in the heap. */
+      BLI_heap_insert(join_edges_heap, merge_error, e);
     }
   }
 
-  if (totedge_tag == 0) {
-    return;
+  /* Process all possible merges */
+  while (!BLI_heap_is_empty(join_edges_heap)) {
+
+    /* Get the best merge from the priority queue.
+     * Remove it from the priority queue. */
+    BMEdge *edge = reinterpret_cast<BMEdge *>(BLI_heap_pop_min(join_edges_heap));
+
+    /* Attempt the merge. */
+    join_edge(edge, bm);
   }
 
-  /* over alloc, some of the edges will be delimited */
-  jedges = static_cast<SortPtrByFloat *>(MEM_mallocN(sizeof(*jedges) * totedge_tag, __func__));
+  /* Clean up. */
+  BLI_heap_free(join_edges_heap, nullptr);
 
-  i = 0;
-  BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
-    const BMVert *verts[4];
-    float error;
-
-    if (!BMO_edge_flag_test(bm, e, EDGE_MARK)) {
-      continue;
-    }
-
-    bm_edge_to_quad_verts(e, verts);
-
-    error = quad_calc_error(verts[0]->co, verts[1]->co, verts[2]->co, verts[3]->co);
-
-    jedges[i].data = e;
-    jedges[i].sort_value = error;
-    i++;
-  }
-
-  totedge = i;
-  qsort(jedges, totedge, sizeof(*jedges), BLI_sortutil_cmp_float);
-
-  for (i = 0; i < totedge; i++) {
-    e = static_cast<BMEdge *>(jedges[i].data);
-    join_edge(e, bm);
-  }
-
-  MEM_freeN(jedges);
-
+  /* Return the selection results. */
   BMO_slot_buffer_from_enabled_flag(bm, op, op->slots_out, "faces.out", BM_FACE, FACE_OUT);
 }
