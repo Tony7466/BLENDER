@@ -29,7 +29,13 @@
  */
 
 #ifdef GLSL_CPP_STUBS
-/* Do nothing. */
+#  pragma once
+using bool32_t = bool;
+/** Packed types are needed for MSL which have different alignment rules for float3. */
+using packed_float3 = float3;
+using packed_int3 = int3;
+using packed_uint3 = uint3;
+
 #elif defined(GPU_SHADER)
 /* Silence macros when compiling for shaders. */
 #  define BLI_STATIC_ASSERT(cond, msg)

@@ -2551,3 +2551,8 @@ mat3x4 MAT3x4(mat2 m)
 #define bool3_array(...) { __VA_ARGS__ }
 #define bool4_array(...) { __VA_ARGS__ }
 /* clang-format on */
+
+#define SHADER_LIBRARY_CREATE_INFO(a)
+#define VERTEX_SHADER_CREATE_INFO(a)
+#define FRAGMENT_SHADER_CREATE_INFO(a)
+#define COMPUTE_SHADER_CREATE_INFO(a)

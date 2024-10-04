@@ -40,6 +40,7 @@ template<typename T, int Sz> struct VecOp {
   using VecT = VecBase<T, Sz>;
 
   T &operator[](int) {}
+  const T &operator[](int) const {}
 
   VecT operator+() const {}
   VecT operator-() const {}
@@ -180,6 +181,14 @@ template<typename T> struct ColSwizzle4 : ColSwizzle3<T> {
       &aabr, &aabg, &aabb, &aaba, &aaar, &aaag, &aaab, &aaaa;
 };
 
+template<typename T> struct VecBase<T, 1> {
+  VecBase() = default;
+  template<typename U> explicit VecBase(VecBase<U, 1>) {}
+  VecBase(T) {}
+
+  operator T() {}
+};
+
 template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T>, ColSwizzle2<T> {
   T x, y;
   T r, g;
@@ -286,6 +295,26 @@ using bvec2 = bool2;
 using bvec3 = bool3;
 using bvec4 = bool4;
 
+using FLOAT = float;
+using VEC2 = float2;
+using VEC3 = float3;
+using VEC4 = float4;
+
+using INT = int;
+using IVEC2 = int2;
+using IVEC3 = int3;
+using IVEC4 = int4;
+
+using UINT = uint;
+using UVEC2 = uint2;
+using UVEC3 = uint3;
+using UVEC4 = uint4;
+
+using BOOL = bool;
+using BVEC2 = bool2;
+using BVEC3 = bool3;
+using BVEC4 = bool4;
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -300,6 +329,7 @@ template<int C, int R> struct MatOp {
   using RowT = VecBase<double, C>;
 
   ColT &operator[](int) {}
+  const ColT &operator[](int) const {}
 
   MatT operator*(MatT) const {}
 
@@ -367,6 +397,8 @@ using mat2 = float2x2;
 using mat3 = float3x3;
 using mat4 = float4x4;
 
+using MAT4 = float4x4;
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -403,12 +435,15 @@ TEX_TEMPLATE DataVec textureLod(T, FltCoord, double) {}
 
 #undef TEX_TEMPLATE
 
+using samplerBuffer = SamplerBase<double, 1>;
 using sampler1D = SamplerBase<double, 1>;
 using sampler2D = SamplerBase<double, 2>;
 using sampler3D = SamplerBase<double, 3>;
+using isamplerBuffer = SamplerBase<int, 1>;
 using isampler1D = SamplerBase<int, 1>;
 using isampler2D = SamplerBase<int, 2>;
 using isampler3D = SamplerBase<int, 3>;
+using usamplerBuffer = SamplerBase<uint, 1>;
 using usampler1D = SamplerBase<uint, 1>;
 using usampler2D = SamplerBase<uint, 2>;
 using usampler3D = SamplerBase<uint, 3>;
@@ -575,6 +610,7 @@ template<typename T> T sqrt(T) RET;
 template<typename T> T step(T) RET;
 template<typename T> T trunc(T) RET;
 template<typename T, typename U> T ldexp(T, U) RET;
+double smoothstep(double, double, double) RET;
 
 template<typename T> T acos(T) RET;
 template<typename T> T acosh(T) RET;
@@ -783,5 +819,147 @@ void groupMemoryBarrier() {}
 #include "select_shader_shared.hh"
 #include "workbench_shader_shared.h"
 
-/* TODO(fclem): Include all create infos here so that they don't need to be individually included
+/* Include all create infos here so that they don't need to be individually included
  * inside shaders. */
+#include "draw_debug_info.hh"
+#include "draw_fullscreen_info.hh"
+#include "draw_hair_refine_info.hh"
+#include "draw_object_infos_info.hh"
+#include "draw_view_info.hh"
+#include "infos/basic_depth_info.hh"
+#include "infos/compositor_alpha_crop_info.hh"
+#include "infos/compositor_bilateral_blur_info.hh"
+#include "infos/compositor_bokeh_blur_info.hh"
+#include "infos/compositor_bokeh_blur_variable_size_info.hh"
+#include "infos/compositor_bokeh_image_info.hh"
+#include "infos/compositor_box_mask_info.hh"
+#include "infos/compositor_compute_preview_info.hh"
+#include "infos/compositor_convert_info.hh"
+#include "infos/compositor_cryptomatte_info.hh"
+#include "infos/compositor_defocus_info.hh"
+#include "infos/compositor_deriche_gaussian_blur_info.hh"
+#include "infos/compositor_despeckle_info.hh"
+#include "infos/compositor_directional_blur_info.hh"
+#include "infos/compositor_displace_info.hh"
+#include "infos/compositor_double_edge_mask_info.hh"
+#include "infos/compositor_edge_filter_info.hh"
+#include "infos/compositor_ellipse_mask_info.hh"
+#include "infos/compositor_filter_info.hh"
+#include "infos/compositor_flip_info.hh"
+#include "infos/compositor_glare_info.hh"
+#include "infos/compositor_id_mask_info.hh"
+#include "infos/compositor_image_crop_info.hh"
+#include "infos/compositor_inpaint_info.hh"
+#include "infos/compositor_jump_flooding_info.hh"
+#include "infos/compositor_keying_info.hh"
+#include "infos/compositor_keying_screen_info.hh"
+#include "infos/compositor_kuwahara_info.hh"
+#include "infos/compositor_map_uv_info.hh"
+#include "infos/compositor_morphological_blur_info.hh"
+#include "infos/compositor_morphological_distance_feather_info.hh"
+#include "infos/compositor_morphological_distance_info.hh"
+#include "infos/compositor_morphological_distance_threshold_info.hh"
+#include "infos/compositor_morphological_step_info.hh"
+#include "infos/compositor_motion_blur_info.hh"
+#include "infos/compositor_movie_distortion_info.hh"
+#include "infos/compositor_normalize_info.hh"
+#include "infos/compositor_parallel_reduction_info.hh"
+#include "infos/compositor_pixelate_info.hh"
+#include "infos/compositor_plane_deform_info.hh"
+#include "infos/compositor_premultiply_alpha_info.hh"
+#include "infos/compositor_projector_lens_distortion_info.hh"
+#include "infos/compositor_read_input_info.hh"
+#include "infos/compositor_realize_on_domain_info.hh"
+#include "infos/compositor_scale_variable_info.hh"
+#include "infos/compositor_screen_lens_distortion_info.hh"
+#include "infos/compositor_smaa_info.hh"
+#include "infos/compositor_split_info.hh"
+#include "infos/compositor_summed_area_table_info.hh"
+#include "infos/compositor_sun_beams_info.hh"
+#include "infos/compositor_symmetric_blur_info.hh"
+#include "infos/compositor_symmetric_blur_variable_size_info.hh"
+#include "infos/compositor_symmetric_separable_blur_info.hh"
+#include "infos/compositor_symmetric_separable_blur_variable_size_info.hh"
+#include "infos/compositor_tone_map_photoreceptor_info.hh"
+#include "infos/compositor_tone_map_simple_info.hh"
+#include "infos/compositor_van_vliet_gaussian_blur_info.hh"
+#include "infos/compositor_write_output_info.hh"
+#include "infos/compositor_z_combine_info.hh"
+#include "infos/eevee_ambient_occlusion_info.hh"
+#include "infos/eevee_deferred_info.hh"
+#include "infos/eevee_depth_of_field_info.hh"
+#include "infos/eevee_film_info.hh"
+#include "infos/eevee_hiz_info.hh"
+#include "infos/eevee_light_culling_info.hh"
+#include "infos/eevee_lightprobe_sphere_info.hh"
+#include "infos/eevee_lightprobe_volume_info.hh"
+#include "infos/eevee_lookdev_info.hh"
+#include "infos/eevee_lut_info.hh"
+#include "infos/eevee_material_info.hh"
+#include "infos/eevee_motion_blur_info.hh"
+#include "infos/eevee_shadow_info.hh"
+#include "infos/eevee_subsurface_info.hh"
+#include "infos/eevee_tracing_info.hh"
+#include "infos/eevee_velocity_info.hh"
+#include "infos/eevee_volume_info.hh"
+#include "infos/engine_image_info.hh"
+#include "infos/gpencil_info.hh"
+#include "infos/gpencil_vfx_info.hh"
+#include "infos/gpu_clip_planes_info.hh"
+#include "infos/gpu_index_load_info.hh"
+#include "infos/gpu_shader_2D_area_borders_info.hh"
+#include "infos/gpu_shader_2D_checker_info.hh"
+#include "infos/gpu_shader_2D_diag_stripes_info.hh"
+#include "infos/gpu_shader_2D_image_desaturate_color_info.hh"
+#include "infos/gpu_shader_2D_image_info.hh"
+#include "infos/gpu_shader_2D_image_overlays_merge_info.hh"
+#include "infos/gpu_shader_2D_image_overlays_stereo_merge_info.hh"
+#include "infos/gpu_shader_2D_image_rect_color_info.hh"
+#include "infos/gpu_shader_2D_image_shuffle_color_info.hh"
+#include "infos/gpu_shader_2D_nodelink_info.hh"
+#include "infos/gpu_shader_2D_point_uniform_size_uniform_color_aa_info.hh"
+#include "infos/gpu_shader_2D_point_uniform_size_uniform_color_outline_aa_info.hh"
+#include "infos/gpu_shader_2D_point_varying_size_varying_color_info.hh"
+#include "infos/gpu_shader_2D_widget_info.hh"
+#include "infos/gpu_shader_3D_depth_only_info.hh"
+#include "infos/gpu_shader_3D_flat_color_info.hh"
+#include "infos/gpu_shader_3D_image_info.hh"
+#include "infos/gpu_shader_3D_point_info.hh"
+#include "infos/gpu_shader_3D_polyline_info.hh"
+#include "infos/gpu_shader_3D_smooth_color_info.hh"
+#include "infos/gpu_shader_3D_uniform_color_info.hh"
+#include "infos/gpu_shader_gpencil_stroke_info.hh"
+#include "infos/gpu_shader_icon_info.hh"
+#include "infos/gpu_shader_index_info.hh"
+#include "infos/gpu_shader_instance_varying_color_varying_size_info.hh"
+#include "infos/gpu_shader_keyframe_shape_info.hh"
+#include "infos/gpu_shader_line_dashed_uniform_color_info.hh"
+#include "infos/gpu_shader_print_info.hh"
+#include "infos/gpu_shader_sequencer_info.hh"
+#include "infos/gpu_shader_simple_lighting_info.hh"
+#include "infos/gpu_shader_text_info.hh"
+#include "infos/gpu_srgb_to_framebuffer_space_info.hh"
+#include "infos/overlay_antialiasing_info.hh"
+#include "infos/overlay_armature_info.hh"
+#include "infos/overlay_background_info.hh"
+#include "infos/overlay_edit_mode_info.hh"
+#include "infos/overlay_extra_info.hh"
+#include "infos/overlay_facing_info.hh"
+#include "infos/overlay_grid_info.hh"
+#include "infos/overlay_outline_info.hh"
+#include "infos/overlay_paint_info.hh"
+#include "infos/overlay_sculpt_curves_info.hh"
+#include "infos/overlay_sculpt_info.hh"
+#include "infos/overlay_viewer_attribute_info.hh"
+#include "infos/overlay_volume_info.hh"
+#include "infos/overlay_wireframe_info.hh"
+#include "infos/select_id_info.hh"
+#include "infos/workbench_composite_info.hh"
+#include "infos/workbench_depth_info.hh"
+#include "infos/workbench_effect_antialiasing_info.hh"
+#include "infos/workbench_effect_dof_info.hh"
+#include "infos/workbench_effect_outline_info.hh"
+#include "infos/workbench_prepass_info.hh"
+#include "infos/workbench_shadow_info.hh"
+#include "infos/workbench_transparent_resolve_info.hh"
+#include "infos/workbench_volume_info.hh"

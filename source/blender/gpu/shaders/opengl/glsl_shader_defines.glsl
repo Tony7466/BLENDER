@@ -121,3 +121,8 @@ bool is_zero(vec4 A)
 #define bool2_array bool2[]
 #define bool3_array bool3[]
 #define bool4_array bool4[]
+
+#define SHADER_LIBRARY_CREATE_INFO(a)
+#define VERTEX_SHADER_CREATE_INFO(a)
+#define FRAGMENT_SHADER_CREATE_INFO(a)
+#define COMPUTE_SHADER_CREATE_INFO(a)
