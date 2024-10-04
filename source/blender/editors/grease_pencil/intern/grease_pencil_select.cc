@@ -328,6 +328,12 @@ static int select_all_exec(bContext *C, wmOperator *op)
     if (selectable_elements.is_empty()) {
       return;
     }
+    if (action == SEL_TOGGLE) {
+      action = blender::ed::curves::has_anything_selected(info.drawing.strokes(),
+                                                          selection_domain) ?
+                   SEL_DESELECT :
+                   SEL_SELECT;
+    }
     blender::ed::curves::select_all(
         info.drawing.strokes_for_write(), selectable_elements, selection_domain, action);
   });
@@ -575,7 +581,7 @@ static const EnumPropertyItem select_similar_mode_items[] = {
     {int(SelectSimilarMode::VERTEX_COLOR), "VERTEX_COLOR", 0, "Vertex Color", ""},
     {int(SelectSimilarMode::RADIUS), "RADIUS", 0, "Radius", ""},
     {int(SelectSimilarMode::OPACITY), "OPACITY", 0, "Opacity", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 template<typename T>
@@ -1041,10 +1047,10 @@ blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSetting
   if (object->mode & OB_MODE_EDIT) {
     return ED_grease_pencil_edit_selection_domain_get(tool_settings);
   }
-  if (object->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) {
+  if (object->mode & OB_MODE_SCULPT_GREASE_PENCIL) {
     return ED_grease_pencil_sculpt_selection_domain_get(tool_settings);
   }
-  if (object->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) {
+  if (object->mode & OB_MODE_VERTEX_GREASE_PENCIL) {
     return ED_grease_pencil_vertex_selection_domain_get(tool_settings);
   }
   return blender::bke::AttrDomain::Point;
@@ -1071,10 +1077,10 @@ bool ED_grease_pencil_segment_selection_enabled(const ToolSettings *tool_setting
   if (object->mode & OB_MODE_EDIT) {
     return ED_grease_pencil_edit_segment_selection_enabled(tool_settings);
   }
-  if (object->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) {
+  if (object->mode & OB_MODE_SCULPT_GREASE_PENCIL) {
     return ED_grease_pencil_sculpt_segment_selection_enabled(tool_settings);
   }
-  if (object->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) {
+  if (object->mode & OB_MODE_VERTEX_GREASE_PENCIL) {
     return ED_grease_pencil_vertex_segment_selection_enabled(tool_settings);
   }
   return false;

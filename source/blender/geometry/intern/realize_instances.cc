@@ -2116,6 +2116,7 @@ static void execute_realize_grease_pencil_task(
   for (const int layer_i : src_layers.index_range()) {
     const bke::greasepencil::Layer &src_layer = *src_layers[layer_i];
     bke::greasepencil::Layer &dst_layer = *dst_layers[layer_i];
+    BKE_grease_pencil_copy_layer_parameters(src_layer, dst_layer);
 
     dst_layer.set_name(src_layer.name());
     dst_layer.set_local_transform(task.transform * src_layer.local_transform());
@@ -2362,9 +2363,9 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
 
   if (not_to_realize_set.has_instances()) {
     gather_info.instances.instances_components_to_merge.append(
-        (not_to_realize_set.get_component_for_write<bke::InstancesComponent>()).copy());
+        not_to_realize_set.get_component_for_write<bke::InstancesComponent>().copy());
     gather_info.instances.instances_components_transforms.append(float4x4::identity());
-    gather_info.instances.attribute_fallback.append((gather_info.instances_attriubutes.size()));
+    gather_info.instances.attribute_fallback.append(gather_info.instances_attriubutes.size());
   }
 
   const float4x4 transform = float4x4::identity();
