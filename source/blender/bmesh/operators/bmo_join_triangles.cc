@@ -337,6 +337,41 @@ static bool bm_edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
 #define FACE_OUT (1 << 0)
 #define FACE_INPUT (1 << 2)
 
+/** Given a manifold edge, join the triangles on either side to form a quad.
+ *
+ *  \param e: the edge to merge.  It must be manifold.
+ *  \param bm: the bmesh containing the edge
+ *  \return the face that resulted, or nullptr if the merege was rejected.
+ */
+static BMFace *join_edge(BMEdge *e, BMesh *bm)
+{
+  /* Nonmanifold edges can't be merged. */
+  BLI_assert(e);
+  BLI_assert(BM_edge_is_manifold(e));
+
+  /* Identify the loops on either side of the joinable edge */
+  BMLoop *l_a = e->l;
+  BMLoop *l_b = e->l->radial_next;
+
+  /* If previous face merges have created quads, which now make this edge un-mergable, then skip it
+   * and move on. This DOES happen frequently and that's ok.  It's much easier and more efficient
+   * to just skip these edges when we encounter them, than it is to try to search the heap for them
+   * and remove them preemptively. */
+  if ((l_a->f->len != 3) || (l_b->f->len != 3)) {
+    return nullptr;
+  }
+
+  /* Join the edge and identify the face */
+  BMFace *face_new = BM_faces_join_pair(bm, l_a, l_b, true);
+
+  if (face_new) {
+    /* Tag the face so the selection can be extended to include the new face. */
+    BMO_face_flag_enable(bm, face_new, FACE_OUT);
+  }
+
+  return face_new;
+}
+
 /** Given a mesh, convert triangles to quads. */
 void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 {
@@ -400,20 +435,8 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   qsort(jedges, totedge, sizeof(*jedges), BLI_sortutil_cmp_float);
 
   for (i = 0; i < totedge; i++) {
-    BMLoop *l_a, *l_b;
-
     e = static_cast<BMEdge *>(jedges[i].data);
-    l_a = e->l;
-    l_b = e->l->radial_next;
-
-    /* check if another edge already claimed this face */
-    if ((l_a->f->len == 3) && (l_b->f->len == 3)) {
-      BMFace *f_new;
-      f_new = BM_faces_join_pair(bm, l_a, l_b, true);
-      if (f_new) {
-        BMO_face_flag_enable(bm, f_new, FACE_OUT);
-      }
-    }
+    join_edge(e, bm);
   }
 
   MEM_freeN(jedges);
