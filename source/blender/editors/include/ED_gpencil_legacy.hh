@@ -43,30 +43,6 @@ struct bAnimContext;
 struct wmKeyConfig;
 struct wmOperator;
 
-#define GPENCIL_MINIMUM_JOIN_DIST 20.0f
-
-/** Reproject stroke modes. */
-enum eGP_ReprojectModes {
-  /* Axis */
-  GP_REPROJECT_FRONT = 0,
-  GP_REPROJECT_SIDE,
-  GP_REPROJECT_TOP,
-  /** On same plane, parallel to view-plane. */
-  GP_REPROJECT_VIEW,
-  /** Re-projected on to the scene geometry. */
-  GP_REPROJECT_SURFACE,
-  /** Re-projected on 3D cursor orientation. */
-  GP_REPROJECT_CURSOR,
-  /** Keep equals (used in some operators). */
-  GP_REPROJECT_KEEP,
-};
-
-/* Target object modes. */
-enum eGP_TargetObjectMode {
-  GP_TARGET_OB_NEW = 0,
-  GP_TARGET_OB_SELECTED = 1,
-};
-
 /* ------------- Grease-Pencil Runtime Data ---------------- */
 
 /**
@@ -378,27 +354,6 @@ void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode);
 bool ED_object_gpencil_exit(Main *bmain, Object *ob);
 
 /**
- * Reproject all points of the stroke to a plane locked to axis to avoid stroke offset
- */
-void ED_gpencil_project_stroke_to_plane(const Scene *scene,
-                                        const Object *ob,
-                                        const RegionView3D *rv3d,
-                                        bGPDlayer *gpl,
-                                        bGPDstroke *gps,
-                                        const float origin[3],
-                                        int axis);
-/**
- * Reproject given point to a plane locked to axis to avoid stroke offset
- * \param pt: Point to affect (used for input & output).
- */
-void ED_gpencil_project_point_to_plane(const Scene *scene,
-                                       const Object *ob,
-                                       bGPDlayer *gpl,
-                                       const RegionView3D *rv3d,
-                                       const float origin[3],
-                                       int axis,
-                                       bGPDspoint *pt);
-/**
  * Get drawing reference point for conversion or projection of the stroke
  * \param r_vec: Reference point found
  */
@@ -406,20 +361,6 @@ void ED_gpencil_drawing_reference_get(const Scene *scene,
                                       const Object *ob,
                                       char align_flag,
                                       float r_vec[3]);
-void ED_gpencil_project_stroke_to_view(bContext *C, bGPDlayer *gpl, bGPDstroke *gps);
-
-/**
- * Reproject selected strokes.
- */
-void ED_gpencil_stroke_reproject(Depsgraph *depsgraph,
-                                 const GP_SpaceConversion *gsc,
-                                 SnapObjectContext *sctx,
-                                 bGPDlayer *gpl,
-                                 bGPDframe *gpf,
-                                 bGPDstroke *gps,
-                                 eGP_ReprojectModes mode,
-                                 bool keep_original,
-                                 const float offset);
 
 /**
  * Turn brush cursor in on/off.
