@@ -441,10 +441,6 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(
     const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info);
 std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(const bNode &node);
 std::unique_ptr<LazyFunction> get_warning_node_lazy_function(const bNode &node);
-std::unique_ptr<LazyFunction> get_combine_bundle_lazy_function(
-    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info);
-std::unique_ptr<LazyFunction> get_separate_bundle_lazy_function(
-    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info);
 
 /**
  * Outputs the default value of each output socket that has not been output yet. This needs the

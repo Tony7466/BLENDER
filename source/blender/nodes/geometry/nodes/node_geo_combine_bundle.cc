@@ -78,31 +78,10 @@ static void node_operators()
   socket_items::ops::make_common_operators<CombineBundleItemsAccessor>();
 }
 
-class LazyFunctionForCombineBundle : public LazyFunction {
-  const bNode &node_;
-
- public:
-  LazyFunctionForCombineBundle(const bNode &node,
-                               GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
-      : node_(node)
-  {
-    debug_name_ = "Bundle";
-    for (const int i : node.input_sockets().index_range().drop_back(1)) {
-      const bNodeSocket &bsocket = node.input_socket(i);
-      lf_graph_info.mapping.lf_index_by_bsocket[bsocket.index_in_tree()] =
-          inputs_.append_and_get_index_as(
-              bsocket.name, *bsocket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
-    }
-    for (const int i : node.output_sockets().index_range()) {
-      const bNodeSocket &bsocket = node.output_socket(i);
-      lf_graph_info.mapping.lf_index_by_bsocket[bsocket.index_in_tree()] =
-          outputs_.append_and_get_index_as(bsocket.name,
-                                           *bsocket.typeinfo->geometry_nodes_cpp_type);
-    }
-  }
-
-  void execute_impl(lf::Params & /*params*/, const lf::Context & /*context*/) const final {}
-};
+static void node_geo_exec(GeoNodeExecParams params)
+{
+  params.set_default_remaining_outputs();
+}
 
 static void node_register()
 {
@@ -111,6 +90,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_COMBINE_BUNDLE, "Combine Bundle", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
+  ntype.geometry_node_execute = node_geo_exec;
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.register_operators = node_operators;
@@ -123,13 +103,6 @@ NOD_REGISTER_NODE(node_register)
 }  // namespace blender::nodes::node_geo_combine_bundle_cc
 
 namespace blender::nodes {
-
-std::unique_ptr<LazyFunction> get_combine_bundle_lazy_function(
-    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
-{
-  using namespace node_geo_combine_bundle_cc;
-  return std::make_unique<LazyFunctionForCombineBundle>(node, lf_graph_info);
-}
 
 StructRNA *CombineBundleItemsAccessor::item_srna = &RNA_NodeGeometryCombineBundleItem;
 int CombineBundleItemsAccessor::node_type = GEO_NODE_COMBINE_BUNDLE;
