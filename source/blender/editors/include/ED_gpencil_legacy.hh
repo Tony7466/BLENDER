@@ -347,10 +347,6 @@ Object *ED_gpencil_add_object(bContext *C, const float loc[3], unsigned short lo
  * Helper function to create default colors and drawing brushes.
  */
 void ED_gpencil_add_defaults(bContext *C, Object *ob);
-/**
- * Set object modes.
- */
-void ED_gpencil_setup_modes(bContext *C, bGPdata *gpd, int newmode);
 bool ED_object_gpencil_exit(Main *bmain, Object *ob);
 
 /**
@@ -361,11 +357,6 @@ void ED_gpencil_drawing_reference_get(const Scene *scene,
                                       const Object *ob,
                                       char align_flag,
                                       float r_vec[3]);
-
-/**
- * Turn brush cursor in on/off.
- */
-void ED_gpencil_toggle_brush_cursor(bContext *C, bool enable, void *customdata);
 
 /* vertex groups */
 
@@ -402,31 +393,6 @@ void ED_gpencil_tpoint_to_point(ARegion *region,
                                 float origin[3],
                                 const tGPspoint *tpt,
                                 bGPDspoint *pt);
-/**
- * Recalculate UV for any stroke using the material.
- */
-void ED_gpencil_update_color_uv(Main *bmain, Material *mat);
-
-/**
- * Extend selection to stroke intersections:
- * \return The result of selecting:
- * 0 - No hit
- * 1 - Hit in point A
- * 2 - Hit in point B
- * 3 - Hit in point A and B
- */
-int ED_gpencil_select_stroke_segment(bGPdata *gpd,
-                                     bGPDlayer *gpl,
-                                     bGPDstroke *gps,
-                                     bGPDspoint *pt,
-                                     bool select,
-                                     bool insert,
-                                     float scale,
-                                     float r_hita[3],
-                                     float r_hitb[3]);
-
-void ED_gpencil_select_toggle_all(bContext *C, int action);
-void ED_gpencil_select_curve_toggle_all(bContext *C, int action);
 
 /**
  * Ensure the #tGPspoint buffer (while drawing stroke)
@@ -436,96 +402,3 @@ tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
                                      int *buffer_size,
                                      int *buffer_used,
                                      bool clear);
-void ED_gpencil_sbuffer_update_eval(bGPdata *gpd, Object *ob_eval);
-
-/**
- * Tag all scene grease pencil object to update.
- */
-void ED_gpencil_tag_scene_gpencil(Scene *scene);
-
-/* Vertex color set. */
-
-void ED_gpencil_fill_vertex_color_set(ToolSettings *ts, Brush *brush, bGPDstroke *gps);
-void ED_gpencil_point_vertex_color_set(ToolSettings *ts,
-                                       Brush *brush,
-                                       bGPDspoint *pt,
-                                       tGPspoint *tpt);
-void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
-                                         Object *ob,
-                                         ToolSettings *ts,
-                                         Brush *brush,
-                                         Material *material,
-                                         float random_color[3],
-                                         float pen_pressure);
-void ED_gpencil_init_random_settings(Brush *brush,
-                                     const int mval[2],
-                                     GpRandomSettings *random_settings);
-
-/**
- * Check if the stroke collides with brush.
- */
-bool ED_gpencil_stroke_check_collision(const GP_SpaceConversion *gsc,
-                                       bGPDstroke *gps,
-                                       const float mval[2],
-                                       int radius,
-                                       const float diff_mat[4][4]);
-/**
- * Check if a point is inside of the stroke.
- *
- * \param gps: Stroke to check.
- * \param gsc: Space conversion data.
- * \param mval: Region relative cursor position.
- * \param diff_mat: View matrix.
- * \return True if the point is inside.
- */
-bool ED_gpencil_stroke_point_is_inside(const bGPDstroke *gps,
-                                       const GP_SpaceConversion *gsc,
-                                       const int mval[2],
-                                       const float diff_mat[4][4]);
-/**
- * Get the bigger 2D bound box points.
- */
-void ED_gpencil_projected_2d_bound_box(const GP_SpaceConversion *gsc,
-                                       const bGPDstroke *gps,
-                                       const float diff_mat[4][4],
-                                       float r_min[2],
-                                       float r_max[2]);
-
-bGPDstroke *ED_gpencil_stroke_nearest_to_ends(bContext *C,
-                                              const GP_SpaceConversion *gsc,
-                                              bGPDlayer *gpl,
-                                              bGPDframe *gpf,
-                                              bGPDstroke *gps,
-                                              const float ctrl1[2],
-                                              const float ctrl2[2],
-                                              float radius,
-                                              int *r_index);
-/**
- * Get extremes of stroke in 2D using current view.
- */
-void ED_gpencil_stroke_extremes_to2d(const GP_SpaceConversion *gsc,
-                                     const float diff_mat[4][4],
-                                     bGPDstroke *gps,
-                                     float r_ctrl1[2],
-                                     float r_ctrl2[2]);
-
-/**
- * Join two stroke using a contact point index and trimming the rest.
- */
-bGPDstroke *ED_gpencil_stroke_join_and_trim(
-    bGPdata *gpd, bGPDframe *gpf, bGPDstroke *gps, bGPDstroke *gps_dst, int pt_index);
-
-/**
- * Close if the distance between extremes is below threshold.
- */
-void ED_gpencil_stroke_close_by_distance(bGPDstroke *gps, float threshold);
-
-/**
- * Calculate the brush cursor size in world space.
- */
-float ED_gpencil_cursor_radius(bContext *C, int x, int y);
-bool ED_gpencil_brush_cursor_poll(bContext *C);
-float ED_gpencil_radial_control_scale(bContext *C,
-                                      Brush *brush,
-                                      float initial_value,
-                                      const int mval[2]);
