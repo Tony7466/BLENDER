@@ -2059,8 +2059,39 @@ typedef struct NodeGeometryClosureInput {
   int32_t output_node_id;
 } NodeGeometryClosureInput;
 
+typedef struct NodeGeometryClosureInputItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  int identifier;
+} NodeGeometryClosureInputItem;
+
+typedef struct NodeGeometryClosureOutputItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  int identifier;
+} NodeGeometryClosureOutputItem;
+
+typedef struct NodeGeometryClosureInputItems {
+  NodeGeometryClosureInputItem *items;
+  int items_num;
+  int active_index;
+} NodeGeometryClosureInputItems;
+
+typedef struct NodeGeometryClosureOutputItems {
+  NodeGeometryClosureOutputItem *items;
+  int items_num;
+  int active_index;
+} NodeGeometryClosureOutputItems;
+
 typedef struct NodeGeometryClosureOutput {
-  char _pad;
+  NodeGeometryClosureInputItems input_items;
+  NodeGeometryClosureOutputItems output_items;
+  int next_identifier;
+  char _pad[4];
 } NodeGeometryClosureOutput;
 
 typedef struct IndexSwitchItem {

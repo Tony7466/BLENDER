@@ -88,6 +88,7 @@
 #include "NOD_geo_bake.hh"
 #include "NOD_geo_bundle.hh"
 #include "NOD_geo_capture_attribute.hh"
+#include "NOD_geo_closure.hh"
 #include "NOD_geo_foreach_geometry_element.hh"
 #include "NOD_geo_index_switch.hh"
 #include "NOD_geo_menu_switch.hh"
@@ -917,6 +918,10 @@ void node_tree_blend_write(BlendWriter *writer, bNodeTree *ntree)
     if (node->type == GEO_NODE_SEPARATE_BUNDLE) {
       nodes::socket_items::blend_write<nodes::SeparateBundleItemsAccessor>(writer, *node);
     }
+    if (node->type == GEO_NODE_CLOSURE_OUTPUT) {
+      nodes::socket_items::blend_write<nodes::ClosureInputItemsAccessor>(writer, *node);
+      nodes::socket_items::blend_write<nodes::ClosureOutputItemsAccessor>(writer, *node);
+    }
     if (node->type == GEO_NODE_MENU_SWITCH) {
       nodes::socket_items::blend_write<nodes::MenuSwitchItemsAccessor>(writer, *node);
     }
@@ -1220,6 +1225,11 @@ void node_tree_blend_read_data(BlendDataReader *reader, ID *owner_id, bNodeTree 
         }
         case GEO_NODE_COMBINE_BUNDLE: {
           nodes::socket_items::blend_read_data<nodes::CombineBundleItemsAccessor>(reader, *node);
+          break;
+        }
+        case GEO_NODE_CLOSURE_OUTPUT: {
+          nodes::socket_items::blend_read_data<nodes::ClosureInputItemsAccessor>(reader, *node);
+          nodes::socket_items::blend_read_data<nodes::ClosureOutputItemsAccessor>(reader, *node);
           break;
         }
         case GEO_NODE_SEPARATE_BUNDLE: {
