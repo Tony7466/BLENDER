@@ -286,10 +286,13 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
 
 bool active_grease_pencil_poll(bContext *C);
+bool active_grease_pencil_material_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool active_grease_pencil_layer_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
+bool grease_pencil_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
+bool grease_pencil_edit_poll(bContext *C);
 bool grease_pencil_sculpting_poll(bContext *C);
 bool grease_pencil_weight_painting_poll(bContext *C);
 bool grease_pencil_vertex_painting_poll(bContext *C);
@@ -884,4 +887,5 @@ void set_lineart_modifier_limits(GreasePencilLineartModifierData &lmd,
 
 GreasePencilLineartModifierData *get_first_lineart_modifier(const Object &ob);
 
+GreasePencil *from_context(bContext &C);
 }  // namespace blender::ed::greasepencil
