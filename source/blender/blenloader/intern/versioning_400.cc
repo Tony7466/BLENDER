@@ -1003,7 +1003,7 @@ static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data
   return true;
 }
 
-static bool all_scenes_use(Main *bmain, blender::Vector<const char *> engines)
+static bool all_scenes_use(Main *bmain, const blender::Span<const char *> engines)
 {
   if (!bmain->scenes.first) {
     return false;
