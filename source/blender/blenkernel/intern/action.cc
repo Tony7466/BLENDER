@@ -672,7 +672,7 @@ static void read_slots(BlendDataReader *reader, animrig::Action &action)
      * little and big endian machines. Due to the way they are defined, they are always in the same
      * byte order, regardless of hardware/platform endianness. */
     if (BLO_read_requires_endian_switch(reader)) {
-      BLI_endian_switch_int16(reinterpret_cast<short *>(&action.slot_array[i]->idtype));
+      BLI_endian_switch_int16(&action.slot_array[i]->idtype);
     }
 
     action.slot_array[i]->wrap().blend_read_post();
