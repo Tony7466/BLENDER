@@ -690,6 +690,29 @@ class _draw_tool_settings_context_mode:
         return True
 
 
+def draw_layer_topbar_menu(context, layout):
+    grease_pencil = context.object.data
+    layer = grease_pencil.layers.active
+    group = grease_pencil.layer_groups.active
+
+    icon = 'OUTLINER_DATA_GP_LAYER'
+    node_name = None
+    if layer or group:
+        icon = 'OUTLINER_DATA_GP_LAYER' if layer else 'GREASEPENCIL_LAYER_GROUP'
+        node_name = layer.name if layer else group.name
+
+        # Clamp long names otherwise the selector can get too wide.
+        max_width = 25
+        if len(node_name) > max_width:
+            node_name = node_name[:max_width - 5] + '..' + node_name[-3:]
+
+    sub = layout.row()
+    sub.popover(
+        panel="TOPBAR_PT_grease_pencil_layers",
+        text=node_name,
+        icon=icon,
+    )
+
 class VIEW3D_HT_header(Header):
     bl_space_type = 'VIEW_3D'
 
@@ -931,30 +954,8 @@ class VIEW3D_HT_header(Header):
             if mode_string in {
                 'EDIT_GREASE_PENCIL',
                 'PAINT_GREASE_PENCIL',
-                'SCULPT_GREASE_PENCIL',
-                'WEIGHT_GREASE_PENCIL',
-                    'VERTEX_GREASE_PENCIL'}:
-                grease_pencil = context.object.data
-                layer = grease_pencil.layers.active
-                group = grease_pencil.layer_groups.active
-
-                icon = 'OUTLINER_DATA_GP_LAYER'
-                node_name = None
-                if layer or group:
-                    icon = 'OUTLINER_DATA_GP_LAYER' if layer else 'GREASEPENCIL_LAYER_GROUP'
-                    node_name = layer.name if layer else group.name
-
-                    # Clamp long names otherwise the selector can get too wide.
-                    max_width = 25
-                    if len(node_name) > max_width:
-                        node_name = node_name[:max_width - 5] + '..' + node_name[-3:]
-
-                sub = layout.row()
-                sub.popover(
-                    panel="TOPBAR_PT_grease_pencil_layers",
-                    text=node_name,
-                    icon=icon,
-                )
+                'SCULPT_GREASE_PENCIL'}:
+                    draw_layer_topbar_menu(context, layout)
 
             if object_mode == 'PAINT_GPENCIL':
                 # FIXME: this is bad practice!
@@ -1012,10 +1013,12 @@ class VIEW3D_HT_header(Header):
         elif object_mode == 'VERTEX_PAINT':
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_color_attributes", icon='GROUP_VCOL')
-
+        elif object_mode == 'VERTEX_GPENCIL':
+            draw_layer_topbar_menu(context, layout)
         elif object_mode in {'WEIGHT_PAINT', 'WEIGHT_GPENCIL'}:
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_vertex_groups", icon='GROUP_VERTEX')
+            draw_layer_topbar_menu(context, row)
 
             if object_mode != 'WEIGHT_GPENCIL':
                 layout.popover(
