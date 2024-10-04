@@ -117,12 +117,12 @@ class GreasePencilDisplayPanel:
         gp_settings = brush.gpencil_settings
         ob = context.active_object
 
-        if self.is_popover and ob.mode not in {'PAINT_GPENCIL', 'VERTEX_GPENCIL'}:
+        if self.is_popover and ob.mode not in {'PAINT_GREASE_PENCIL', 'VERTEX_GPENCIL'}:
             row = layout.row(align=True)
             row.use_property_split = False
             row.prop(settings, "show_brush", text="Display Cursor")
 
-        if ob.mode == 'PAINT_GPENCIL' or ob.mode == 'PAINT_GREASE_PENCIL':
+        if ob.mode == 'PAINT_GREASE_PENCIL':
             if self.is_popover:
                 row = layout.row(align=True)
                 row.prop(settings, "show_brush", text="Display Cursor")
