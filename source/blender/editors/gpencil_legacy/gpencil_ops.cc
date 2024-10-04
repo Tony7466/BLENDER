@@ -89,8 +89,6 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_generate_weights);
 }
 
-void ED_operatormacros_gpencil()
-{
-}
+void ED_operatormacros_gpencil() {}
 
 /* ****************************************** */
