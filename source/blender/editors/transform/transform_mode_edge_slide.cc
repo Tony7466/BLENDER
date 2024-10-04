@@ -836,8 +836,6 @@ static void applyEdgeSlide(TransInfo *t)
     if (use_even) {
       status.item_bool(IFACE_("Flipped"), flipped, ICON_EVENT_F);
     }
-
-    WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
   }
 }
 

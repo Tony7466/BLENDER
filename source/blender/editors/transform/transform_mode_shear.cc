@@ -336,8 +336,6 @@ static void apply_shear(TransInfo *t)
     status.item_bool({}, t->orient_axis_ortho == (t->orient_axis + 2) % 3, ICON_EVENT_Y);
     status.item(IFACE_("Shear Axis"), ICON_NONE);
     status.item(IFACE_("Swap Axes"), ICON_MOUSE_MMB);
-
-    WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
   }
 }
 

@@ -1393,6 +1393,13 @@ int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
     t->redraw |= TREDRAW_HARD;
   }
 
+  if (t->redraw && !ISMOUSE_MOTION(event->type)) {
+    /* The status area is currently also tagged to update by the notifiers in
+     * `viewRedrawForce`. However, this may change in the future, and tagging
+     * the region twice doesn't add any overhead. */
+    WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
+  }
+
   if (!is_navigating && t->redraw) {
     return 0;
   }
