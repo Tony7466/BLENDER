@@ -196,7 +196,7 @@ def keyconfig_update(keyconfig_data, keyconfig_version):
             km_items_data["items"].extend([
                 ("SNAP_TOGGLE", {"type": 'LEFT_CTRL', "value": 'ANY', "any": True}, None),
                 ("SNAP_TOGGLE", {"type": 'RIGHT_CTRL', "value": 'ANY', "any": True}, None),
-                ("SNAP_TOGGLE", {"type": 'TAB', "value": 'ANY', "shift": True}, None),
+                ("SNAP_TOGGLE", {"type": 'TAB', "value": 'PRESS', "shift": True}, None),
                 ("ADD_SNAP", {"type": 'A', "value": 'PRESS', "any": True}, None),
             ])
 
