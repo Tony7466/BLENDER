@@ -435,7 +435,6 @@ void GPENCIL_OT_data_unlink(wmOperatorType *ot);
 void GPENCIL_OT_layer_annotation_add(wmOperatorType *ot);
 void GPENCIL_OT_layer_annotation_remove(wmOperatorType *ot);
 void GPENCIL_OT_layer_annotation_move(wmOperatorType *ot);
-void GPENCIL_OT_blank_frame_add(wmOperatorType *ot);
 void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot);
 
 /* Paint Modes for operator */
