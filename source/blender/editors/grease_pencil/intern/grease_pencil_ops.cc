@@ -87,10 +87,8 @@ bool grease_pencil_selection_poll(bContext *C)
   Object *object = CTX_data_active_object(C);
   /* Selection operators are available in multiple modes, e.g. for masking in sculpt and vertex
    * paint mode. */
-  if (!ELEM(object->mode,
-            OB_MODE_EDIT,
-            OB_MODE_SCULPT_GREASE_PENCIL,
-            OB_MODE_VERTEX_GREASE_PENCIL))
+  if (!ELEM(
+          object->mode, OB_MODE_EDIT, OB_MODE_SCULPT_GREASE_PENCIL, OB_MODE_VERTEX_GREASE_PENCIL))
   {
     return false;
   }
