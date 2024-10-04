@@ -59,7 +59,7 @@ struct ObjectRef;
 /** \name Views
  * \{ */
 
-#ifndef DRW_VIEW_LEN
+#if !defined(DRW_VIEW_LEN) && !defined(GLSL_CPP_STUBS)
 /* Single-view case (default). */
 #  define drw_view_id 0
 #  define DRW_VIEW_LEN 1
