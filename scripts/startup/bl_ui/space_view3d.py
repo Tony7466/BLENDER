@@ -721,7 +721,7 @@ class VIEW3D_HT_header(Header):
             )
 
         # Pivot
-        if has_pose_mode or object_mode in {'OBJECT', 'EDIT', 'EDIT_GPENCIL', 'SCULPT_GPENCIL'}:
+        if has_pose_mode or object_mode in {'OBJECT', 'EDIT', 'EDIT_GPENCIL', 'SCULPT_GREASE_PENCIL'}:
             layout.prop(tool_settings, "transform_pivot_point", text="", icon_only=True)
 
         # Snap
@@ -732,7 +732,7 @@ class VIEW3D_HT_header(Header):
             if has_pose_mode or (object_mode not in {
                     'SCULPT', 'SCULPT_CURVES',
                     'VERTEX_PAINT', 'WEIGHT_PAINT', 'TEXTURE_PAINT',
-                    'PAINT_GREASE_PENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL',
+                    'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL',
             }):
                 show_snap = True
             else:
@@ -772,7 +772,7 @@ class VIEW3D_HT_header(Header):
         if object_mode in {
             'EDIT',
             'PARTICLE_EDIT',
-            'SCULPT_GPENCIL',
+            'SCULPT_GREASE_PENCIL',
             'EDIT_GPENCIL',
             'OBJECT',
         } and context.mode != 'EDIT_ARMATURE':
@@ -889,7 +889,7 @@ class VIEW3D_HT_header(Header):
                     depress=(tool_settings.gpencil_selectmode_edit == 'SEGMENT'),
                 ).mode = 'SEGMENT'
 
-            if object_mode == 'SCULPT_GPENCIL':
+            if object_mode == 'SCULPT_GREASE_PENCIL':
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_gpencil_select_mask_point", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
@@ -907,7 +907,7 @@ class VIEW3D_HT_header(Header):
 
         layout.separator_spacer()
 
-        if object_mode in {'PAINT_GREASE_PENCIL', 'SCULPT_GPENCIL'}:
+        if object_mode in {'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL'}:
             # Grease pencil
             if object_mode == 'PAINT_GREASE_PENCIL':
                 sub = layout.row(align=True)
@@ -918,7 +918,7 @@ class VIEW3D_HT_header(Header):
                     panel="VIEW3D_PT_grease_pencil_origin",
                 )
 
-            if object_mode in {'PAINT_GREASE_PENCIL', 'SCULPT_GPENCIL'}:
+            if object_mode in {'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL'}:
                 sub = layout.row(align=True)
                 sub.active = tool_settings.gpencil_stroke_placement_view3d != 'SURFACE'
                 sub.prop_with_popover(
@@ -970,7 +970,7 @@ class VIEW3D_HT_header(Header):
                         panel="VIEW3D_PT_grease_pencil_guide",
                         text="Guides",
                     )
-            if object_mode == 'SCULPT_GPENCIL':
+            if object_mode == 'SCULPT_GREASE_PENCIL':
                 layout.popover(
                     panel="VIEW3D_PT_grease_pencil_sculpt_automasking",
                     text="",
@@ -7724,7 +7724,7 @@ class VIEW3D_PT_overlay_grease_pencil_options(Panel):
         sub.prop(overlay, "gpencil_fade_objects", text="Fade Inactive Objects", slider=True)
         sub.prop(overlay, "use_gpencil_fade_gp_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
-        if ob.mode in {'EDIT', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
+        if ob.mode in {'EDIT', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
             split = layout.split()
             col = split.column()
             col.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
@@ -8742,7 +8742,7 @@ class VIEW3D_AST_brush_grease_pencil_paint(View3DAssetShelf, bpy.types.AssetShel
 
 
 class VIEW3D_AST_brush_gpencil_sculpt(View3DAssetShelf, bpy.types.AssetShelf):
-    mode = 'SCULPT_GPENCIL'
+    mode = 'SCULPT_GREASE_PENCIL'
     mode_prop = "use_sculpt_grease_pencil"
     brush_type_prop = "gpencil_sculpt_brush_type"
     tool_prop = "gpencil_sculpt_tool"

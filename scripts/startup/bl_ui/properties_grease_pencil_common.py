@@ -132,7 +132,7 @@ class GreasePencilDisplayPanel:
                 row.active = settings.show_brush
                 row.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
 
-        elif ob.mode == 'SCULPT_GPENCIL' or ob.mode == 'SCULPT_GREASE_PENCIL':
+        elif ob.mode == 'SCULPT_GREASE_PENCIL':
             col = layout.column(align=True)
             col.active = settings.show_brush
 
