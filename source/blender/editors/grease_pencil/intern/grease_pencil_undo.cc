@@ -362,6 +362,10 @@ static void step_decode(
     bContext *C, Main *bmain, UndoStep *us_p, const eUndoStepDir /*dir*/, bool /*is_final*/)
 {
   GreasePencilUndoStep *us = reinterpret_cast<GreasePencilUndoStep *>(us_p);
+  if (us->objects.is_empty()) {
+    return;
+  }
+
   StepDecodeStatus decode_status;
 
   Scene *scene = CTX_data_scene(C);
