@@ -30,13 +30,11 @@ set(SRC
   gpencil_armature.cc
   gpencil_data.cc
   gpencil_edit.cc
-  gpencil_interpolate.cc
   gpencil_ops.cc
   gpencil_ops_versioning.cc
   gpencil_primitive.cc
   gpencil_undo.cc
   gpencil_utils.cc
-  gpencil_uv.cc
 
   gpencil_intern.hh
 )

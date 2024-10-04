@@ -62,18 +62,7 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_blank_frame_add);
   WM_operatortype_append(GPENCIL_OT_annotation_active_frame_delete);
 
-  WM_operatortype_append(GPENCIL_OT_transform_fill);
-  WM_operatortype_append(GPENCIL_OT_reset_transform_fill);
-
-  /* color handle */
-  WM_operatortype_append(GPENCIL_OT_lock_layer);
-
   /* Editing (Time) --------------- */
-
-  /* Interpolation */
-  WM_operatortype_append(GPENCIL_OT_interpolate);
-  WM_operatortype_append(GPENCIL_OT_interpolate_sequence);
-  WM_operatortype_append(GPENCIL_OT_interpolate_reverse);
 
   /* Primitives */
   WM_operatortype_append(GPENCIL_OT_primitive_box);

@@ -471,20 +471,11 @@ enum {
   GP_MERGE_POINT = 1,
 };
 
-void GPENCIL_OT_transform_fill(wmOperatorType *ot);
-void GPENCIL_OT_reset_transform_fill(wmOperatorType *ot);
-
 /* undo stack ---------- */
 
 void gpencil_undo_init(bGPdata *gpd);
 void gpencil_undo_push(bGPdata *gpd);
 void gpencil_undo_finish();
-
-/* interpolation ---------- */
-
-void GPENCIL_OT_interpolate(wmOperatorType *ot);
-void GPENCIL_OT_interpolate_sequence(wmOperatorType *ot);
-void GPENCIL_OT_interpolate_reverse(wmOperatorType *ot);
 
 /* primitives ---------- */
 
@@ -493,9 +484,6 @@ void GPENCIL_OT_primitive_line(wmOperatorType *ot);
 void GPENCIL_OT_primitive_polyline(wmOperatorType *ot);
 void GPENCIL_OT_primitive_circle(wmOperatorType *ot);
 void GPENCIL_OT_primitive_curve(wmOperatorType *ot);
-
-/* color handle */
-void GPENCIL_OT_lock_layer(wmOperatorType *ot);
 
 /* convert old 2.7 files to 2.8 */
 void GPENCIL_OT_convert_old_files(wmOperatorType *ot);

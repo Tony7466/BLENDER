@@ -389,10 +389,7 @@ class DOPESHEET_MT_editor_menus(Menu):
         elif st.mode == 'GPENCIL':
             layout.menu("DOPESHEET_MT_gpencil_channel")
 
-        if st.mode != 'GPENCIL':
-            layout.menu("DOPESHEET_MT_key")
-        else:
-            layout.menu("DOPESHEET_MT_gpencil_key")
+        layout.menu("DOPESHEET_MT_key")
 
         if st.mode in {'ACTION', 'SHAPEKEY'} and st.action is not None:
             if context.preferences.experimental.use_animation_baklava:
@@ -756,27 +753,6 @@ class DOPESHEET_MT_gpencil_channel(Menu):
         layout.operator("anim.channels_view_selected")
 
 
-class DOPESHEET_MT_gpencil_key(Menu):
-    bl_label = "Key"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.menu("DOPESHEET_MT_key_transform", text="Transform")
-        layout.operator_menu_enum("action.snap", "type", text="Snap")
-        layout.operator_menu_enum("action.mirror", "type", text="Mirror")
-
-        layout.separator()
-        layout.operator("action.keyframe_insert")
-
-        layout.separator()
-        layout.operator("action.delete")
-        layout.operator("gpencil.interpolate_reverse")
-
-        layout.separator()
-        layout.operator("action.keyframe_type", text="Keyframe Type")
-
-
 class DOPESHEET_MT_delete(Menu):
     bl_label = "Delete"
 
@@ -997,7 +973,6 @@ classes = (
     DOPESHEET_MT_key,
     DOPESHEET_MT_key_transform,
     DOPESHEET_MT_gpencil_channel,
-    DOPESHEET_MT_gpencil_key,
     DOPESHEET_MT_delete,
     DOPESHEET_MT_context_menu,
     DOPESHEET_MT_channel_context_menu,
