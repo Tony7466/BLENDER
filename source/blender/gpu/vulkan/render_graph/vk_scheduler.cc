@@ -126,22 +126,28 @@ void VKScheduler::move_transfer_and_dispatch_outside_rendering_scope(
     for (int index = start_index + 1; index < end_index; index++) {
       NodeHandle node_handle = result_[index];
       const VKRenderGraphNode &node = render_graph.nodes_[node_handle];
+      /* Should we add this node to the rendering scope. This is only done when we need to reorder
+       * nodes. In that case the rendering_scope has already an item and we should add this node to
+       * or the rendering scope or before the rendering scope. Adding nodes before rendering scope
+       * is done in the VKNodeType::UPDATE_BUFFER branch. */
+      bool add_to_rendering_scope = !rendering_scope.is_empty();
       if (node.type == VKNodeType::UPDATE_BUFFER) {
         if (!used_buffers.contains(
                 render_graph.resources_.buffer_resources_.lookup(node.update_buffer.dst_buffer)))
         {
           /* Buffer isn't used by this rendering scope so we can safely move it before the
-           * rendering scope begins.*/
+           * rendering scope begins. */
           pre_rendering_scope.append(node_handle);
-          /* If this is the first time we move a node before the rendering we should start building
-           * up the rendering scope as well. This is postponed so we can safe some cycles when no
-           * nodes needs to be moved. */
+          add_to_rendering_scope = false;
+          /* When this is the first time we move a node before the rendering we should start
+           * building up the rendering scope as well. This is postponed so we can safe some cycles
+           * when no nodes needs to be moved at all. */
           if (rendering_scope.is_empty()) {
             rendering_scope.extend(Span<NodeHandle>(&result_[start_index], index - start_index));
           }
         }
       }
-      else if (!rendering_scope.is_empty()) {
+      if (add_to_rendering_scope) {
         /* When rendering scope has an item we are rewriting the execution order and need to track
          * what should be inside the rendering scope. */
         rendering_scope.append(node_handle);
@@ -166,8 +172,8 @@ void VKScheduler::move_transfer_and_dispatch_outside_rendering_scope(
       }
     }
 
-    /* When pre_rendering_scope has an item we need to rewrite the order the nodes are scheduled.
-     * As the number of nodes are not changed we can rewrite without reallocation. */
+    /* When pre_rendering_scope has an item we want to rewrite the order.
+     * The number of nodes are not changed, so we can do this inline. */
     if (!pre_rendering_scope.is_empty()) {
       MutableSpan<NodeHandle> store_none_rendering = result_.as_mutable_span().slice(
           start_index, pre_rendering_scope.size());

@@ -821,7 +821,7 @@ TEST(vk_render_graph, begin_update_draw_update_draw_update_draw_end)
   }
 
   render_graph.submit();
-  ASSERT_EQ(12, log.size());
+  ASSERT_EQ(16, log.size());
   EXPECT_EQ("update_buffer(dst_buffer=0x1, dst_offset=0, data_size=16)", log[0]);
   EXPECT_EQ("update_buffer(dst_buffer=0x2, dst_offset=0, data_size=24)", log[1]);
   EXPECT_EQ(
@@ -859,32 +859,58 @@ TEST(vk_render_graph, begin_update_draw_update_draw_update_draw_end)
           "size=18446744073709551615)" +
           endl() + ")",
       log[4]);
-  EXPECT_EQ("begin_rendering(p_rendering_info=flags=, render_area=" + endl() +
-                "  offset=" + endl() +
-                "    x=0, y=0  , "
-                "extent=" +
-                endl() +
-                "    width=0, height=0  , layer_count=1, view_mask=0, color_attachment_count=1, "
-                "p_color_attachments=" +
-                endl() +
-                "  image_view=0x4, "
-                "image_layout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, "
-                "resolve_mode=VK_RESOLVE_MODE_NONE, "
-                "resolve_image_view=0, resolve_image_layout=VK_IMAGE_LAYOUT_UNDEFINED, "
-                "load_op=VK_ATTACHMENT_LOAD_OP_DONT_CARE, store_op=VK_ATTACHMENT_STORE_OP_STORE" +
-                endl() + ")",
-            log[5]);
+  EXPECT_EQ(
+      "begin_rendering(p_rendering_info=flags=VK_RENDERING_SUSPENDING_BIT, "
+      "VK_RENDERING_SUSPENDING_BIT_KHR, render_area=" +
+          endl() + "  offset=" + endl() + "    x=0, y=0  , extent=" + endl() +
+          "    width=0, height=0  , layer_count=1, view_mask=0, color_attachment_count=1, "
+          "p_color_attachments=" +
+          endl() +
+          "  image_view=0x4, image_layout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, "
+          "resolve_mode=VK_RESOLVE_MODE_NONE, resolve_image_view=0, "
+          "resolve_image_layout=VK_IMAGE_LAYOUT_UNDEFINED, "
+          "load_op=VK_ATTACHMENT_LOAD_OP_DONT_CARE, store_op=VK_ATTACHMENT_STORE_OP_STORE" +
+          endl() + ")",
+      log[5]);
   EXPECT_EQ("bind_pipeline(pipeline_bind_point=VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline=0x6)",
             log[6]);
   EXPECT_EQ("draw(vertex_count=1, instance_count=1, first_vertex=0, first_instance=0)", log[7]);
   EXPECT_EQ("draw(vertex_count=2, instance_count=1, first_vertex=0, first_instance=0)", log[8]);
-  EXPECT_EQ("draw(vertex_count=3, instance_count=1, first_vertex=0, first_instance=0)", log[9]);
-  EXPECT_EQ("draw(vertex_count=3, instance_count=1, first_vertex=0, first_instance=0)", log[10]);
-  EXPECT_EQ("end_rendering()", log[11]);
-  /* This test shows an error in the scheduling code. The third update_buffer is missing including
-   * the suspending of the rendering scope and some barriers. Somehow there is also a 4th drawing
-   * node. */
-  ASSERT_EQ(0, 1);
+  EXPECT_EQ("end_rendering()", log[9]);
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT" +
+          endl() +
+          " - buffer_barrier(src_access_mask=VK_ACCESS_UNIFORM_READ_BIT, "
+          "dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, buffer=0x1, offset=0, "
+          "size=18446744073709551615)" +
+          endl() + ")",
+      log[10]);
+  EXPECT_EQ("update_buffer(dst_buffer=0x1, dst_offset=0, data_size=16)", log[11]);
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT" +
+          endl() +
+          " - buffer_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+          "dst_access_mask=VK_ACCESS_UNIFORM_READ_BIT, buffer=0x1, offset=0, "
+          "size=18446744073709551615)" +
+          endl() + ")",
+      log[12]);
+  EXPECT_EQ(
+      "begin_rendering(p_rendering_info=flags=VK_RENDERING_RESUMING_BIT, "
+      "VK_RENDERING_RESUMING_BIT_KHR, render_area=" +
+          endl() + "  offset=" + endl() + "    x=0, y=0  , extent=" + endl() +
+          "    width=0, height=0  , layer_count=1, view_mask=0, color_attachment_count=1, "
+          "p_color_attachments=" +
+          endl() +
+          "  image_view=0x4, image_layout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, "
+          "resolve_mode=VK_RESOLVE_MODE_NONE, resolve_image_view=0, "
+          "resolve_image_layout=VK_IMAGE_LAYOUT_UNDEFINED, "
+          "load_op=VK_ATTACHMENT_LOAD_OP_DONT_CARE, store_op=VK_ATTACHMENT_STORE_OP_STORE" +
+          endl() + ")",
+      log[13]);
+  EXPECT_EQ("draw(vertex_count=3, instance_count=1, first_vertex=0, first_instance=0)", log[14]);
+  EXPECT_EQ("end_rendering()", log[15]);
 }
 
 }  // namespace blender::gpu::render_graph
