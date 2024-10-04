@@ -92,6 +92,7 @@ static void draw_items_list_with_operators(const bContext *C,
   }
 }
 
+/** Draw properties of the active item if there is any. */
 template<typename Accessor>
 static void draw_active_item_props(const bNodeTree &tree,
                                    const bNode &node,
