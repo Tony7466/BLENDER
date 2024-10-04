@@ -986,15 +986,15 @@ static bke::bNodeSocketType *make_socket_type_matrix()
 static bke::bNodeSocketType *make_socket_type_bundle()
 {
   bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_BUNDLE, PROP_NONE);
-  socktype->base_cpp_type = &blender::CPPType::get<bke::Bundle>();
+  socktype->base_cpp_type = &blender::CPPType::get<bke::BundlePtr>();
   socktype->get_base_cpp_value = [](const void * /*socket_value*/, void *r_value) {
-    new (r_value) bke::Bundle();
+    new (r_value) bke::BundlePtr();
   };
   socktype->geometry_nodes_cpp_type = &blender::CPPType::get<SocketValueVariant>();
   socktype->get_geometry_nodes_cpp_value = [](const void * /*socket_value*/, void *r_value) {
-    new (r_value) SocketValueVariant(bke::Bundle());
+    new (r_value) SocketValueVariant(bke::BundlePtr());
   };
-  static SocketValueVariant default_value{bke::Bundle()};
+  static SocketValueVariant default_value{bke::BundlePtr()};
   socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }

@@ -33,7 +33,7 @@ BLI_CPP_TYPE_MAKE(Image *, CPPTypeFlags::BasicType)
 BLI_CPP_TYPE_MAKE(Material *, CPPTypeFlags::BasicType)
 
 BLI_CPP_TYPE_MAKE(MStringProperty, CPPTypeFlags::None);
-BLI_CPP_TYPE_MAKE(blender::bke::Bundle, CPPTypeFlags::None);
+BLI_CPP_TYPE_MAKE(blender::bke::BundlePtr, CPPTypeFlags::None);
 BLI_CPP_TYPE_MAKE(blender::bke::Closure, CPPTypeFlags::None);
 
 BLI_CPP_TYPE_MAKE(blender::bke::AnonymousAttributeSet, CPPTypeFlags::None);
@@ -56,7 +56,7 @@ void BKE_cpp_types_init()
   BLI_CPP_TYPE_REGISTER(Material *);
 
   BLI_CPP_TYPE_REGISTER(MStringProperty);
-  BLI_CPP_TYPE_REGISTER(blender::bke::Bundle);
+  BLI_CPP_TYPE_REGISTER(blender::bke::BundlePtr);
   BLI_CPP_TYPE_REGISTER(blender::bke::Closure);
 
   BLI_CPP_TYPE_REGISTER(blender::bke::AnonymousAttributeSet);

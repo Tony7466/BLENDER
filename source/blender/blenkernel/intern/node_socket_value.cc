@@ -62,7 +62,7 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
   if constexpr (is_same_any_v<T, std::string>) {
     return SOCK_STRING;
   }
-  if constexpr (is_same_any_v<T, Bundle>) {
+  if constexpr (is_same_any_v<T, BundlePtr>) {
     return SOCK_BUNDLE;
   }
   if constexpr (is_same_any_v<T, Closure>) {
@@ -97,7 +97,7 @@ static bool static_type_is_base_socket_type(const eNodeSocketDatatype socket_typ
     case SOCK_MENU:
       return std::is_same_v<T, int>;
     case SOCK_BUNDLE:
-      return std::is_same_v<T, Bundle>;
+      return std::is_same_v<T, BundlePtr>;
     case SOCK_CLOSURE:
       return std::is_same_v<T, Closure>;
     case SOCK_CUSTOM:
@@ -265,7 +265,7 @@ void SocketValueVariant::store_single(const eNodeSocketDatatype socket_type, con
       break;
     }
     case SOCK_BUNDLE: {
-      value_.emplace<Bundle>(*static_cast<const Bundle *>(value));
+      value_.emplace<BundlePtr>(*static_cast<const BundlePtr *>(value));
       break;
     }
     case SOCK_CLOSURE: {
@@ -364,7 +364,7 @@ void *SocketValueVariant::allocate_single(const eNodeSocketDatatype socket_type)
     case SOCK_MENU:
       return value_.allocate<int>();
     case SOCK_BUNDLE:
-      return value_.allocate<Bundle>();
+      return value_.allocate<BundlePtr>();
     case SOCK_CLOSURE:
       return value_.allocate<Closure>();
     default: {
@@ -425,7 +425,7 @@ INSTANTIATE_SINGLE_AND_FIELD_AND_GRID(blender::math::Quaternion)
 
 INSTANTIATE(std::string)
 INSTANTIATE(fn::GField)
-INSTANTIATE(blender::bke::Bundle)
+INSTANTIATE(blender::bke::BundlePtr)
 INSTANTIATE(blender::bke::Closure)
 
 INSTANTIATE(float4x4)

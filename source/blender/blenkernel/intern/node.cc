@@ -4533,7 +4533,7 @@ const CPPType *socket_type_to_geo_nodes_base_cpp_type(const eNodeSocketDatatype 
       cpp_type = &CPPType::get<float4x4>();
       break;
     case SOCK_BUNDLE:
-      cpp_type = &CPPType::get<Bundle>();
+      cpp_type = &CPPType::get<BundlePtr>();
       break;
     case SOCK_CLOSURE:
       cpp_type = &CPPType::get<Closure>();
@@ -4572,7 +4572,7 @@ std::optional<eNodeSocketDatatype> geo_nodes_base_cpp_type_to_socket_type(const 
   if (type.is<std::string>()) {
     return SOCK_STRING;
   }
-  if (type.is<Bundle>()) {
+  if (type.is<BundlePtr>()) {
     return SOCK_BUNDLE;
   }
   if (type.is<Closure>()) {

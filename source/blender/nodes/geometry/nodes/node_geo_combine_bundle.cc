@@ -10,6 +10,8 @@
 
 #include "BLO_read_write.hh"
 
+#include "BKE_geometry_nodes_bundle.hh"
+
 #include "UI_interface.hh"
 
 namespace blender::nodes::node_geo_combine_bundle_cc {
@@ -80,7 +82,36 @@ static void node_operators()
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  params.set_default_remaining_outputs();
+  const bNode &node = params.node();
+  const NodeGeometryCombineBundle &storage = node_storage(node);
+
+  std::shared_ptr<bke::SocketListSignature> socket_list =
+      std::make_shared<bke::SocketListSignature>();
+
+  for (const int i : IndexRange(storage.items_num)) {
+    const NodeGeometryCombineBundleItem &item = storage.items[i];
+    const char *idname = bke::node_static_socket_type(item.socket_type, 0);
+    const bke::bNodeSocketType *stype = bke::node_socket_type_find(idname);
+    socket_list->items.append({stype, item.name ? item.name : ""});
+  }
+
+  std::shared_ptr<bke::BundleSignature> bundle_signature = std::make_shared<bke::BundleSignature>(
+      std::move(socket_list));
+
+  const int64_t size_in_bytes = bundle_signature->size_in_bytes();
+  void *data = MEM_mallocN(size_in_bytes, __func__);
+
+  for (const int i : IndexRange(storage.items_num)) {
+    const int64_t offset = bundle_signature->offset(i);
+    const CPPType &type = bundle_signature->cpp_type(i);
+    void *input_ptr = params.lazy_function_params().try_get_input_data_ptr(i);
+    BLI_assert(input_ptr);
+    type.move_construct(input_ptr, POINTER_OFFSET(data, offset));
+  }
+
+  bke::BundlePtr bundle = bke::BundlePtr(
+      MEM_new<bke::Bundle>(__func__, std::move(bundle_signature), data));
+  params.set_output("Bundle", std::move(bundle));
 }
 
 static void node_register()
