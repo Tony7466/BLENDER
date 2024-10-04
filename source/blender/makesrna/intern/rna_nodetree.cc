@@ -9922,7 +9922,7 @@ static void rna_def_geo_closure_input_item(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Closure Input Item", "");
   RNA_def_struct_sdna(srna, "NodeGeometryClosureInputItem");
 
-  rna_def_node_item_array_socket_item_common(srna, "ClosureInputItemsAccessor", false);
+  rna_def_node_item_array_socket_item_common(srna, "ClosureInputItemsAccessor", true);
 }
 
 static void rna_def_geo_closure_input_items(BlenderRNA *brna)
@@ -9943,7 +9943,7 @@ static void rna_def_geo_closure_output_item(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Closure Output Item", "");
   RNA_def_struct_sdna(srna, "NodeGeometryClosureOutputItem");
 
-  rna_def_node_item_array_socket_item_common(srna, "ClosureOutputItemsAccessor", false);
+  rna_def_node_item_array_socket_item_common(srna, "ClosureOutputItemsAccessor", true);
 }
 
 static void rna_def_geo_closure_output_items(BlenderRNA *brna)

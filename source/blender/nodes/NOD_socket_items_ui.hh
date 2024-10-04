@@ -11,6 +11,8 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.hh"
 
+#include "BLI_function_ref.hh"
+
 #include "BKE_screen.hh"
 
 namespace blender::nodes::socket_items::ui {
@@ -88,6 +90,27 @@ static void draw_items_list_with_operators(const bContext *C,
     uiItemEnumO(
         up_down_col, Accessor::operator_idnames::move_item, "", ICON_TRIA_DOWN, "direction", 1);
   }
+}
+
+template<typename Accessor>
+static void draw_active_item_props(const bNodeTree &tree,
+                                   const bNode &node,
+                                   const FunctionRef<void(PointerRNA *item_ptr)> draw_item)
+{
+  using ItemT = typename Accessor::ItemT;
+  BLI_assert(Accessor::node_type == node.type);
+
+  SocketItemsRef<ItemT> ref = Accessor::get_items_from_node(const_cast<bNode &>(node));
+  if (*ref.active_index < 0) {
+    return;
+  }
+  if (*ref.active_index >= *ref.items_num) {
+    return;
+  }
+
+  ItemT &item = (*ref.items)[*ref.active_index];
+  PointerRNA item_ptr = RNA_pointer_create(const_cast<ID *>(&tree.id), Accessor::item_srna, &item);
+  draw_item(&item_ptr);
 }
 
 }  // namespace blender::nodes::socket_items::ui

@@ -14,6 +14,47 @@
 
 namespace blender::nodes::node_geo_closure_cc {
 
+/** Shared between closure input and output node. */
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_node_ptr)
+{
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(current_node_ptr->owner_id);
+  bNode *current_node = static_cast<bNode *>(current_node_ptr->data);
+
+  const bke::bNodeTreeZones *zones = ntree.zones();
+  if (!zones) {
+    return;
+  }
+  const bke::bNodeTreeZone *zone = zones->get_zone_by_node(current_node->identifier);
+  if (!zone) {
+    return;
+  }
+  if (!zone->output_node) {
+    return;
+  }
+  bNode &output_node = const_cast<bNode &>(*zone->output_node);
+
+  if (current_node->type == GEO_NODE_CLOSURE_INPUT) {
+    if (uiLayout *panel = uiLayoutPanel(C, layout, "input_items", false, TIP_("Input Items"))) {
+      socket_items::ui::draw_items_list_with_operators<ClosureInputItemsAccessor>(
+          C, panel, ntree, output_node);
+      socket_items::ui::draw_active_item_props<ClosureInputItemsAccessor>(
+          ntree, output_node, [&](PointerRNA *item_ptr) {
+            uiItemR(panel, item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+          });
+    }
+  }
+  else {
+    if (uiLayout *panel = uiLayoutPanel(C, layout, "output_items", false, TIP_("Output Items"))) {
+      socket_items::ui::draw_items_list_with_operators<ClosureOutputItemsAccessor>(
+          C, panel, ntree, output_node);
+      socket_items::ui::draw_active_item_props<ClosureOutputItemsAccessor>(
+          ntree, output_node, [&](PointerRNA *item_ptr) {
+            uiItemR(panel, item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+          });
+    }
+  }
+}
+
 namespace input_node {
 
 NODE_STORAGE_FUNCS(NodeGeometryClosureInput);
@@ -75,6 +116,7 @@ static void node_register()
   ntype.labelfunc = node_label;
   ntype.no_muting = true;
   ntype.insert_link = node_insert_link;
+  ntype.draw_buttons_ex = node_layout_ex;
   blender::bke::node_type_storage(
       &ntype, "NodeGeometryClosureInput", node_free_standard_storage, node_copy_standard_storage);
   blender::bke::node_register_type(&ntype);
@@ -149,6 +191,7 @@ static void node_register()
   ntype.no_muting = true;
   ntype.register_operators = node_operators;
   ntype.insert_link = node_insert_link;
+  ntype.draw_buttons_ex = node_layout_ex;
   bke::node_type_storage(
       &ntype, "NodeGeometryClosureOutput", node_free_storage, node_copy_storage);
   blender::bke::node_register_type(&ntype);
