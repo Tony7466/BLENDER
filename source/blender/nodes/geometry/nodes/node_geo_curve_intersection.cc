@@ -21,6 +21,8 @@
 
 #include "NOD_rna_define.hh"
 
+#include "GEO_randomize.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_curve_intersection_cc {
@@ -563,6 +565,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
       point_attributes.add<int>(
           "id", bke::AttrDomain::Point, bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.id)));
+
+      geometry::debug_randomize_point_order(pointcloud);
     }
   });
 
