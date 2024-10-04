@@ -10,6 +10,8 @@ namespace blender::nodes::node_geo_closure_cc {
 
 namespace input_node {
 
+NODE_STORAGE_FUNCS(NodeGeometryClosureInput);
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Extend>("", "__extend__");
@@ -50,10 +52,30 @@ NOD_REGISTER_NODE(node_register)
 
 namespace output_node {
 
+NODE_STORAGE_FUNCS(NodeGeometryClosureOutput);
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Closure>("Closure");
   b.add_input<decl::Extend>("", "__extend__");
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  NodeGeometryClosureOutput *data = MEM_cnew<NodeGeometryClosureOutput>(__func__);
+  node->storage = data;
+}
+
+static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
+{
+  const NodeGeometryClosureOutput &src_storage = node_storage(*src_node);
+  auto *dst_storage = MEM_cnew<NodeGeometryClosureOutput>(__func__, src_storage);
+  dst_node->storage = dst_storage;
+}
+
+static void node_free_storage(bNode *node)
+{
+  MEM_freeN(node->storage);
 }
 
 static void node_register()
@@ -61,8 +83,11 @@ static void node_register()
   static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_CLOSURE_OUTPUT, "Closure Output", NODE_CLASS_INTERFACE);
   ntype.declare = node_declare;
+  ntype.initfunc = node_init;
   ntype.labelfunc = input_node::node_label;
   ntype.no_muting = true;
+  bke::node_type_storage(
+      &ntype, "NodeGeometryClosureOutput", node_free_storage, node_copy_storage);
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

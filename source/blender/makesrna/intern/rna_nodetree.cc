@@ -9913,6 +9913,11 @@ static void def_geo_foreach_geometry_element_output(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE, "rna_Node_update");
 }
 
+static void def_geo_closure_output(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeGeometryClosureOutput", "storage");
+}
+
 static void rna_def_geo_capture_attribute_item(BlenderRNA *brna)
 {
   StructRNA *srna = RNA_def_struct(brna, "NodeGeometryCaptureAttributeItem", nullptr);

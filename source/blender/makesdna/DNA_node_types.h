@@ -2059,6 +2059,10 @@ typedef struct NodeGeometryClosureInput {
   int32_t output_node_id;
 } NodeGeometryClosureInput;
 
+typedef struct NodeGeometryClosureOutput {
+  char _pad;
+} NodeGeometryClosureOutput;
+
 typedef struct IndexSwitchItem {
   /** Generated unique identifier which stays the same even when the item order or names change. */
   int identifier;
