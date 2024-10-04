@@ -63,13 +63,6 @@ void ED_operatortypes_gpencil_legacy()
   WM_operatortype_append(GPENCIL_OT_annotation_active_frame_delete);
 
   /* Editing (Time) --------------- */
-
-  /* Primitives */
-  WM_operatortype_append(GPENCIL_OT_primitive_box);
-  WM_operatortype_append(GPENCIL_OT_primitive_line);
-  WM_operatortype_append(GPENCIL_OT_primitive_polyline);
-  WM_operatortype_append(GPENCIL_OT_primitive_circle);
-  WM_operatortype_append(GPENCIL_OT_primitive_curve);
 }
 
 void ED_operatormacros_gpencil() {}

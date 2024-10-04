@@ -477,14 +477,6 @@ void gpencil_undo_init(bGPdata *gpd);
 void gpencil_undo_push(bGPdata *gpd);
 void gpencil_undo_finish();
 
-/* primitives ---------- */
-
-void GPENCIL_OT_primitive_box(wmOperatorType *ot);
-void GPENCIL_OT_primitive_line(wmOperatorType *ot);
-void GPENCIL_OT_primitive_polyline(wmOperatorType *ot);
-void GPENCIL_OT_primitive_circle(wmOperatorType *ot);
-void GPENCIL_OT_primitive_curve(wmOperatorType *ot);
-
 /* ****************************************************** */
 /* Stroke Iteration Utilities */
 
