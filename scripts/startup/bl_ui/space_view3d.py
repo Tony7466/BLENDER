@@ -8734,7 +8734,7 @@ class VIEW3D_AST_brush_texture_paint(View3DAssetShelf, bpy.types.AssetShelf):
     tool_prop = "image_tool"
 
 
-class VIEW3D_AST_brush_grease_pencil_paint(View3DAssetShelf, bpy.types.AssetShelf):
+class VIEW3D_AST_brush_gpencil_paint(View3DAssetShelf, bpy.types.AssetShelf):
     mode = 'PAINT_GREASE_PENCIL'
     mode_prop = "use_paint_grease_pencil"
     brush_type_prop = "gpencil_brush_type"
@@ -9015,7 +9015,7 @@ classes = (
     VIEW3D_AST_brush_vertex_paint,
     VIEW3D_AST_brush_weight_paint,
     VIEW3D_AST_brush_texture_paint,
-    VIEW3D_AST_brush_grease_pencil_paint,
+    VIEW3D_AST_brush_gpencil_paint,
     VIEW3D_AST_brush_gpencil_sculpt,
     VIEW3D_AST_brush_gpencil_vertex,
     VIEW3D_AST_brush_gpencil_weight,

@@ -116,7 +116,7 @@ class BrushAssetShelf:
             'PAINT_WEIGHT': "VIEW3D_AST_brush_weight_paint",
             'PAINT_TEXTURE': "VIEW3D_AST_brush_texture_paint",
             'PAINT_2D': "IMAGE_AST_brush_paint",
-            'PAINT_GREASE_PENCIL': "VIEW3D_AST_brush_grease_pencil_paint",
+            'PAINT_GREASE_PENCIL': "VIEW3D_AST_brush_gpencil_paint",
             'SCULPT_GREASE_PENCIL': "VIEW3D_AST_brush_gpencil_sculpt",
             'WEIGHT_GREASE_PENCIL': "VIEW3D_AST_brush_gpencil_weight",
             'VERTEX_GREASE_PENCIL': "VIEW3D_AST_brush_gpencil_vertex",

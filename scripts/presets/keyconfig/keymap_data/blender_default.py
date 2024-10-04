@@ -3761,7 +3761,7 @@ def km_grease_pencil_paint_mode(params):
         ("grease_pencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
 
         op_asset_shelf_popup(
-            "VIEW3D_AST_brush_grease_pencil_paint",
+            "VIEW3D_AST_brush_gpencil_paint",
             {"type": 'SPACE', "value": 'PRESS', "shift": True}
         ),
     ])
