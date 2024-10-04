@@ -2464,6 +2464,9 @@ static void gpencil_draw_exit(bContext *C, wmOperator *op)
      *       have been toggled at some point.
      */
     if (p->eraser) {
+      if (p->eraser->size != p->radius) {
+        BKE_brush_tag_unsaved_changes(p->brush);
+      }
       p->eraser->size = p->radius;
     }
 

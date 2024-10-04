@@ -50,6 +50,13 @@ void BKE_brush_init_gpencil_settings(Brush *brush);
 
 void BKE_brush_init_curves_sculpt_settings(Brush *brush);
 
+/**
+ * Tag the brush as having changed settings so an indicator can be displayed to the user, showing
+ * that the brush settings differ the state of the imported brush asset. Call everytime a user
+ * visible change to the brush is done.
+ */
+void BKE_brush_tag_unsaved_changes(Brush *brush);
+
 Brush *BKE_brush_first_search(Main *bmain, eObjectMode ob_mode);
 
 void BKE_brush_jitter_pos(const Scene &scene,

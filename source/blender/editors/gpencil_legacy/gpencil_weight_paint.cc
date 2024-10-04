@@ -1527,6 +1527,7 @@ static int gpencil_weight_toggle_direction_invoke(bContext *C,
   /* Toggle Add/Subtract flag. */
   brush->flag ^= BRUSH_DIR_IN;
 
+  BKE_brush_tag_unsaved_changes(brush);
   /* Update tool settings. */
   WM_main_add_notifier(NC_BRUSH | NA_EDITED, nullptr);
 
@@ -1664,6 +1665,7 @@ static int gpencil_weight_sample_invoke(bContext *C, wmOperator * /*op*/, const 
                       (1.0f - closest_dist[1] / dist_sum) * closest_weight[1];
     }
 
+    BKE_brush_tag_unsaved_changes(brush);
     /* Update tool settings. */
     WM_main_add_notifier(NC_BRUSH | NA_EDITED, nullptr);
 

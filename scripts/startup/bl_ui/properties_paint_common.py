@@ -140,9 +140,13 @@ class BrushAssetShelf:
         if not shelf_name:
             return
 
+        display_name = brush.name if (brush and show_name) else None
+        if display_name and brush.has_unsaved_changes:
+            display_name = display_name + "*"
+
         layout.template_asset_shelf_popover(
             shelf_name,
-            name=brush.name if (brush and show_name) else None,
+            name=display_name,
             icon='BRUSH_DATA' if not preview_icon_id else 'NONE',
             icon_value=preview_icon_id,
         )

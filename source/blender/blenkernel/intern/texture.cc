@@ -36,6 +36,7 @@
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 
+#include "BKE_brush.hh"
 #include "BKE_colorband.hh"
 #include "BKE_colortools.hh"
 #include "BKE_icons.h"
@@ -550,6 +551,7 @@ void set_current_brush_texture(Brush *br, Tex *newtex)
   if (newtex) {
     br->mtex.tex = newtex;
     id_us_plus(&newtex->id);
+    BKE_brush_tag_unsaved_changes(br);
   }
 }
 
