@@ -362,23 +362,6 @@ void ED_gpencil_stroke_init_data(bGPDstroke *gps,
                                  int totpoints,
                                  const float mat[4][4]);
 
-/**
- * Add a Simple empty object with one layer and one color.
- */
-void ED_gpencil_create_blank(bContext *C, Object *ob, float mat[4][4]);
-/**
- * Add a 2D Suzanne.
- */
-void ED_gpencil_create_monkey(bContext *C, Object *ob, float mat[4][4]);
-/**
- * Add a Simple stroke with colors.
- */
-void ED_gpencil_create_stroke(bContext *C, Object *ob, float mat[4][4]);
-/**
- * Add a Simple LineArt setup.
- */
-void ED_gpencil_create_lineart(bContext *C, Object *ob);
-
 /* ------------ Object Utilities ------------ */
 /**
  * Helper function to create new #OB_GPENCIL_LEGACY Object.
