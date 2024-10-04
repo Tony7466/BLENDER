@@ -490,8 +490,8 @@ def ctx_gpencil_paint_weight():
 
 
 def ctx_gpencil_paint_vertex():
-    bpy.ops.object.gpencil_add(type='STROKE')
-    bpy.ops.object.mode_set(mode='VERTEX_GPENCIL')
+    bpy.ops.object.grease_pencil_add(type='STROKE')
+    bpy.ops.object.mode_set(mode='VERTEX_GREASE_PENCIL')
 
 
 def ctx_gpencil_paint_draw():

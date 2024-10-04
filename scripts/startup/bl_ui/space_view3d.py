@@ -732,7 +732,7 @@ class VIEW3D_HT_header(Header):
             if has_pose_mode or (object_mode not in {
                     'SCULPT', 'SCULPT_CURVES',
                     'VERTEX_PAINT', 'WEIGHT_PAINT', 'TEXTURE_PAINT',
-                    'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL',
+                    'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GREASE_PENCIL',
             }):
                 show_snap = True
             else:
@@ -895,7 +895,7 @@ class VIEW3D_HT_header(Header):
                 row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_segment", text="")
 
-            if object_mode == 'VERTEX_GPENCIL':
+            if object_mode == 'VERTEX_GREASE_PENCIL':
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_gpencil_vertex_select_mask_point", text="")
                 row.prop(tool_settings, "use_gpencil_vertex_select_mask_stroke", text="")
@@ -7724,7 +7724,7 @@ class VIEW3D_PT_overlay_grease_pencil_options(Panel):
         sub.prop(overlay, "gpencil_fade_objects", text="Fade Inactive Objects", slider=True)
         sub.prop(overlay, "use_gpencil_fade_gp_objects", text="", icon='OUTLINER_OB_GREASEPENCIL')
 
-        if ob.mode in {'EDIT', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL'}:
+        if ob.mode in {'EDIT', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GREASE_PENCIL'}:
             split = layout.split()
             col = split.column()
             col.prop(overlay, "use_gpencil_edit_lines", text="Edit Lines")
@@ -7738,7 +7738,7 @@ class VIEW3D_PT_overlay_grease_pencil_options(Panel):
             col = split.column()
             col.prop(overlay, "use_gpencil_show_material_name", text="Material Name")
 
-        if ob.mode in {'PAINT_GREASE_PENCIL', 'VERTEX_GPENCIL'}:
+        if ob.mode in {'PAINT_GREASE_PENCIL', 'VERTEX_GREASE_PENCIL'}:
             layout.label(text="Vertex Paint")
             row = layout.row()
             shading = VIEW3D_PT_shading.get_shading(context)
@@ -8573,7 +8573,7 @@ class TOPBAR_PT_grease_pencil_vertex_color(Panel):
         ob = context.object
         if ob.mode == 'PAINT_GREASE_PENCIL':
             paint = context.scene.tool_settings.gpencil_paint
-        elif ob.mode == 'VERTEX_GPENCIL':
+        elif ob.mode == 'VERTEX_GREASE_PENCIL':
             paint = context.scene.tool_settings.gpencil_vertex_paint
 
         ups = context.tool_settings.unified_paint_settings
@@ -8749,7 +8749,7 @@ class VIEW3D_AST_brush_gpencil_sculpt(View3DAssetShelf, bpy.types.AssetShelf):
 
 
 class VIEW3D_AST_brush_gpencil_vertex(AssetShelfHiddenByDefault, View3DAssetShelf, bpy.types.AssetShelf):
-    mode = 'VERTEX_GPENCIL'
+    mode = 'VERTEX_GREASE_PENCIL'
     mode_prop = "use_vertex_grease_pencil"
     brush_type_prop = "gpencil_vertex_brush_type"
     tool_prop = "gpencil_vertex_tool"

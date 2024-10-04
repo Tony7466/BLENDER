@@ -117,7 +117,7 @@ class GreasePencilDisplayPanel:
         gp_settings = brush.gpencil_settings
         ob = context.active_object
 
-        if self.is_popover and ob.mode not in {'PAINT_GREASE_PENCIL', 'VERTEX_GPENCIL'}:
+        if self.is_popover and ob.mode not in {'PAINT_GREASE_PENCIL', 'VERTEX_GREASE_PENCIL'}:
             row = layout.row(align=True)
             row.use_property_split = False
             row.prop(settings, "show_brush", text="Display Cursor")
@@ -146,7 +146,7 @@ class GreasePencilDisplayPanel:
 
             col.prop(brush, "cursor_color_add", text="Cursor Color")
 
-        elif ob.mode == 'VERTEX_GPENCIL' or ob.mode == 'VERTEX_GREASE_PENCIL':
+        elif ob.mode == 'VERTEX_GREASE_PENCIL':
             row = layout.row(align=True)
             row.prop(settings, "show_brush", text="Display Cursor")
 
