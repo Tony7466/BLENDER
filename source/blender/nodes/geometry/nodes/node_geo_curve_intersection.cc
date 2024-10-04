@@ -282,47 +282,50 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
 
   ThreadLocalData thread_storage;
   threading::parallel_for(src_curves.curves_range(), 1024, [&](IndexRange curve_range) {
-    for (const int64_t curve_i : curve_range) {
-      IntersectionData &local_data = thread_storage.local();
-      const IndexRange points = evaluated_points_by_curve[curve_i];
-      const Span<float3> positions = src_curves.evaluated_positions().slice(points);
-      if (positions.size() <= 1) {
-        continue;
-      }
-      const Span<float> lengths = src_curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
-      const float length = src_curves.evaluated_length_total_for_curve(curve_i, cyclic[curve_i]);
-
-      auto new_closest = [&](const float3 a,
-                             const float3 b,
-                             const float len_start,
-                             const float len_end,
-                             const float curve_length) {
-        float3 closest = float3(0.0f);
-        float lambda = 0.0f;
-        if (isect_line_plane_crossing(a, b, plane_center, direction, closest, lambda)) {
-          const float len_at_isect = math::interpolate(len_start, len_end, lambda);
-          const float3 dir_of_isect = math::normalize(b - a);
-          add_intersection_data(
-              local_data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, false);
+    IntersectionData &local_data = thread_storage.local();
+    threading::isolate_task([&]() {
+      for (const int64_t curve_i : curve_range) {
+        const IndexRange points = evaluated_points_by_curve[curve_i];
+        const Span<float3> positions = src_curves.evaluated_positions().slice(points);
+        if (positions.size() <= 1) {
+          continue;
         }
-      };
+        const Span<float> lengths = src_curves.evaluated_lengths_for_curve(curve_i,
+                                                                           cyclic[curve_i]);
+        const float length = src_curves.evaluated_length_total_for_curve(curve_i, cyclic[curve_i]);
 
-      /* Loop segments from start until we have an intersection. */
-      for (const int index : IndexRange(positions.size()).drop_back(1)) {
-        const float3 a = positions[index];
-        const float3 b = positions[1 + index];
-        const float len_start = (index == 0) ? 0.0f : lengths[index - 1];
-        const float len_end = lengths[index];
-        new_closest(a, b, len_start, len_end, length);
+        auto new_closest = [&](const float3 a,
+                               const float3 b,
+                               const float len_start,
+                               const float len_end,
+                               const float curve_length) {
+          float3 closest = float3(0.0f);
+          float lambda = 0.0f;
+          if (isect_line_plane_crossing(a, b, plane_center, direction, closest, lambda)) {
+            const float len_at_isect = math::interpolate(len_start, len_end, lambda);
+            const float3 dir_of_isect = math::normalize(b - a);
+            add_intersection_data(
+                local_data, closest, dir_of_isect, curve_i, len_at_isect, curve_length, false);
+          }
+        };
+
+        /* Loop segments from start until we have an intersection. */
+        for (const int index : IndexRange(positions.size()).drop_back(1)) {
+          const float3 a = positions[index];
+          const float3 b = positions[1 + index];
+          const float len_start = (index == 0) ? 0.0f : lengths[index - 1];
+          const float len_end = lengths[index];
+          new_closest(a, b, len_start, len_end, length);
+        }
+        if (cyclic[curve_i]) {
+          const float3 a = positions.last();
+          const float3 b = positions.first();
+          const float len_start = lengths.last();
+          const float len_end = 1.0f;
+          new_closest(a, b, len_start, len_end, length);
+        }
       }
-      if (cyclic[curve_i]) {
-        const float3 a = positions.last();
-        const float3 b = positions.first();
-        const float len_start = lengths.last();
-        const float len_end = 1.0f;
-        new_closest(a, b, len_start, len_end, length);
-      }
-    }
+    });
   });
   gather_thread_storage(thread_storage, r_data);
 }
@@ -343,49 +346,52 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
   /* Loop through segments. */
   ThreadLocalData thread_storage;
   threading::parallel_for(curve_segments.index_range(), 128, [&](IndexRange range) {
-    for (const int64_t segment_index : range) {
-      IntersectionData &local_data = thread_storage.local();
-      const Segment ab = curve_segments[segment_index];
-      BLI_bvhtree_range_query_cpp(
-          *bvhtree,
-          math::midpoint(ab.start, ab.end),
-          math::distance(ab.start, ab.end) + min_distance,
-          [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
-            if (segment_index <= index) {
-              /* Skip matching segments or previously matched segments. */
-              return;
-            }
-            const Segment cd = curve_segments[index];
-            const bool calc_self = (self_intersect && (ab.curve_index == cd.curve_index &&
-                                                       (abs(ab.pos_index - cd.pos_index) > 1) &&
-                                                       !(ab.is_end_segment && cd.is_end_segment)));
-            const bool calc_all = (all_intersect && (ab.curve_index != cd.curve_index));
-            if (calc_self || calc_all) {
-              const IntersectingLineInfo isectinfo = intersecting_lines(
-                  ab.start, ab.end, cd.start, cd.end, min_distance);
-
-              if (isectinfo.intersects && isectinfo.lambda_ab != 1.0f &&
-                  isectinfo.lambda_cd != 1.0f) {
-                add_intersection_data(
-                    local_data,
-                    isectinfo.closest_ab,
-                    math::normalize(ab.end - ab.start),
-                    ab.curve_index,
-                    math::interpolate(ab.len_start, ab.len_end, isectinfo.lambda_ab),
-                    ab.curve_length,
-                    false);
-                add_intersection_data(
-                    local_data,
-                    isectinfo.closest_cd,
-                    math::normalize(cd.end - cd.start),
-                    cd.curve_index,
-                    math::interpolate(cd.len_start, cd.len_end, isectinfo.lambda_cd),
-                    cd.curve_length,
-                    true);
+    IntersectionData &local_data = thread_storage.local();
+    threading::isolate_task([&]() {
+      for (const int64_t segment_index : range) {
+        const Segment ab = curve_segments[segment_index];
+        BLI_bvhtree_range_query_cpp(
+            *bvhtree,
+            math::midpoint(ab.start, ab.end),
+            math::distance(ab.start, ab.end) + min_distance,
+            [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
+              if (segment_index <= index) {
+                /* Skip matching segments or previously matched segments. */
+                return;
               }
-            }
-          });
-    }
+              const Segment cd = curve_segments[index];
+              const bool calc_self = (self_intersect &&
+                                      (ab.curve_index == cd.curve_index &&
+                                       (abs(ab.pos_index - cd.pos_index) > 1) &&
+                                       !(ab.is_end_segment && cd.is_end_segment)));
+              const bool calc_all = (all_intersect && (ab.curve_index != cd.curve_index));
+              if (calc_self || calc_all) {
+                const IntersectingLineInfo isectinfo = intersecting_lines(
+                    ab.start, ab.end, cd.start, cd.end, min_distance);
+
+                if (isectinfo.intersects && isectinfo.lambda_ab != 1.0f &&
+                    isectinfo.lambda_cd != 1.0f) {
+                  add_intersection_data(
+                      local_data,
+                      isectinfo.closest_ab,
+                      math::normalize(ab.end - ab.start),
+                      ab.curve_index,
+                      math::interpolate(ab.len_start, ab.len_end, isectinfo.lambda_ab),
+                      ab.curve_length,
+                      false);
+                  add_intersection_data(
+                      local_data,
+                      isectinfo.closest_cd,
+                      math::normalize(cd.end - cd.start),
+                      cd.curve_index,
+                      math::interpolate(cd.len_start, cd.len_end, isectinfo.lambda_cd),
+                      cd.curve_length,
+                      true);
+                }
+              }
+            });
+      }
+    });
   });
   gather_thread_storage(thread_storage, r_data);
 }
@@ -415,45 +421,47 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
     /* Loop face data. */
     ThreadLocalData thread_storage;
     threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
-      for (const int64_t face_index : range) {
-        IntersectionData &local_data = thread_storage.local();
-        // for (const int face_index : corner_tris.index_range()) {
-        const int3 &tri = corner_tris[face_index];
-        const int v0_loop = tri[0];
-        const int v1_loop = tri[1];
-        const int v2_loop = tri[2];
-        const float3 &v0_pos = positions[corner_verts[v0_loop]];
-        const float3 &v1_pos = positions[corner_verts[v1_loop]];
-        const float3 &v2_pos = positions[corner_verts[v2_loop]];
+      IntersectionData &local_data = thread_storage.local();
+      threading::isolate_task([&]() {
+        for (const int64_t face_index : range) {
+          // for (const int face_index : corner_tris.index_range()) {
+          const int3 &tri = corner_tris[face_index];
+          const int v0_loop = tri[0];
+          const int v1_loop = tri[1];
+          const int v2_loop = tri[2];
+          const float3 &v0_pos = positions[corner_verts[v0_loop]];
+          const float3 &v1_pos = positions[corner_verts[v1_loop]];
+          const float3 &v2_pos = positions[corner_verts[v2_loop]];
 
-        float3 cent_pos;
-        interp_v3_v3v3v3(cent_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
-        const float distance = math::max(
-            math::max(math::distance(cent_pos, v0_pos), math::distance(cent_pos, v1_pos)),
-            math::distance(cent_pos, v2_pos));
-        BLI_bvhtree_range_query_cpp(
-            *bvhtree,
-            cent_pos,
-            distance + curve_isect_eps,
-            [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
-              const Segment seg = curve_segments[index];
-              float lambda = 0.0f;
-              if (isect_line_segment_tri_v3(
-                      seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, nullptr))
-              {
-                const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
-                const float3 dir_of_isect = math::normalize(seg.end - seg.start);
-                const float3 closest = math::interpolate(seg.start, seg.end, lambda);
-                add_intersection_data(local_data,
-                                      closest,
-                                      dir_of_isect,
-                                      seg.curve_index,
-                                      len_at_isect,
-                                      seg.curve_length,
-                                      false);
-              }
-            });
-      }
+          float3 cent_pos;
+          interp_v3_v3v3v3(cent_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
+          const float distance = math::max(
+              math::max(math::distance(cent_pos, v0_pos), math::distance(cent_pos, v1_pos)),
+              math::distance(cent_pos, v2_pos));
+          BLI_bvhtree_range_query_cpp(
+              *bvhtree,
+              cent_pos,
+              distance + curve_isect_eps,
+              [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
+                const Segment seg = curve_segments[index];
+                float lambda = 0.0f;
+                if (isect_line_segment_tri_v3(
+                        seg.start, seg.end, v0_pos, v1_pos, v2_pos, &lambda, nullptr))
+                {
+                  const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
+                  const float3 dir_of_isect = math::normalize(seg.end - seg.start);
+                  const float3 closest = math::interpolate(seg.start, seg.end, lambda);
+                  add_intersection_data(local_data,
+                                        closest,
+                                        dir_of_isect,
+                                        seg.curve_index,
+                                        len_at_isect,
+                                        seg.curve_length,
+                                        false);
+                }
+              });
+        }
+      });
     });
     gather_thread_storage(thread_storage, r_data);
   });
