@@ -224,15 +224,7 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
             CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply (Active Keyframe)"),
             ICON_CHECKMARK,
             "OBJECT_OT_modifier_apply");
-  }
-  else {
-    uiItemO(layout,
-            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
-            ICON_CHECKMARK,
-            "OBJECT_OT_modifier_apply");
-  }
 
-  if (ob->type == OB_GREASE_PENCIL) {
     uiItemFullO(layout,
                 "OBJECT_OT_modifier_apply",
                 IFACE_("Apply (All Keyframes)"),
@@ -242,6 +234,12 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
                 UI_ITEM_NONE,
                 &op_ptr);
     RNA_boolean_set(&op_ptr, "all_keyframes", true);
+  }
+  else {
+    uiItemO(layout,
+            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Apply"),
+            ICON_CHECKMARK,
+            "OBJECT_OT_modifier_apply");
   }
 
   /* Apply as shapekey. */
