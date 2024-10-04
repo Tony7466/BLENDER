@@ -619,7 +619,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           AttrDomain::Point,
           bke::AttributeInitVArray(VArray<bool>::ForSpan(sorted_data.duplicate)));
 
-      geometry::debug_randomize_point_order(pointcloud);
+      // geometry::debug_randomize_point_order(pointcloud);
     }
   });
 
