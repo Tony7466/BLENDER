@@ -414,7 +414,7 @@ static eRedrawFlag handleEventEdgeSlide(TransInfo *t, const wmEvent *event)
 
   if (slp) {
     bool is_event_handled = t->redraw && (event->type != MOUSEMOVE);
-    slp->update_status_bar = is_event_handled;
+    slp->update_status_bar |= is_event_handled;
     switch (event->type) {
       case EVT_EKEY:
         if (event->val == KM_PRESS) {
@@ -818,8 +818,7 @@ static void applyEdgeSlide(TransInfo *t)
   }
 
   if (slp->update_status_bar) {
-    WorkSpace *workspace = CTX_wm_workspace(t->context);
-    BKE_workspace_status_clear(workspace);
+    slp->update_status_bar = false;
 
     WorkspaceStatus status(t->context);
     status.opmodal(IFACE_("Confirm"), op->type, TFM_MODAL_CONFIRM);
@@ -896,6 +895,7 @@ static void initEdgeSlide_ex(TransInfo *t,
       slp->flipped = !flipped;
     }
     slp->perc = 0.0f;
+    slp->update_status_bar = true;
 
     if (!use_clamp) {
       t->flag |= T_ALT_TRANSFORM;

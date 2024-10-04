@@ -326,9 +326,6 @@ static void apply_shear(TransInfo *t)
   if (update_status_bar) {
     t->custom.mode.data = POINTER_FROM_INT(0);
 
-    WorkSpace *workspace = CTX_wm_workspace(t->context);
-    BKE_workspace_status_clear(workspace);
-
     WorkspaceStatus status(t->context);
     status.item(IFACE_("Confirm"), ICON_MOUSE_LMB);
     status.item(IFACE_("Cancel"), ICON_MOUSE_RMB);
