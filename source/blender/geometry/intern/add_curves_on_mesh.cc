@@ -90,7 +90,7 @@ void interpolate_from_neighbor_curves(const Span<NeighborCurves> neighbors_per_c
                                       const GetValueF &get_value_from_neighbor,
                                       MutableSpan<T> r_interpolated_values)
 {
-  bke::attribute_math::DefaultMixer<T> mixer{r_interpolated_values};
+  bke::attribute_math::DefaultMixer<T> mixer(r_interpolated_values);
   threading::parallel_for(r_interpolated_values.index_range(), 512, [&](const IndexRange range) {
     for (const int i : range) {
       const NeighborCurves &neighbors = neighbors_per_curve[i];
@@ -104,8 +104,8 @@ void interpolate_from_neighbor_curves(const Span<NeighborCurves> neighbors_per_c
         }
       }
     }
-    mixer.finalize(range);
   });
+  mixer.finalize();
 }
 
 static void calc_position_without_interpolation(CurvesGeometry &curves,

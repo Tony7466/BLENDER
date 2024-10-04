@@ -1465,8 +1465,8 @@ static void adapt_curve_domain_point_to_curve_impl(const CurvesGeometry &curves,
         mixer.mix_in(i_curve, old_values[i_point]);
       }
     }
-    mixer.finalize(range);
   });
+  mixer.finalize();
 }
 
 /**

@@ -120,7 +120,7 @@ void ColorGeometry4fMixer::finalize()
 
 void ColorGeometry4fMixer::finalize(const IndexMask &mask)
 {
-  mask.foreach_index([&](const int64_t i) {
+  mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
     const float weight = total_weights_[i];
     ColorGeometry4f &output_color = buffer_[i];
     if (weight > 0.0f) {
@@ -182,7 +182,7 @@ void ColorGeometry4bMixer::finalize()
 
 void ColorGeometry4bMixer::finalize(const IndexMask &mask)
 {
-  mask.foreach_index([&](const int64_t i) {
+  mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
     const float weight = total_weights_[i];
     const float4 &accum_value = accumulation_buffer_[i];
     ColorGeometry4b &output_color = buffer_[i];
@@ -236,7 +236,7 @@ void float4x4Mixer::finalize()
 
 void float4x4Mixer::finalize(const IndexMask &mask)
 {
-  mask.foreach_index([&](const int64_t i) {
+  mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
     const float weight = total_weights_[i];
     if (weight > 0.0f) {
       const float weight_inv = math::rcp(weight);

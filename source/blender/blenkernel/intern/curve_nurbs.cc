@@ -203,8 +203,8 @@ static void interpolate_to_evaluated(const BasisCache &basis_cache,
         mixer.mix_in(i, src[point_index], point_weights[j]);
       }
     }
-    mixer.finalize(range);
   });
+  mixer.finalize();
 }
 
 template<typename T>
@@ -226,8 +226,8 @@ static void interpolate_to_evaluated_rational(const BasisCache &basis_cache,
         mixer.mix_in(i, src[point_index], weight);
       }
     }
-    mixer.finalize(range);
   });
+  mixer.finalize();
 }
 
 void interpolate_to_evaluated(const BasisCache &basis_cache,

@@ -318,21 +318,17 @@ blender::bke::CurvesGeometry curves_merge_by_distance(const bke::CurvesGeometry 
             dst_attributes.lookup_or_add_for_write_only_span<T>(iter.name, bke::AttrDomain::Point);
         VArraySpan<T> src = src_attribute.varray.typed<T>();
 
+        bke::attribute_math::DefaultMixer<T> mixer(dst_attribute.span);
         threading::parallel_for(dst_curves.points_range(), 1024, [&](IndexRange range) {
           for (const int dst_point_i : range) {
-            /* Create a separate mixer for every point to avoid allocating temporary buffers
-             * in the mixer the size of the result curves and to improve memory locality. */
-            bke::attribute_math::DefaultMixer<T> mixer{dst_attribute.span.slice(dst_point_i, 1)};
-
             Span<int> src_merge_indices = merge_map_indices.as_span().slice(
                 map_offsets[dst_point_i]);
             for (const int src_point_i : src_merge_indices) {
-              mixer.mix_in(0, src[src_point_i]);
+              mixer.mix_in(dst_point_i, src[src_point_i]);
             }
-
-            mixer.finalize();
           }
         });
+        mixer.finalize();
 
         dst_attribute.finish();
       }

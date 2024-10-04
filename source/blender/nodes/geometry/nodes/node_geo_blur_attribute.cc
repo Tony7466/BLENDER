@@ -248,8 +248,8 @@ static Span<T> blur_on_mesh_exec(const Span<float> neighbor_weights,
           mixer.mix_in(index, src[neighbor], neighbor_weight);
         }
       }
-      mixer.finalize(range);
     });
+    mixer.finalize();
   }
 
   return dst;
@@ -340,8 +340,8 @@ static Span<T> blur_on_curve_exec(const bke::CurvesGeometry &curves,
           mixer.mix_in(last_i, src[first_i], last_neighbor_weight);
         }
       }
-      mixer.finalize(points_by_curve[range]);
     });
+    mixer.finalize();
   }
 
   return dst;

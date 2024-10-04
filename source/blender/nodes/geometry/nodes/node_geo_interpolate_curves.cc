@@ -500,8 +500,8 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
               mixer.mix_in(child_curve_i, src[neighbor_index], neighbor_weight);
             }
           }
-          mixer.finalize(range);
         });
+        mixer.finalize();
       });
 
       dst_generic.finish();
@@ -580,8 +580,8 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
               }
             }
           }
-          mixer.finalize(child_points_by_curve[range]);
         });
+        mixer.finalize();
       });
 
       dst_generic.finish();

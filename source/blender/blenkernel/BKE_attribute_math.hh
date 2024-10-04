@@ -336,7 +336,7 @@ template<typename T> class SimpleMixer {
 
   void finalize(const IndexMask &mask)
   {
-    mask.foreach_index([&](const int64_t i) {
+    mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
       const float weight = total_weights_[i];
       if (weight > 0.0f) {
         buffer_[i] *= 1.0f / weight;
@@ -461,7 +461,7 @@ class SimpleMixerWithAccumulationType {
 
   void finalize(const IndexMask &mask)
   {
-    mask.foreach_index([&](const int64_t i) {
+    mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
       const Item &item = accumulation_buffer_[i];
       if (item.weight > 0.0f) {
         const float weight_inv = 1.0f / item.weight;

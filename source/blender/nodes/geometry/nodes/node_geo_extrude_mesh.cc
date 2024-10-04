@@ -204,17 +204,13 @@ void copy_with_mixing(const Span<T> src,
                       const IndexMask &selection,
                       MutableSpan<T> dst)
 {
-  selection.foreach_segment(
-      GrainSize(512), [&](const IndexMaskSegment segment, const int64_t segment_pos) {
-        const IndexRange dst_range(segment_pos, segment.size());
-        bke::attribute_math::DefaultPropagationMixer<T> mixer{dst.slice(dst_range)};
-        for (const int i : segment.index_range()) {
-          for (const int src_i : src_groups[segment[i]]) {
-            mixer.mix_in(i, src[src_i]);
-          }
-        }
-        mixer.finalize();
-      });
+  bke::attribute_math::DefaultPropagationMixer<T> mixer(dst);
+  selection.foreach_index(GrainSize(512), [&](const int index, const int dst_pos) {
+    for (const int src_i : src_groups[index]) {
+      mixer.mix_in(dst_pos, src[src_i]);
+    }
+  });
+  mixer.finalize();
 }
 
 static void copy_with_mixing(const GSpan src,
@@ -235,16 +231,16 @@ void copy_with_mixing(const Span<T> src,
                       const Span<int> selection,
                       MutableSpan<T> dst)
 {
+  bke::attribute_math::DefaultPropagationMixer<T> mixer(dst);
   threading::parallel_for(dst.index_range(), 512, [&](const IndexRange range) {
-    bke::attribute_math::DefaultPropagationMixer<T> mixer{dst.slice(range)};
-    for (const int i : range.index_range()) {
+    for (const int i : range) {
       const int group_i = selection[i];
       for (const int i_src : src_groups[group_i]) {
         mixer.mix_in(i, src[i_src]);
       }
     }
-    mixer.finalize();
   });
+  mixer.finalize();
 }
 
 static void copy_with_mixing(const GSpan src,
