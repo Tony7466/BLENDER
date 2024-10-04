@@ -64,6 +64,21 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "sites", UI_ITEM_NONE, "", ICON_NONE);
 }
 
+static bool search_edge(voro::voronoicell &c, int l, int &m ,int &k){
+  for(m=0;m<c.nu[l];m++) {
+		k=c.ed[l][m];
+		if(k>=0) return true;
+	}
+	return false;
+}
+
+static void reset_edges(voro::voronoicell &c) {
+	int i,j;
+	for(i=0;i<c.p;i++) for(j=0;j<c.nu[i];j++) {
+		c.ed[i][j]=-1-c.ed[i][j];
+	}
+}
+
 static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain){
   // Very simple pizza: the base is a disc and olives are little quads
 
@@ -106,10 +121,36 @@ static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain
   double *pp;
   voro::c_loop_all vl(con);
   int vert_count = 0;
+  Vector<float3> verts;
+  Vector<int> edges;
   if(vl.start()) do if(con.compute_cell(c,vl)) {
     pp=con.p[vl.ijk]+con.ps*vl.q;
     // c.draw_gnuplot(*pp,pp[1],pp[2],con.fp);
-    vert_count += c.p;
+    double x = *pp;
+    double y = pp[1];
+    double z = pp[2];
+    int j,k,l,m;
+    for(i=1;i<c.p;i++) for(j=0;j<c.nu[i];j++) {
+      k=c.ed[i][j];
+      if(k>=0) {
+        verts.append(float3(x+0.5*c.pts[i<<2], y+0.5*c.pts[(i<<2)+1], z+0.5*c.pts[(i<<2)+2]));
+        vert_count++;
+        // edges.append(i);
+        // i++;
+        l=i;m=j;
+        do {
+          c.ed[k][c.ed[l][c.nu[l]+m]]=-1-l;
+          c.ed[l][m]=-1-k;
+          l=k;
+          verts.append(float3(x+0.5*c.pts[k<<2], y+0.5*c.pts[(k<<2)+1], z+0.5*c.pts[(k<<2)+2]));
+          vert_count++;
+          // edges.append(i);
+          // i++;
+        } while (search_edge(c,l,m,k));
+      }
+    }
+	  reset_edges(c);
+    // vert_count += c.p;
   } while(vl.inc());
 
 
@@ -126,7 +167,17 @@ static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain
 	// // Output the Voronoi cells in POV-Ray format
 	// con.draw_cells_pov("cylinder_v.pov");
   // [...]
-  Mesh *mesh = BKE_mesh_new_nomain(vert_count, 0,0,0);
+  Mesh *mesh = BKE_mesh_new_nomain(vert_count, vert_count*2,0,0);
+  MutableSpan<float3> pos_voro = mesh->vert_positions_for_write();
+  MutableSpan<int2> edges_wr = mesh->edges_for_write();
+
+  i = 0;
+  for(i = 0; i < vert_count-1; i++){
+    pos_voro[i] = verts[i];
+    pos_voro[i+1] = verts[i+1];
+    edges_wr[i] = int2(i,i+1);
+    i++;
+  }
 
   return mesh;
 }
