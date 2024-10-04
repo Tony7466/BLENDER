@@ -7,6 +7,8 @@
 #include "BKE_geometry_nodes_bundle.hh"
 #include "BKE_geometry_nodes_closure_fwd.hh"
 
+#include "BLI_resource_scope.hh"
+
 #include "FN_lazy_function.hh"
 
 namespace blender::bke {
@@ -33,14 +35,30 @@ class ClosureSignature {
   }
 };
 
+struct ClosureFunctionIndices {
+  struct {
+    IndexRange main;
+    IndexRange output_usages;
+  } inputs;
+  struct {
+    IndexRange main;
+    IndexRange input_usages;
+  } outputs;
+};
+
 class Closure : public ImplicitSharingInfo {
  private:
   std::shared_ptr<ClosureSignature> signature_;
-  fn::lazy_function::LazyFunction &function_;
+  std::unique_ptr<ResourceScope> scope_;
+  const fn::lazy_function::LazyFunction &function_;
+  ClosureFunctionIndices indices_;
 
  public:
-  Closure(std::shared_ptr<ClosureSignature> signature, fn::lazy_function::LazyFunction &function)
-      : signature_(signature), function_(function)
+  Closure(std::shared_ptr<ClosureSignature> signature,
+          std::unique_ptr<ResourceScope> scope,
+          const fn::lazy_function::LazyFunction &function,
+          ClosureFunctionIndices indices)
+      : signature_(signature), scope_(std::move(scope)), function_(function), indices_(indices)
   {
   }
 
@@ -49,7 +67,12 @@ class Closure : public ImplicitSharingInfo {
     return *signature_;
   }
 
-  fn::lazy_function::LazyFunction &function() const
+  const ClosureFunctionIndices &indices() const
+  {
+    return indices_;
+  }
+
+  const fn::lazy_function::LazyFunction &function() const
   {
     return function_;
   }
