@@ -1,2 +1,3 @@
 Referenced by issue #38756, Vertex Slide crippled functionality
 Referenced by issue #38019, Edge/Vertex Slide recognises Even and Flipped as if they were numerical values
+Referenced by pull request #128563, Transform: Simplify and specialize event handling
