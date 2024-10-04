@@ -167,8 +167,8 @@ GPU_SHADER_CREATE_END()
 GPU_SHADER_CREATE_INFO(eevee_render_pass_out)
 DEFINE("MAT_RENDER_PASS_SUPPORT")
 ADDITIONAL_INFO(eevee_global_ubo)
-IMAGE_FREQ(RBUFS_COLOR_SLOT, GPU_RGBA16F, WRITE, FLOAT_2D, rp_color_img, PASS)
-IMAGE_FREQ(RBUFS_VALUE_SLOT, GPU_R16F, WRITE, FLOAT_2D, rp_value_img, PASS)
+IMAGE_FREQ(RBUFS_COLOR_SLOT, GPU_RGBA16F, WRITE, FLOAT_2D_ARRAY, rp_color_img, PASS)
+IMAGE_FREQ(RBUFS_VALUE_SLOT, GPU_R16F, WRITE, FLOAT_2D_ARRAY, rp_value_img, PASS)
 GPU_SHADER_CREATE_END()
 
 GPU_SHADER_CREATE_INFO(eevee_cryptomatte_out)
@@ -189,8 +189,8 @@ FRAGMENT_OUT(3, VEC4, out_gbuf_closure1)
 FRAGMENT_OUT(4, VEC4, out_gbuf_closure2)
 /* Everything is stored inside a two layered target, one for each format. This is to fit the
  * limitation of the number of images we can bind on a single shader. */
-IMAGE_FREQ(GBUF_CLOSURE_SLOT, GPU_RGB10_A2, WRITE, FLOAT_2D, out_gbuf_closure_img, PASS)
-IMAGE_FREQ(GBUF_NORMAL_SLOT, GPU_RG16, WRITE, FLOAT_2D, out_gbuf_normal_img, PASS)
+IMAGE_FREQ(GBUF_CLOSURE_SLOT, GPU_RGB10_A2, WRITE, FLOAT_2D_ARRAY, out_gbuf_closure_img, PASS)
+IMAGE_FREQ(GBUF_NORMAL_SLOT, GPU_RG16, WRITE, FLOAT_2D_ARRAY, out_gbuf_normal_img, PASS)
 /* Added at runtime because of test shaders not having `node_tree`. */
 // ADDITIONAL_INFO(eevee_render_pass_out)
 // ADDITIONAL_INFO(eevee_cryptomatte_out)
