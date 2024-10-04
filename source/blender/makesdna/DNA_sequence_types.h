@@ -35,12 +35,12 @@ struct ThumbnailCache;
 struct TextVarsRuntime;
 }  // namespace blender::seq
 using MediaPresence = blender::seq::MediaPresence;
-using TextVarsRuntime = blender::seq::TextVarsRuntime;
 using ThumbnailCache = blender::seq::ThumbnailCache;
+using TextVarsRuntime = blender::seq::TextVarsRuntime;
 #else
 typedef struct MediaPresence MediaPresence;
-typedef struct TextVarsRuntime TextVarsRuntime;
 typedef struct ThumbnailCache ThumbnailCache;
+typedef struct TextVarsRuntime TextVarsRuntime;
 #endif
 
 /* -------------------------------------------------------------------- */
@@ -455,7 +455,11 @@ typedef struct TextVars {
   int selection_start_offset;
   int selection_end_offset;
 
+  char align_y DNA_DEPRECATED /* Only used for versioning. */;
+  char anchor_x, anchor_y;
+  char _pad1[5];
   TextVarsRuntime *runtime;
+
 } TextVars;
 
 /** #TextVars.flag */
@@ -472,6 +476,13 @@ enum {
   SEQ_TEXT_ALIGN_X_LEFT = 0,
   SEQ_TEXT_ALIGN_X_CENTER = 1,
   SEQ_TEXT_ALIGN_X_RIGHT = 2,
+};
+
+/** #TextVars.align_y */
+enum {
+  SEQ_TEXT_ALIGN_Y_TOP = 0,
+  SEQ_TEXT_ALIGN_Y_CENTER = 1,
+  SEQ_TEXT_ALIGN_Y_BOTTOM = 2,
 };
 
 #define SEQ_FONT_NOT_LOADED -2

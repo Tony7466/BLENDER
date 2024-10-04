@@ -4,9 +4,7 @@
 
 #pragma once
 
-#include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
-#include "BLI_span.hh"
 #include "BLI_vector.hh"
 
 /** \file
@@ -101,7 +99,6 @@ struct CharInfo {
   int index = 0;
   const char *str_ptr = nullptr;
   int byte_length = 0;
-  int flags = 0;
   float2 position{0.0f, 0.0f};
   int advance_x = 0;
   bool do_wrap = false;
@@ -121,7 +118,7 @@ struct TextVarsRuntime {
   int character_count;
   int font;
 
-  /* Variables for UI. */
+  /* Variables for UI. xxx comment */
   bool editing_is_active;
 };
 

@@ -274,7 +274,7 @@ float BLF_fixed_width(int fontid) ATTR_WARN_UNUSED_RESULT;
 /**
  * Returns offset for drawing next character in the string.
  */
-int BLF_glyph_advance(int fontid, const char *str, size_t str_len);
+int BLF_glyph_advance(int fontid, const char *str);
 
 /**
  * By default, rotation and clipping are disable and

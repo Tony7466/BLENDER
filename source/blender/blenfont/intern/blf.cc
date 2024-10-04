@@ -812,12 +812,12 @@ float BLF_fixed_width(int fontid)
   return 0.0f;
 }
 
-int BLF_glyph_advance(int fontid, const char *str, size_t str_len)
+int BLF_glyph_advance(int fontid, const char *str)
 {
   FontBLF *font = blf_get(fontid);
 
   if (font) {
-    return blf_font_glyph_advance(font, str, str_len);
+    return blf_font_glyph_advance(font, str);
   }
 
   return 0.0f;
