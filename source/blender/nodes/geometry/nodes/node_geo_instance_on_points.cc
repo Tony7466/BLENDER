@@ -258,7 +258,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
       bke::Instances *gp_instances = instances_component.get_for_write();
       for (const int layer_index : grease_pencil.layers().index_range()) {
-        const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
+        const Drawing *drawing = grease_pencil.get_eval_drawing(grease_pencil.layer(layer_index));
         if (drawing == nullptr) {
           continue;
         }
@@ -283,10 +283,24 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      params,
                                      attributes_to_propagate);
         GeometrySet temp_set = GeometrySet::from_instances(instances);
+<<<<<<< HEAD
         const int handle = gp_instances->add_reference(bke::InstanceReference{temp_set});
         gp_instances->add_instance(handle, float4x4::identity());
       }
       */
+=======
+        const int handle = dst_instances->add_reference(bke::InstanceReference{temp_set});
+        dst_instances->add_instance(handle, float4x4::identity());
+      }
+      if (geometry_set.has_instances()) {
+        bke::copy_attributes(grease_pencil.attributes(),
+                             bke::AttrDomain::Layer,
+                             bke::AttrDomain::Instance,
+                             attribute_filter,
+                             dst_instances->attributes_for_write());
+      }
+      geometry_set.replace_grease_pencil(nullptr);
+>>>>>>> cleanup_gp_copy_method
     }
 
     GeometrySet all_instances = geometry::join_geometries(instances_set.as_span(),

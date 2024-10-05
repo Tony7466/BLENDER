@@ -614,9 +614,8 @@ void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
     const GeometryComponent &component = *this->get_component(component_type);
     const std::optional<AttributeAccessor> attributes = component.attributes();
     if (attributes.has_value()) {
-      attributes->for_all([&](const StringRef attribute_id, const AttributeMetaData &meta_data) {
-        callback(attribute_id, meta_data, component);
-        return true;
+      attributes->foreach_attribute([&](const AttributeIter &iter) {
+        callback(iter.name, {iter.domain, iter.data_type}, component);
       });
     }
   }
