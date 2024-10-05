@@ -96,6 +96,9 @@ struct JoinEdgesState {
   /** An index that allows looking up the `HeapNode` in `s.heap` from a `BMEdge*`. */
   blender::Map<BMEdge *, HeapNode *> index;
 
+  /** True when topology is being used.  Allows skipping expensive processing if not. */
+  bool use_topo_influence;
+
   /** A float indicating the influence for topology.  Ranges from 0-200. */
   float topo_influnce;
 
@@ -953,6 +956,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   JoinEdgesState s;
   s.bm = bm;
   s.topo_influnce = BMO_slot_float_get(op->slots_in, "topology_influence") / 100;
+  s.use_topo_influence = (s.topo_influnce != 0);
   s.heap = BLI_heap_new();
   s.index.clear_and_shrink();
   s.select_tris_only = BMO_slot_bool_get(op->slots_in, "select_leftover_triangles");
@@ -1003,7 +1007,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
    * which neighbor the selection.  The only alternate would be to iterate the
    * whole mesh, which might be expensive for very large meshes with small selections.
    */
-  if (!s.index.is_empty() && s.topo_influnce != 0) {
+  if (!s.index.is_empty() && s.use_topo_influence) {
     BMO_ITER (f, &siter, op->slots_in, "faces", BM_FACE) {
       if (f->len == 4) {
         BMLoop *l_a = f->l_first;
@@ -1040,7 +1044,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
     BMFace *new_face = join_edge(s, edge);
 
     /* If the merge succeeded, improve the neighbors */
-    if (new_face && s.topo_influnce != 0) {
+    if (new_face && s.use_topo_influence) {
       reprioritize_face_neighbors(s, new_face, error);
     }
 
