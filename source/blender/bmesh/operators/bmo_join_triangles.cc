@@ -38,14 +38,41 @@
 #  define ASSERT_VALID_ERROR_METRIC(val)
 #endif
 
-/* JOIN_TRIANGLE_INTERACTIVE_TESTING is left enabled on all debug builds, even when the merge_cap
- * or neighbor_debug parameters might not be being passed.  For example, if the API interface is
- * turned off in editmesh_tools.cc, or if join_triangles is called from other operators such as
- * convex_hull that don't expose the testing API, the testing code still behaves. When merge_cap
- * and neighbor_debug are left unset, the default values pick the normal processing path.
+/* USE_JOIN_TRIANGLE_INTERACTIVE_TESTING allows the developer to interrupt the operator midway
+ * through to visualize and debug the actions being taken by the merge algorithm.
+ *
+ * this flag can be turned on on all debug builds, even when the merge_cap or neighbor_debug
+ * parameters might not be being passed.  For example, if the API interface is turned off in
+ * editmesh_tools.cc, or if join_triangles is called from other operators such as convex_hull that
+ * don't expose the testing API, the testing code still behaves. When merge_cap and neighbor_debug
+ * are left unset, the default values pick the normal processing path.
+ *
+ * Usage:
+ *   merge cap selects how many merges are performed before stopping in the middle to visualize
+ *   intermediate results.
+ *   In the UI, this has a range of -1...n, but in the operator parameters, this is actually
+ *   passed as 0...n+1.  This allows the default '0' in the parameter to be a sensible default.
+ *
+ *   neighbor_debug allows each step in the neighbor improvement process to be visualized.  When
+ *   nonzero, the quad that was merged and the two triangles being considered for adjustment are
+ *   left selected for visualization.  Additionally, the neighbor quads are adjusted to their
+ *   'flattened' position to be in-plane with the quad, to allow visualization of that.
+ *   the numerical values related to the improvements are printed to the text console.
+ *
+ *   merge cap = -1 allows the algorithm to run fully.
+ *   merge cap = 0 stops before the first merge.  neighbor_debug can be stepped to diagnose every
+ *   neighbor improvement that occurs as a result of the pre-existing quads in the mesh (valid
+     range for neighbor_debug = 0...8*(num of selected pre-existing quads)
+ *   merge_cap = 1, 2, 3... stops after the specified number of merges.  neighbor_debug shows
+ *   the neighbor improvements for the last quad that merged.  (Valid range 0...8)
+ *
+ * To turn on interactive testing, the developer needs to:
+ *   - enable USE_JOIN_TRIANGLE_INTERACTIVE_TESTING here.
+ *   - enable USE_JOIN_TRIANGLE_INTERACTIVE_TESTING in bmesh_opdefines.cc
+ *   - enable USE_JOIN_TRIANGLE_TESTING_API in editmesh_tools.cc.
  */
-#ifndef NDEBUG
-#  define JOIN_TRIANGLE_INTERACTIVE_TESTING
+#if 0
+#  define USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
 #endif
 
 #define FACE_OUT (1 << 0)
@@ -72,20 +99,20 @@ struct JoinEdgesState {
   /** The same `BMesh*` that was passed to the operator, used in many functions. */
   BMesh *bm;
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
-  /* Whats the most merges to do */
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
+  /* The number of merges to allow before stopping */
   int debug_merge_cap;
 
-  /* How many merges have been done so far */
+  /* the number of merges processed so far */
   int debug_merge_count;
 
-  /* Which neighbor should we debug? */
+  /* The index of the neighbor to visualise */
   int debug_neighbor;
 
-  /* how many neighbors have we processed so far */
+  /* The number of neighbors processed so far */
   int debug_neighbor_global_count;
 
-  /* Should we be printing debugging info as we work on this stage? */
+  /* true, when merge cap and neighbor debug say to debug. */
   bool debug_this_step;
 #endif
 };
@@ -490,7 +517,7 @@ static void rotate_to_plane(JoinEdgesState &s,
                             const float plane_normal[3],
                             float r_quad_coordinates[4][3])
 {
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   if (s.debug_this_step) {
     printf("angle");
   }
@@ -509,7 +536,7 @@ static void rotate_to_plane(JoinEdgesState &s,
 
   float angle = angle_signed_on_axis_v3v3_v3(plane_normal, quad_normal, rotation_axis);
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   if (s.debug_this_step) {
     printf(" %f, ", angle / M_PI * 180);
   }
@@ -548,6 +575,7 @@ static void rotate_to_plane(JoinEdgesState &s,
  *                     the four vertices of quad_a. Instead, They are four unit vectors, aligned
  *                     parallel to the respective edge loop of quad_a.
  * \param quad_b_verts: an array of four BMVert*, giving the four corners of quad_b
+ *                      This would ALSO be const, except that interactive testing moves them.
  * \param shared_loop: a BMLoop that is known to be one of the the common manifold loops that is
  *                     shared between the two quads. This is used as a 'hinge' to flatten the two
  *                     quads into the same plane as much as possible.
@@ -562,7 +590,7 @@ static void rotate_to_plane(JoinEdgesState &s,
  */
 static float compute_alignment(JoinEdgesState &s,
                                const float quad_a_vecs[4][3],
-                               const BMVert *quad_b_verts[4],
+                               BMVert *quad_b_verts[4],
                                const BMLoop *shared_loop,
                                const float plane_normal[3])
 {
@@ -573,17 +601,12 @@ static float compute_alignment(JoinEdgesState &s,
   float quad_b_coordinates[4][3];
   rotate_to_plane(s, quad_b_verts, shared_loop, plane_normal, quad_b_coordinates);
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   if (s.debug_this_step) {
-    /* For visualization purposes ONLY, rotate the face being considered. The const_cast here
-     * is purposeful.  We want to specify `const` BMVert deliberately -- to show that we're not
-     * SUPPOSED to be moving verts around.  But only for debug visualization, we do. This alters
-     * the mesh to visualize the effect of rotating the face into the plane for alignment testing.
-     */
-    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[0])->co, quad_b_coordinates[0]);
-    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[1])->co, quad_b_coordinates[1]);
-    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[2])->co, quad_b_coordinates[2]);
-    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[3])->co, quad_b_coordinates[3]);
+    copy_v3_v3(quad_b_verts[0]->co, quad_b_coordinates[0]);
+    copy_v3_v3(quad_b_verts[1]->co, quad_b_coordinates[1]);
+    copy_v3_v3(quad_b_verts[2]->co, quad_b_coordinates[2]);
+    copy_v3_v3(quad_b_verts[3]->co, quad_b_coordinates[3]);
   }
 #endif
 
@@ -713,7 +736,7 @@ static void reprioritize_join(JoinEdgesState &s,
    * If they do, ignore them. */
   if (neighbor_quad_error > current_join_error) {
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
     /* This should only happen during setup.
      * Indicates an error, if it happens once we've started merging. */
     BLI_assert(s.debug_merge_count == 0);
@@ -722,7 +745,7 @@ static void reprioritize_join(JoinEdgesState &s,
     return;
   }
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   if (s.debug_this_step) {
     printf("Edge improved from ");
   }
@@ -780,7 +803,7 @@ static void reprioritize_join(JoinEdgesState &s,
 
   ASSERT_VALID_ERROR_METRIC(new_join_error);
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   if (s.debug_this_step) {
     printf("%f to %f with alignment of %f.\n", current_join_error, new_join_error, alignment);
     BMO_face_flag_enable(s.bm, merge_edge->l->f, FACE_OUT);
@@ -844,7 +867,7 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
 
   /* Reprioritize each neighbor. */
   for (int n = 0; n < neighbor_count; n++) {
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
     s.debug_this_step = (s.debug_merge_cap > 0 && s.debug_merge_count == s.debug_merge_cap &&
                          n + 1 == s.debug_neighbor) ||
                         (++s.debug_neighbor_global_count == s.debug_neighbor &&
@@ -877,7 +900,7 @@ static BMFace *join_edge(JoinEdgesState &s, BMEdge *e)
     return nullptr;
   }
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   /* Stop doing merges in the middle of processing if we reached a user limit.
    * This is allowed so a developer can check steps in the process of the algorithm. */
   if (++s.debug_merge_count > s.debug_merge_cap && s.debug_merge_cap != -1) {
@@ -896,7 +919,7 @@ static BMFace *join_edge(JoinEdgesState &s, BMEdge *e)
     }
   }
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   /* If stopping partway through, clear the selection entirely, and instead
    * highlight the faces being considered in the step the user is checking.  */
   if (s.debug_merge_cap != -1 && s.debug_merge_count == s.debug_merge_cap) {
@@ -931,7 +954,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   s.index.clear_and_shrink();
   s.select_tris_only = BMO_slot_bool_get(op->slots_in, "select_leftover_triangles");
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   s.debug_merge_cap = BMO_slot_int_get(op->slots_in, "merge_cap") - 1;
   s.debug_neighbor = BMO_slot_int_get(op->slots_in, "neighbor_debug");
   s.debug_merge_count = 0;
@@ -1018,7 +1041,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
       reprioritize_face_neighbors(s, new_face, error);
     }
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
     /* If we're supposed to stop partway though, do that.
      * This allows a developer to inspect the mesh at intermediate stages of processing. */
     if (s.debug_merge_cap != -1 && s.debug_merge_count >= s.debug_merge_cap) {
@@ -1027,7 +1050,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 #endif
   }
 
-#ifdef JOIN_TRIANGLE_INTERACTIVE_TESTING
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   /* Expect a full processing to have occurred, ONLY if we didn't stop partway through. */
   if (!(s.debug_merge_cap != -1 && s.debug_merge_count >= s.debug_merge_cap)) {
     BLI_assert(BLI_heap_is_empty(s.heap));

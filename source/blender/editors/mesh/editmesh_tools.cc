@@ -5230,8 +5230,8 @@ void MESH_OT_quads_convert_to_tris(wmOperatorType *ot)
 /** \name Convert to Quads Operator
  * \{ */
 
-#ifndef NDEBUG
-#  define JOIN_TRIANGLE_TESTING_API
+#if 0 /* See comments at top of bmo_join_triangles.cc */
+#  define USE_JOIN_TRIANGLE_TESTING_API
 #endif
 
 static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
@@ -5267,7 +5267,7 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
     }
   }
 
-#ifdef JOIN_TRIANGLE_TESTING_API
+#ifdef USE_JOIN_TRIANGLE_TESTING_API
   int merge_cap = RNA_int_get(op->ptr, "merge_cap");
   int neighbor_debug = RNA_int_get(op->ptr, "neighbor_debug");
 #endif
@@ -5286,7 +5286,7 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 
     bool extend_selection = (select_leftover_triangles == false);
 
-#ifdef JOIN_TRIANGLE_TESTING_API
+#ifdef USE_JOIN_TRIANGLE_TESTING_API
     if (merge_cap != -1) {
       extend_selection = false;
     }
@@ -5299,7 +5299,7 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
             extend_selection,
             "join_triangles faces=%hf angle_face_threshold=%f angle_shape_threshold=%f "
             "cmp_seam=%b cmp_sharp=%b cmp_uvs=%b cmp_vcols=%b cmp_materials=%b "
-#ifdef JOIN_TRIANGLE_TESTING_API
+#ifdef USE_JOIN_TRIANGLE_TESTING_API
             "merge_cap=%i neighbor_debug=%i "
 #endif
             "topology_influence=%f select_leftover_triangles=%b",
@@ -5311,7 +5311,7 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
             do_uvs,
             do_vcols,
             do_materials,
-#ifdef JOIN_TRIANGLE_TESTING_API
+#ifdef USE_JOIN_TRIANGLE_TESTING_API
             merge_cap + 1,
             neighbor_debug,
 #endif
@@ -5337,7 +5337,7 @@ static void join_triangle_props(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-#ifdef JOIN_TRIANGLE_TESTING_API
+#ifdef USE_JOIN_TRIANGLE_TESTING_API
   prop = RNA_def_int(ot->srna,
                      "merge_cap",
                      0,
