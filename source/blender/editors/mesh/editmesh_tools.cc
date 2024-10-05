@@ -5389,12 +5389,12 @@ static void join_triangle_props(wmOperatorType *ot)
                                   "topology_influence",
                                   0.0f,
                                   0.0f,
-                                  200.0f,
+                                  2.0f,
                                   "Topology Influence",
                                   "How much to prioritize regular grids of quads, and how much to "
                                   "priorise generating quads that touch pre-existing quads",
                                   0.0f,
-                                  200.0f);
+                                  2.0f);
 
   RNA_def_boolean(ot->srna, "uvs", false, "Compare UVs", "");
   RNA_def_boolean(ot->srna, "vcols", false, "Compare Color Attributes", "");

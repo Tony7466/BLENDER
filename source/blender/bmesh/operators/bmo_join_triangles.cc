@@ -962,7 +962,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   /* initial setup of state */
   JoinEdgesState s;
   s.bm = bm;
-  s.topo_influnce = BMO_slot_float_get(op->slots_in, "topology_influence") / 100;
+  s.topo_influnce = BMO_slot_float_get(op->slots_in, "topology_influence");
   s.use_topo_influence = (s.topo_influnce != 0);
   s.heap = BLI_heap_new();
   s.index.clear_and_shrink();
