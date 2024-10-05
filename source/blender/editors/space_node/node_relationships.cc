@@ -2362,7 +2362,12 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
   }
 
   if (selink) {
-    selink->flag |= NODE_LINK_INSERT_TARGET;
+    if (is_new_node && !already_linked_sockets.is_empty()) {
+      selink->flag |= NODE_LINK_INSERT_TARGET_LINKDRAG;
+    }
+    else {
+      selink->flag |= NODE_LINK_INSERT_TARGET;
+    }
     if (!attach_enabled || !node_can_be_inserted_on_link(node_tree, *node_to_insert, *selink)) {
       selink->flag |= NODE_LINK_INSERT_TARGET_INVALID;
     }
@@ -2372,7 +2377,8 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
 void node_insert_on_link_flags_clear(bNodeTree &node_tree)
 {
   LISTBASE_FOREACH (bNodeLink *, link, &node_tree.links) {
-    link->flag &= ~(NODE_LINK_INSERT_TARGET | NODE_LINK_INSERT_TARGET_INVALID);
+    link->flag &= ~(NODE_LINK_INSERT_TARGET | NODE_LINK_INSERT_TARGET_LINKDRAG |
+                    NODE_LINK_INSERT_TARGET_INVALID);
   }
 }
 
@@ -2388,10 +2394,14 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
   /* Find link to insert on. */
   bNodeTree &ntree = *snode.edittree;
   bNodeLink *old_link = nullptr;
+  bool is_linkdrag_node = false;
   LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
-    if (link->flag & NODE_LINK_INSERT_TARGET) {
+    if (link->flag & NODE_LINK_INSERT_TARGET || link->flag & NODE_LINK_INSERT_TARGET_LINKDRAG) {
       if (!(link->flag & NODE_LINK_INSERT_TARGET_INVALID)) {
         old_link = link;
+      }
+      if (link->flag & NODE_LINK_INSERT_TARGET_LINKDRAG) {
+        is_linkdrag_node = true;
       }
       break;
     }
@@ -2401,7 +2411,20 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
     return;
   }
 
-  bNodeSocket *best_input = get_main_socket(ntree, *node_to_insert, SOCK_IN);
+  bNodeSocket *best_input;
+  if (is_linkdrag_node) {
+    for (bNodeSocket *socket : node_to_insert->input_sockets()) {
+      /* Node is created by link-drag-search, so has only one linked socket. */
+      if (!socket->directly_linked_sockets().is_empty()) {
+        best_input = socket;
+        break;
+      }
+    }
+    BLI_assert(best_input);
+  }
+  else {
+    best_input = get_main_socket(ntree, *node_to_insert, SOCK_IN);
+  }
   bNodeSocket *best_output = get_main_socket(ntree, *node_to_insert, SOCK_OUT);
 
   if (node_to_insert->type != NODE_REROUTE) {
