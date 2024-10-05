@@ -40,51 +40,13 @@ static void node_declare(NodeDeclarationBuilder &b)
   // b.add_output<decl::Int>(N_("Group ID")).field_source();
 }
 
-static void node_init(bNodeTree */*tree*/, bNode *node)
-{
-  NodeGeometryVoronoi *data = MEM_cnew<NodeGeometryVoronoi>(__func__);
-  data->sites = 100;
-  node->storage = data;
-}
-
-NODE_STORAGE_FUNCS(NodeGeometryVoronoi)
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  const NodeGeometryVoronoi &storage = node_storage(*node);
-
-  bNodeSocket *out_socket_geometry = (bNodeSocket *)node->outputs.first;
-  bNodeSocket *out_socket_group_id = out_socket_geometry->next;
-
-  // Stupid feature for the sake of the example: When there are too many
-  // olives, we no longer output the fields!
-  // nodeSetSocketAvailability(ntree, out_socket_base, storage.olive_count < 25);
-  // nodeSetSocketAvailability(ntree, out_socket_olives, storage.olive_count < 25);
-}
-
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, ptr, "sites", UI_ITEM_NONE, "", ICON_NONE);
 }
 
-static bool search_edge(voro::voronoicell &c, int l, int &m ,int &k){
-  for(m=0;m<c.nu[l];m++) {
-		k=c.ed[l][m];
-		if(k>=0) return true;
-	}
-	return false;
-}
-
-static void reset_edges(voro::voronoicell &c) {
-	int i,j;
-	for(i=0;i<c.p;i++) for(j=0;j<c.nu[i];j++) {
-		c.ed[i][j]=-1-c.ed[i][j];
-	}
-}
-
-static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain, 
+static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain, 
                             const float3 &min, const float3 &max, const Field<int>& group_id, 
                             bool x_p, bool y_p, bool z_p){
   const MeshComponent *mesh_comp = sites.get_component<MeshComponent>();
@@ -129,7 +91,6 @@ static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain
   double x,y,z;
 
   int offset = 0;
-  int gr, ngr;
 
   if(vl.start()) do if(con.compute_cell(c,vl)){
     vl.pos(x,y,z);
@@ -178,9 +139,7 @@ static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  const NodeGeometryVoronoi &storage = node_storage(params.node());
-  const int sites = storage.sites;
-  const GeometrySet site_geometry = params.extract_input<GeometrySet>("Sites");
+  GeometrySet site_geometry = params.extract_input<GeometrySet>("Sites");
   const float3 min = params.extract_input<float3>("Min");
   const float3 max = params.extract_input<float3>("Max");
   const bool x_p = params.extract_input<bool>("Periodic X");
@@ -189,27 +148,26 @@ static void node_geo_exec(GeoNodeExecParams params)
   const GeometrySet domain = params.extract_input<GeometrySet>("Domain");
   Field<int> id_field = params.extract_input<Field<int>>("Group ID");
 
-  Mesh *voronoi = compute_voronoi(site_geometry, domain, min, max, id_field, x_p, y_p, z_p);
+  if(site_geometry.has_mesh()){
+    Mesh *voronoi = compute_voronoi(site_geometry, domain, min, max, id_field, x_p, y_p, z_p);
+    site_geometry.replace_mesh(voronoi);
+  } else {
+    params.error_message_add(NodeWarningType::Error,
+                           TIP_("Input should contain a mesh to compute Voronoi"));
+  }
 
-  params.set_output("Voronoi", GeometrySet::from_mesh(voronoi));
+  params.set_output("Voronoi", std::move(site_geometry));
 }
 
 static void node_register()
 {
-
   static blender::bke::bNodeType ntype;
+
   geo_node_type_base(&ntype, GEO_NODE_VORONOI, "Voronoi", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
-  ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
-
-  blender::bke::node_type_storage(
-      &ntype, "NodeGeometryVoronoi", node_free_standard_storage, node_copy_standard_storage);
   ntype.draw_buttons = node_layout;
   blender::bke::node_register_type(&ntype);
-
-  // node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
