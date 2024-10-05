@@ -19,7 +19,31 @@
 #define gpu_BaseInstance gl_BaseInstanceARB
 #define gpu_InstanceIndex (gl_InstanceID + gpu_BaseInstance)
 
-#define gl_WorkGroupSize uint3(MTL_WORKGROUP_SIZE_X, MTL_WORKGROUP_SIZE_Y, MTL_WORKGROUP_SIZE_Z)
+#ifdef MTL_WORKGROUP_SIZE_X
+/* Older Metal compiler version don't treat vector component access as constexpr.
+ * We have to make a wrapper class for that otherwise we cannot use WorkGroupSize for sizing
+ * threadgroup arrays. Note that this bug is not present in the version 4.1 of the compiler. */
+struct mtl_WorkGroupSize {
+  union {
+    struct {
+      uint x, y, z;
+    };
+    uint2 xy;
+    uint3 xyz;
+  };
+
+  constexpr mtl_WorkGroupSize()
+      : x(MTL_WORKGROUP_SIZE_X), y(MTL_WORKGROUP_SIZE_Y), z(MTL_WORKGROUP_SIZE_Z)
+  {
+  }
+
+  constexpr inline operator uint3() const
+  {
+    return xyz;
+  }
+};
+#  define gl_WorkGroupSize mtl_WorkGroupSize()
+#endif
 
 /* Type definitions. */
 /* int implicitly cast to bool in MSL. */
