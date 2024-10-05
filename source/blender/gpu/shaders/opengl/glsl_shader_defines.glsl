@@ -104,6 +104,26 @@ bool is_zero(vec4 A)
   return all(equal(A, vec4(0.0)));
 }
 
+/* Matrix reshaping functions. */
+#define RESHAPE(mat_to, mat_from) \
+  mat_to to_##mat_to(mat_from m) \
+  { \
+    return mat_to(m); \
+  }
+
+/* clang-format off */
+RESHAPE(float2x2, float3x3)
+RESHAPE(float2x2, float4x4)
+RESHAPE(float3x3, float4x4)
+RESHAPE(float3x3, float2x2)
+RESHAPE(float4x4, float2x2)
+RESHAPE(float4x4, float3x3)
+/* clang-format on */
+/* TODO(fclem): Remove. Use Transform instead. */
+RESHAPE(float3x3, float3x4)
+
+#undef RESHAPE
+
 /* Array syntax compatibility. */
 #define float_array float[]
 #define float2_array vec2[]

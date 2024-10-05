@@ -182,26 +182,6 @@ static void remove_singleline_comments_func(std::string &str)
   }
 }
 
-static bool is_program_word(const char *chr, int *len)
-{
-  int numchars = 0;
-  for (const char *c = chr; *c != '\0'; c++) {
-    char ch = *c;
-    /* NOTE: Hash (`#`) is not valid in var names, but is used by Closure macro patterns. */
-    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-        (numchars > 0 && ch >= '0' && ch <= '9') || ch == '_' || ch == '#')
-    {
-      numchars++;
-    }
-    else {
-      *len = numchars;
-      return (numchars > 0);
-    }
-  }
-  *len = numchars;
-  return true;
-}
-
 static int backwards_program_word_scan(const char *array_loc, const char *min)
 {
   const char *start;
@@ -263,62 +243,6 @@ static void extract_and_replace_clipping_distances(std::string &vertex_source,
       /* Replace syntax (array brace removal, and replacement with underscore). */
       *(base_search + 15) = '_';
       *(base_search + 17) = ' ';
-    }
-  }
-}
-
-static void replace_matrix_constructors(std::string &str)
-{
-
-  /* Replace matrix constructors with GLSL-compatible constructors for Metal.
-   * Base matrix constructors e.g. mat3x3 do not have as many overload variants as GLSL.
-   * To add compatibility, we declare custom constructors e.g. MAT3x3 in `mtl_shader_defines.msl`.
-   * If the GLSL syntax matches, we map mat3x3(..) -> MAT3x3(..) and implement a custom
-   * constructor. This supports both mat3(..) and mat3x3(..) style syntax. */
-  char *current_str_begin = &*str.begin();
-  char *current_str_end = &*str.end();
-
-  for (char *c = current_str_begin; c < current_str_end - 10; c++) {
-    char *base_scan = strstr(c, "mat");
-    if (base_scan == nullptr) {
-      break;
-    }
-    /* Track end of constructor. */
-    char *constructor_end = nullptr;
-
-    /* check if next character is matrix dim. */
-    c = base_scan + 3;
-    if (!(*c == '2' || *c == '3' || *c == '4')) {
-      /* Not constructor, skip. */
-      continue;
-    }
-
-    /* Possible multiple dimensional matrix constructor. Verify if next char is a dim. */
-    c++;
-    if (*c == 'x') {
-      c++;
-      if (*c == '2' || *c == '3' || *c == '4') {
-        c++;
-      }
-      else {
-        /* Not matrix constructor, continue. */
-        continue;
-      }
-    }
-
-    /* Check for constructor opening brace. */
-    if (*c == '(') {
-      constructor_end = c;
-    }
-    else {
-      /* Not matrix constructor, continue. */
-      continue;
-    }
-
-    /* If is constructor, replace with MATN(..) syntax. */
-    if (constructor_end != nullptr) {
-      ARRAY_SET_ITEMS(base_scan, 'M', 'A', 'T');
-      continue;
     }
   }
 }
@@ -905,11 +829,9 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   }
 
   /* Special condition - mat3 and array constructor replacement. */
-  replace_matrix_constructors(shd_builder_->glsl_vertex_source_);
   replace_array_initializers_func(shd_builder_->glsl_vertex_source_);
 
   if (!msl_iface.uses_transform_feedback) {
-    replace_matrix_constructors(shd_builder_->glsl_fragment_source_);
     replace_array_initializers_func(shd_builder_->glsl_fragment_source_);
   }
 
@@ -1411,7 +1333,6 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   BLI_assert(shd_builder_->glsl_compute_source_.size() > 0);
 
   /*** Source cleanup. ***/
-  replace_matrix_constructors(shd_builder_->glsl_compute_source_);
   replace_array_initializers_func(shd_builder_->glsl_compute_source_);
 
   /**** Extract usage of GL globals. ****/

@@ -2331,162 +2331,25 @@ template<typename T, int Size> bool is_zero(vec<T, Size> a)
 #define _out_end )
 #define _inout_sta (&
 #define _inout_end )
-/**
- * Matrix conversion fallback for functional style casting & constructors.
- * To avoid name collision with the types, they are replaced with uppercase version
- * before compilation.
- */
 
-mat2 MAT2x2(vec2 a, vec2 b)
-{
-  return mat2(a, b);
-}
-mat2 MAT2x2(float a1, float a2, float b1, float b2)
-{
-  return mat2(vec2(a1, a2), vec2(b1, b2));
-}
-mat2 MAT2x2(float f)
-{
-  return mat2(f);
-}
-mat2 MAT2x2(mat3 m)
-{
-  return mat2(m[0].xy, m[1].xy);
-}
-mat2 MAT2x2(mat4 m)
-{
-  return mat2(m[0].xy, m[1].xy);
-}
+/* Matrix reshaping functions. */
+#define RESHAPE(mat_to, mat_from, ...) \
+  mat_to to_##mat_to(mat_from m) \
+  { \
+    return mat_to(__VA_ARGS__); \
+  }
 
-mat3 MAT3x3(vec3 a, vec3 b, vec3 c)
-{
-  return mat3(a, b, c);
-}
-mat3 MAT3x3(
-    float a1, float a2, float a3, float b1, float b2, float b3, float c1, float c2, float c3)
-{
-  return mat3(vec3(a1, a2, a3), vec3(b1, b2, b3), vec3(c1, c2, c3));
-}
-mat3 MAT3x3(vec3 a, float b1, float b2, float b3, float c1, float c2, float c3)
-{
-  return mat3(a, vec3(b1, b2, b3), vec3(c1, c2, c3));
-}
-mat3 MAT3x3(float f)
-{
-  return mat3(f);
-}
-mat3 MAT3x3(mat4 m)
-{
-  return mat3(m[0].xyz, m[1].xyz, m[2].xyz);
-}
-mat3 MAT3x3(mat3x4 m)
-{
-  return mat3(m[0].xyz, m[1].xyz, m[2].xyz);
-}
-mat3 MAT3x3(mat2 m)
-{
-  return mat3(vec3(m[0].xy, 0.0), vec3(m[1].xy, 0.0), vec3(0.0, 0.0, 1.0));
-}
-
-mat4 MAT4x4(vec4 a, vec4 b, vec4 c, vec4 d)
-{
-  return mat4(a, b, c, d);
-}
-mat4 MAT4x4(float a1,
-            float a2,
-            float a3,
-            float a4,
-            float b1,
-            float b2,
-            float b3,
-            float b4,
-            float c1,
-            float c2,
-            float c3,
-            float c4,
-            float d1,
-            float d2,
-            float d3,
-            float d4)
-{
-  return mat4(
-      vec4(a1, a2, a3, a4), vec4(b1, b2, b3, b4), vec4(c1, c2, c3, c4), vec4(d1, d2, d3, d4));
-}
-mat4 MAT4x4(float f)
-{
-  return mat4(f);
-}
-mat4 MAT4x4(mat3 m)
-{
-  return mat4(
-      vec4(m[0].xyz, 0.0), vec4(m[1].xyz, 0.0), vec4(m[2].xyz, 0.0), vec4(0.0, 0.0, 0.0, 1.0));
-}
-mat4 MAT4x4(mat3x4 m)
-{
-  return mat4(m[0], m[1], m[2], vec4(0.0, 0.0, 0.0, 1.0));
-}
-mat4 MAT4x4(mat4x3 m)
-{
-  return mat4(m[0][0],
-              m[0][1],
-              m[0][2],
-              0.0,
-              m[1][0],
-              m[1][1],
-              m[1][2],
-              0.0,
-              m[2][0],
-              m[2][1],
-              m[2][2],
-              0.0,
-              m[3][0],
-              m[3][1],
-              m[3][2],
-              0.0);
-}
-mat4 MAT4x4(mat2 m)
-{
-  return mat4(vec4(m[0].xy, 0.0, 0.0),
-              vec4(m[1].xy, 0.0, 0.0),
-              vec4(0.0, 0.0, 1.0, 0.0),
-              vec4(0.0, 0.0, 0.0, 1.0));
-}
-
-mat3x4 MAT3x4(vec4 a, vec4 b, vec4 c)
-{
-  return mat3x4(a, b, c);
-}
-mat3x4 MAT3x4(float a1,
-              float a2,
-              float a3,
-              float a4,
-              float b1,
-              float b2,
-              float b3,
-              float b4,
-              float c1,
-              float c2,
-              float c3,
-              float c4)
-{
-  return mat3x4(vec4(a1, a2, a3, a4), vec4(b1, b2, b3, b4), vec4(c1, c2, c3, c4));
-}
-mat3x4 MAT3x4(float f)
-{
-  return mat3x4(f);
-}
-mat3x4 MAT3x4(mat3 m)
-{
-  return mat3x4(vec4(m[0].xyz, 0.0), vec4(m[1].xyz, 0.0), vec4(m[2].xyz, 0.0));
-}
-mat3x4 MAT3x4(mat2 m)
-{
-  return mat3x4(vec4(m[0].xy, 0.0, 0.0), vec4(m[1].xy, 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.0));
-}
-
-#define MAT2 MAT2x2
-#define MAT3 MAT3x3
-#define MAT4 MAT4x4
+/* clang-format off */
+RESHAPE(float2x2, float3x3, m[0].xy, m[1].xy)
+RESHAPE(float2x2, float4x4, m[0].xy, m[1].xy)
+RESHAPE(float3x3, float4x4, m[0].xyz, m[1].xyz, m[2].xyz)
+RESHAPE(float3x3, float2x2, m[0].x, m[0].y, 0, m[1].x, m[1].y, 0, 0, 0, 1)
+RESHAPE(float4x4, float2x2, m[0].x, m[0].y, 0, 0, m[1].x, m[1].y, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+RESHAPE(float4x4, float3x3, m[0].x, m[0].y, m[0].z, 0, m[1].x, m[1].y, m[1].z, 0, m[2].x, m[2].y, m[2].z, 0, 0, 0, 0, 1)
+/* clang-format on */
+/* TODO(fclem): Remove. Use Transform instead. */
+RESHAPE(float3x3, float3x4, m[0].xyz, m[1].xyz, m[2].xyz)
+#undef RESHAPE
 
 /* Array syntax compatibility. */
 /* clang-format off */
