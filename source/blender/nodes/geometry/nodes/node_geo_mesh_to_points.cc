@@ -92,10 +92,23 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
       selection,
       dst_attributes);
 
-  SpanAttributeWriter<float3> positions = dst_attributes.lookup_or_add_for_write_only_span<float3>(
-      "position", AttrDomain::Point);
-  array_utils::gather(positions_eval, selection, positions.span);
-  positions.finish();
+  const bool share_arrays = selection.size() == domain_size;
+  const bool share_position = share_arrays && positions_eval.is_span() &&
+                              positions_eval.get_internal_span().data() ==
+                                  mesh->vert_positions().data();
+
+  if (share_position) {
+    BLI_assert(domain == bke::AttrDomain::Point);
+    const bke::AttributeReader src = mesh->attributes().lookup<float3>("position");
+    const bke::AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
+    dst_attributes.add<float3>("position", AttrDomain::Point, init);
+  }
+  else {
+    SpanAttributeWriter<float3> positions =
+        dst_attributes.lookup_or_add_for_write_only_span<float3>("position", AttrDomain::Point);
+    array_utils::gather(positions_eval, selection, positions.span);
+    positions.finish();
+  }
 
   SpanAttributeWriter<float> radius = dst_attributes.lookup_or_add_for_write_only_span<float>(
       "radius", AttrDomain::Point);
