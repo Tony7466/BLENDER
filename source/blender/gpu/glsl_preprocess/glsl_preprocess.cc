@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -59,6 +60,13 @@ int main(int argc, char **argv)
     }
     else if (line.rfind("#include ", 0) == 0 || line.rfind("#pragma once", 0) == 0) {
       line[0] = line[1] = '/';
+    }
+    else {
+      {
+        /* Argument decorator macro injection. */
+        std::regex inout("(out|inout|in)\\s+(\\w+)\\s+(\\w+)");
+        line = std::regex_replace(line, inout, "$1 $2 _$1_sta $3 _$1_end");
+      }
     }
 
     output_file << line << "\n";

@@ -267,74 +267,6 @@ static void extract_and_replace_clipping_distances(std::string &vertex_source,
   }
 }
 
-/**
- * Replace function parameter patterns containing:
- * `out vec3 somevar` with `THD vec3&somevar`.
- * which enables pass by reference via resolved macro:
- * `thread vec3& somevar`.
- */
-static void replace_outvars(std::string &str)
-{
-  char *current_str_begin = &*str.begin();
-  char *current_str_end = &*str.end();
-
-  for (char *c = current_str_begin + 2; c < current_str_end - 6; c++) {
-    char *start = strstr(c, "out ");
-    if (start == nullptr) {
-      return;
-    }
-    else {
-      c = start;
-      if (strncmp(c - 2, "in", 2) == 0) {
-        start = c - 2;
-      }
-
-      /* Check that the following are words. */
-      int len1, len2;
-      char *word_base1 = c + 4;
-      char *word_base2 = word_base1;
-
-      if (is_program_word(word_base1, &len1) && (*(word_base1 + len1) == ' ')) {
-        word_base2 = word_base1 + len1 + 1;
-        if (is_program_word(word_base2, &len2)) {
-          /* Match found. */
-          bool is_array = (*(word_base2 + len2) == '[');
-          if (is_array) {
-            /* Generate out-variable pattern for arrays, of form
-             * `OUT(vec2,samples,CRYPTOMATTE_LEVELS_MAX)`
-             * replacing original `out vec2 samples[SAMPLE_LEN]`
-             * using 'OUT' macro declared in `mtl_shader_defines.msl`. */
-            char *array_end = strchr(word_base2 + len2, ']');
-            if (array_end != nullptr) {
-              *start = 'O';
-              *(start + 1) = 'U';
-              *(start + 2) = 'T';
-              *(start + 3) = '(';
-              for (char *clear = start + 4; clear < c + 4; clear++) {
-                *clear = ' ';
-              }
-              *(word_base2 - 1) = ',';
-              *(word_base2 + len2) = ',';
-              *array_end = ')';
-            }
-          }
-          else {
-            /* Generate out-variable pattern of form `THD type&var` from original `out vec4 var`.
-             */
-            *start = 'T';
-            *(start + 1) = 'H';
-            *(start + 2) = 'D';
-            for (char *clear = start + 3; clear < c + 4; clear++) {
-              *clear = ' ';
-            }
-            *(word_base2 - 1) = '&';
-          }
-        }
-      }
-    }
-  }
-}
-
 static void replace_matrix_constructors(std::string &str)
 {
 
@@ -1058,12 +990,6 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Extract gl_ClipDistances. */
   extract_and_replace_clipping_distances(shd_builder_->glsl_vertex_source_, msl_iface);
 
-  /* Replace 'out' attribute on function parameters with pass-by-reference. */
-  replace_outvars(shd_builder_->glsl_vertex_source_);
-  if (!msl_iface.uses_transform_feedback) {
-    replace_outvars(shd_builder_->glsl_fragment_source_);
-  }
-
   /**** METAL Shader source generation. ****/
   /* Setup `stringstream` for populating generated MSL shader vertex/frag shaders. */
   std::stringstream ss_vertex;
@@ -1535,9 +1461,6 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
    * The existing block definitions are then replaced with references to threadgroup memory blocks,
    * but kept in-line in case external macros are used to declare the dimensions. */
   extract_shared_memory_blocks(msl_iface, shd_builder_->glsl_compute_source_);
-
-  /* Replace 'out' attribute on function parameters with pass-by-reference. */
-  replace_outvars(shd_builder_->glsl_compute_source_);
 
   /** Generate Compute shader stage. **/
   std::stringstream ss_compute;

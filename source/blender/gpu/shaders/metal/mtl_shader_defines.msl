@@ -138,10 +138,6 @@ ATOMIC_OP(Xor, fetch_xor)
 ATOMIC_OP(Exchange, exchange)
 
 #undef ATOMIC_OP
-/* Used to replace 'out' in function parameters with thread-local reference
- * shortened to avoid expanding the GLSL source string. */
-#define THD thread
-#define OUT(type, name, array) thread type(&name)[array]
 
 /* Generate wrapper structs for combined texture and sampler type. */
 #ifdef USE_ARGUMENT_BUFFER_FOR_SAMPLERS
@@ -2326,6 +2322,15 @@ template<typename T, int Size> bool is_zero(vec<T, Size> a)
   return true;
 }
 
+#define in
+#define out thread
+#define inout thread
+#define _in_sta
+#define _in_end
+#define _out_sta (&
+#define _out_end )
+#define _inout_sta (&
+#define _inout_end )
 /**
  * Matrix conversion fallback for functional style casting & constructors.
  * To avoid name collision with the types, they are replaced with uppercase version
