@@ -78,6 +78,12 @@
 #define FACE_OUT (1 << 0)
 #define FACE_INPUT (1 << 2)
 
+/* improvement rnages from 0..1.  Always impove just a a litle. */
+constexpr float minimum_improvement = 0.01f;
+
+/* improvement rnages from 0..1.  Never improve fully. */
+constexpr float maximum_improvement = 0.99f;
+
 /* -------------------------------------------------------------------- */
 /** \name Join Edges state
  * pass a struct to ensure we don't have to pass these four variables everywhere.
@@ -675,8 +681,8 @@ static float compute_alignment(JoinEdgesState &s,
   float alignment = 1 - (best_error / (M_PI / 4));
 
   /* even if alignment is TRULY awful, still make at least a tiny improvement. */
-  if (alignment <= 0.01)
-    alignment = 0.01;
+  if (alignment < minimum_improvement)
+    alignment = minimum_improvement;
 
   ASSERT_VALID_ERROR_METRIC(alignment);
 
@@ -788,11 +794,11 @@ static void reprioritize_join(JoinEdgesState &s,
    *
    * This especially helps in quads that touch 3-poles and 5-poles.  Since those quads naturally
    * have diamond shapes, their initial error values tend to be higher and they sort to the end of
-   * the array. Capping improvement at 99% ensures those quads tend to retain their bad sort,
-   * meaning they end up surrounded by good gridded quads, then they merge last, which tends to
-   * produce better results.*/
-  if (multiplier > .99) {
-    multiplier = .99;
+   * the priority queue. Capping improvement at 99% ensures those quads tend to retain their bad
+   * sort, meaning they end up surrounded by good gridded quads, then they merge last, which tends
+   * to produce better results.*/
+  if (multiplier > maximum_improvement) {
+    multiplier = maximum_improvement;
   }
 
   ASSERT_VALID_ERROR_METRIC(multiplier);
@@ -1017,7 +1023,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
          * reguardless of their acutal error.  Either way, the multiplier is never completely
          * allowed to reach reach zero.  Intead, 1% of the original error is preserved...
          * which is enough to maintain the relative priority sorting between existing quads. */
-        float compensated_errror = error * (2 - s.topo_influnce * .99);
+        float compensated_errror = error * (2 - s.topo_influnce * maximum_improvement);
 
         reprioritize_face_neighbors(s, f, compensated_errror);
       }
