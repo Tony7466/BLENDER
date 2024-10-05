@@ -5385,7 +5385,7 @@ static void join_triangle_props(wmOperatorType *ot)
                                 DEG2RADF(180.0f));
   RNA_def_property_float_default(prop, DEG2RADF(40.0f));
 
-  prop = RNA_def_float_percentage(ot->srna,
+  prop = RNA_def_float_factor(ot->srna,
                                   "topology_influence",
                                   0.0f,
                                   0.0f,
