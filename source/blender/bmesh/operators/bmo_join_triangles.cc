@@ -534,11 +534,8 @@ static void rotate_to_plane(JoinEdgesState &s,
   normalize_v3(rotation_axis);
 
   float quad_normal[3] = {0};
-  add_newell_cross_v3_v3v3(quad_normal, quad_verts[0]->co, quad_verts[1]->co);
-  add_newell_cross_v3_v3v3(quad_normal, quad_verts[1]->co, quad_verts[2]->co);
-  add_newell_cross_v3_v3v3(quad_normal, quad_verts[2]->co, quad_verts[3]->co);
-  add_newell_cross_v3_v3v3(quad_normal, quad_verts[3]->co, quad_verts[0]->co);
-  normalize_v3(quad_normal);
+  normal_quad_v3(
+      quad_normal, quad_verts[0]->co, quad_verts[1]->co, quad_verts[2]->co, quad_verts[3]->co);
 
   float angle = angle_signed_on_axis_v3v3_v3(plane_normal, quad_normal, rotation_axis);
 
