@@ -598,7 +598,7 @@ static void rotate_to_plane(JoinEdgesState &s,
  */
 static float compute_alignment(JoinEdgesState &s,
                                const float quad_a_vecs[4][3],
-                               BMVert *quad_b_verts[4],
+                               const BMVert *quad_b_verts[4],
                                const BMLoop *shared_loop,
                                const float plane_normal[3])
 {
@@ -611,10 +611,15 @@ static float compute_alignment(JoinEdgesState &s,
 
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   if (s.debug_this_step) {
-    copy_v3_v3(quad_b_verts[0]->co, quad_b_coordinates[0]);
-    copy_v3_v3(quad_b_verts[1]->co, quad_b_coordinates[1]);
-    copy_v3_v3(quad_b_verts[2]->co, quad_b_coordinates[2]);
-    copy_v3_v3(quad_b_verts[3]->co, quad_b_coordinates[3]);
+    /* For visualization purposes ONLY, rotate the face being considered. The const_cast here
+     * is purposeful.  We want to specify `const` BMVert deliberately -- to show that we're not
+     * SUPPOSED to be moving verts around.  But only for debug visualization, we do. This alters
+     * the mesh to visualize the effect of rotating the face into the plane for alignment testing.
+     */
+    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[0])->co, quad_b_coordinates[0]);
+    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[1])->co, quad_b_coordinates[1]);
+    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[2])->co, quad_b_coordinates[2]);
+    copy_v3_v3(const_cast<BMVert *>(quad_b_verts[3])->co, quad_b_coordinates[3]);
   }
 #endif
 
