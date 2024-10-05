@@ -62,7 +62,7 @@
  *   merge cap = -1 allows the algorithm to run fully.
  *   merge cap = 0 stops before the first merge.  neighbor_debug can be stepped to diagnose every
  *   neighbor improvement that occurs as a result of the pre-existing quads in the mesh (valid
-     range for neighbor_debug = 0...8*(num of selected pre-existing quads)
+ *   range for neighbor_debug = 0...8*(num of selected pre-existing quads)
  *   merge_cap = 1, 2, 3... stops after the specified number of merges.  neighbor_debug shows
  *   the neighbor improvements for the last quad that merged.  (Valid range 0...8)
  *
@@ -488,7 +488,7 @@ static size_t add_neighbors(BMEdge *merge_edges[8],
   if (loop_in_neighbor->f->len != 3)
     return count; /* No new edges added. */
 
-  /* Find the other two loops of the neighboring triangle */
+  /* Get the other two loops of the neighboring triangle */
   BMLoop *l_a = loop_in_neighbor->next;
   BMLoop *l_b = loop_in_neighbor->prev;
 
@@ -613,7 +613,7 @@ static float compute_alignment(JoinEdgesState &s,
   }
 #endif
 
-  /* Find the four unit vectors of the quad b edges. */
+  /* compute the four unit vectors of the quad b edges. */
   float quad_b_vecs[4][3];
   sub_v3_v3v3(quad_b_vecs[0], quad_b_coordinates[0], quad_b_coordinates[1]);
   sub_v3_v3v3(quad_b_vecs[1], quad_b_coordinates[1], quad_b_coordinates[2]);
@@ -754,11 +754,11 @@ static void reprioritize_join(JoinEdgesState &s,
   }
 #endif
 
-  /* Find the four corners of the quad that would result if we merged */
+  /* Get the four corners of the quad that would result if we merged */
   const BMVert *merged_quad_verts[4];
   bm_edge_to_quad_verts(merge_edge, merged_quad_verts);
 
-  /* Now find the alginment.
+  /* Now compute the alginment.
    * Regular grids of rectangles or trapezoids have high alignment
    * Mismatched combinations of rectangles diamonds and trapezoids have low alignment. */
   float alignment = compute_alignment(
@@ -840,7 +840,7 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
   BMEdge *merge_edges[8];
   BMLoop *shared_loops[8];
 
-  /* Find the four loops around the face */
+  /* Get the four loops around the face */
   BMLoop *l_a = face->l_first;
   BMLoop *l_b = l_a->next;
   BMLoop *l_c = l_b->next;
@@ -857,7 +857,7 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
     return;
   }
 
-  /* Find the four unit vectors around this quad */
+  /* Compute the four unit vectors around this quad */
   float quad_vecs[4][3];
   sub_v3_v3v3(quad_vecs[0], l_a->v->co, l_b->v->co);
   sub_v3_v3v3(quad_vecs[1], l_b->v->co, l_c->v->co);
@@ -999,7 +999,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   /* Go through all the the faces of the input slot, this time to find quads.
    * Improve the candidates around any preexisting quads in the mesh.
    *
-   * Note:  This unfortunately misses any quads which are not selected, but
+   * NOTE:  This unfortunately misses any quads which are not selected, but
    * which neighbor the selection.  The only alternate would be to iterate the
    * whole mesh, which might be expensive for very large meshes with small selections.
    */
