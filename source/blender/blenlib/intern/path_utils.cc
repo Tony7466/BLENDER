@@ -1199,14 +1199,13 @@ bool BLI_path_abs(char path[FILE_MAX], const char *basepath)
 bool BLI_path_is_abs_from_cwd(const char *path)
 {
   bool is_abs = false;
-  const int path_len_clamp = BLI_strnlen(path, 3);
 
 #ifdef WIN32
-  if ((path_len_clamp >= 3 && BLI_path_is_abs_win32(path)) || BLI_path_is_unc(path)) {
+  if (BLI_path_is_win32_drive(path) || BLI_path_is_unc(path)) {
     is_abs = true;
   }
 #else
-  if (path_len_clamp >= 2 && path[0] == '/') {
+  if (path[0] == '/') {
     is_abs = true;
   }
 #endif
