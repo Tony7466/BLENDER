@@ -85,6 +85,26 @@ static void fill_rotation_attribute(const Span<float3> tangents,
   });
 }
 
+static void copy_curve_domain_attributes(const AttributeAccessor curve_attributes,
+                                         MutableAttributeAccessor point_attributes)
+{
+  curve_attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
+    if (iter.is_builtin) {
+      return;
+    }
+    if (iter.domain != AttrDomain::Curve) {
+      return;
+    }
+    if (iter.data_type == CD_PROP_STRING) {
+      return;
+    }
+    point_attributes.add(iter.name,
+                         AttrDomain::Point,
+                         iter.data_type,
+                         bke::AttributeInitVArray(*iter.get(AttrDomain::Point)));
+  });
+}
+
 static PointCloud *pointcloud_from_curves(const bke::CurvesGeometry &curves,
                                           const std::optional<StringRef> &tangent_id,
                                           const std::optional<StringRef> &normal_id,
@@ -98,11 +118,7 @@ static PointCloud *pointcloud_from_curves(const bke::CurvesGeometry &curves,
                        bke::AttrDomain::Point,
                        AttributeFilter::default_filter(),
                        dst_attributes);
-  bke::copy_attributes(curves.attributes(),
-                       bke::AttrDomain::Curve,
-                       bke::AttrDomain::Point,
-                       AttributeFilter::default_filter(),
-                       dst_attributes);
+  copy_curve_domain_attributes(curves.attributes(), pointcloud->attributes_for_write());
 
   if (rotation_id) {
     const AttributeAccessor attributes = curves.attributes();
