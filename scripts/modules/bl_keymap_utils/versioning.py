@@ -194,8 +194,8 @@ def keyconfig_update(keyconfig_data, keyconfig_version):
             keywords_to_remove = {"EDIT_SNAP_SOURCE_OFF", "SNAP_TOGGLE", "SNAP_INV_ON", "SNAP_INV_OFF", "ADD_SNAP"}
             km_items_data["items"] = [item for item in km_items_data["items"] if item[0] not in keywords_to_remove]
             km_items_data["items"].extend([
-                ("SNAP_TOGGLE", {"type": 'LEFT_CTRL', "value": 'ANY', "any": True}, None),
-                ("SNAP_TOGGLE", {"type": 'RIGHT_CTRL', "value": 'ANY', "any": True}, None),
+                ("SNAP_INV", {"type": 'LEFT_CTRL', "value": 'ANY', "any": True}, None),
+                ("SNAP_INV", {"type": 'RIGHT_CTRL', "value": 'ANY', "any": True}, None),
                 ("SNAP_TOGGLE", {"type": 'TAB', "value": 'PRESS', "shift": True}, None),
                 ("ADD_SNAP", {"type": 'A', "value": 'PRESS', "any": True}, None),
             ])

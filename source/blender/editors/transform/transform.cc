@@ -752,6 +752,7 @@ wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf)
       {TFM_MODAL_PLANE_Z, "PLANE_Z", 0, "Z Plane", ""},
       {TFM_MODAL_CONS_OFF, "CONS_OFF", 0, "Clear Constraints", ""},
       {TFM_MODAL_SET_SNAP_BASE, "EDIT_SNAP_SOURCE_ON", 0, "Set Snap Base", ""},
+      {TFM_MODAL_SNAP_INV, "SNAP_INV", 0, "Snap Invert", ""},
       {TFM_MODAL_SNAP_TOGGLE, "SNAP_TOGGLE", 0, "Snap Toggle", ""},
       {TFM_MODAL_ADD_SNAP, "ADD_SNAP", 0, "Add Snap Point", ""},
       {TFM_MODAL_REMOVE_SNAP, "REMOVE_SNAP", 0, "Remove Last Snap Point", ""},
@@ -1129,18 +1130,21 @@ int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
         t->redraw |= TREDRAW_HARD;
         handled = true;
         break;
+      case TFM_MODAL_SNAP_INV:
+        if (!is_event_toggling(event)) {
+          if (t->mode == TFM_EDGE_SLIDE) {
+            /* For Edge Slide we call the operator to update the Status Bar. */
+            t->redraw |= TREDRAW_HARD;
+            handled = true;
+          }
+          break;
+        }
+        ATTR_FALLTHROUGH;
       case TFM_MODAL_SNAP_TOGGLE:
-        if (is_event_toggling(event)) {
-          t->modifiers ^= MOD_SNAP;
-          transform_snap_flag_from_modifiers_set(t);
-          t->redraw |= TREDRAW_HARD;
-          handled = true;
-        }
-        else if (t->mode == TFM_EDGE_SLIDE) {
-          /* For Edge Slide we call the operator to update the Status Bar. */
-          t->redraw |= TREDRAW_HARD;
-          handled = true;
-        }
+        t->modifiers ^= event->val == TFM_MODAL_SNAP_INV ? MOD_SNAP_INVERT : MOD_SNAP;
+        transform_snap_flag_from_modifiers_set(t);
+        t->redraw |= TREDRAW_HARD;
+        handled = true;
         break;
       case TFM_MODAL_AXIS_X:
       case TFM_MODAL_AXIS_Y:
@@ -2049,7 +2053,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
           continue;
         }
 
-        if (kmi->propvalue == TFM_MODAL_SNAP_TOGGLE && kmi->val == KM_PRESS) {
+        if (kmi->propvalue == TFM_MODAL_SNAP_INV && ELEM(kmi->val, KM_ANY, KM_PRESS)) {
           if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) &&
                (event->modifier & KM_CTRL)) ||
               (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&
