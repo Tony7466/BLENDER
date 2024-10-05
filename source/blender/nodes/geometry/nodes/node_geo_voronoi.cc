@@ -32,9 +32,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>(("Domain"));
   b.add_input<decl::Vector>(("Min"));
   b.add_input<decl::Vector>(("Max"));
-  // b.add_input<decl::Bool>(("Periodic"));
+  b.add_input<decl::Bool>(("Periodic X"));
+  b.add_input<decl::Bool>(("Periodic Y"));
+  b.add_input<decl::Bool>(("Periodic Z"));
   b.add_input<decl::Int>("Group ID").hide_value().field_on_all();
-  // b.add_input<decl::Int>(N_("Group ID")).field_source();
   b.add_output<decl::Geometry>("Voronoi");
   // b.add_output<decl::Int>(N_("Group ID")).field_source();
 }
@@ -83,7 +84,9 @@ static void reset_edges(voro::voronoicell &c) {
 	}
 }
 
-static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain, const float3 &min, const float3 &max, const Field<int>& group_id, bool periodic){
+static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain, 
+                            const float3 &min, const float3 &max, const Field<int>& group_id, 
+                            bool x_p, bool y_p, bool z_p){
   const MeshComponent *mesh_comp = sites.get_component<MeshComponent>();
   const Mesh *site_mesh = mesh_comp->get();
   const Span<float3> positions = site_mesh->vert_positions();
@@ -104,7 +107,7 @@ static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain
 	// non-periodic in each of the three coordinates. Allocate space for
 	// eight particles within each computational block.
 	voro::container con(min[0],max[0],min[1],max[1],min[2],max[2],n_x,n_y,n_z,
-			false,false,false,8);
+			x_p,y_p,z_p,8);
   int i,j,k,l,n,id;
 
   i = 0;
@@ -162,12 +165,9 @@ static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain
   offset = 0;
   for(i = 0; i < face_sizes.size(); i++){
     int size = face_sizes[i];
-    // printf("\toffset: %d \n", offset);
     face_offs[i] = offset;
     for(j = 0; j < size; j++){
-      // printf("\t\tcorner index: %d \n", offset+j);
       corns[offset+j] = corner_verts[offset+j];
-      // printf("\t\tcorner: %d \n", corner_verts[offset+j]);
     }
     offset += size;
   }
@@ -178,19 +178,19 @@ static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  // We first retrieve the property (olive count) and the input socket (radius)
   const NodeGeometryVoronoi &storage = node_storage(params.node());
   const int sites = storage.sites;
   const GeometrySet site_geometry = params.extract_input<GeometrySet>("Sites");
   const float3 min = params.extract_input<float3>("Min");
   const float3 max = params.extract_input<float3>("Max");
+  const bool x_p = params.extract_input<bool>("Periodic X");
+  const bool y_p = params.extract_input<bool>("Periodic Y");
+  const bool z_p = params.extract_input<bool>("Periodic Z");
   const GeometrySet domain = params.extract_input<GeometrySet>("Domain");
   Field<int> id_field = params.extract_input<Field<int>>("Group ID");
 
-  // Then we create the mesh (let's put it in a separate function)
-  Mesh *voronoi = compute_voronoi(site_geometry, domain, min, max, id_field);
+  Mesh *voronoi = compute_voronoi(site_geometry, domain, min, max, id_field, x_p, y_p, z_p);
 
-  // We build a geometry set to wrap the mesh and set it as the output value
   params.set_output("Voronoi", GeometrySet::from_mesh(voronoi));
 }
 
