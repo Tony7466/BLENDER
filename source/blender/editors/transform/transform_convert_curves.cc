@@ -115,42 +115,35 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     /* Alter selection as in legacy curves bezt_select_to_transform_triple_flag(). */
     if (!bezier_curves[i].is_empty()) {
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-      MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
-      MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
+      std::array<MutableSpan<int8_t>, 2> handle_types_lr = {curves.handle_types_left_for_write(),
+                                                            curves.handle_types_right_for_write()};
 
       must_be_selected.clear();
       bezier_curves[i].foreach_index([&](const int bezier_index) {
         for (const int point_i : points_by_curve[bezier_index]) {
-          const bool is_knot_selected = selection_per_attribute[0].contains(point_i);
-          const bool is_left_selected = selection_per_attribute[1].contains(point_i);
-          const bool is_right_selected = selection_per_attribute[2].contains(point_i);
-          const HandleType type_left = HandleType(handle_types_left[point_i]);
-          const HandleType type_right = HandleType(handle_types_right[point_i]);
-          if (is_knot_selected) {
+          const bool knot_is_selected = selection_per_attribute[0].contains(point_i);
+          if (knot_is_selected) {
+            const HandleType type_left = HandleType(handle_types_lr[0][point_i]);
+            const HandleType type_right = HandleType(handle_types_lr[1][point_i]);
             if (ELEM(type_left, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN) &&
                 ELEM(type_right, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN))
             {
               must_be_selected.append(point_i);
             }
           }
-
-          const int selected_count = is_knot_selected + is_left_selected + is_right_selected;
-          if (selected_count != 0 && selected_count != 3) {
-            if (is_left_selected) {
-              if (type_left == BEZIER_HANDLE_AUTO) {
-                handle_types_left[point_i] = BEZIER_HANDLE_ALIGN;
-              }
-              if (type_left == BEZIER_HANDLE_VECTOR) {
-                handle_types_left[point_i] = BEZIER_HANDLE_FREE;
-              }
-            }
-
-            if (is_right_selected) {
-              if (type_right == BEZIER_HANDLE_AUTO) {
-                handle_types_right[point_i] = BEZIER_HANDLE_ALIGN;
-              }
-              if (type_right == BEZIER_HANDLE_VECTOR) {
-                handle_types_right[point_i] = BEZIER_HANDLE_FREE;
+          else {
+            for (const int side : IndexRange(handle_types_lr.size())) {
+              const bool handle_is_selected = selection_per_attribute[side + 1].contains(point_i);
+              if (handle_is_selected) {
+                switch (handle_types_lr[side][point_i]) {
+                  case BEZIER_HANDLE_AUTO:
+                    handle_types_lr[side][point_i] = BEZIER_HANDLE_ALIGN;
+                    break;
+                  case BEZIER_HANDLE_VECTOR:
+                    handle_types_lr[side][point_i] = BEZIER_HANDLE_FREE;
+                    break;
+                  default:
+                }
               }
             }
           }
