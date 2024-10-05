@@ -153,9 +153,88 @@ void gather_grids_normals(const SubdivCCG &subdiv_ccg,
 void gather_bmesh_normals(const Set<BMVert *, 0> &verts, MutableSpan<float3> normals);
 
 /**
+ * Common set of mesh attributes used by a majority of brushes when calculating influence.
+ */
+struct MeshAttributeData {
+  /* Point Domain */
+  VArraySpan<float> mask;
+  VArraySpan<bool> hide_vert;
+
+  /* Face Domain */
+  VArraySpan<bool> hide_poly;
+  VArraySpan<int> face_sets;
+
+  explicit MeshAttributeData(const bke::AttributeAccessor &attributes)
+  {
+    this->mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
+    this->hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
+    this->hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+    this->face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
+  }
+};
+
+void calc_factors_common_mesh(const Depsgraph &depsgraph,
+                              const Brush &brush,
+                              const Object &object,
+                              const MeshAttributeData &attribute_data,
+                              Span<float3> positions,
+                              Span<float3> vert_normals,
+                              const bke::pbvh::MeshNode &node,
+                              Vector<float> &r_factors,
+                              Vector<float> &r_distances);
+void calc_factors_common_mesh_indexed(const Depsgraph &depsgraph,
+                                      const Brush &brush,
+                                      const Object &object,
+                                      const MeshAttributeData &attribute_data,
+                                      Span<float3> vert_positions,
+                                      Span<float3> vert_normals,
+                                      const bke::pbvh::MeshNode &node,
+                                      Vector<float> &r_factors,
+                                      Vector<float> &r_distances);
+void calc_factors_common_grids(const Depsgraph &depsgraph,
+                               const Brush &brush,
+                               const Object &object,
+                               Span<float3> positions,
+                               const bke::pbvh::GridsNode &node,
+                               Vector<float> &r_factors,
+                               Vector<float> &r_distances);
+void calc_factors_common_bmesh(const Depsgraph &depsgraph,
+                               const Brush &brush,
+                               const Object &object,
+                               Span<float3> positions,
+                               bke::pbvh::BMeshNode &node,
+                               Vector<float> &r_factors,
+                               Vector<float> &r_distances);
+void calc_factors_common_from_orig_data_mesh(const Depsgraph &depsgraph,
+                                             const Brush &brush,
+                                             const Object &object,
+                                             const MeshAttributeData &attribute_data,
+                                             Span<float3> positions,
+                                             Span<float3> normals,
+                                             const bke::pbvh::MeshNode &node,
+                                             Vector<float> &r_factors,
+                                             Vector<float> &r_distances);
+void calc_factors_common_from_orig_data_grids(const Depsgraph &depsgraph,
+                                              const Brush &brush,
+                                              const Object &object,
+                                              Span<float3> positions,
+                                              Span<float3> normals,
+                                              const bke::pbvh::GridsNode &node,
+                                              Vector<float> &r_factors,
+                                              Vector<float> &r_distances);
+void calc_factors_common_from_orig_data_bmesh(const Depsgraph &depsgraph,
+                                              const Brush &brush,
+                                              const Object &object,
+                                              Span<float3> positions,
+                                              Span<float3> normals,
+                                              bke::pbvh::BMeshNode &node,
+                                              Vector<float> &r_factors,
+                                              Vector<float> &r_distances);
+
+/**
  * Calculate initial influence factors based on vertex visibility.
  */
-void fill_factor_from_hide(const Mesh &mesh, Span<int> vert_indices, MutableSpan<float> r_factors);
+void fill_factor_from_hide(Span<bool> hide_vert, Span<int> verts, MutableSpan<float> r_factors);
 void fill_factor_from_hide(const SubdivCCG &subdiv_ccg,
                            Span<int> grids,
                            MutableSpan<float> r_factors);
@@ -164,8 +243,9 @@ void fill_factor_from_hide(const Set<BMVert *, 0> &verts, MutableSpan<float> r_f
 /**
  * Calculate initial influence factors based on vertex visibility and masking.
  */
-void fill_factor_from_hide_and_mask(const Mesh &mesh,
-                                    Span<int> vert_indices,
+void fill_factor_from_hide_and_mask(Span<bool> hide_vert,
+                                    Span<float> mask,
+                                    Span<int> verts,
                                     MutableSpan<float> r_factors);
 void fill_factor_from_hide_and_mask(const SubdivCCG &subdiv_ccg,
                                     Span<int> grids,
@@ -279,80 +359,6 @@ void calc_brush_texture_factors(const SculptSession &ss,
                                 const Brush &brush,
                                 Span<float3> positions,
                                 MutableSpan<float> factors);
-
-namespace auto_mask {
-
-/**
- * Calculate all auto-masking influence on each vertex.
- */
-void calc_vert_factors(const Depsgraph &depsgraph,
-                       const Object &object,
-                       const Cache &cache,
-                       const bke::pbvh::MeshNode &node,
-                       Span<int> verts,
-                       MutableSpan<float> factors);
-inline void calc_vert_factors(const Depsgraph &depsgraph,
-                              const Object &object,
-                              const Cache *cache,
-                              const bke::pbvh::MeshNode &node,
-                              Span<int> verts,
-                              MutableSpan<float> factors)
-{
-  if (cache == nullptr) {
-    return;
-  }
-  calc_vert_factors(depsgraph, object, *cache, node, verts, factors);
-}
-void calc_grids_factors(const Depsgraph &depsgraph,
-                        const Object &object,
-                        const Cache &cache,
-                        const bke::pbvh::GridsNode &node,
-                        Span<int> grids,
-                        MutableSpan<float> factors);
-inline void calc_grids_factors(const Depsgraph &depsgraph,
-                               const Object &object,
-                               const Cache *cache,
-                               const bke::pbvh::GridsNode &node,
-                               Span<int> grids,
-                               MutableSpan<float> factors)
-{
-  if (cache == nullptr) {
-    return;
-  }
-  calc_grids_factors(depsgraph, object, *cache, node, grids, factors);
-}
-void calc_vert_factors(const Depsgraph &depsgraph,
-                       const Object &object,
-                       const Cache &cache,
-                       const bke::pbvh::BMeshNode &node,
-                       const Set<BMVert *, 0> &verts,
-                       MutableSpan<float> factors);
-inline void calc_vert_factors(const Depsgraph &depsgraph,
-                              const Object &object,
-                              const Cache *cache,
-                              const bke::pbvh::BMeshNode &node,
-                              const Set<BMVert *, 0> &verts,
-                              MutableSpan<float> factors)
-{
-  if (cache == nullptr) {
-    return;
-  }
-  calc_vert_factors(depsgraph, object, *cache, node, verts, factors);
-}
-
-/**
- * Calculate all auto-masking influence on each face.
- */
-void calc_face_factors(const Depsgraph &depsgraph,
-                       const Object &object,
-                       OffsetIndices<int> faces,
-                       Span<int> corner_verts,
-                       const Cache &cache,
-                       const bke::pbvh::MeshNode &node,
-                       Span<int> face_indices,
-                       MutableSpan<float> factors);
-
-}  // namespace auto_mask
 
 /**
  * Many brushes end up calculating translations from the original positions. Instead of applying

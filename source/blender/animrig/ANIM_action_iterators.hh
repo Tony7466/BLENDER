@@ -28,15 +28,21 @@ namespace blender::animrig {
 using slot_handle_t = decltype(::ActionSlot::handle);
 
 /**
+ * Iterates over all FCurves of the Action and executes the callback on it.
+ * Works on layered and legacy actions.
+ */
+void foreach_fcurve_in_action(Action &action, FunctionRef<void(FCurve &fcurve)> callback);
+
+/**
  * Iterates over all FCurves of the given slot handle in the Action and executes the callback on
  * it. Works on layered and legacy actions. When the action is legacy, the slot handle will be
  * ignored.
  *
  * \note Use lambdas to have access to specific data in the callback.
  */
-void action_foreach_fcurve(Action &action,
-                           slot_handle_t handle,
-                           FunctionRef<void(FCurve &fcurve)> callback);
+void foreach_fcurve_in_action_slot(Action &action,
+                                   slot_handle_t handle,
+                                   FunctionRef<void(FCurve &fcurve)> callback);
 
 /**
  * Call the given callback for each Action + Slot that this ID uses.
@@ -56,5 +62,18 @@ void action_foreach_fcurve(Action &action,
 bool foreach_action_slot_use(
     const ID &animated_id,
     FunctionRef<bool(const Action &action, slot_handle_t slot_handle)> callback);
+
+/**
+ * Same as foreach_action_slot_use(), except that it reports some pointers so the callback can
+ * modify which Action/slot is assigned.
+ *
+ * \see blender::animrig::generic_assign_action
+ * \see blender::animrig::generic_assign_action_slot
+ * \see blender::animrig::generic_assign_action_slot_handle
+ */
+bool foreach_action_slot_use_with_references(
+    ID &animated_id,
+    FunctionRef<bool(bAction *&action_ptr_ref, slot_handle_t &slot_handle_ref, char *slot_name)>
+        callback);
 
 }  // namespace blender::animrig
