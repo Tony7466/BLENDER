@@ -92,8 +92,11 @@ static void grease_pencil_to_mesh(GeometrySet &geometry_set,
                        attribute_filter,
                        gp_instances->attributes_for_write());
 
-  geometry_set = geometry::join_geometries(
-      {std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
+  InstancesComponent &dst_component = geometry_set.get_component_for_write<InstancesComponent>();
+  bke::Instances *dst_instances = dst_component.get_for_write();
+  GeometrySet new_instances = geometry::join_geometries({GeometrySet::from_instances(dst_instances), GeometrySet::from_instances(gp_instances)}, attribute_filter);
+  
+
   geometry_set.replace_grease_pencil(nullptr);
 }
 
