@@ -6,23 +6,15 @@
  * \ingroup edtransform
  */
 
-#include <cstdlib>
-
 #include "DNA_gpencil_legacy_types.h"
 
 #include "BLI_math_matrix.h"
-#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_context.hh"
 #include "BKE_unit.hh"
-#include "BKE_workspace.hh"
 
 #include "ED_screen.hh"
-
-#include "WM_api.hh"
-#include "WM_types.hh"
 
 #include "UI_interface.hh"
 

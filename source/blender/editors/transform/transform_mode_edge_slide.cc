@@ -9,11 +9,9 @@
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 
-#include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_bvh.hh"
 #include "BKE_unit.hh"
-#include "BKE_workspace.hh"
 
 #include "GPU_immediate.hh"
 #include "GPU_matrix.hh"
@@ -22,8 +20,6 @@
 
 #include "ED_mesh.hh"
 #include "ED_screen.hh"
-
-#include "WM_api.hh"
 
 #include "RNA_access.hh"
 
