@@ -30,6 +30,10 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>(("Sites"));
   b.add_input<decl::Geometry>(("Domain"));
+  b.add_input<decl::Vector>(("Min"));
+  b.add_input<decl::Vector>(("Max"));
+  // b.add_input<decl::Bool>(("Periodic"));
+  b.add_input<decl::Int>("Group ID").hide_value().field_on_all();
   // b.add_input<decl::Int>(N_("Group ID")).field_source();
   b.add_output<decl::Geometry>("Voronoi");
   // b.add_output<decl::Int>(N_("Group ID")).field_source();
@@ -79,106 +83,96 @@ static void reset_edges(voro::voronoicell &c) {
 	}
 }
 
-static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain){
-  // Very simple pizza: the base is a disc and olives are little quads
-
-  // (i) compute element counts
-  // int olive_count = 3;
-  
-  // int edge_count = 32 + olive_count * 4;
-  // int corner_count = 32 + olive_count * 4;
-  // int face_count = 32 + olive_count;
-
-  // (ii) allocate memory
+static Mesh *compute_voronoi(const GeometrySet& sites, const GeometrySet& domain, const float3 &min, const float3 &max, const Field<int>& group_id, bool periodic){
   const MeshComponent *mesh_comp = sites.get_component<MeshComponent>();
   const Mesh *site_mesh = mesh_comp->get();
   const Span<float3> positions = site_mesh->vert_positions();
 
-  // (iii) fill in element buffers
-  // MutableSpan<MVert> verts{mesh->mvert, mesh->totvert};
-  // MutableSpan<MLoop> loops{mesh->mloop, mesh->totloop};
-  // MutableSpan<MEdge> edges{mesh->medge, mesh->totedge};
-  // MutableSpan<MPoly> polys{mesh->mpoly, mesh->totpoly};
-  const double x_min=-6.5,x_max=6.5;
-  const double y_min=-6.5,y_max=6.5;
-  const double z_min=0,z_max=18.5;
-
+  const bke::AttrDomain att_domain = bke::AttrDomain::Point;
+  const int domain_size = site_mesh->attributes().domain_size(att_domain);
+  bke::MeshFieldContext field_context{*site_mesh, att_domain};
+  FieldEvaluator field_evaluator{field_context, domain_size};
+  field_evaluator.add(group_id);
+  field_evaluator.evaluate();
+  const VArray<int> group_ids = field_evaluator.get_evaluated<int>(0);
+  const VArraySpan<int> group_ids_span{group_ids};
+  
   // Set the computational grid size
   const int n_x=7,n_y=7,n_z=14;
 
   // Create a container with the geometry given above, and make it
 	// non-periodic in each of the three coordinates. Allocate space for
 	// eight particles within each computational block.
-	voro::container con(x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z,
+	voro::container con(min[0],max[0],min[1],max[1],min[2],max[2],n_x,n_y,n_z,
 			false,false,false,8);
-  int i = 0;
-  for (float3 p : positions){
-    con.put(i, p[0], p[1], p[2]);
-    i++;
-  }
-
-  voro::voronoicell c;
-  double *pp;
-  voro::c_loop_all vl(con);
-  int vert_count = 0;
-  Vector<float3> verts;
-  Vector<int> edges;
-  if(vl.start()) do if(con.compute_cell(c,vl)) {
-    pp=con.p[vl.ijk]+con.ps*vl.q;
-    // c.draw_gnuplot(*pp,pp[1],pp[2],con.fp);
-    double x = *pp;
-    double y = pp[1];
-    double z = pp[2];
-    int j,k,l,m;
-    for(i=1;i<c.p;i++) for(j=0;j<c.nu[i];j++) {
-      k=c.ed[i][j];
-      if(k>=0) {
-        verts.append(float3(x+0.5*c.pts[i<<2], y+0.5*c.pts[(i<<2)+1], z+0.5*c.pts[(i<<2)+2]));
-        vert_count++;
-        // edges.append(i);
-        // i++;
-        l=i;m=j;
-        do {
-          c.ed[k][c.ed[l][c.nu[l]+m]]=-1-l;
-          c.ed[l][m]=-1-k;
-          l=k;
-          verts.append(float3(x+0.5*c.pts[k<<2], y+0.5*c.pts[(k<<2)+1], z+0.5*c.pts[(k<<2)+2]));
-          vert_count++;
-          // edges.append(i);
-          // i++;
-        } while (search_edge(c,l,m,k));
-      }
-    }
-	  reset_edges(c);
-    // vert_count += c.p;
-  } while(vl.inc());
-
-
-	// Add a cylindrical wall to the container
-	voro::wall_cylinder cyl(0,0,0,0,0,1,6);
-	con.add_wall(cyl);
-  
-	// Import the particles from a file
-	// con.import("pack_cylinder");
-
-	// // Output the particle positions in POV-Ray format
-	// con.draw_particles_pov("cylinder_p.pov");
-
-	// // Output the Voronoi cells in POV-Ray format
-	// con.draw_cells_pov("cylinder_v.pov");
-  // [...]
-  Mesh *mesh = BKE_mesh_new_nomain(vert_count, vert_count*2,0,0);
-  MutableSpan<float3> pos_voro = mesh->vert_positions_for_write();
-  MutableSpan<int2> edges_wr = mesh->edges_for_write();
+  int i,j,k,l,n,id;
 
   i = 0;
-  for(i = 0; i < vert_count-1; i++){
-    pos_voro[i] = verts[i];
-    pos_voro[i+1] = verts[i+1];
-    edges_wr[i] = int2(i,i+1);
+  for (float3 p : positions){
+    con.put(group_ids[i], p[0], p[1], p[2]);
     i++;
   }
 
+
+  voro::voronoicell_neighbor c;
+  voro::c_loop_all vl(con);
+  
+  std::vector<int> neigh, f_vert;
+  std::vector<double> v;
+
+  Vector<float3> verts;
+  Vector<int> face_sizes;
+  Vector<int> corner_verts;
+  double x,y,z;
+
+  int offset = 0;
+  int gr, ngr;
+
+  if(vl.start()) do if(con.compute_cell(c,vl)){
+    vl.pos(x,y,z);
+    id=vl.pid();
+    
+    c.neighbors(neigh);
+    c.face_vertices(f_vert);
+    c.vertices(x,y,z,v);
+
+    for(i = 0, j=0; i < neigh.size(); i++){
+      if(neigh[i] > id){
+        l = f_vert[j];
+        n = f_vert[j];
+        face_sizes.append(n);
+        for(k=0; k < n; k++){
+          l=3*f_vert[j+k+1];
+          verts.append(float3(v[l],v[l+1],v[l+2]));
+          corner_verts.append(offset);
+          offset++;
+        }
+      }
+      j += f_vert[j]+1;
+    }
+  } while(vl.inc());
+ 
+
+  Mesh *mesh = BKE_mesh_new_nomain(verts.size(), 0,face_sizes.size(), corner_verts.size());
+  mesh->vert_positions_for_write().copy_from(verts);
+
+  MutableSpan<int> face_offs = mesh->face_offsets_for_write();
+  MutableSpan<int> corns = mesh->corner_verts_for_write();
+  
+  offset = 0;
+  for(i = 0; i < face_sizes.size(); i++){
+    int size = face_sizes[i];
+    // printf("\toffset: %d \n", offset);
+    face_offs[i] = offset;
+    for(j = 0; j < size; j++){
+      // printf("\t\tcorner index: %d \n", offset+j);
+      corns[offset+j] = corner_verts[offset+j];
+      // printf("\t\tcorner: %d \n", corner_verts[offset+j]);
+    }
+    offset += size;
+  }
+
+  bke::mesh_calc_edges(*mesh, true, false);
   return mesh;
 }
 
@@ -188,9 +182,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   const NodeGeometryVoronoi &storage = node_storage(params.node());
   const int sites = storage.sites;
   const GeometrySet site_geometry = params.extract_input<GeometrySet>("Sites");
+  const float3 min = params.extract_input<float3>("Min");
+  const float3 max = params.extract_input<float3>("Max");
   const GeometrySet domain = params.extract_input<GeometrySet>("Domain");
+  Field<int> id_field = params.extract_input<Field<int>>("Group ID");
+
   // Then we create the mesh (let's put it in a separate function)
-  Mesh *voronoi = compute_voronoi(site_geometry, domain);
+  Mesh *voronoi = compute_voronoi(site_geometry, domain, min, max, id_field);
 
   // We build a geometry set to wrap the mesh and set it as the output value
   params.set_output("Voronoi", GeometrySet::from_mesh(voronoi));
