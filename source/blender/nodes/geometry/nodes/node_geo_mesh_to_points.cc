@@ -67,6 +67,9 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
     return;
   }
 
+  /* Evaluating directly into the point cloud doesn't work because we are not using the full
+   * "min_array_size" array but compressing the selected elements into the final array with no
+   * gaps. */
   const bke::MeshFieldContext field_context{*mesh, domain};
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
