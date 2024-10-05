@@ -1276,7 +1276,7 @@ class NodeSocket(_StructRNA, metaclass=_RNAMetaPropGroup):
         """
         List of node links from or to this socket.
 
-        :rtype: :class:`NodeLinks`
+        :type: :class:`NodeLinks`
 
         .. note:: Takes ``O(len(nodetree.links))`` time."""
         links = (link for link in self.id_data.links
