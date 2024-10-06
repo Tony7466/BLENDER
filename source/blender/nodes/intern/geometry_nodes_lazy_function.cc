@@ -186,9 +186,10 @@ class LazyFunctionForGeometryNode : public LazyFunction {
       if (output_bsocket.is_available() && !handled_geometry_outputs.contains(&output_bsocket)) {
         handled_geometry_outputs.append(&output_bsocket);
         const int lf_index = inputs_.append_and_get_index_as(
-            "Propagate to Output", CPPType::get<bke::AnonymousAttributeSet>());
-        own_lf_graph_info.mapping.lf_input_index_for_attribute_propagation_to_output
-            [output_bsocket.index_in_all_outputs()] = lf_index;
+            "Propagate to Output", CPPType::get<GeometryNodesReferenceSet>());
+        own_lf_graph_info.mapping
+            .lf_input_index_for_reference_set_for_output[output_bsocket.index_in_all_outputs()] =
+            lf_index;
       }
     }
   }
@@ -250,7 +251,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
         params,
         context,
         own_lf_graph_info_.mapping.lf_input_index_for_output_bsocket_usage,
-        own_lf_graph_info_.mapping.lf_input_index_for_attribute_propagation_to_output,
+        own_lf_graph_info_.mapping.lf_input_index_for_reference_set_for_output,
         get_anonymous_attribute_name};
 
     geo_eval_log::TimePoint start_time = geo_eval_log::Clock::now();
@@ -277,8 +278,8 @@ class LazyFunctionForGeometryNode : public LazyFunction {
       }
       {
         const int lf_index =
-            own_lf_graph_info_.mapping.lf_input_index_for_attribute_propagation_to_output
-                [bsocket->index_in_all_outputs()];
+            own_lf_graph_info_.mapping
+                .lf_input_index_for_reference_set_for_output[bsocket->index_in_all_outputs()];
         if (index == lf_index) {
           return StringRef("Propagate to '") + bsocket->name + "'";
         }
@@ -1116,17 +1117,18 @@ class LazyFunctionForGroupNode : public LazyFunction {
           group_lf_graph_info.function.inputs.output_usages[i];
     }
 
-    /* Add an attribute set input for every output geometry socket that can propagate attributes
+    /* Add an reference set input for every output geometry socket that can propagate data
      * from inputs. */
-    for (const int i : group_lf_graph_info.function.inputs.attributes_to_propagate.geometry_outputs
+    for (const int i : group_lf_graph_info.function.inputs.references_to_propagate.geometry_outputs
                            .index_range())
     {
-      const int lf_index = group_lf_graph_info.function.inputs.attributes_to_propagate.range[i];
+      const int lf_index = group_lf_graph_info.function.inputs.references_to_propagate.range[i];
       const int output_index =
-          group_lf_graph_info.function.inputs.attributes_to_propagate.geometry_outputs[i];
+          group_lf_graph_info.function.inputs.references_to_propagate.geometry_outputs[i];
       const bNodeSocket &output_bsocket = group_node_.output_socket(output_index);
-      own_lf_graph_info.mapping.lf_input_index_for_attribute_propagation_to_output
-          [output_bsocket.index_in_all_outputs()] = lf_index;
+      own_lf_graph_info.mapping
+          .lf_input_index_for_reference_set_for_output[output_bsocket.index_in_all_outputs()] =
+          lf_index;
     }
   }
 
@@ -1313,23 +1315,23 @@ class LazyFunctionForIndexSwitchSocketUsage : public lf::LazyFunction {
 };
 
 /**
- * Takes a field as input and extracts the set of anonymous attributes that it references.
+ * Takes a field as input and extracts the set of anonymous attribute names that it references.
  */
-class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
+class LazyFunctionForExtractingReferenceSet : public lf::LazyFunction {
  public:
-  LazyFunctionForAnonymousAttributeSetExtract()
+  LazyFunctionForExtractingReferenceSet()
   {
-    debug_name_ = "Extract Attribute Set";
+    debug_name_ = "Extract References";
     inputs_.append_as("Use", CPPType::get<bool>());
     inputs_.append_as("Field", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Maybe);
-    outputs_.append_as("Attributes", CPPType::get<bke::AnonymousAttributeSet>());
+    outputs_.append_as("References", CPPType::get<GeometryNodesReferenceSet>());
   }
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
     const bool use = params.get_input<bool>(0);
     if (!use) {
-      params.set_output<bke::AnonymousAttributeSet>(0, {});
+      params.set_output<GeometryNodesReferenceSet>(0, {});
       return;
     }
     const SocketValueVariant *value_variant =
@@ -1339,7 +1341,7 @@ class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
       return;
     }
 
-    bke::AnonymousAttributeSet attributes;
+    GeometryNodesReferenceSet references;
     if (value_variant->is_context_dependent_field()) {
       const GField &field = value_variant->get<GField>();
       field.node().for_each_field_input_recursive([&](const FieldInput &field_input) {
@@ -1347,15 +1349,15 @@ class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
         {
           const StringRef name = attr_field_input->attribute_name();
           if (bke::attribute_name_is_anonymous(name)) {
-            if (!attributes.names) {
-              attributes.names = std::make_shared<Set<std::string>>();
+            if (!references.names) {
+              references.names = std::make_shared<Set<std::string>>();
             }
-            attributes.names->add_as(name);
+            references.names->add_as(name);
           }
         }
       });
     }
-    params.set_output(0, std::move(attributes));
+    params.set_output(0, std::move(references));
   }
 };
 
@@ -1363,30 +1365,30 @@ class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
  * Conditionally joins multiple attribute sets. Each input attribute set can be disabled with a
  * corresponding boolean input.
  */
-class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
+class LazyFunctionForJoinReferenceSets : public lf::LazyFunction {
   const int amount_;
 
  public:
-  LazyFunctionForAnonymousAttributeSetJoin(const int amount) : amount_(amount)
+  LazyFunctionForJoinReferenceSets(const int amount) : amount_(amount)
   {
-    debug_name_ = "Join Attribute Sets";
+    debug_name_ = "Join Reference Sets";
     for ([[maybe_unused]] const int i : IndexRange(amount)) {
       inputs_.append_as("Use", CPPType::get<bool>());
       inputs_.append_as(
-          "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe);
+          "Reference Set", CPPType::get<GeometryNodesReferenceSet>(), lf::ValueUsage::Maybe);
     }
-    outputs_.append_as("Attribute Set", CPPType::get<bke::AnonymousAttributeSet>());
+    outputs_.append_as("Reference Set", CPPType::get<GeometryNodesReferenceSet>());
   }
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
-    Vector<bke::AnonymousAttributeSet *> sets;
+    Vector<GeometryNodesReferenceSet *> sets;
     bool set_is_missing = false;
     for (const int i : IndexRange(amount_)) {
       if (params.get_input<bool>(this->get_use_input(i))) {
-        if (bke::AnonymousAttributeSet *set =
-                params.try_get_input_data_ptr_or_request<bke::AnonymousAttributeSet>(
-                    this->get_attribute_set_input(i)))
+        if (GeometryNodesReferenceSet *set =
+                params.try_get_input_data_ptr_or_request<GeometryNodesReferenceSet>(
+                    this->get_reference_set_input(i)))
         {
           sets.append(set);
         }
@@ -1398,7 +1400,7 @@ class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
     if (set_is_missing) {
       return;
     }
-    bke::AnonymousAttributeSet joined_set;
+    GeometryNodesReferenceSet joined_set;
     if (sets.is_empty()) {
       /* Nothing to do. */
     }
@@ -1407,7 +1409,7 @@ class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
     }
     else {
       joined_set.names = std::make_shared<Set<std::string>>();
-      for (const bke::AnonymousAttributeSet *set : sets) {
+      for (const GeometryNodesReferenceSet *set : sets) {
         if (set->names) {
           for (const std::string &name : *set->names) {
             joined_set.names->add(name);
@@ -1423,7 +1425,7 @@ class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
     return 2 * i;
   }
 
-  int get_attribute_set_input(const int i) const
+  int get_reference_set_input(const int i) const
   {
     return 2 * i + 1;
   }
@@ -1431,25 +1433,24 @@ class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
   /**
    * Cache for functions small amounts to avoid to avoid building them many times.
    */
-  static const LazyFunctionForAnonymousAttributeSetJoin &get_cached(const int amount,
-                                                                    ResourceScope &scope)
+  static const LazyFunctionForJoinReferenceSets &get_cached(const int amount, ResourceScope &scope)
   {
     constexpr int cache_amount = 16;
-    static std::array<LazyFunctionForAnonymousAttributeSetJoin, cache_amount> cached_functions =
-        get_cache(std::make_index_sequence<cache_amount>{});
+    static std::array<LazyFunctionForJoinReferenceSets, cache_amount> cached_functions = get_cache(
+        std::make_index_sequence<cache_amount>{});
     if (amount < cached_functions.size()) {
       return cached_functions[amount];
     }
 
-    return scope.construct<LazyFunctionForAnonymousAttributeSetJoin>(amount);
+    return scope.construct<LazyFunctionForJoinReferenceSets>(amount);
   }
 
  private:
   template<size_t... I>
-  static std::array<LazyFunctionForAnonymousAttributeSetJoin, sizeof...(I)> get_cache(
+  static std::array<LazyFunctionForJoinReferenceSets, sizeof...(I)> get_cache(
       std::index_sequence<I...> /*indices*/)
   {
-    return {LazyFunctionForAnonymousAttributeSetJoin(I)...};
+    return {LazyFunctionForJoinReferenceSets(I)...};
   }
 };
 
@@ -1522,7 +1523,7 @@ struct BuildGraphParams {
   Map<const bNodeSocket *, lf::OutputSocket *> usage_by_bsocket;
   /**
    * Nodes that propagate anonymous attributes have to know which of those attributes to propagate.
-   * For that they have an attribute set input for each geometry output.
+   * For that they have an input for each output that specifies what data to propagate.
    */
   Map<const bNodeSocket *, lf::InputSocket *> lf_reference_set_input_by_output;
   /**
@@ -1608,7 +1609,7 @@ void initialize_zone_wrapper(const bNodeTreeZone &zone,
     zone_info.indices.inputs.reference_sets.add_new(
         item.key,
         r_inputs.append_and_get_index_as(
-            "Reference Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe));
+            "Reference Set", CPPType::get<GeometryNodesReferenceSet>(), lf::ValueUsage::Maybe));
   }
 }
 
@@ -1859,10 +1860,10 @@ struct GeometryNodesLazyFunctionBuilder {
    */
   Vector<lf::GraphOutputSocket *> group_input_usage_sockets_;
   /**
-   * If the node group propagates attributes from an input geometry to the output, it has to know
+   * If the node group propagates attributes from an input to the output, it has to know
    * which attributes should be propagated and which can be removed (for optimization purposes).
    */
-  Map<int, lf::GraphInputSocket *> attribute_set_by_geometry_output_;
+  Map<int, lf::GraphInputSocket *> reference_set_by_output_;
 
   friend class UsedSocketVisualizeOptions;
 
@@ -1898,9 +1899,9 @@ struct GeometryNodesLazyFunctionBuilder {
     mapping_->lf_input_index_for_output_bsocket_usage.reinitialize(
         btree_.all_output_sockets().size());
     mapping_->lf_input_index_for_output_bsocket_usage.fill(-1);
-    mapping_->lf_input_index_for_attribute_propagation_to_output.reinitialize(
+    mapping_->lf_input_index_for_reference_set_for_output.reinitialize(
         btree_.all_output_sockets().size());
-    mapping_->lf_input_index_for_attribute_propagation_to_output.fill(-1);
+    mapping_->lf_input_index_for_reference_set_for_output.fill(-1);
     mapping_->lf_index_by_bsocket.reinitialize(btree_.all_sockets().size());
     mapping_->lf_index_by_bsocket.fill(-1);
   }
@@ -2252,7 +2253,7 @@ struct GeometryNodesLazyFunctionBuilder {
 
     auto add_reference_set_zone_input = [&](const ReferenceSetIndex reference_set_i) {
       lf::GraphInputSocket &lf_graph_input = graph_params.lf_graph.add_input(
-          CPPType::get<bke::AnonymousAttributeSet>(), "Reference Set");
+          CPPType::get<GeometryNodesReferenceSet>(), "Reference Set");
       lf_reference_sets.add(reference_set_i, &lf_graph_input);
     };
 
@@ -2331,7 +2332,7 @@ struct GeometryNodesLazyFunctionBuilder {
     this->build_group_input_usages(graph_params);
     this->add_default_inputs(graph_params);
 
-    this->build_attribute_propagation_inputs(lf_graph);
+    this->build_root_reference_set_inputs(lf_graph);
 
     Map<ReferenceSetIndex, lf::OutputSocket *> lf_reference_sets;
     this->build_reference_sets_outside_of_zones(graph_params, lf_reference_sets);
@@ -2363,12 +2364,12 @@ struct GeometryNodesLazyFunctionBuilder {
     function.inputs.output_usages = lf_graph_inputs.index_range().take_back(
         group_output_used_sockets_.size());
 
-    for (auto [output_index, lf_socket] : attribute_set_by_geometry_output_.items()) {
+    for (auto [output_index, lf_socket] : reference_set_by_output_.items()) {
       lf_graph_inputs.append(lf_socket);
-      function.inputs.attributes_to_propagate.geometry_outputs.append(output_index);
+      function.inputs.references_to_propagate.geometry_outputs.append(output_index);
     }
-    function.inputs.attributes_to_propagate.range = lf_graph_inputs.index_range().take_back(
-        attribute_set_by_geometry_output_.size());
+    function.inputs.references_to_propagate.range = lf_graph_inputs.index_range().take_back(
+        reference_set_by_output_.size());
 
     lf_graph_outputs.extend(standard_group_output_sockets_);
     function.outputs.main = lf_graph_outputs.index_range().take_back(
@@ -2439,7 +2440,7 @@ struct GeometryNodesLazyFunctionBuilder {
         }
         case ReferenceSetType::GroupOutputData: {
           const int group_output_i = reference_set.index;
-          lf::GraphInputSocket *lf_reference_set_socket = attribute_set_by_geometry_output_.lookup(
+          lf::GraphInputSocket *lf_reference_set_socket = reference_set_by_output_.lookup(
               group_output_i);
           lf_reference_sets.add_new(reference_set_i, lf_reference_set_socket);
           break;
@@ -2499,7 +2500,7 @@ struct GeometryNodesLazyFunctionBuilder {
         graph_params.lf_graph.add_link(*lf_joined_reference_set, lf_reference_set_input);
       }
       else {
-        static const bke::AnonymousAttributeSet empty_reference_set;
+        static const GeometryNodesReferenceSet empty_reference_set;
         lf_reference_set_input.set_default_value(&empty_reference_set);
       }
     }
@@ -2574,7 +2575,7 @@ struct GeometryNodesLazyFunctionBuilder {
                                                 lf::OutputSocket *lf_usage_socket,
                                                 BuildGraphParams &graph_params)
   {
-    auto &lazy_function = scope_.construct<LazyFunctionForAnonymousAttributeSetExtract>();
+    auto &lazy_function = scope_.construct<LazyFunctionForExtractingReferenceSet>();
     lf::Node &lf_node = graph_params.lf_graph.add_function(lazy_function);
     lf::InputSocket &lf_use_input = lf_node.input(0);
     lf::InputSocket &lf_field_input = lf_node.input(1);
@@ -2591,39 +2592,39 @@ struct GeometryNodesLazyFunctionBuilder {
   }
 
   /**
-   * Join multiple attributes set into a single attribute set that can be passed into a node.
+   * Join multiple reference sets into a single one that can be passed into a node.
    */
-  lf::OutputSocket *join_reference_sets(const Span<lf::OutputSocket *> lf_attribute_set_sockets,
+  lf::OutputSocket *join_reference_sets(const Span<lf::OutputSocket *> lf_reference_set_sockets,
                                         JoinReferenceSetsCache &cache,
                                         lf::Graph &lf_graph,
                                         Set<lf::InputSocket *> &socket_usage_inputs)
   {
-    if (lf_attribute_set_sockets.is_empty()) {
+    if (lf_reference_set_sockets.is_empty()) {
       return nullptr;
     }
-    if (lf_attribute_set_sockets.size() == 1) {
-      return lf_attribute_set_sockets[0];
+    if (lf_reference_set_sockets.size() == 1) {
+      return lf_reference_set_sockets[0];
     }
 
-    Vector<lf::OutputSocket *, 16> key = lf_attribute_set_sockets;
+    Vector<lf::OutputSocket *, 16> key = lf_reference_set_sockets;
     std::sort(key.begin(), key.end());
     return cache.lookup_or_add_cb(key, [&]() {
-      const auto &lazy_function = LazyFunctionForAnonymousAttributeSetJoin::get_cached(
-          lf_attribute_set_sockets.size(), scope_);
+      const auto &lazy_function = LazyFunctionForJoinReferenceSets::get_cached(
+          lf_reference_set_sockets.size(), scope_);
       lf::Node &lf_node = lf_graph.add_function(lazy_function);
-      for (const int i : lf_attribute_set_sockets.index_range()) {
-        lf::OutputSocket &lf_attribute_set_socket = *lf_attribute_set_sockets[i];
+      for (const int i : lf_reference_set_sockets.index_range()) {
+        lf::OutputSocket &lf_reference_set_socket = *lf_reference_set_sockets[i];
         lf::InputSocket &lf_use_input = lf_node.input(lazy_function.get_use_input(i));
 
-        /* Some attribute sets could potentially be set unused in the future based on more dynamic
+        /* Some reference sets could potentially be set unused in the future based on more dynamic
          * analysis of the node tree. */
         static const bool static_true = true;
         lf_use_input.set_default_value(&static_true);
 
         socket_usage_inputs.add(&lf_use_input);
-        lf::InputSocket &lf_attribute_set_input = lf_node.input(
-            lazy_function.get_attribute_set_input(i));
-        lf_graph.add_link(lf_attribute_set_socket, lf_attribute_set_input);
+        lf::InputSocket &lf_reference_set_input = lf_node.input(
+            lazy_function.get_reference_set_input(i));
+        lf_graph.add_link(lf_reference_set_socket, lf_reference_set_input);
       }
       return &lf_node.output(0);
     });
@@ -2695,7 +2696,7 @@ struct GeometryNodesLazyFunctionBuilder {
       const ReferenceSetIndex reference_set_i = item.key;
       const int child_zone_input_i = item.value;
       lf::InputSocket &lf_reference_set_input = child_zone_node.input(child_zone_input_i);
-      BLI_assert(lf_reference_set_input.type().is<bke::AnonymousAttributeSet>());
+      BLI_assert(lf_reference_set_input.type().is<GeometryNodesReferenceSet>());
       graph_params.lf_reference_set_inputs.add(reference_set_i, &lf_reference_set_input);
     }
   }
@@ -2971,9 +2972,9 @@ struct GeometryNodesLazyFunctionBuilder {
         }
       }
       {
-        /* Keep track of attribute set inputs that need to be populated later. */
-        const int lf_input_index = mapping_->lf_input_index_for_attribute_propagation_to_output
-                                       [bsocket->index_in_all_outputs()];
+        /* Keep track of reference set inputs that need to be populated later. */
+        const int lf_input_index =
+            mapping_->lf_input_index_for_reference_set_for_output[bsocket->index_in_all_outputs()];
         if (lf_input_index != -1) {
           lf::InputSocket &lf_input = lf_node.input(lf_input_index);
           graph_params.lf_reference_set_input_by_output.add(bsocket, &lf_input);
@@ -3099,9 +3100,9 @@ struct GeometryNodesLazyFunctionBuilder {
         }
       }
       {
-        /* Keep track of attribute set inputs that need to be populated later. */
-        const int lf_input_index = mapping_->lf_input_index_for_attribute_propagation_to_output
-                                       [bsocket->index_in_all_outputs()];
+        /* Keep track of reference inputs that need to be populated later. */
+        const int lf_input_index =
+            mapping_->lf_input_index_for_reference_set_for_output[bsocket->index_in_all_outputs()];
         if (lf_input_index != -1) {
           graph_params.lf_reference_set_input_by_output.add(bsocket,
                                                             &lf_node.input(lf_input_index));
@@ -3772,7 +3773,7 @@ struct GeometryNodesLazyFunctionBuilder {
    * should be propagated. Therefore, every one of these outputs gets a corresponding attribute
    * set input.
    */
-  void build_attribute_propagation_inputs(lf::Graph &lf_graph)
+  void build_root_reference_set_inputs(lf::Graph &lf_graph)
   {
     const aal::RelationsInNode &tree_relations = reference_lifetimes_.tree_relations;
     Vector<int> output_indices;
@@ -3784,9 +3785,9 @@ struct GeometryNodesLazyFunctionBuilder {
       const int output_index = output_indices[i];
       const char *name = btree_.interface_outputs()[output_index]->name;
       lf::GraphInputSocket &lf_socket = lf_graph.add_input(
-          CPPType::get<bke::AnonymousAttributeSet>(),
+          CPPType::get<GeometryNodesReferenceSet>(),
           StringRef("Propagate: ") + (name ? name : ""));
-      attribute_set_by_geometry_output_.add(output_index, &lf_socket);
+      reference_set_by_output_.add(output_index, &lf_socket);
     }
   }
 

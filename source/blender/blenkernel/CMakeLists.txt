@@ -402,6 +402,7 @@ set(SRC
   BKE_freestyle.h
   BKE_geometry_fields.hh
   BKE_geometry_nodes_gizmos_transforms.hh
+  BKE_geometry_nodes_reference_set.hh
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
   BKE_global.hh
