@@ -1177,8 +1177,8 @@ typedef struct NodeChroma {
 } NodeChroma;
 
 typedef struct NodeTwoXYs {
-  short x1, x2, y1, y2;
-  float fac_x1, fac_x2, fac_y1, fac_y2;
+  short left, right, up, down;
+  float fac_left, fac_right, fac_down, fac_up;
 } NodeTwoXYs;
 
 typedef struct NodeTwoFloats {

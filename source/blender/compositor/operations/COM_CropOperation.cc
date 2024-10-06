@@ -24,17 +24,17 @@ void CropBaseOperation::update_area()
   if (relative_) {
     /* The cropping bounds are relative to the image size. The factors are in the [0, 1] range,
      * so it is guaranteed that they won't go over the input image size. */
-    xmin_ = input_size.x * node_two_xys.fac_x1;
-    ymin_ = input_size.y * node_two_xys.fac_y2;
-    xmax_ = input_size.x * node_two_xys.fac_x2;
-    ymax_ = input_size.y * node_two_xys.fac_y1;
+    xmin_ = input_size.x * node_two_xys.fac_left;
+    ymin_ = input_size.y * node_two_xys.fac_up;
+    xmax_ = input_size.x * node_two_xys.fac_right;
+    ymax_ = input_size.y * node_two_xys.fac_down;
   }
   else {
     /* Make sure the bounds don't go over the input image size. */
-    xmin_ = min_ii(node_two_xys.x1, input_size.x);
-    ymin_ = min_ii(node_two_xys.y2, input_size.y);
-    xmax_ = min_ii(node_two_xys.x2, input_size.x);
-    ymax_ = min_ii(node_two_xys.y1, input_size.y);
+    xmin_ = min_ii(node_two_xys.left, input_size.x);
+    ymin_ = min_ii(node_two_xys.down, input_size.y);
+    xmax_ = min_ii(node_two_xys.right, input_size.x);
+    ymax_ = min_ii(node_two_xys.up, input_size.y);
   }
 
   /* Make sure upper bound is actually higher than the lower bound. */

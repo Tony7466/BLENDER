@@ -7576,51 +7576,51 @@ static void def_cmp_crop(StructRNA *srna)
   RNA_def_struct_sdna_from(srna, "NodeTwoXYs", "storage");
 
   prop = RNA_def_property(srna, "min_x", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "x1");
+  RNA_def_property_int_sdna(prop, nullptr, "left");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "X1", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "max_x", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "x2");
+  RNA_def_property_int_sdna(prop, nullptr, "right");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "X2", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "min_y", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "y1");
+  RNA_def_property_int_sdna(prop, nullptr, "up");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "Y1", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "max_y", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "y2");
+  RNA_def_property_int_sdna(prop, nullptr, "down");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "Y2", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_min_x", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "fac_x1");
+  RNA_def_property_float_sdna(prop, nullptr, "fac_left");
   RNA_def_property_range(prop, 0.0, 1.0);
-  RNA_def_property_ui_text(prop, "X1", "");
+  RNA_def_property_ui_text(prop, "Left", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_max_x", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "fac_x2");
+  RNA_def_property_float_sdna(prop, nullptr, "fac_right");
   RNA_def_property_range(prop, 0.0, 1.0);
-  RNA_def_property_ui_text(prop, "X2", "");
+  RNA_def_property_ui_text(prop, "Right", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_min_y", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "fac_y1");
+  RNA_def_property_float_sdna(prop, nullptr, "fac_up");
   RNA_def_property_range(prop, 0.0, 1.0);
-  RNA_def_property_ui_text(prop, "Y1", "");
+  RNA_def_property_ui_text(prop, "Up", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_max_y", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "fac_y2");
+  RNA_def_property_float_sdna(prop, nullptr, "fac_down");
   RNA_def_property_range(prop, 0.0, 1.0);
-  RNA_def_property_ui_text(prop, "Y2", "");
+  RNA_def_property_ui_text(prop, "Down", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 

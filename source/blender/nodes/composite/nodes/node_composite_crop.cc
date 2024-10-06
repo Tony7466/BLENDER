@@ -42,10 +42,10 @@ static void node_composit_init_crop(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeTwoXYs *nxy = MEM_cnew<NodeTwoXYs>(__func__);
   node->storage = nxy;
-  nxy->x1 = 0;
-  nxy->x2 = 0;
-  nxy->y1 = 0;
-  nxy->y2 = 0;
+  nxy->left = 0;
+  nxy->right = 0;
+  nxy->up = 0;
+  nxy->down = 0;
 }
 
 static void node_composit_buts_crop(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -194,17 +194,17 @@ class CropOperation : public NodeOperation {
     if (get_is_relative()) {
       /* The cropping bounds are relative to the image size. The factors are in the [0, 1] range,
        * so it is guaranteed that they won't go over the input image size. */
-      lower_bound.x = input_size.x * node_two_xys.fac_x1;
-      lower_bound.y = input_size.y * node_two_xys.fac_y2;
-      upper_bound.x = input_size.x * node_two_xys.fac_x2;
-      upper_bound.y = input_size.y * node_two_xys.fac_y1;
+      lower_bound.x = input_size.x * node_two_xys.fac_left;
+      lower_bound.y = input_size.y * node_two_xys.fac_up;
+      upper_bound.x = input_size.x * node_two_xys.fac_right;
+      upper_bound.y = input_size.y * node_two_xys.fac_down;
     }
     else {
       /* Make sure the bounds don't go over the input image size. */
-      lower_bound.x = min_ii(node_two_xys.x1, input_size.x);
-      lower_bound.y = min_ii(node_two_xys.y2, input_size.y);
-      upper_bound.x = min_ii(node_two_xys.x2, input_size.x);
-      upper_bound.y = min_ii(node_two_xys.y1, input_size.y);
+      lower_bound.x = min_ii(node_two_xys.left, input_size.x);
+      lower_bound.y = min_ii(node_two_xys.down, input_size.y);
+      upper_bound.x = min_ii(node_two_xys.right, input_size.x);
+      upper_bound.y = min_ii(node_two_xys.up, input_size.y);
     }
 
     /* Make sure upper bound is actually higher than the lower bound. */

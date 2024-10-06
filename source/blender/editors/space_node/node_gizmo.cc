@@ -213,16 +213,16 @@ static void two_xy_to_rect(
     const NodeTwoXYs *nxy, const float2 &dims, const float2 offset, bool is_relative, rctf *r_rect)
 {
   if (is_relative) {
-    r_rect->xmin = nxy->fac_x1 + (offset.x / dims.x);
-    r_rect->xmax = nxy->fac_x2 + (offset.x / dims.x);
-    r_rect->ymin = nxy->fac_y2 + (offset.y / dims.y);
-    r_rect->ymax = nxy->fac_y1 + (offset.y / dims.y);
+    r_rect->xmin = nxy->fac_left + (offset.x / dims.x);
+    r_rect->xmax = nxy->fac_right + (offset.x / dims.x);
+    r_rect->ymin = nxy->fac_up + (offset.y / dims.y);
+    r_rect->ymax = nxy->fac_down + (offset.y / dims.y);
   }
   else {
-    r_rect->xmin = (nxy->x1 + offset.x) / dims.x;
-    r_rect->xmax = (nxy->x2 + offset.x) / dims.x;
-    r_rect->ymin = (nxy->y2 + offset.y) / dims.y;
-    r_rect->ymax = (nxy->y1 + offset.y) / dims.y;
+    r_rect->xmin = (nxy->left + offset.x) / dims.x;
+    r_rect->xmax = (nxy->right + offset.x) / dims.x;
+    r_rect->ymin = (nxy->down + offset.y) / dims.y;
+    r_rect->ymax = (nxy->up + offset.y) / dims.y;
   }
 }
 
@@ -230,16 +230,16 @@ static void two_xy_from_rect(
     NodeTwoXYs *nxy, const rctf *rect, const float2 &dims, const float2 &offset, bool is_relative)
 {
   if (is_relative) {
-    nxy->fac_x1 = rect->xmin - (offset.x / dims.x);
-    nxy->fac_x2 = rect->xmax - (offset.x / dims.x);
-    nxy->fac_y2 = rect->ymin - (offset.y / dims.y);
-    nxy->fac_y1 = rect->ymax - (offset.y / dims.y);
+    nxy->fac_left = rect->xmin - (offset.x / dims.x);
+    nxy->fac_right = rect->xmax - (offset.x / dims.x);
+    nxy->fac_up = rect->ymin - (offset.y / dims.y);
+    nxy->fac_down = rect->ymax - (offset.y / dims.y);
   }
   else {
-    nxy->x1 = rect->xmin * dims.x - offset.x;
-    nxy->x2 = rect->xmax * dims.x - offset.x;
-    nxy->y2 = rect->ymin * dims.y - offset.y;
-    nxy->y1 = rect->ymax * dims.y - offset.y;
+    nxy->left = rect->xmin * dims.x - offset.x;
+    nxy->right = rect->xmax * dims.x - offset.x;
+    nxy->down = rect->ymin * dims.y - offset.y;
+    nxy->up = rect->ymax * dims.y - offset.y;
   }
 }
 
