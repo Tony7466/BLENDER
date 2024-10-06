@@ -10,6 +10,8 @@
 
 #include "DNA_node_types.h"
 
+#include "NOD_node_declaration.hh"
+
 namespace blender::bke::node_tree_reference_lifetimes {
 
 struct ReferenceSetInfo {

@@ -8,7 +8,6 @@
 #include <fmt/format.h>
 
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_dot_export.hh"
 #include "BKE_node_tree_reference_lifetimes.hh"
 #include "BKE_node_tree_zones.hh"
@@ -86,10 +85,10 @@ static const aal::RelationsInNode *get_group_relations_if_possible(const bNode &
   if (!bke::node_tree_is_registered(group)) {
     return nullptr;
   }
-  if (!group->runtime->anonymous_attribute_inferencing) {
+  if (!group->runtime->reference_lifetimes_info) {
     return nullptr;
   }
-  return &group->runtime->anonymous_attribute_inferencing->tree_relations;
+  return &group->runtime->reference_lifetimes_info->tree_relations;
 }
 
 static const aal::RelationsInNode *get_relations_if_possible(const bNode &node)
