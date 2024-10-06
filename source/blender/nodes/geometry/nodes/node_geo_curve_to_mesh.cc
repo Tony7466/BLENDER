@@ -71,30 +71,33 @@ static void grease_pencil_to_mesh(GeometrySet &geometry_set,
     return;
   }
 
-  bke::Instances *gp_instances = new bke::Instances();
+  bke::Instances *instances = new bke::Instances();
   for (Mesh *mesh : mesh_by_layer) {
     if (!mesh) {
       /* Add an empty reference so the number of layers and instances match.
        * This makes it easy to reconstruct the layers afterwards and keep their attributes.
        * Although in this particular case we don't propagate the attributes. */
-      const int handle = gp_instances->add_reference(bke::InstanceReference());
-      gp_instances->add_instance(handle, float4x4::identity());
+      const int handle = instances->add_reference(bke::InstanceReference());
+      instances->add_instance(handle, float4x4::identity());
       continue;
     }
     GeometrySet temp_set = GeometrySet::from_mesh(mesh);
-    const int handle = gp_instances->add_reference(bke::InstanceReference{temp_set});
-    gp_instances->add_instance(handle, float4x4::identity());
+    const int handle = instances->add_reference(bke::InstanceReference{temp_set});
+    instances->add_instance(handle, float4x4::identity());
   }
 
   bke::copy_attributes(grease_pencil.attributes(),
                        bke::AttrDomain::Layer,
                        bke::AttrDomain::Instance,
                        attribute_filter,
-                       gp_instances->attributes_for_write());
+                       instances->attributes_for_write());
 
-  bke::Instances *dst_instances = geometry_set.get_component_for_write<InstancesComponent>().release();
-  GeometrySet new_instances = geometry::join_geometries({GeometrySet::from_instances(dst_instances), GeometrySet::from_instances(gp_instances)}, attribute_filter);
-  geometry_set.get_component_for_write<InstancesComponent>().replace(new_instances.get_component_for_write<InstancesComponent>().release());
+  InstancesComponent &dst_component = geometry_set.get_component_for_write<InstancesComponent>();
+  GeometrySet new_instances = geometry::join_geometries(
+      {GeometrySet::from_instances(dst_component.release()),
+       GeometrySet::from_instances(instances)},
+      attribute_filter);
+  dst_component.replace(new_instances.get_component_for_write<InstancesComponent>().release());
 
   geometry_set.replace_grease_pencil(nullptr);
 }
