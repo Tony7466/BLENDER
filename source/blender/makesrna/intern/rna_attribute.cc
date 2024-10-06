@@ -336,6 +336,11 @@ const EnumPropertyItem *rna_enum_attribute_domain_itemf(const AttributeOwner &ow
     {
       continue;
     }
+    if (owner.type() == AttributeOwnerType::GreasePencilDrawing &&
+        !ELEM(domain_item->value, int(AttrDomain::Point), int(AttrDomain::Curve)))
+    {
+      continue;
+    }
     if (!include_instances && domain_item->value == int(AttrDomain::Instance)) {
       continue;
     }

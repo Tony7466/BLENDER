@@ -291,6 +291,39 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         self.draw_settings(layout, grease_pencil)
 
 
+class GREASE_PENCIL_MT_drawing_add_attribute(Menu):
+    bl_label = "Add Attribute"
+
+    @staticmethod
+    def add_standard_attribute(layout, drawing, name, data_type, domain):
+        exists = drawing.attributes.get(name) is not None
+
+        col = layout.column()
+        col.enabled = not exists
+        col.operator_context = 'EXEC_DEFAULT'
+
+        props = col.operator("grease_pencil.layer_attribute_add", text=name)
+        props.name = name
+        props.data_type = data_type
+        props.domain = domain
+
+    def draw(self, context):
+        layout = self.layout
+        grease_pencil = context.grease_pencil
+        layer = grease_pencil.layers.active
+        frame = layer.current_frame()
+        drawing = frame.drawing
+
+        self.add_standard_attribute(layout, drawing, "radius", 'FLOAT', 'POINT')
+        self.add_standard_attribute(layout, drawing, "opacity", 'FLOAT', 'POINT')
+        self.add_standard_attribute(layout, drawing, "vertex_color", 'FLOAT_COLOR', 'POINT')
+
+        layout.separator()
+
+        layout.operator_context = 'INVOKE_DEFAULT'
+        props = layout.operator("grease_pencil.layer_attribute_add", text="Custom...")
+
+
 class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, GreasePencil_LayerMaskPanel, Panel):
     bl_label = "Masks"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
@@ -484,6 +517,7 @@ classes = (
     DATA_PT_grease_pencil_onion_skinning_display,
     DATA_PT_grease_pencil_settings,
     DATA_PT_grease_pencil_custom_props,
+    GREASE_PENCIL_MT_drawing_add_attribute,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
     GREASE_PENCIL_MT_group_context_menu,
     DATA_PT_grease_pencil_animation,
