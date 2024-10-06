@@ -31,9 +31,9 @@ template<typename T, bool no_linting = false> class Preprocessor {
     std::string name;
     std::string array;
   };
+  std::vector<SharedVar> shared_vars_;
 
   std::stringstream output_;
-  std::vector<SharedVar> shared_vars_;
 
  public:
   Preprocessor(T &error_cb) : report_error(error_cb) {}
@@ -209,6 +209,11 @@ template<typename T, bool no_linting = false> class Preprocessor {
 
     return suffix.str();
   }
+};
+
+template<typename T> class PreprocessorPython : public Preprocessor<T, true> {
+ public:
+  PreprocessorPython(T &error_cb) : Preprocessor<T, true>(error_cb){};
 };
 
 }  // namespace blender::gpu::shader
