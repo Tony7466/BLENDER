@@ -38,7 +38,7 @@ static void node_declare(NodeDeclarationBuilder &b)
     output_decl.dependent_field().reference_pass_all();
   }
   if (socket_type == SOCK_GEOMETRY) {
-    output_decl.propagate_all();
+    output_decl.propagate_all().reference_pass_all();
   }
 }
 
