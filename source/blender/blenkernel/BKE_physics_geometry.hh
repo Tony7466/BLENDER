@@ -409,6 +409,10 @@ StringRef physics_attribute_name(PhysicsBodyAttribute attribute);
 StringRef physics_attribute_name(PhysicsConstraintAttribute attribute);
 StringRef physics_attribute_name(PhysicsShapeAttribute attribute);
 
+std::optional<PhysicsBodyAttribute> find_body_attribute(StringRef name);
+std::optional<PhysicsConstraintAttribute> find_constraint_attribute(StringRef name);
+std::optional<PhysicsShapeAttribute> find_shape_attribute(StringRef name);
+
 Span<std::string> all_body_attribute_names();
 Span<std::string> all_constraint_attribute_names();
 Span<std::string> all_shape_attribute_names();

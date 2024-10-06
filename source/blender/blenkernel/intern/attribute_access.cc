@@ -859,6 +859,7 @@ void gather_attributes(const AttributeAccessor src_attributes,
                        const AttrDomain dst_domain,
                        const AttributeFilter &attribute_filter,
                        const IndexMask &selection,
+                       const int dst_offset,
                        MutableAttributeAccessor dst_attributes)
 {
   const int src_size = src_attributes.domain_size(src_domain);
@@ -873,7 +874,9 @@ void gather_attributes(const AttributeAccessor src_attributes,
       return;
     }
     const GAttributeReader src = iter.get(src_domain);
-    if (selection.size() == src_size && src.sharing_info && src.varray.is_span()) {
+    if (dst_offset == 0 && selection.size() == src_size && src.sharing_info &&
+        src.varray.is_span())
+    {
       const AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
       if (dst_attributes.add(iter.name, dst_domain, iter.data_type, init)) {
         return;
@@ -884,9 +887,20 @@ void gather_attributes(const AttributeAccessor src_attributes,
     if (!dst) {
       return;
     }
-    array_utils::gather(src.varray, selection, dst.span);
+    array_utils::gather(src.varray, selection, dst.span.slice(dst_offset, selection.size()));
     dst.finish();
   });
+}
+
+void gather_attributes(const AttributeAccessor src_attributes,
+                       const AttrDomain src_domain,
+                       const AttrDomain dst_domain,
+                       const AttributeFilter &attribute_filter,
+                       const IndexMask &selection,
+                       MutableAttributeAccessor dst_attributes)
+{
+  return gather_attributes(
+      src_attributes, src_domain, dst_domain, attribute_filter, selection, 0, dst_attributes);
 }
 
 void gather_attributes(const AttributeAccessor src_attributes,

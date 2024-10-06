@@ -903,6 +903,14 @@ void gather_attributes(AttributeAccessor src_attributes,
                        AttrDomain dst_domain,
                        const AttributeFilter &attribute_filter,
                        const IndexMask &selection,
+                       int dst_offset,
+                       MutableAttributeAccessor dst_attributes);
+
+void gather_attributes(AttributeAccessor src_attributes,
+                       AttrDomain src_domain,
+                       AttrDomain dst_domain,
+                       const AttributeFilter &attribute_filter,
+                       const IndexMask &selection,
                        MutableAttributeAccessor dst_attributes);
 
 /**

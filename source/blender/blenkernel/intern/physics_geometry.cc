@@ -307,7 +307,8 @@ void PhysicsWorldState::ensure_read_cache_no_lock() const
   /* Read from world data and ignore the cache.
    * Important! This also prevents deadlock caused by re-entering this function. */
   const AttributeAccessor src_attributes = this->world_data_attributes();
-  Set<std::string> local_body_attribute_names, local_constraint_attribute_names;
+  Set<std::string> local_body_attribute_names,
+      local_constraint_attribute_names,local_shape_attribute_names;
   for (const BodyAttribute attribute : all_body_attributes()) {
     if (physics_attribute_use_write_cache(attribute)) {
       local_body_attribute_names.add_new(physics_attribute_name(attribute));
@@ -632,6 +633,36 @@ bool PhysicsWorldState::try_move_data(const PhysicsWorldState &src,
                       dst_body_offset,
                       dst_constraint_offset);
 
+  /* Copy attributes write caches. */
+  const bke::AttributeFilter attribute_filter = bke::AttributeFilterFromFunc(
+      [&](const StringRef name) {
+        const std::optional<PhysicsBodyAttribute> body_attribute = find_body_attribute(name);
+        const std::optional<PhysicsConstraintAttribute> constraint_attribute =
+            find_constraint_attribute(name);
+        const bool is_cached_body_attribute = body_attribute &&
+                                              physics_attribute_use_write_cache(*body_attribute);
+        const bool is_cached_constraint_attribute = constraint_attribute &&
+                                                    physics_attribute_use_write_cache(
+                                                        *constraint_attribute);
+        return (is_cached_body_attribute || is_cached_constraint_attribute) ?
+                   bke::AttributeFilter::Result::Process :
+                   bke::AttributeFilter::Result::AllowSkip;
+      });
+
+  bke::gather_attributes(src.attributes(),
+                         bke::AttrDomain::Point,
+                         bke::AttrDomain::Point,
+                         attribute_filter,
+                         src_body_mask,
+                         dst_body_offset,
+                         this->attributes_for_write());
+  bke::gather_attributes(src.attributes(),
+                         bke::AttrDomain::Edge,
+                         bke::AttrDomain::Edge,
+                         attribute_filter,
+                         src_constraint_mask,
+                         dst_constraint_offset,
+                         this->attributes_for_write());
   return true;
 }
 

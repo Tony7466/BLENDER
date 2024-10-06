@@ -367,6 +367,48 @@ StringRef physics_attribute_name(PhysicsShapeAttribute attribute)
   return "";
 }
 
+std::optional<PhysicsBodyAttribute> find_body_attribute(StringRef name)
+{
+  static const Map<StringRef, PhysicsBodyAttribute> name_map = []() {
+    Map<StringRef, PhysicsBodyAttribute> name_map;
+    for (const PhysicsBodyAttribute attribute : all_body_attributes()) {
+      name_map.add_new(physics_attribute_name(attribute), attribute);
+    }
+    return name_map;
+  }();
+
+  const PhysicsBodyAttribute *attribute = name_map.lookup_ptr(name);
+  return attribute ? std::make_optional(*attribute) : std::nullopt;
+}
+
+std::optional<PhysicsConstraintAttribute> find_constraint_attribute(StringRef name)
+{
+  static const Map<StringRef, PhysicsConstraintAttribute> name_map = []() {
+    Map<StringRef, PhysicsConstraintAttribute> name_map;
+    for (const PhysicsConstraintAttribute attribute : all_constraint_attributes()) {
+      name_map.add_new(physics_attribute_name(attribute), attribute);
+    }
+    return name_map;
+  }();
+
+  const PhysicsConstraintAttribute *attribute = name_map.lookup_ptr(name);
+  return attribute ? std::make_optional(*attribute) : std::nullopt;
+}
+
+std::optional<PhysicsShapeAttribute> find_shape_attribute(StringRef name)
+{
+  static const Map<StringRef, PhysicsShapeAttribute> name_map = []() {
+    Map<StringRef, PhysicsShapeAttribute> name_map;
+    for (const PhysicsShapeAttribute attribute : all_shape_attributes()) {
+      name_map.add_new(physics_attribute_name(attribute), attribute);
+    }
+    return name_map;
+  }();
+
+  const PhysicsShapeAttribute *attribute = name_map.lookup_ptr(name);
+  return attribute ? std::make_optional(*attribute) : std::nullopt;
+}
+
 Span<std::string> all_body_attribute_names()
 {
   static Array<std::string> all_names = []() {
