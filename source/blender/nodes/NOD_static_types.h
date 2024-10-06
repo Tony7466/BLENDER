@@ -314,6 +314,7 @@ DefNode(GeometryNode, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE, 0, "ATTRIBUTE_DOMAIN_SIZE"
 DefNode(GeometryNode, GEO_NODE_ATTRIBUTE_STATISTIC, 0, "ATTRIBUTE_STATISTIC",AttributeStatistic, "Attribute Statistic", "Calculate statistics about a data set from a field evaluated on a geometry")
 DefNode(GeometryNode, GEO_NODE_BAKE, rna_def_geo_bake, "BAKE", Bake, "Bake", "Cache the incoming data so that it can be used without recomputation")
 DefNode(GeometryNode, GEO_NODE_BLUR_ATTRIBUTE, 0, "BLUR_ATTRIBUTE", BlurAttribute, "Blur Attribute", "Mix attribute values of neighboring elements")
+DefNode(GeometryNode, GEO_NODE_BODIES_TO_POINTS, 0, "BODIES_TO_POINTS", BodiesToPoints, "Bodies to Points", "Create a point for every rigid body")
 DefNode(GeometryNode, GEO_NODE_BOUNDING_BOX, 0, "BOUNDING_BOX", BoundBox, "Bounding Box", "Calculate the limits of a geometry's positions and generate a box mesh with those dimensions")
 DefNode(GeometryNode, GEO_NODE_CAPTURE_ATTRIBUTE, rna_def_geo_capture_attribute, "CAPTURE_ATTRIBUTE", CaptureAttribute, "Capture Attribute", "Store the result of a field on a geometry and output the data as a node socket. Allows remembering or interpolating data as the geometry changes, such as positions before deformation")
 DefNode(GeometryNode, GEO_NODE_COLLECTION_INFO, 0, "COLLECTION_INFO", CollectionInfo, "Collection Info", "Retrieve geometry instances from a collection")

@@ -1402,6 +1402,7 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define GEO_NODE_INPUT_BODY_MASS 2171
 #define GEO_NODE_INPUT_SHAPE_INFO 2172
 #define GEO_NODE_SHAPE_GEOMETRY 2173
+#define GEO_NODE_BODIES_TO_POINTS 2174
 
 /** \} */
 
