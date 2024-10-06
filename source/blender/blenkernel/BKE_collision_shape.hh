@@ -26,6 +26,7 @@ struct Mesh;
 
 namespace blender::bke {
 
+struct GeometrySet;
 class CollisionShape;
 class BoxCollisionShape;
 class SphereCollisionShape;
@@ -33,28 +34,28 @@ class SphereCollisionShape;
 struct CollisionShapeImpl;
 struct TriangleMeshInterface;
 
+enum class CollisionShapeType {
+  Sphere,
+  Box,
+  Triangle,
+  Capsule,
+  TaperedCapsule,
+  Cylinder,
+  ConvexHull,
+  StaticCompound,
+  MutableCompound,
+  RotatedTranslated,
+  Scaled,
+  OffsetCenterOfMass,
+  Mesh,
+  HeightField,
+  SoftBody,
+};
+
 class CollisionShape : public ImplicitSharingMixin {
  public:
   using Ptr = ImplicitSharingPtr<CollisionShape>;
-
-  /* Not all shape types may be supported. */
-  enum class ShapeType {
-    Sphere,
-    Box,
-    Triangle,
-    Capsule,
-    TaperedCapsule,
-    Cylinder,
-    ConvexHull,
-    StaticCompound,
-    MutableCompound,
-    RotatedTranslated,
-    Scaled,
-    OffsetCenterOfMass,
-    Mesh,
-    HeightField,
-    SoftBody,
-  };
+  using ShapeType = CollisionShapeType;
 
   struct CollisionShapeResult {
     CollisionShapeImpl *impl;
@@ -85,23 +86,6 @@ class CollisionShape : public ImplicitSharingMixin {
    */
   bool supports_motion() const;
 
-  template<typename T> bool is_a()
-  {
-    if constexpr (std::is_same_v<T, BoxCollisionShape>) {
-      return this->type() == ShapeType::Box;
-    }
-    if constexpr (std::is_same_v<T, SphereCollisionShape>) {
-      return this->type() == ShapeType::Sphere;
-    }
-    return false;
-  }
-
-  template<typename T> T &get_as()
-  {
-    BLI_assert(this->is_a<T>());
-    return *static_cast<T *>(this);
-  }
-
   bool is_convex() const;
   bool is_concave() const;
 
@@ -109,6 +93,8 @@ class CollisionShape : public ImplicitSharingMixin {
   Bounds<float3> local_bounds() const;
 
   float3 calculate_local_inertia(float mass) const;
+
+  GeometrySet create_geometry() const;
 
  protected:
   CollisionShape(const CollisionShapeResult &result);

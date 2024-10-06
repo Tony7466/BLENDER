@@ -796,6 +796,14 @@ class LazyFunctionForViewerNode : public LazyFunction {
           bke::try_capture_field_on_geometry(
               component, viewer_attribute_name, AttrDomain::Instance, field);
         }
+        geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+          if (geometry.has_physics()) {
+            GeometryComponent &component = geometry.get_component_for_write(
+                bke::GeometryComponent::Type::Physics);
+            bke::try_capture_field_on_geometry(
+                component, viewer_attribute_name, AttrDomain::Instance, field);
+          }
+        });
       }
       else {
         geometry.modify_geometry_sets([&](GeometrySet &geometry) {

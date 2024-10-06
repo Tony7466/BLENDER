@@ -37,6 +37,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       PhysicsWorldState::body_custom_data_access_info();
   static CustomDataAccessInfo constraint_custom_data_access =
       PhysicsWorldState::constraint_custom_data_access_info();
+  static CustomDataAccessInfo shape_custom_data_access =
+      PhysicsWorldState::shape_custom_data_access_info();
 
   const Span<BodyAttribute> body_attributes = all_body_attributes();
   const Span<ConstraintAttribute> constraint_attributes = all_constraint_attributes();
@@ -68,9 +70,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static CustomDataAttributeProvider body_custom_data(AttrDomain::Point, body_custom_data_access);
   static CustomDataAttributeProvider constraint_custom_data(AttrDomain::Edge,
                                                             constraint_custom_data_access);
+  static CustomDataAttributeProvider shape_custom_data(AttrDomain::Instance,
+                                                       shape_custom_data_access);
 
-  return ComponentAttributeProviders(builtin_providers,
-                                     {&body_custom_data, &constraint_custom_data});
+  return ComponentAttributeProviders(
+      builtin_providers, {&body_custom_data, &constraint_custom_data, &shape_custom_data});
 }
 
 static GVArray adapt_physics_attribute_domain(const PhysicsWorldState & /*state*/,
@@ -216,6 +220,24 @@ Span<PhysicsConstraintAttribute> all_constraint_attributes()
   return attributes;
 }
 
+Span<PhysicsShapeAttribute> all_shape_attributes()
+{
+  using ShapeAttribute = PhysicsShapeAttribute;
+  static Array<ShapeAttribute> attributes = {
+      ShapeAttribute::translation,
+      ShapeAttribute::rotation,
+      ShapeAttribute::scale,
+      ShapeAttribute::size,
+      ShapeAttribute::radius,
+      ShapeAttribute::radius2,
+      ShapeAttribute::height,
+      ShapeAttribute::point0,
+      ShapeAttribute::point1,
+      ShapeAttribute::point2,
+  };
+  return attributes;
+}
+
 StringRef physics_attribute_name(PhysicsBodyAttribute attribute)
 {
   using BodyAttribute = PhysicsBodyAttribute;
@@ -316,6 +338,35 @@ StringRef physics_attribute_name(PhysicsConstraintAttribute attribute)
   return "";
 }
 
+StringRef physics_attribute_name(PhysicsShapeAttribute attribute)
+{
+  using ShapeAttribute = PhysicsShapeAttribute;
+  switch (attribute) {
+    case ShapeAttribute::translation:
+      return "translation";
+    case ShapeAttribute::rotation:
+      return "rotation";
+    case ShapeAttribute::scale:
+      return "scale";
+    case ShapeAttribute::size:
+      return "size";
+    case ShapeAttribute::radius:
+      return "radius";
+    case ShapeAttribute::radius2:
+      return "radius2";
+    case ShapeAttribute::height:
+      return "height";
+    case ShapeAttribute::point0:
+      return "point0";
+    case ShapeAttribute::point1:
+      return "point1";
+    case ShapeAttribute::point2:
+      return "point2";
+  }
+  BLI_assert_unreachable();
+  return "";
+}
+
 Span<std::string> all_body_attribute_names()
 {
   static Array<std::string> all_names = []() {
@@ -333,6 +384,19 @@ Span<std::string> all_constraint_attribute_names()
 {
   static Array<std::string> all_names = []() {
     const Span<PhysicsConstraintAttribute> all_attributes = all_constraint_attributes();
+    Array<std::string> all_names(all_attributes.size());
+    for (const int i : all_names.index_range()) {
+      all_names[i] = physics_attribute_name(all_attributes[i]);
+    }
+    return all_names;
+  }();
+  return all_names;
+}
+
+Span<std::string> all_shape_attribute_names()
+{
+  static Array<std::string> all_names = []() {
+    const Span<PhysicsShapeAttribute> all_attributes = all_shape_attributes();
     Array<std::string> all_names(all_attributes.size());
     for (const int i : all_names.index_range()) {
       all_names[i] = physics_attribute_name(all_attributes[i]);
@@ -417,6 +481,35 @@ const CPPType &physics_attribute_type(PhysicsConstraintAttribute attribute)
     case ConstraintAttribute::min_motor_force_angle:
     case ConstraintAttribute::max_motor_force_axis:
     case ConstraintAttribute::max_motor_force_angle:
+      return CPPType::get<float3>();
+  }
+  BLI_assert_unreachable();
+  return CPPType::get<int>();
+}
+
+const CPPType &physics_attribute_type(PhysicsShapeAttribute attribute)
+{
+  using ShapeAttribute = PhysicsShapeAttribute;
+  switch (attribute) {
+    case ShapeAttribute::translation:
+      return CPPType::get<float3>();
+    case ShapeAttribute::rotation:
+      return CPPType::get<math::Quaternion>();
+    case ShapeAttribute::scale:
+      return CPPType::get<float3>();
+    case ShapeAttribute::size:
+      return CPPType::get<float3>();
+    case ShapeAttribute::radius:
+      return CPPType::get<float>();
+    case ShapeAttribute::radius2:
+      return CPPType::get<float>();
+    case ShapeAttribute::height:
+      return CPPType::get<float>();
+    case ShapeAttribute::point0:
+      return CPPType::get<float3>();
+    case ShapeAttribute::point1:
+      return CPPType::get<float3>();
+    case ShapeAttribute::point2:
       return CPPType::get<float3>();
   }
   BLI_assert_unreachable();
@@ -531,6 +624,34 @@ const void *physics_attribute_default_value(PhysicsConstraintAttribute attribute
     case ConstraintAttribute::motor_spring_stiffness_angle:
     case ConstraintAttribute::motor_spring_damping_axis:
     case ConstraintAttribute::motor_spring_damping_angle:
+      return type.default_value();
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+const void *physics_attribute_default_value(PhysicsShapeAttribute attribute)
+{
+  using ShapeAttribute = PhysicsShapeAttribute;
+  const CPPType &type = physics_attribute_type(attribute);
+  switch (attribute) {
+    case ShapeAttribute::scale:
+    case ShapeAttribute::size: {
+      static const float3 default_value = float3(1.0f);
+      return &default_value;
+    }
+    case ShapeAttribute::radius:
+    case ShapeAttribute::radius2: {
+      static const float default_value = 1.0f;
+      return &default_value;
+    }
+
+    case ShapeAttribute::translation:
+    case ShapeAttribute::rotation:
+    case ShapeAttribute::height:
+    case ShapeAttribute::point0:
+    case ShapeAttribute::point1:
+    case ShapeAttribute::point2:
       return type.default_value();
   }
   BLI_assert_unreachable();

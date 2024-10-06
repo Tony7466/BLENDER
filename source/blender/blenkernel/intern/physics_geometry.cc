@@ -101,10 +101,15 @@ static bool is_cache_dirty(const std::atomic<bool> &flag)
 }
 
 PhysicsWorldState::PhysicsWorldState()
-    : body_num_(0), constraint_num_(0), body_custom_data_({}), constraint_custom_data_({})
+    : body_num_(0),
+      constraint_num_(0),
+      body_custom_data_({}),
+      constraint_custom_data_({}),
+      shape_custom_data_({})
 {
   CustomData_reset(&body_custom_data_);
   CustomData_reset(&constraint_custom_data_);
+  CustomData_reset(&shape_custom_data_);
   this->tag_read_cache_changed();
 }
 
@@ -112,12 +117,16 @@ PhysicsWorldState::PhysicsWorldState(int body_num, int constraint_num, int shape
     : body_num_(body_num),
       constraint_num_(constraint_num),
       body_custom_data_({}),
-      constraint_custom_data_({})
+      constraint_custom_data_({}),
+      shape_custom_data_({})
+
 {
   CustomData_reset(&body_custom_data_);
   CustomData_reset(&constraint_custom_data_);
+  CustomData_reset(&shape_custom_data_);
   CustomData_realloc(&body_custom_data_, 0, body_num);
   CustomData_realloc(&constraint_custom_data_, 0, constraint_num);
+  CustomData_realloc(&shape_custom_data_, 0, shape_num);
   shapes_.reinitialize(shape_num);
   this->tag_read_cache_changed();
 }
@@ -131,6 +140,7 @@ PhysicsWorldState::~PhysicsWorldState()
 {
   CustomData_free(&body_custom_data_, body_num_);
   CustomData_free(&constraint_custom_data_, constraint_num_);
+  CustomData_free(&shape_custom_data_, shapes_.size());
 
   /* World data is owned by the geometry when it's mutable (always the case on destruction). */
   delete world_data_;
@@ -144,6 +154,7 @@ PhysicsWorldState &PhysicsWorldState::operator=(const PhysicsWorldState &other)
 
   CustomData_reset(&body_custom_data_);
   CustomData_reset(&constraint_custom_data_);
+  CustomData_reset(&shape_custom_data_);
   body_num_ = other.body_num_;
   constraint_num_ = other.constraint_num_;
   CustomData_init_from(&other.body_custom_data_, &body_custom_data_, CD_MASK_ALL, other.body_num_);
@@ -151,6 +162,8 @@ PhysicsWorldState &PhysicsWorldState::operator=(const PhysicsWorldState &other)
                        &constraint_custom_data_,
                        CD_MASK_ALL,
                        other.constraint_num_);
+  CustomData_init_from(
+      &other.shape_custom_data_, &shape_custom_data_, CD_MASK_ALL, other.shapes_.size());
 
   if (other.world_data_) {
     try_move_data(other,
@@ -446,6 +459,8 @@ void PhysicsWorldState::remove_attribute_caches()
         totelem = constraint_num_;
         break;
       case AttrDomain::Instance:
+        custom_data = &shape_custom_data_;
+        totelem = shapes_.size();
         break;
       default:
         BLI_assert_unreachable();
@@ -1098,6 +1113,24 @@ const CustomDataAccessInfo &PhysicsWorldState::constraint_custom_data_access_inf
         return state->constraint_num_;
       }};
   return constraint_custom_data_access;
+}
+
+const CustomDataAccessInfo &PhysicsWorldState::shape_custom_data_access_info()
+{
+  static CustomDataAccessInfo shape_custom_data_access = {
+      [](void *owner) -> CustomData * {
+        auto &state = *static_cast<PhysicsWorldState *>(owner);
+        return &state.shape_custom_data_;
+      },
+      [](const void *owner) -> const CustomData * {
+        const auto &state = static_cast<const PhysicsWorldState *>(owner);
+        return &state->shape_custom_data_;
+      },
+      [](const void *owner) -> int {
+        const auto &state = static_cast<const PhysicsWorldState *>(owner);
+        return state->shapes_.size();
+      }};
+  return shape_custom_data_access;
 }
 
 template<typename T>

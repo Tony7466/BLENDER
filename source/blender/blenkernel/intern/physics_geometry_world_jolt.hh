@@ -240,4 +240,13 @@ class PhysicsWorldData : public JoltPhysicsWorldData {
   using JoltPhysicsWorldData::JoltPhysicsWorldData;
 };
 
+GVMutableArray physics_attribute_vmutablearray(PhysicsBodyAttribute attribute,
+                                               PhysicsWorldData &world_data);
+GVMutableArray physics_attribute_vmutablearray(PhysicsConstraintAttribute attribute,
+                                               PhysicsWorldData &world_data);
+GVArray physics_attribute_varray(PhysicsBodyAttribute attribute,
+                                 const PhysicsWorldData &world_data);
+GVArray physics_attribute_varray(PhysicsConstraintAttribute attribute,
+                                 const PhysicsWorldData &world_data);
+
 }  // namespace blender::bke

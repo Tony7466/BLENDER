@@ -133,6 +133,7 @@ set(SRC
   nodes/node_geo_input_radius.cc
   nodes/node_geo_input_scene_time.cc
   nodes/node_geo_input_shape_bounds.cc
+  nodes/node_geo_input_shape_info.cc
   nodes/node_geo_input_shape_center_of_mass.cc
   nodes/node_geo_input_shortest_edge_paths.cc
   nodes/node_geo_input_spline_cyclic.cc
@@ -226,6 +227,7 @@ set(SRC
   nodes/node_geo_set_shade_smooth.cc
   nodes/node_geo_set_spline_cyclic.cc
   nodes/node_geo_set_spline_resolution.cc
+  nodes/node_geo_shape_geometry.cc
   nodes/node_geo_simulation.cc
   nodes/node_geo_sort_elements.cc
   nodes/node_geo_split_to_instances.cc

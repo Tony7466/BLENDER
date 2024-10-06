@@ -1489,8 +1489,8 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
   }
 };
 
-static GVMutableArray physics_attribute_vmutablearray(PhysicsBodyAttribute attribute,
-                                                      PhysicsWorldData &world_data)
+GVMutableArray physics_attribute_vmutablearray(PhysicsBodyAttribute attribute,
+                                               PhysicsWorldData &world_data)
 {
   using namespace physics_attributes;
   using namespace physics_world_attribute_functions;
@@ -1562,8 +1562,8 @@ static GVMutableArray physics_attribute_vmutablearray(PhysicsBodyAttribute attri
   return {};
 }
 
-static GVMutableArray physics_attribute_vmutablearray(PhysicsConstraintAttribute attribute,
-                                                      PhysicsWorldData &world_data)
+GVMutableArray physics_attribute_vmutablearray(PhysicsConstraintAttribute attribute,
+                                               PhysicsWorldData &world_data)
 {
   using namespace physics_attributes;
   using namespace physics_world_attribute_functions;
@@ -1595,14 +1595,14 @@ static GVMutableArray physics_attribute_vmutablearray(PhysicsConstraintAttribute
   return {};
 }
 
-static GVArray physics_attribute_varray(PhysicsBodyAttribute attribute,
-                                        const PhysicsWorldData &world_data)
+GVArray physics_attribute_varray(PhysicsBodyAttribute attribute,
+                                 const PhysicsWorldData &world_data)
 {
   return physics_attribute_vmutablearray(attribute, const_cast<PhysicsWorldData &>(world_data));
 }
 
-static GVArray physics_attribute_varray(PhysicsConstraintAttribute attribute,
-                                        const PhysicsWorldData &world_data)
+GVArray physics_attribute_varray(PhysicsConstraintAttribute attribute,
+                                 const PhysicsWorldData &world_data)
 {
   return physics_attribute_vmutablearray(attribute, const_cast<PhysicsWorldData &>(world_data));
 }

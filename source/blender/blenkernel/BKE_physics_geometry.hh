@@ -26,6 +26,7 @@
 namespace blender::bke {
 class AttributeAccessor;
 class MutableAttributeAccessor;
+enum class CollisionShapeType;
 }  // namespace blender::bke
 
 namespace blender::bke {
@@ -81,6 +82,19 @@ enum class PhysicsConstraintAttribute {
   min_motor_force_angle,
   max_motor_force_axis,
   max_motor_force_angle,
+};
+
+enum class PhysicsShapeAttribute {
+  translation,
+  rotation,
+  scale,
+  size,
+  radius,
+  radius2,
+  height,
+  point0,
+  point1,
+  point2,
 };
 
 enum class PhysicsMotionType {
@@ -155,6 +169,7 @@ class PhysicsWorldState : public ImplicitSharingMixin {
   Map<ConstraintAttribute, GArray<>> constraint_data_;
   CustomData body_custom_data_;
   CustomData constraint_custom_data_;
+  CustomData shape_custom_data_;
 
   Array<CollisionShapePtr> shapes_;
 
@@ -248,6 +263,7 @@ class PhysicsWorldState : public ImplicitSharingMixin {
   static const PhysicsWorldDataAccessInfo &world_data_access_info();
   static const CustomDataAccessInfo &body_custom_data_access_info();
   static const CustomDataAccessInfo &constraint_custom_data_access_info();
+  static const CustomDataAccessInfo &shape_custom_data_access_info();
 
  private:
   void ensure_read_cache_no_lock() const;
@@ -387,18 +403,23 @@ namespace physics_attributes {
 
 Span<PhysicsBodyAttribute> all_body_attributes();
 Span<PhysicsConstraintAttribute> all_constraint_attributes();
+Span<PhysicsShapeAttribute> all_shape_attributes();
 
 StringRef physics_attribute_name(PhysicsBodyAttribute attribute);
 StringRef physics_attribute_name(PhysicsConstraintAttribute attribute);
+StringRef physics_attribute_name(PhysicsShapeAttribute attribute);
 
 Span<std::string> all_body_attribute_names();
 Span<std::string> all_constraint_attribute_names();
+Span<std::string> all_shape_attribute_names();
 
 const CPPType &physics_attribute_type(PhysicsBodyAttribute attribute);
 const CPPType &physics_attribute_type(PhysicsConstraintAttribute attribute);
+const CPPType &physics_attribute_type(PhysicsShapeAttribute attribute);
 
 const void *physics_attribute_default_value(PhysicsBodyAttribute attribute);
 const void *physics_attribute_default_value(PhysicsConstraintAttribute attribute);
+const void *physics_attribute_default_value(PhysicsShapeAttribute attribute);
 template<typename T> const T &physics_attribute_default_value(PhysicsBodyAttribute attribute)
 {
   BLI_assert(physics_attribute_type(attribute).is<T>());
@@ -409,6 +430,20 @@ template<typename T> const T &physics_attribute_default_value(PhysicsConstraintA
   BLI_assert(physics_attribute_type(attribute).is<T>());
   return *static_cast<const T *>(physics_attribute_default_value(attribute));
 }
+template<typename T> const T &physics_attribute_default_value(PhysicsShapeAttribute attribute)
+{
+  BLI_assert(physics_attribute_type(attribute).is<T>());
+  return *static_cast<const T *>(physics_attribute_default_value(attribute));
+}
+
+GVArray physics_attribute_varray(PhysicsShapeAttribute attribute,
+                                 Span<bke::CollisionShapePtr> shapes);
+
+StringRef physics_shape_attribute_label(const bke::CollisionShapeType shape_type,
+                                        bke::PhysicsShapeAttribute attribute);
+bool physics_shape_attribute_valid(const CollisionShapeType shape_type,
+                                   PhysicsShapeAttribute attribute);
+bool physics_shape_geometry_valid(const CollisionShapeType shape_type);
 
 /* Writes to cache first, then updates engine data afterward.
  * This is used for attributes which do not have a direct property in engine data.
@@ -432,6 +467,15 @@ VArray<T> physics_attribute_lookup_or_default(const AttributeAccessor attributes
 {
   return *attributes.lookup_or_default<T>(physics_attribute_name(physics_attribute),
                                           AttrDomain::Edge,
+                                          physics_attribute_default_value<T>(physics_attribute));
+}
+
+template<typename T>
+VArray<T> physics_attribute_lookup_or_default(const AttributeAccessor attributes,
+                                              PhysicsShapeAttribute physics_attribute)
+{
+  return *attributes.lookup_or_default<T>(physics_attribute_name(physics_attribute),
+                                          AttrDomain::Instance,
                                           physics_attribute_default_value<T>(physics_attribute));
 }
 

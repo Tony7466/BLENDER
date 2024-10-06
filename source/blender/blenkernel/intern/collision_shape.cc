@@ -11,7 +11,9 @@
 #include "BLI_math_vector.hh"
 
 #include "BKE_collision_shape.hh"
+#include "BKE_material.h"
 #include "BKE_mesh.hh"
+#include "BKE_physics_geometry.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -606,13 +608,92 @@ Bounds<float3> CollisionShape::local_bounds() const
   return to_blender(impl_->as_jolt_shape().GetLocalBounds());
 }
 
-float3 CollisionShape::calculate_local_inertia(const float mass) const
+float3 CollisionShape::calculate_local_inertia(const float /*mass*/) const
 {
   // XXX This assumes the principal components are aligned with the canonical axes.
   // For complex shapes (e.g. mesh) this is not generally the case, the principal axes are
   // rotated. The DecomposePrincipalMomentsOfInertia function can be used to get the rotation.
   const JPH::MassProperties mass_props = impl().as_jolt_shape().GetMassProperties();
   return to_blender(mass_props.mInertia.GetDiagonal3());
+}
+
+static Mesh *shape_to_mesh(const JPH::Shape &shape, const float4x4 &transform)
+{
+  const JPH::AABox bounds = to_jolt(Bounds<float3>(float3(-FLT_MAX), float3(FLT_MAX)));
+  float3 loc;
+  math::Quaternion rot;
+  float3 scale;
+  math::to_loc_rot_scale(transform, loc, rot, scale);
+
+  const int max_triangles = shape.GetStats().mNumTriangles;
+  /* Simple triangle soup mesh. */
+  Mesh *mesh = BKE_mesh_new_nomain(
+      max_triangles * 3, max_triangles * 3, max_triangles, max_triangles * 3);
+  bke::mesh_smooth_set(*mesh, false);
+
+  JPH::Shape::GetTrianglesContext context;
+  shape.GetTrianglesStart(context, bounds, to_jolt(loc), to_jolt(rot), to_jolt(scale));
+
+  MutableSpan<JPH::Float3> positions = mesh->vert_positions_for_write().cast<JPH::Float3>();
+  while (!positions.is_empty()) {
+    const int num_triangles = shape.GetTrianglesNext(context, positions.size(), positions.data());
+    if (num_triangles == 0) {
+      BLI_assert_unreachable();
+      break;
+    }
+    positions = positions.drop_front(num_triangles * 3);
+  }
+
+  MutableSpan<int2> edges = mesh->edges_for_write();
+  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
+  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
+  MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
+  for (const int i : IndexRange(max_triangles)) {
+    const int v0 = i * 3;
+    const int v1 = v0 + 1;
+    const int v2 = v0 + 2;
+    face_offsets[i] = v0;
+    edges[v0] = {v0, v1};
+    edges[v1] = {v1, v2};
+    edges[v2] = {v2, v0};
+    corner_verts[v0] = v0;
+    corner_verts[v1] = v1;
+    corner_verts[v2] = v2;
+    corner_edges[v0] = v0;
+    corner_edges[v1] = v1;
+    corner_edges[v2] = v2;
+  }
+  face_offsets.last() = mesh->faces_num * 3;
+  mesh->tag_topology_changed();
+  mesh->tag_positions_changed();
+
+  mesh->tag_loose_verts_none();
+  mesh->tag_loose_edges_none();
+  mesh->tag_overlapping_none();
+  mesh->bounds_set_eager(to_blender(shape.GetLocalBounds()));
+
+  BKE_id_material_eval_ensure_default_slot(&mesh->id);
+
+  return mesh;
+}
+
+GeometrySet CollisionShape::create_geometry() const
+{
+  const JPH::Shape &shape = impl_->as_jolt_shape();
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::ConvexHull:
+    case JPH::EShapeSubType::Mesh:
+    case JPH::EShapeSubType::Scaled:
+    case JPH::EShapeSubType::OffsetCenterOfMass:
+    case JPH::EShapeSubType::RotatedTranslated:
+    case JPH::EShapeSubType::StaticCompound:
+    case JPH::EShapeSubType::MutableCompound:
+      return GeometrySet::from_mesh(shape_to_mesh(shape, float4x4::identity()));
+    default:
+      return {};
+  }
+  BLI_assert_unreachable();
+  return {};
 }
 
 static CollisionShape::CollisionShapeResult make_box_shape(const float3 &half_extent)
@@ -850,6 +931,447 @@ static CollisionShape::CollisionShapeResult make_mesh_shape(const Mesh &mesh)
 }
 
 MeshCollisionShape::MeshCollisionShape(const Mesh &mesh) : CollisionShape(make_mesh_shape(mesh)) {}
+
+namespace physics_attributes {
+
+template<typename T> using ShapeGetFn = T (*)(const JPH::Shape &shape);
+
+template<typename ElemT, ShapeGetFn<ElemT> GetFn>
+class VArrayImpl_For_PhysicsShapes final : public VArrayImpl<ElemT> {
+ private:
+  Span<bke::CollisionShapePtr> shapes_;
+
+ public:
+  VArrayImpl_For_PhysicsShapes(const Span<bke::CollisionShapePtr> shapes)
+      : VArrayImpl<ElemT>(shapes.size()), shapes_(shapes)
+  {
+  }
+
+ private:
+  ElemT get(const int64_t index) const override
+  {
+    return GetFn(shapes_[index]->impl().as_jolt_shape());
+  }
+
+  void materialize(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = GetFn(shapes_[i]->impl().as_jolt_shape()); });
+  }
+
+  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(shapes_[i]->impl().as_jolt_shape())); });
+  }
+
+  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
+      dst[pos] = GetFn(shapes_[i]->impl().as_jolt_shape());
+    });
+  }
+
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
+      new (dst + pos) ElemT(GetFn(shapes_[i]->impl().as_jolt_shape()));
+    });
+  }
+};
+
+static float3 shape_translation_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::RotatedTranslated:
+      return to_blender(static_cast<const JPH::RotatedTranslatedShape &>(shape).GetPosition());
+    case JPH::EShapeSubType::OffsetCenterOfMass:
+      return to_blender(static_cast<const JPH::OffsetCenterOfMassShape &>(shape).GetOffset());
+    default:
+      return float3(0.0f);
+  }
+  BLI_assert_unreachable();
+  return float3(0.0f);
+}
+
+static math::Quaternion shape_rotation_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::RotatedTranslated:
+      return to_blender(static_cast<const JPH::RotatedTranslatedShape &>(shape).GetRotation());
+    default:
+      return math::Quaternion();
+  }
+  BLI_assert_unreachable();
+  return math::Quaternion();
+}
+
+static float3 shape_scale_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::Scaled:
+      return to_blender(static_cast<const JPH::ScaledShape &>(shape).GetScale());
+    default:
+      return float3(1.0f);
+  }
+  BLI_assert_unreachable();
+  return float3(0.0f);
+}
+
+static float3 shape_size_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::Box:
+      return to_blender(static_cast<const JPH::BoxShape &>(shape).GetHalfExtent()) * 2.0f;
+    default:
+      return float3(1.0f);
+  }
+  BLI_assert_unreachable();
+  return float3(0.0f);
+}
+
+static float shape_radius_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::Sphere:
+      return to_blender(static_cast<const JPH::SphereShape &>(shape).GetRadius());
+    case JPH::EShapeSubType::Capsule:
+      return to_blender(static_cast<const JPH::CapsuleShape &>(shape).GetRadius());
+    case JPH::EShapeSubType::TaperedCapsule: {
+      /* Reconstruct parameters from local bounds.
+       * TODO It may be beneficial to store "uncooked"
+       * JPH::ShapeSettings along with the "cooked" JPH::Shape.
+       * For now this should work ok.
+       */
+      const Bounds<float3> local_bounds = to_blender(
+          static_cast<const JPH::TaperedCapsuleShape &>(shape).GetLocalBounds());
+      if (-local_bounds.min.y < local_bounds.max.y) {
+        const float top_radius = local_bounds.max.x;
+        const float half_height = local_bounds.max.y - top_radius;
+        const float bottom_radius = -local_bounds.min.y - half_height;
+        return bottom_radius;
+      }
+      else {
+        const float bottom_radius = local_bounds.max.x;
+        // const float half_height = -local_bounds.min.y - bottom_radius;
+        // const float top_radius = local_bounds.max.y - half_height;
+        return bottom_radius;
+      }
+    }
+    case JPH::EShapeSubType::Cylinder:
+      return static_cast<const JPH::CylinderShape &>(shape).GetInnerRadius();
+    default:
+      return 1.0f;
+  }
+  BLI_assert_unreachable();
+  return 0.0f;
+}
+
+static float shape_radius2_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::TaperedCapsule: {
+      /* Reconstruct parameters from local bounds.
+       * TODO It may be beneficial to store "uncooked"
+       * JPH::ShapeSettings along with the "cooked" JPH::Shape.
+       * For now this should work ok.
+       */
+      const Bounds<float3> local_bounds = to_blender(
+          static_cast<const JPH::TaperedCapsuleShape &>(shape).GetLocalBounds());
+      if (-local_bounds.min.y < local_bounds.max.y) {
+        const float top_radius = local_bounds.max.x;
+        // const float half_height = local_bounds.max.y - top_radius;
+        // const float bottom_radius = -local_bounds.min.y - half_height;
+        return top_radius;
+      }
+      else {
+        const float bottom_radius = local_bounds.max.x;
+        const float half_height = -local_bounds.min.y - bottom_radius;
+        const float top_radius = local_bounds.max.y - half_height;
+        return top_radius;
+      }
+    }
+    default:
+      return 1.0f;
+  }
+  BLI_assert_unreachable();
+  return 0.0f;
+}
+
+static float shape_height_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::Capsule:
+      return 2.0f *
+             to_blender(static_cast<const JPH::CapsuleShape &>(shape).GetHalfHeightOfCylinder());
+    case JPH::EShapeSubType::TaperedCapsule: {
+      /* Reconstruct parameters from local bounds.
+       * TODO It may be beneficial to store "uncooked"
+       * JPH::ShapeSettings along with the "cooked" JPH::Shape.
+       * For now this should work ok.
+       */
+      const Bounds<float3> local_bounds = to_blender(
+          static_cast<const JPH::TaperedCapsuleShape &>(shape).GetLocalBounds());
+      if (-local_bounds.min.y < local_bounds.max.y) {
+        const float top_radius = local_bounds.max.x;
+        const float half_height = local_bounds.max.y - top_radius;
+        return 2.0f * half_height;
+      }
+      else {
+        const float bottom_radius = local_bounds.max.x;
+        const float half_height = -local_bounds.min.y - bottom_radius;
+        return 2.0f * half_height;
+      }
+    }
+    case JPH::EShapeSubType::Cylinder:
+      return 2.0f * static_cast<const JPH::CylinderShape &>(shape).GetHalfHeight();
+    default:
+      return 1.0f;
+  }
+  BLI_assert_unreachable();
+  return 0.0f;
+}
+
+static float3 get_triangle_shape_point(const JPH::Shape &shape, const int point)
+{
+  BLI_assert(shape.GetSubType() == JPH::EShapeSubType::Triangle);
+  BLI_assert(IndexRange(3).contains(point));
+  const auto &triangle_shape = static_cast<const JPH::TriangleShape &>(shape);
+
+  JPH::TriangleShape::GetTrianglesContext context;
+  triangle_shape.GetTrianglesStart(
+      context, {}, to_jolt(float3(0)), to_jolt(math::Quaternion::identity()), to_jolt(float3(1)));
+  JPH::Float3 triangle[3];
+  triangle_shape.GetTrianglesNext(context, 1, triangle);
+  return to_blender(triangle[point]);
+}
+
+static float3 shape_point0_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::Triangle:
+      return get_triangle_shape_point(shape, 0);
+    default:
+      return float3(0.0f);
+  }
+  BLI_assert_unreachable();
+  return float3(0.0f);
+}
+
+static float3 shape_point1_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::Triangle:
+      return get_triangle_shape_point(shape, 1);
+    default:
+      return float3(0.0f);
+  }
+  BLI_assert_unreachable();
+  return float3(0.0f);
+}
+
+static float3 shape_point2_get_fn(const JPH::Shape &shape)
+{
+  switch (shape.GetSubType()) {
+    case JPH::EShapeSubType::Triangle:
+      return get_triangle_shape_point(shape, 2);
+    default:
+      return float3(0.0f);
+  }
+  BLI_assert_unreachable();
+  return float3(0.0f);
+}
+
+StringRef physics_shape_attribute_label(const bke::CollisionShapeType shape_type,
+                                        bke::PhysicsShapeAttribute attribute)
+{
+  using ShapeType = bke::CollisionShape::ShapeType;
+  using ShapeAttribute = bke::PhysicsShapeAttribute;
+
+  const StringRef default_label = bke::physics_attributes::physics_attribute_name(attribute);
+
+  switch (shape_type) {
+    case ShapeType::Sphere:
+      switch (attribute) {
+        case ShapeAttribute::radius:
+          return "Radius";
+        default:
+          return default_label;
+      }
+    case ShapeType::Box:
+      switch (attribute) {
+        case ShapeAttribute::size:
+          return "Size";
+        default:
+          return default_label;
+      }
+    case ShapeType::Triangle:
+      switch (attribute) {
+        case ShapeAttribute::point0:
+          return "Point 0";
+        case ShapeAttribute::point1:
+          return "Point 1";
+        case ShapeAttribute::point2:
+          return "Point 2";
+        default:
+          return default_label;
+      }
+    case ShapeType::Capsule:
+      switch (attribute) {
+        case ShapeAttribute::radius:
+          return "Radius";
+        case ShapeAttribute::height:
+          return "Height";
+        default:
+          return default_label;
+      }
+    case ShapeType::TaperedCapsule:
+      switch (attribute) {
+        case ShapeAttribute::radius:
+          return "Bottom Radius";
+        case ShapeAttribute::radius2:
+          return "Top Radius";
+        case ShapeAttribute::height:
+          return "Height";
+        default:
+          return default_label;
+      }
+    case ShapeType::Cylinder:
+      switch (attribute) {
+        case ShapeAttribute::radius:
+          return "Radius";
+        case ShapeAttribute::height:
+          return "Height";
+        default:
+          return default_label;
+      }
+    case ShapeType::RotatedTranslated:
+      switch (attribute) {
+        case ShapeAttribute::rotation:
+          return "Rotation";
+        case ShapeAttribute::translation:
+          return "Translation";
+        default:
+          return default_label;
+      }
+    case ShapeType::Scaled:
+      switch (attribute) {
+        case ShapeAttribute::scale:
+          return "Scale";
+        default:
+          return default_label;
+      }
+    case ShapeType::OffsetCenterOfMass:
+      switch (attribute) {
+        case ShapeAttribute::translation:
+          return "Offset";
+        default:
+          return default_label;
+      }
+
+    case ShapeType::ConvexHull:
+    case ShapeType::StaticCompound:
+    case ShapeType::MutableCompound:
+    case ShapeType::Mesh:
+    case ShapeType::HeightField:
+    case ShapeType::SoftBody:
+      return default_label;
+  }
+  BLI_assert_unreachable();
+  return "";
+}
+
+GVArray physics_attribute_varray(PhysicsShapeAttribute attribute,
+                                 Span<bke::CollisionShapePtr> shapes)
+{
+  using ShapeAttribute = PhysicsShapeAttribute;
+
+  switch (attribute) {
+    case ShapeAttribute::translation:
+      return VArray<float3>::For<VArrayImpl_For_PhysicsShapes<float3, shape_translation_get_fn>>(
+          shapes);
+    case ShapeAttribute::rotation:
+      return VArray<math::Quaternion>::For<
+          VArrayImpl_For_PhysicsShapes<math::Quaternion, shape_rotation_get_fn>>(shapes);
+    case ShapeAttribute::scale:
+      return VArray<float3>::For<VArrayImpl_For_PhysicsShapes<float3, shape_scale_get_fn>>(shapes);
+    case ShapeAttribute::size:
+      return VArray<float3>::For<VArrayImpl_For_PhysicsShapes<float3, shape_size_get_fn>>(shapes);
+    case ShapeAttribute::radius:
+      return VArray<float>::For<VArrayImpl_For_PhysicsShapes<float, shape_radius_get_fn>>(shapes);
+    case ShapeAttribute::radius2:
+      return VArray<float>::For<VArrayImpl_For_PhysicsShapes<float, shape_radius2_get_fn>>(shapes);
+    case ShapeAttribute::height:
+      return VArray<float>::For<VArrayImpl_For_PhysicsShapes<float, shape_height_get_fn>>(shapes);
+    case ShapeAttribute::point0:
+      return VArray<float3>::For<VArrayImpl_For_PhysicsShapes<float3, shape_point0_get_fn>>(
+          shapes);
+    case ShapeAttribute::point1:
+      return VArray<float3>::For<VArrayImpl_For_PhysicsShapes<float3, shape_point1_get_fn>>(
+          shapes);
+    case ShapeAttribute::point2:
+      return VArray<float3>::For<VArrayImpl_For_PhysicsShapes<float3, shape_point2_get_fn>>(
+          shapes);
+  }
+  BLI_assert_unreachable();
+  return {};
+}
+
+bool physics_shape_attribute_valid(const CollisionShapeType shape_type,
+                                   PhysicsShapeAttribute attribute)
+{
+  using ShapeType = CollisionShape::ShapeType;
+  using ShapeAttribute = PhysicsShapeAttribute;
+
+  switch (shape_type) {
+    case ShapeType::Sphere:
+      return ELEM(attribute, ShapeAttribute::radius);
+    case ShapeType::Box:
+      return ELEM(attribute, ShapeAttribute::size);
+    case ShapeType::Triangle:
+      return ELEM(
+          attribute, ShapeAttribute::point0, ShapeAttribute::point1, ShapeAttribute::point2);
+    case ShapeType::Capsule:
+      return ELEM(attribute, ShapeAttribute::radius, ShapeAttribute::height);
+    case ShapeType::TaperedCapsule:
+      return ELEM(
+          attribute, ShapeAttribute::radius, ShapeAttribute::radius2, ShapeAttribute::height);
+    case ShapeType::Cylinder:
+      return ELEM(attribute, ShapeAttribute::radius, ShapeAttribute::height);
+    case ShapeType::RotatedTranslated:
+      return ELEM(attribute, ShapeAttribute::translation, ShapeAttribute::rotation);
+    case ShapeType::Scaled:
+      return ELEM(attribute, ShapeAttribute::scale);
+    case ShapeType::OffsetCenterOfMass:
+      return ELEM(attribute, ShapeAttribute::translation);
+
+    case ShapeType::ConvexHull:
+    case ShapeType::StaticCompound:
+    case ShapeType::MutableCompound:
+    case ShapeType::Mesh:
+    case ShapeType::HeightField:
+    case ShapeType::SoftBody:
+      return false;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
+bool physics_shape_geometry_valid(const CollisionShapeType shape_type)
+{
+  using ShapeType = CollisionShape::ShapeType;
+
+  return ELEM(shape_type,
+              ShapeType::ConvexHull,
+              ShapeType::Mesh,
+              ShapeType::Scaled,
+              ShapeType::OffsetCenterOfMass,
+              ShapeType::RotatedTranslated,
+              ShapeType::StaticCompound,
+              ShapeType::MutableCompound);
+}
+
+}  // namespace physics_attributes
 
 #  endif
 #endif
