@@ -1162,9 +1162,9 @@ RESHAPE(float3x3, float3x4, m[0].xyz, m[1].xyz, m[2].xyz)
 #define bool2_array(...) { __VA_ARGS__ }
 #define bool3_array(...) { __VA_ARGS__ }
 #define bool4_array(...) { __VA_ARGS__ }
-/* clang-format on */
 #define ARRAY_T(type)
 #define ARRAY_V(...) {__VA_ARGS__}
+/* clang-format on */
 
 #define SHADER_LIBRARY_CREATE_INFO(a)
 #define VERTEX_SHADER_CREATE_INFO(a)
