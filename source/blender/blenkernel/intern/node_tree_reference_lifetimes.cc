@@ -9,8 +9,8 @@
 
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
-#include "BKE_node_tree_anonymous_attributes2.hh"
 #include "BKE_node_tree_dot_export.hh"
+#include "BKE_node_tree_reference_lifetimes.hh"
 #include "BKE_node_tree_zones.hh"
 
 #include "BLI_bit_group_vector.hh"
@@ -22,7 +22,7 @@
 
 #include "BLI_resource_scope.hh"
 
-namespace blender::bke::anonymous_attribute_inferencing2 {
+namespace blender::bke::node_tree_reference_lifetimes {
 
 using bits::BitInt;
 using nodes::NodeDeclaration;
@@ -842,4 +842,4 @@ void analyse(const bNodeTree &tree)
   std::cout << tree_relations << "\n\n";
 }
 
-}  // namespace blender::bke::anonymous_attribute_inferencing2
+}  // namespace blender::bke::node_tree_reference_lifetimes

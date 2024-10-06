@@ -11,7 +11,7 @@
 
 #include "DNA_node_types.h"
 
-namespace blender::bke::anonymous_attribute_inferencing2 {
+namespace blender::bke::node_tree_reference_lifetimes {
 
 struct ReferenceSetInfo {
   enum class Type {
@@ -58,4 +58,4 @@ struct AnonymousAttributesInfo {
 
 void analyse(const bNodeTree &tree);
 
-}  // namespace blender::bke::anonymous_attribute_inferencing2
+}  // namespace blender::bke::node_tree_reference_lifetimes
