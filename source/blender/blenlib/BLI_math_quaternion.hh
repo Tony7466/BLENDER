@@ -313,25 +313,30 @@ template<typename T>
 [[nodiscard]] inline VecBase<T, 3> transform_point(const QuaternionBase<T> &q,
                                                    const VecBase<T, 3> &v)
 {
-#if 0 /* Reference. */
-  QuaternionBase<T> V(T(0), UNPACK3(v));
-  QuaternionBase<T> R = q * V * conjugate(q);
-  return {R.x, R.y, R.z};
-#else
-  /* `S = q * V`. */
-  QuaternionBase<T> S;
-  S.w = /* q.w * 0.0  */ -q.x * v.x - q.y * v.y - q.z * v.z;
-  S.x = q.w * v.x /* + q.x * 0.0 */ + q.y * v.z - q.z * v.y;
-  S.y = q.w * v.y /* + q.y * 0.0 */ + q.z * v.x - q.x * v.z;
-  S.z = q.w * v.z /* + q.z * 0.0 */ + q.x * v.y - q.y * v.x;
-  /* `R = S * conjugate(q)`. */
+  /* Improved Vector rotation by Robert Eisele
+   * https://raw.org/proof/vector-rotation-using-quaternions/
+   */
+
+  T qw = q.w;
+  T qx = q.x;
+  T qy = q.y;
+  T qz = q.z;
+
+  T vx = v.x;
+  T vy = v.y;
+  T vz = v.z;
+
+  /* t = 2q x v */
+  T tx = 2 * (qy * vz - qz * vy);
+  T ty = 2 * (qz * vx - qx * vz);
+  T tz = 2 * (qx * vy - qy * vx);
+
+  /* v + w t + q x t */
   VecBase<T, 3> R;
-  /* `R.w = S.w * q.w + S.x * q.x + S.y * q.y + S.z * q.z = 0.0`. */
-  R.x = S.w * -q.x + S.x * q.w - S.y * q.z + S.z * q.y;
-  R.y = S.w * -q.y + S.y * q.w - S.z * q.x + S.x * q.z;
-  R.z = S.w * -q.z + S.z * q.w - S.x * q.y + S.y * q.x;
+  R.x = vx + qw * tx + qy * tz - qz * ty;
+  R.y = vy + qw * ty + qz * tx - qx * tz;
+  R.z = vz + qw * tz + qx * ty - qy * tx;
   return R;
-#endif
 }
 
 /** \} */
