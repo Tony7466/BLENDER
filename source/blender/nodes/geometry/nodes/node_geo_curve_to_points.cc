@@ -157,7 +157,8 @@ static void curve_to_points(GeometrySet &geometry_set,
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id);
-          geometry.remove_geometry_during_modify();
+          geometry.keep_only_during_modify({bke::GeometryComponent::Type::PointCloud,
+                                            bke::GeometryComponent::Type::GreasePencil});
           geometry.replace_pointcloud(pointcloud);
         }
       });
@@ -179,7 +180,8 @@ static void curve_to_points(GeometrySet &geometry_set,
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id);
-          geometry.remove_geometry_during_modify();
+          geometry.keep_only_during_modify({bke::GeometryComponent::Type::PointCloud,
+                                            bke::GeometryComponent::Type::GreasePencil});
           geometry.replace_pointcloud(pointcloud);
         }
       });
@@ -196,7 +198,8 @@ static void curve_to_points(GeometrySet &geometry_set,
                                                           resample_attributes.tangent_id,
                                                           resample_attributes.normal_id,
                                                           rotation_anonymous_id);
-          geometry.remove_geometry_during_modify();
+          geometry.keep_only_during_modify({bke::GeometryComponent::Type::PointCloud,
+                                            bke::GeometryComponent::Type::GreasePencil});
           geometry.replace_pointcloud(pointcloud);
         }
       });
@@ -298,8 +301,8 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
             attribute_filter);
       }
     }
+    geometry.keep_only_during_modify({bke::GeometryComponent::Type::PointCloud});
   });
-  geometry_set.replace_grease_pencil(nullptr);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
