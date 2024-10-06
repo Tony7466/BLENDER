@@ -877,8 +877,11 @@ uiBlock *UI_block_begin(const bContext *C,
                         ARegion *region,
                         std::string name,
                         eUIEmbossType emboss);
-void UI_block_end_ex(
-    const bContext *C, uiBlock *block, const int xy[2], std::optional<uiBlock*> block_old, int r_xy[2]);
+void UI_block_end_ex(const bContext *C,
+                     uiBlock *block,
+                     const int xy[2],
+                     std::optional<uiBlock *> block_old,
+                     int r_xy[2]);
 void UI_block_end(const bContext *C, uiBlock *block);
 /**
  * Uses local copy of style, to scale things down, and allow widgets to change stuff.
