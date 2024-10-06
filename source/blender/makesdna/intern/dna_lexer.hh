@@ -1,4 +1,9 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
 #pragma once
+
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include <variant>
@@ -110,7 +115,7 @@ using TokenVariant = std::variant<BreakLineToken,
 
 struct TokenIterator {
   /** Last token that fails to match a token request. */
-  TokenVariant *last_unmatched{nullptr};
+  TokenVariant *last_unmatched = nullptr;
 
  private:
   /** Token stream. */
@@ -118,7 +123,7 @@ struct TokenIterator {
   /** Return points to use for roll back when parser fails to parse tokens. */
   Vector<TokenVariant *> waypoints_;
   /** Pointer to next token to iterate. */
-  TokenVariant *next_{nullptr};
+  TokenVariant *next_ = nullptr;
 
   /** Print the line where an unkown token was found. */
   void print_unkown_token(StringRef filepath, StringRef text, const char *where);

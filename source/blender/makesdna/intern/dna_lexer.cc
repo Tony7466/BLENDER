@@ -1,4 +1,9 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
 #include "dna_lexer.hh"
+
 #include <cctype>
 #include <charconv>
 #include <fmt/format.h>
@@ -111,13 +116,13 @@ void TokenIterator::eval_int_literal(const char *&itr, const char *end)
     return;
   }
   int val = 0;
-  std::from_chars(&*start, &*itr, val);
+  std::from_chars(start, itr, val);
   this->append(IntLiteralToken{StringRef(start, itr), val});
 }
 
 void TokenIterator::eval_multiline_comment(const char *&itr, const char *end)
 {
-  if (end - itr < +2) {
+  if (end - itr < 2) {
     return;
   }
   if (!(itr[0] == '/' && itr[1] == '*')) {

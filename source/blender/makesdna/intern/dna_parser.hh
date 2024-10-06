@@ -4,19 +4,16 @@
 
 #pragma once
 
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
-#include "dna_lexer.hh"
 
 #include <optional>
 #include <string>
-#include <string_view>
 #include <variant>
 
 namespace blender::dna::parser {
 
 namespace ast {
-
-using namespace lex;
 
 /** Constant int defined value. */
 struct DefineInt {
@@ -54,7 +51,7 @@ struct PointerToArray {
   int32_t size;
 };
 
-/** Struct declaration.*/
+/** Struct declaration. */
 struct Struct {
   StringRef name;
   /** Recursive struct keep inline buffer capacity to `0`. */

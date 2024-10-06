@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0 */
 
 #include "dna_parser.hh"
+#include "dna_lexer.hh"
+
 #include <fmt/format.h>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -13,7 +16,6 @@ namespace blender::dna::parser {
 static void to_string(std::stringstream &ss, const ast::Variable &var, size_t /*padding*/)
 {
   ss << fmt::format("{}{} ", var.const_tag ? "const " : "", var.type);
-
   bool first = true;
   for (auto &item : var.items) {
     if (!first) {
@@ -57,7 +59,6 @@ static void to_string(std::stringstream &ss, const ast::Struct &val, size_t padd
   const auto add_padding = [&ss](size_t padding) {
     ss << fmt::format("{: >{}}", "", padding * 4);
   };
-
   ss << fmt::format("struct {} {{\n", val.name);
   for (auto &item : val.items) {
     add_padding(padding + 1);
@@ -81,6 +82,8 @@ std::string to_string(const CppFile &cpp_file)
 }  // namespace blender::dna::parser
 
 namespace blender::dna::parser::ast {
+
+using namespace lex;
 
 struct ParseFailedResult {};
 
@@ -140,16 +143,6 @@ template<typename T> ParseResult<T> parse_t(TokenIterator &token_iterator)
   return Parser<T>::parse(token_iterator);
 };
 
-template<typename T> bool parse_t_success(TokenIterator &token_iterator)
-{
-  return Parser<T>::parse(token_iterator).success();
-};
-
-template<typename T> bool parse_t_fail(TokenIterator &token_iterator)
-{
-  return Parser<T>::parse(token_iterator).success();
-};
-
 /**
  * Parser that matches a sequence of elements to parse, fails if any `Args` in `Args...` fails to
  * parse.
@@ -194,7 +187,7 @@ template<class... Args> struct Parser<Sequence<Args...>> {
 };
 
 /**
- * Parser that don't fails if `Type` can't be parsed.
+ * Parser that don't fails if `T` can't be parsed.
  * The sequence `Sequence<Optional<ConstKeyword>, IntKeyword, Identifier, SemicolonSymbol>` success
  * either if text is `const int num;` or `int num;`
  */
@@ -493,7 +486,7 @@ template<> struct Parser<Type> {
     using TypeVariant = Variant<PrimitiveType, Sequence<Optional<StructKeyword>, Identifier>>;
     using TypeSequence = Sequence<Optional<ConstKeyword>, TypeVariant>;
 
-    ParseResult<TypeSequence> type_seq = parse_t<TypeSequence>(token_iterator);
+    ParseResult<TypeSequence> type_seq = parse_t<TypeSequence>(token_ iterator);
     if (!type_seq.success()) {
       return parse_failed;
     }
@@ -904,7 +897,7 @@ std::optional<CppFile> parse_file(StringRef filepath)
       BLI_assert(dna_deprecated_allow_count >= 0);
     }
   }
-#if true
+#ifdef DNA_DEBUG_PRINT
   constexpr StringRef debug_file = "DNA_action_types.h";
   if (!debug_file.is_empty() && filepath.find(debug_file) != filepath.not_found) {
     printf("%s", to_string(cpp_file).c_str());
