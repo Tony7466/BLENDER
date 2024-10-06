@@ -196,6 +196,7 @@ struct Segment {
   float len_start;
   float len_end;
   bool is_end_segment;
+  bool is_last_segment;
   int pos_index;
   int curve_index;
   float curve_length;
@@ -259,9 +260,11 @@ static BVHTree *create_curve_segment_bvhtree(const bke::CurvesGeometry &src_curv
     const int totpoints = positions.size() - 1;
     const int loopcount = cyclic[curve_i] ? totpoints + 1 : totpoints;
     for (const int index : IndexRange(loopcount)) {
+      const bool last_segment = (index + 1 == loopcount);
       const bool cyclic_segment = (cyclic[curve_i] && index == totpoints);
       Segment segment;
       segment.is_end_segment = (index == 0) || cyclic_segment;
+      segment.is_last_segment = last_segment;
       segment.pos_index = index;
       segment.curve_index = curve_i;
       segment.curve_length = curve_length;
@@ -322,7 +325,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
 
   /* Loop each curve for intersections. */
   ThreadLocalData thread_storage;
-  threading::parallel_for(src_curves.curves_range(), 1024, [&](IndexRange curve_range) {
+  threading::parallel_for(src_curves.curves_range(), 128, [&](IndexRange curve_range) {
     IntersectionData &local_data = thread_storage.local();
     threading::isolate_task([&]() {
       for (const int64_t curve_i : curve_range) {
@@ -417,9 +420,11 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
               if (calc_self || calc_all) {
                 const IntersectingLineInfo isectinfo = intersecting_lines(
                     ab.start, ab.end, cd.start, cd.end, min_distance);
-
-                if (isectinfo.intersects && isectinfo.lambda_ab != 1.0f &&
-                    isectinfo.lambda_cd != 1.0f) {
+                /* To avoid duplicates, discard intersections where lambda is 1.0f except if it is
+                 * the last segment. */
+                const bool midline = isectinfo.lambda_ab != 1.0f && isectinfo.lambda_cd != 1.0f;
+                const bool is_last_segment = ab.is_last_segment || cd.is_last_segment;
+                if (isectinfo.intersects && (midline || is_last_segment)) {
                   add_intersection_data(
                       local_data,
                       isectinfo.closest_ab,
@@ -560,9 +565,11 @@ static void set_curve_intersections_project(const bke::CurvesGeometry &src_curve
               if (calc_self || calc_all) {
                 const IntersectingLineInfo isectinfo = intersecting_lines(
                     ab.start, ab.end, cd.start, cd.end, min_distance);
-
-                if (isectinfo.intersects && isectinfo.lambda_ab != 1.0f &&
-                    isectinfo.lambda_cd != 1.0f) {
+                /* To avoid duplicates, discard intersections where lambda is 1.0f except if it is
+                 * the last segment. */
+                const bool midline = isectinfo.lambda_ab != 1.0f && isectinfo.lambda_cd != 1.0f;
+                const bool is_last_segment = ab.is_last_segment || cd.is_last_segment;
+                if (isectinfo.intersects && (midline || is_last_segment)) {
                   float3 cl_ab = math::interpolate(ab.og_start, ab.og_end, isectinfo.lambda_ab);
                   float3 cl_cd = math::interpolate(cd.og_start, cd.og_end, isectinfo.lambda_cd);
                   add_intersection_data(
