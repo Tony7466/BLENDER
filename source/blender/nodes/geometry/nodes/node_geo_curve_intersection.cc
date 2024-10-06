@@ -785,7 +785,7 @@ static void node_rna(StructRNA *srna)
                     "Mode",
                     "Method to find intersection positions for the spline",
                     mode_items,
-                    NOD_storage_enum_accessors(mode));  
+                    NOD_storage_enum_accessors(mode));
 }
 
 static void node_register()
