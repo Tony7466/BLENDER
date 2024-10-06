@@ -486,7 +486,7 @@ template<> struct Parser<Type> {
     using TypeVariant = Variant<PrimitiveType, Sequence<Optional<StructKeyword>, Identifier>>;
     using TypeSequence = Sequence<Optional<ConstKeyword>, TypeVariant>;
 
-    ParseResult<TypeSequence> type_seq = parse_t<TypeSequence>(token_ iterator);
+    ParseResult<TypeSequence> type_seq = parse_t<TypeSequence>(token_iterator);
     if (!type_seq.success()) {
       return parse_failed;
     }
