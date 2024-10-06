@@ -1108,109 +1108,6 @@ static AttributeOwner active_frame_get_attribute_owner(bContext *C)
   return AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
 }
 
-static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
-                                                               PointerRNA * /*ptr*/,
-                                                               PropertyRNA * /*prop*/,
-                                                               bool *r_free)
-{
-  if (C == nullptr) {
-    return rna_enum_dummy_NULL_items;
-  }
-
-  Object *object = CTX_data_active_object(C);
-  if (object == nullptr) {
-    return rna_enum_dummy_NULL_items;
-  }
-
-  const AttributeOwner owner = active_frame_get_attribute_owner(C);
-  return rna_enum_attribute_domain_itemf(owner, false, r_free);
-}
-
-static int grease_pencil_layer_attribute_add_exec(bContext *C, wmOperator *op)
-{
-  using namespace blender::bke::greasepencil;
-  Object *object = CTX_data_active_object(C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-
-  if (!grease_pencil.has_active_layer()) {
-    return OPERATOR_CANCELLED;
-  }
-
-  char name[MAX_NAME];
-  RNA_string_get(op->ptr, "name", name);
-  eCustomDataType type = (eCustomDataType)RNA_enum_get(op->ptr, "data_type");
-  bke::AttrDomain domain = bke::AttrDomain(RNA_enum_get(op->ptr, "domain"));
-
-  AttributeOwner owner = active_frame_get_attribute_owner(C);
-  CustomDataLayer *cd_layer = BKE_attribute_new(owner, name, type, domain, op->reports);
-
-  if (cd_layer == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
-  BKE_attributes_active_set(owner, cd_layer->name);
-
-  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA, &grease_pencil);
-
-  return OPERATOR_FINISHED;
-}
-
-static int grease_pencil_layer_attribute_add_invoke(bContext *C,
-                                                    wmOperator *op,
-                                                    const wmEvent *event)
-{
-  PropertyRNA *prop;
-  prop = RNA_struct_find_property(op->ptr, "name");
-  if (!RNA_property_is_set(op->ptr, prop)) {
-    RNA_property_string_set(op->ptr, prop, DATA_("Attribute"));
-  }
-  return WM_operator_props_popup_confirm_ex(
-      C, op, event, IFACE_("Add Attribute"), CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
-}
-
-void GREASE_PENCIL_OT_layer_attribute_add(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Add Attribute";
-  ot->description = "Add attribute to the active layer";
-  ot->idname = "GREASE_PENCIL_OT_layer_attribute_add";
-
-  /* api callbacks */
-  ot->poll = active_grease_pencil_layer_poll;
-  ot->exec = grease_pencil_layer_attribute_add_exec;
-  ot->invoke = grease_pencil_layer_attribute_add_invoke;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* properties */
-  PropertyRNA *prop;
-
-  /* The default name of the new attribute can be translated if new data translation is enabled,
-   * but since the user can choose it at invoke time, the translation happens in the invoke
-   * callback instead of here. */
-  prop = RNA_def_string(ot->srna, "name", nullptr, MAX_NAME, "Name", "Name of new attribute");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-  prop = RNA_def_enum(ot->srna,
-                      "domain",
-                      rna_enum_attribute_domain_items,
-                      int(bke::AttrDomain::Point),
-                      "Domain",
-                      "Type of element that attribute is stored on");
-  RNA_def_enum_funcs(prop, geometry_attribute_domain_itemf);
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
-  prop = RNA_def_enum(ot->srna,
-                      "data_type",
-                      rna_enum_attribute_type_items,
-                      CD_PROP_FLOAT,
-                      "Data Type",
-                      "Type of data stored in attribute");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-}
-
 static bool grease_pencil_layer_attribute_remove_poll(bContext *C)
 {
   if (!active_grease_pencil_layer_poll(C)) {
@@ -1295,6 +1192,5 @@ void ED_operatortypes_grease_pencil_layers()
   WM_operatortype_append(GREASE_PENCIL_OT_layer_group_color_tag);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_duplicate_object);
 
-  WM_operatortype_append(GREASE_PENCIL_OT_layer_attribute_add);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_attribute_remove);
 }
