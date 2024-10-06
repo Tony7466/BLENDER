@@ -15,12 +15,15 @@ namespace blender::bke::anonymous_attribute_inferencing2 {
 
 struct ReferenceSetInfo {
   enum class Type {
-    /** Geometry outputs may require attributes. */
-    GroupOutput,
+    /**
+     * Corresponds to geometry outputs that may contain attributes that are propagated from a group
+     * input. In such cases, the caller may provide a set of attributes that should be propagated.
+     */
+    GroupOutputData,
     /** Field inputs may require attributes. */
-    GroupInput,
-    /** Local fields may require attributes.  */
-    Local,
+    GroupInputReferenceSet,
+    /** Local fields may require attributes, e.g. the output of the Capture Attribute node.  */
+    LocalReferenceSet,
   };
 
   Type type;
@@ -31,16 +34,17 @@ struct ReferenceSetInfo {
     const bNodeSocket *socket;
   };
 
+  /** Sockets that may contain the referenced data. */
   linear_allocator::ChunkedList<const bNodeSocket *> potential_data_origins;
 
   ReferenceSetInfo(Type type, const int index) : type(type), index(index)
   {
-    BLI_assert(ELEM(type, Type::GroupInput, Type::GroupOutput));
+    BLI_assert(ELEM(type, Type::GroupInputReferenceSet, Type::GroupOutputData));
   }
 
   ReferenceSetInfo(Type type, const bNodeSocket *socket) : type(type), socket(socket)
   {
-    BLI_assert(ELEM(type, Type::Local));
+    BLI_assert(ELEM(type, Type::LocalReferenceSet));
   }
 
   friend std::ostream &operator<<(std::ostream &stream, const ReferenceSetInfo &source);
