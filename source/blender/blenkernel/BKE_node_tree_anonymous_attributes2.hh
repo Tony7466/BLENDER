@@ -13,7 +13,7 @@
 
 namespace blender::bke::anonymous_attribute_inferencing2 {
 
-struct AttributeSetSource {
+struct ReferenceSetInfo {
   enum class Type {
     /** Geometry outputs may require attributes. */
     GroupOutput,
@@ -33,21 +33,21 @@ struct AttributeSetSource {
 
   linear_allocator::ChunkedList<const bNodeSocket *> potential_data_origins;
 
-  AttributeSetSource(Type type, const int index) : type(type), index(index)
+  ReferenceSetInfo(Type type, const int index) : type(type), index(index)
   {
     BLI_assert(ELEM(type, Type::GroupInput, Type::GroupOutput));
   }
 
-  AttributeSetSource(Type type, const bNodeSocket *socket) : type(type), socket(socket)
+  ReferenceSetInfo(Type type, const bNodeSocket *socket) : type(type), socket(socket)
   {
     BLI_assert(ELEM(type, Type::Local));
   }
 
-  friend std::ostream &operator<<(std::ostream &stream, const AttributeSetSource &source);
+  friend std::ostream &operator<<(std::ostream &stream, const ReferenceSetInfo &source);
 };
 
 struct AnonymousAttributesInfo {
-  Vector<AttributeSetSource> attribute_sets;
+  Vector<ReferenceSetInfo> attribute_sets;
 
   BoundedBitSpan required_attribute_sets(const bNodeSocket &socket) const;
 };

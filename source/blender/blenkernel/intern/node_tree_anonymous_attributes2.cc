@@ -28,21 +28,21 @@ using bits::BitInt;
 using nodes::NodeDeclaration;
 namespace aal = nodes::aal;
 
-std::ostream &operator<<(std::ostream &stream, const AttributeSetSource &source)
+std::ostream &operator<<(std::ostream &stream, const ReferenceSetInfo &info)
 {
-  switch (source.type) {
-    case AttributeSetSource::Type::GroupOutput:
-      stream << "Group Output: " << source.index;
+  switch (info.type) {
+    case ReferenceSetInfo::Type::GroupOutput:
+      stream << "Group Output: " << info.index;
       break;
-    case AttributeSetSource::Type::GroupInput:
-      stream << "Group Input: " << source.index;
+    case ReferenceSetInfo::Type::GroupInput:
+      stream << "Group Input: " << info.index;
       break;
-    case AttributeSetSource::Type::Local:
-      stream << "Local: " << source.socket->name;
+    case ReferenceSetInfo::Type::Local:
+      stream << "Local: " << info.socket->name;
       break;
   }
   stream << " (";
-  for (const bNodeSocket *socket : source.potential_data_origins) {
+  for (const bNodeSocket *socket : info.potential_data_origins) {
     stream << socket->name << ", ";
   }
   stream << ")";
@@ -104,12 +104,12 @@ static const aal::RelationsInNode *get_relations_if_possible(const bNode &node)
   return node_decl->anonymous_attribute_relations();
 }
 
-static bool can_contain_attribute_reference(const eNodeSocketDatatype socket_type)
+static bool can_contain_reference(const eNodeSocketDatatype socket_type)
 {
   return nodes::socket_type_supports_fields(socket_type);
 }
 
-static bool can_contain_attribute_data(const eNodeSocketDatatype socket_type)
+static bool can_contain_referenced_data(const eNodeSocketDatatype socket_type)
 {
   return ELEM(socket_type, SOCK_GEOMETRY);
 }
@@ -183,7 +183,7 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
       case GEO_NODE_REPEAT_OUTPUT: {
         aal::RelationsInNode &relations = scope.construct<aal::RelationsInNode>();
         for (const bNodeSocket *socket : node->output_sockets()) {
-          if (can_contain_attribute_data(eNodeSocketDatatype(socket->type))) {
+          if (can_contain_referenced_data(eNodeSocketDatatype(socket->type))) {
             for (const bNodeSocket *other_output : node->output_sockets()) {
               if (socket_may_have_reference(*other_output)) {
                 relations.available_relations.append({other_output->index(), socket->index()});
@@ -192,7 +192,7 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
           }
         }
         for (const bNodeSocket *socket : node->input_sockets()) {
-          if (can_contain_attribute_data(eNodeSocketDatatype(socket->type))) {
+          if (can_contain_referenced_data(eNodeSocketDatatype(socket->type))) {
             for (const bNodeSocket *other_input : node->input_sockets()) {
               if (socket_may_have_reference(*other_input)) {
                 relations.eval_relations.append({other_input->index(), socket->index()});
@@ -211,7 +211,7 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
             const int input_index = input_items_start + i;
             const int output_index = output_items_start + i;
             const bNodeSocket &input_socket = node->input_socket(input_index);
-            if (can_contain_attribute_data(eNodeSocketDatatype(input_socket.type))) {
+            if (can_contain_referenced_data(eNodeSocketDatatype(input_socket.type))) {
               relations.propagate_relations.append({input_index, output_index});
             }
             else if (socket_may_have_reference(input_socket)) {
@@ -232,15 +232,13 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
   return relations_by_node;
 }
 
-static Vector<AttributeSetSource> find_attribute_set_sources(
+static Vector<ReferenceSetInfo> find_reference_sets(
     const bNodeTree &tree,
     const Span<const aal::RelationsInNode *> &relations_by_node,
     LinearAllocator<> &allocator,
-    Vector<int> &r_group_output_set_sources)
+    Vector<int> &r_group_output_reference_sets)
 {
-  const bNodeTreeZones &zones = *tree.zones();
-
-  Vector<AttributeSetSource> attribute_set_sources;
+  Vector<ReferenceSetInfo> reference_sets;
   const Span<const bNodeTreeInterfaceSocket *> interface_inputs = tree.interface_inputs();
   const Span<const bNodeTreeInterfaceSocket *> interface_outputs = tree.interface_outputs();
 
@@ -249,29 +247,29 @@ static Vector<AttributeSetSource> find_attribute_set_sources(
     const bNodeTreeInterfaceSocket &interface_input = *interface_inputs[input_i];
     const bNodeSocketType *stype = interface_input.socket_typeinfo();
     const eNodeSocketDatatype socket_type = stype ? eNodeSocketDatatype(stype->type) : SOCK_CUSTOM;
-    if (can_contain_attribute_reference(socket_type)) {
-      attribute_set_sources.append({AttributeSetSource::Type::GroupInput, input_i});
+    if (can_contain_reference(socket_type)) {
+      reference_sets.append({ReferenceSetInfo::Type::GroupInput, input_i});
     }
   }
-  /* Handle attributes required by output geometries. */
+  /* Handle references required by output geometries. */
   for (const int output_i : interface_outputs.index_range()) {
     const bNodeTreeInterfaceSocket &interface_output = *interface_outputs[output_i];
     const bNodeSocketType *stype = interface_output.socket_typeinfo();
     const eNodeSocketDatatype socket_type = stype ? eNodeSocketDatatype(stype->type) : SOCK_CUSTOM;
-    if (can_contain_attribute_data(socket_type)) {
-      r_group_output_set_sources.append(attribute_set_sources.append_and_get_index(
-          {AttributeSetSource::Type::GroupOutput, output_i}));
+    if (can_contain_referenced_data(socket_type)) {
+      r_group_output_reference_sets.append(
+          reference_sets.append_and_get_index({ReferenceSetInfo::Type::GroupOutput, output_i}));
     }
   }
-  /* All attributes referenced by the sources found so far can exist on all geometry inputs. */
+  /* All references referenced by the sources found so far can exist on all geometry inputs. */
   for (const int input_i : interface_inputs.index_range()) {
     const bNodeTreeInterfaceSocket &interface_input = *interface_inputs[input_i];
     const bNodeSocketType *stype = interface_input.socket_typeinfo();
     const eNodeSocketDatatype socket_type = stype ? eNodeSocketDatatype(stype->type) : SOCK_CUSTOM;
-    if (can_contain_attribute_data(socket_type)) {
+    if (can_contain_referenced_data(socket_type)) {
       for (const bNode *node : tree.group_input_nodes()) {
         const bNodeSocket &socket = node->output_socket(input_i);
-        for (AttributeSetSource &source : attribute_set_sources) {
+        for (ReferenceSetInfo &source : reference_sets) {
           source.potential_data_origins.append(allocator, &socket);
         }
       }
@@ -291,41 +289,39 @@ static Vector<AttributeSetSource> find_attribute_set_sources(
         if (!reference_socket.is_directly_linked() || !data_socket.is_directly_linked()) {
           continue;
         }
-        attribute_set_sources.append({AttributeSetSource::Type::Local, &reference_socket});
-        attribute_set_sources.last().potential_data_origins.append(allocator, &data_socket);
+        reference_sets.append({ReferenceSetInfo::Type::Local, &reference_socket});
+        reference_sets.last().potential_data_origins.append(allocator, &data_socket);
       }
     }
   }
 
-  return attribute_set_sources;
+  return reference_sets;
 }
 
-static void set_initial_data_and_reference_bits(
-    const bNodeTree &tree,
-    const Span<AttributeSetSource> attribute_set_sources,
-    BitGroupVector<> &r_potential_data_by_socket,
-    BitGroupVector<> &r_potential_reference_by_socket)
+static void set_initial_data_and_reference_bits(const bNodeTree &tree,
+                                                const Span<ReferenceSetInfo> reference_sets,
+                                                BitGroupVector<> &r_potential_data_by_socket,
+                                                BitGroupVector<> &r_potential_reference_by_socket)
 {
-  for (const int attribute_set_i : attribute_set_sources.index_range()) {
-    const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
-    for (const bNodeSocket *socket : attribute_set_source.potential_data_origins) {
-      r_potential_data_by_socket[socket->index_in_tree()][attribute_set_i].set();
+  for (const int reference_set_i : reference_sets.index_range()) {
+    const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
+    for (const bNodeSocket *socket : reference_set.potential_data_origins) {
+      r_potential_data_by_socket[socket->index_in_tree()][reference_set_i].set();
     }
-    switch (attribute_set_source.type) {
-      case AttributeSetSource::Type::Local: {
-        r_potential_reference_by_socket[attribute_set_source.socket->index_in_tree()]
-                                       [attribute_set_i]
-                                           .set();
+    switch (reference_set.type) {
+      case ReferenceSetInfo::Type::Local: {
+        r_potential_reference_by_socket[reference_set.socket->index_in_tree()][reference_set_i]
+            .set();
         break;
       }
-      case AttributeSetSource::Type::GroupInput: {
+      case ReferenceSetInfo::Type::GroupInput: {
         for (const bNode *node : tree.group_input_nodes()) {
-          const bNodeSocket &socket = node->output_socket(attribute_set_source.index);
-          r_potential_reference_by_socket[socket.index_in_tree()][attribute_set_i].set();
+          const bNodeSocket &socket = node->output_socket(reference_set.index);
+          r_potential_reference_by_socket[socket.index_in_tree()][reference_set_i].set();
         }
         break;
       }
-      case AttributeSetSource::Type::GroupOutput: {
+      case ReferenceSetInfo::Type::GroupOutput: {
         /* Nothing to do. */
         break;
       }
@@ -333,13 +329,13 @@ static void set_initial_data_and_reference_bits(
   }
 }
 
-static BitVector<> get_attribute_sources_coming_from_outside(
+static BitVector<> get_references_coming_from_outside_zone(
     const bNodeTreeZone &zone,
     const BitGroupVector<> &potential_data_by_socket,
     const BitGroupVector<> &potential_reference_by_socket)
 {
   BitVector<> found(potential_data_by_socket.group_size(), false);
-  /* Gather attribute sources from into the zone from the outside, either through the input
+  /* Gather references that are passed into the zone from the outside, either through the input
    * node or border links. */
   for (const bNodeSocket *socket : zone.input_node->input_sockets()) {
     const int src = socket->index_in_tree();
@@ -453,19 +449,18 @@ static bool pass_left_to_right(const bNodeTree &tree,
           r_potential_reference_by_socket[dst_index] |= r_potential_reference_by_socket[src_index];
         }
 
-        const BitVector<> attributes_sources_coming_from_outside =
-            get_attribute_sources_coming_from_outside(
-                *zone, r_potential_data_by_socket, r_potential_reference_by_socket);
+        const BitVector<> outside_references = get_references_coming_from_outside_zone(
+            *zone, r_potential_data_by_socket, r_potential_reference_by_socket);
 
         /* Propagate within output node.*/
         for (const int i : IndexRange(items_num)) {
           const int src_index = output_node.input_socket(i).index_in_tree();
           const int dst_index = output_node.output_socket(i).index_in_tree();
           bits::inplace_or_masked(r_potential_data_by_socket[dst_index],
-                                  attributes_sources_coming_from_outside,
+                                  outside_references,
                                   r_potential_data_by_socket[src_index]);
           bits::inplace_or_masked(r_potential_reference_by_socket[dst_index],
-                                  attributes_sources_coming_from_outside,
+                                  outside_references,
                                   r_potential_reference_by_socket[src_index]);
         }
 
@@ -478,10 +473,10 @@ static bool pass_left_to_right(const bNodeTree &tree,
           const int out_index = body_input_socket.index_in_tree();
           needs_extra_pass |= or_into_each_other_masked(r_potential_data_by_socket[in_index],
                                                         r_potential_data_by_socket[out_index],
-                                                        attributes_sources_coming_from_outside);
+                                                        outside_references);
           needs_extra_pass |= or_into_each_other_masked(r_potential_reference_by_socket[in_index],
                                                         r_potential_reference_by_socket[out_index],
-                                                        attributes_sources_coming_from_outside);
+                                                        outside_references);
         }
         break;
       }
@@ -492,28 +487,27 @@ static bool pass_left_to_right(const bNodeTree &tree,
 
 static void prepare_required_data_for_outputs(
     const bNodeTree &tree,
-    const Span<AttributeSetSource> attribute_set_sources,
+    const Span<ReferenceSetInfo> reference_sets,
     const Span<int> group_output_set_sources,
     const BitGroupVector<> &potential_data_by_socket,
     const BitGroupVector<> &potential_reference_by_socket,
-    const bNodeTreeZones *zones,
     BitGroupVector<> &r_required_data_by_socket)
 {
   /* Initialize required data for group output sockets. */
   if (const bNode *group_output_node = tree.group_output_node()) {
     const Span<const bNodeSocket *> sockets = group_output_node->input_sockets().drop_back(1);
-    for (const int attribute_set_i : group_output_set_sources) {
-      const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
-      BLI_assert(attribute_set_source.type == AttributeSetSource::Type::GroupOutput);
-      const int index = sockets[attribute_set_source.index]->index_in_tree();
-      r_required_data_by_socket[index][attribute_set_i].set();
+    for (const int reference_set_i : group_output_set_sources) {
+      const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
+      BLI_assert(reference_set.type == ReferenceSetInfo::Type::GroupOutput);
+      const int index = sockets[reference_set.index]->index_in_tree();
+      r_required_data_by_socket[index][reference_set_i].set();
     }
-    BitVector<> potential_output_references(attribute_set_sources.size(), false);
+    BitVector<> potential_output_references(reference_sets.size(), false);
     for (const bNodeSocket *socket : sockets) {
       potential_output_references |= potential_reference_by_socket[socket->index_in_tree()];
     }
     for (const bNodeSocket *socket : sockets) {
-      if (!can_contain_attribute_data(eNodeSocketDatatype(socket->type))) {
+      if (!can_contain_referenced_data(eNodeSocketDatatype(socket->type))) {
         continue;
       }
       const int index = socket->index_in_tree();
@@ -661,7 +655,7 @@ class bNodeTreeBitGroupVectorOptions : public bNodeTreeToDotOptions {
 
 static aal::RelationsInNode get_tree_relations(
     const bNodeTree &tree,
-    const Span<AttributeSetSource> attribute_set_sources,
+    const Span<ReferenceSetInfo> reference_sets,
     const BitGroupVector<> &potential_data_by_socket,
     const BitGroupVector<> &potential_reference_by_socket,
     const BitGroupVector<> &required_data_by_socket)
@@ -673,23 +667,22 @@ static aal::RelationsInNode get_tree_relations(
     const bNodeTreeInterfaceSocket &interface_input = *tree.interface_inputs()[input_i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(
         interface_input.socket_typeinfo()->type);
-    if (can_contain_attribute_data(socket_type)) {
+    if (can_contain_referenced_data(socket_type)) {
       BitVector<> required_data(required_data_by_socket.group_size(), false);
       for (const bNode *input_node : tree.group_input_nodes()) {
         required_data |=
             required_data_by_socket[input_node->output_socket(input_i).index_in_tree()];
       }
-      bits::foreach_1_index(required_data, [&](const int attribute_set_i) {
-        const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
-        switch (attribute_set_source.type) {
-          case AttributeSetSource::Type::GroupOutput: {
+      bits::foreach_1_index(required_data, [&](const int reference_set_i) {
+        const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
+        switch (reference_set.type) {
+          case ReferenceSetInfo::Type::GroupOutput: {
             tree_relations.propagate_relations.append_non_duplicates(
-                {input_i, attribute_set_source.index});
+                {input_i, reference_set.index});
             break;
           }
-          case AttributeSetSource::Type::GroupInput: {
-            tree_relations.eval_relations.append_non_duplicates(
-                {attribute_set_source.index, input_i});
+          case ReferenceSetInfo::Type::GroupInput: {
+            tree_relations.eval_relations.append_non_duplicates({reference_set.index, input_i});
             break;
           }
           default:
@@ -702,15 +695,15 @@ static aal::RelationsInNode get_tree_relations(
     for (const int output_i : tree.interface_outputs().index_range()) {
       const bNodeSocket &socket = group_output_node->input_socket(output_i);
       const eNodeSocketDatatype socket_type = eNodeSocketDatatype(socket.type);
-      if (can_contain_attribute_reference(socket_type)) {
+      if (can_contain_reference(socket_type)) {
         const BoundedBitSpan potential_references =
             potential_reference_by_socket[socket.index_in_tree()];
-        bits::foreach_1_index(potential_references, [&](const int attribute_set_i) {
-          const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
-          switch (attribute_set_source.type) {
-            case AttributeSetSource::Type::GroupInput: {
+        bits::foreach_1_index(potential_references, [&](const int reference_set_i) {
+          const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
+          switch (reference_set.type) {
+            case ReferenceSetInfo::Type::GroupInput: {
               tree_relations.reference_relations.append_non_duplicates(
-                  {attribute_set_source.index, output_i});
+                  {reference_set.index, output_i});
               break;
             }
             default: {
@@ -719,21 +712,21 @@ static aal::RelationsInNode get_tree_relations(
           }
         });
       }
-      if (can_contain_attribute_data(socket_type)) {
+      if (can_contain_referenced_data(socket_type)) {
         const BoundedBitSpan potential_data = potential_data_by_socket[socket.index_in_tree()];
-        bits::foreach_1_index(potential_data, [&](const int attribute_set_i) {
-          const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
-          switch (attribute_set_source.type) {
-            case AttributeSetSource::Type::Local: {
+        bits::foreach_1_index(potential_data, [&](const int reference_set_i) {
+          const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
+          switch (reference_set.type) {
+            case ReferenceSetInfo::Type::Local: {
               for (const bNodeSocket *other_socket :
                    group_output_node->input_sockets().drop_back(1))
               {
-                if (!can_contain_attribute_reference(eNodeSocketDatatype(other_socket->type))) {
+                if (!can_contain_reference(eNodeSocketDatatype(other_socket->type))) {
                   continue;
                 }
                 const BoundedBitSpan potential_references =
                     potential_reference_by_socket[other_socket->index_in_tree()];
-                if (potential_references[attribute_set_i].test()) {
+                if (potential_references[reference_set_i].test()) {
                   tree_relations.available_relations.append_non_duplicates(
                       {other_socket->index(), output_i});
                 }
@@ -769,16 +762,16 @@ void analyse(const bNodeTree &tree)
   Array<const aal::RelationsInNode *> relations_by_node = prepare_relations_by_node(tree, scope);
 
   Vector<int> group_output_set_sources;
-  Vector<AttributeSetSource> attribute_set_sources = find_attribute_set_sources(
+  Vector<ReferenceSetInfo> reference_sets = find_reference_sets(
       tree, relations_by_node, allocator, group_output_set_sources);
 
   const int sockets_num = tree.all_sockets().size();
-  const int attribute_sets_num = attribute_set_sources.size();
+  const int reference_sets_num = reference_sets.size();
 
-  BitGroupVector<> potential_data_by_socket(sockets_num, attribute_sets_num, false);
-  BitGroupVector<> potential_reference_by_socket(sockets_num, attribute_sets_num, false);
+  BitGroupVector<> potential_data_by_socket(sockets_num, reference_sets_num, false);
+  BitGroupVector<> potential_reference_by_socket(sockets_num, reference_sets_num, false);
   set_initial_data_and_reference_bits(
-      tree, attribute_set_sources, potential_data_by_socket, potential_reference_by_socket);
+      tree, reference_sets, potential_data_by_socket, potential_reference_by_socket);
 
   /* Propagate data and reference from left to right. This may need to be done multiple times
    * because there may be some backlinks. */
@@ -787,13 +780,12 @@ void analyse(const bNodeTree &tree)
   {
   }
 
-  BitGroupVector<> required_data_by_socket(sockets_num, attribute_sets_num, false);
+  BitGroupVector<> required_data_by_socket(sockets_num, reference_sets_num, false);
   prepare_required_data_for_outputs(tree,
-                                    attribute_set_sources,
+                                    reference_sets,
                                     group_output_set_sources,
                                     potential_data_by_socket,
                                     potential_reference_by_socket,
-                                    zones,
                                     required_data_by_socket);
 
   while (pass_right_to_left(
@@ -810,18 +802,18 @@ void analyse(const bNodeTree &tree)
   for (const bNodeSocket *socket : tree.all_sockets()) {
     const bNode &node = socket->owner_node();
     const BoundedBitSpan required_data = required_data_by_socket[socket->index_in_tree()];
-    bits::foreach_1_index(required_data, [&](const int attribute_set_i) {
-      const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
-      switch (attribute_set_source.type) {
-        case AttributeSetSource::Type::Local: {
-          const bNodeSocket &source_socket = *attribute_set_source.socket;
+    bits::foreach_1_index(required_data, [&](const int reference_set_i) {
+      const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
+      switch (reference_set.type) {
+        case ReferenceSetInfo::Type::Local: {
+          const bNodeSocket &source_socket = *reference_set.socket;
           const bNode &source_node = source_socket.owner_node();
           BLI_assert(source_node.runtime->toposort_left_to_right_index <=
                      node.runtime->toposort_left_to_right_index);
           break;
         }
-        case AttributeSetSource::Type::GroupInput:
-        case AttributeSetSource::Type::GroupOutput: {
+        case ReferenceSetInfo::Type::GroupInput:
+        case ReferenceSetInfo::Type::GroupOutput: {
           /* These are always available.*/
           break;
         }
@@ -831,7 +823,7 @@ void analyse(const bNodeTree &tree)
 #endif
 
   aal::RelationsInNode tree_relations = get_tree_relations(tree,
-                                                           attribute_set_sources,
+                                                           reference_sets,
                                                            potential_data_by_socket,
                                                            potential_reference_by_socket,
                                                            required_data_by_socket);
@@ -842,10 +834,10 @@ void analyse(const bNodeTree &tree)
   //                                   {required_data_by_socket, potential_reference_by_socket}))
   //           << "\n\n";
 
-  // for (const AttributeSetSource &attribute_set_source : attribute_set_sources) {
-  //   std::cout << attribute_set_source << "\n";
+  // for (const ReferenceSetInfo &reference_set : reference_sets) {
+  //   std::cout << reference_set << "\n";
   // }
-  // std::cout << attribute_set_sources.size() << "\n\n";
+  // std::cout << reference_sets.size() << "\n\n";
   std::cout << tree.id.name << "\n";
   std::cout << tree_relations << "\n\n";
 }
