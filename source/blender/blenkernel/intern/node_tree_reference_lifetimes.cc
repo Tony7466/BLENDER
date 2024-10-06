@@ -235,7 +235,6 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
 static Vector<ReferenceSetInfo> find_reference_sets(
     const bNodeTree &tree,
     const Span<const aal::RelationsInNode *> &relations_by_node,
-    LinearAllocator<> &allocator,
     Vector<int> &r_group_output_reference_sets)
 {
   Vector<ReferenceSetInfo> reference_sets;
@@ -270,7 +269,7 @@ static Vector<ReferenceSetInfo> find_reference_sets(
       for (const bNode *node : tree.group_input_nodes()) {
         const bNodeSocket &socket = node->output_socket(input_i);
         for (ReferenceSetInfo &source : reference_sets) {
-          source.potential_data_origins.append(allocator, &socket);
+          source.potential_data_origins.append(&socket);
         }
       }
     }
@@ -290,7 +289,7 @@ static Vector<ReferenceSetInfo> find_reference_sets(
           continue;
         }
         reference_sets.append({ReferenceSetInfo::Type::LocalReferenceSet, &reference_socket});
-        reference_sets.last().potential_data_origins.append(allocator, &data_socket);
+        reference_sets.last().potential_data_origins.append(&data_socket);
       }
     }
   }
@@ -745,25 +744,28 @@ static aal::RelationsInNode get_tree_relations(
   return tree_relations;
 }
 
-void analyse(const bNodeTree &tree)
+static std::unique_ptr<ReferenceLifetimesInfo> make_reference_lifetimes_info(const bNodeTree &tree)
 {
   tree.ensure_topology_cache();
   tree.ensure_interface_cache();
   if (tree.has_available_link_cycle()) {
-    return;
+    return {};
   }
   const bNodeTreeZones *zones = tree.zones();
   if (zones == nullptr) {
-    return;
+    return {};
   }
 
+  std::unique_ptr<ReferenceLifetimesInfo> reference_lifetimes_info =
+      std::make_unique<ReferenceLifetimesInfo>();
+
   ResourceScope scope;
-  LinearAllocator<> &allocator = scope.linear_allocator();
   Array<const aal::RelationsInNode *> relations_by_node = prepare_relations_by_node(tree, scope);
 
   Vector<int> group_output_set_sources;
-  Vector<ReferenceSetInfo> reference_sets = find_reference_sets(
-      tree, relations_by_node, allocator, group_output_set_sources);
+  reference_lifetimes_info->reference_sets = find_reference_sets(
+      tree, relations_by_node, group_output_set_sources);
+  const Span<ReferenceSetInfo> reference_sets = reference_lifetimes_info->reference_sets;
 
   const int sockets_num = tree.all_sockets().size();
   const int reference_sets_num = reference_sets.size();
@@ -822,24 +824,44 @@ void analyse(const bNodeTree &tree)
   }
 #endif
 
-  aal::RelationsInNode tree_relations = get_tree_relations(tree,
-                                                           reference_sets,
-                                                           potential_data_by_socket,
-                                                           potential_reference_by_socket,
-                                                           required_data_by_socket);
+/* Only useful when debugging th reference lifetimes analysis. */
+#if 0
+  std::cout << "\n\n"
+            << node_tree_to_dot(tree,
+                                bNodeTreeBitGroupVectorOptions(
+                                    {required_data_by_socket, potential_reference_by_socket}))
 
-  // std::cout << "\n\n"
-  //           << node_tree_to_dot(tree,
-  //                               bNodeTreeBitGroupVectorOptions(
-  //                                   {required_data_by_socket, potential_reference_by_socket}))
-  //           << "\n\n";
+            << "\n\n";
+#endif
 
-  // for (const ReferenceSetInfo &reference_set : reference_sets) {
-  //   std::cout << reference_set << "\n";
-  // }
-  // std::cout << reference_sets.size() << "\n\n";
-  std::cout << tree.id.name << "\n";
-  std::cout << tree_relations << "\n\n";
+  reference_lifetimes_info->tree_relations = get_tree_relations(tree,
+                                                                reference_sets,
+                                                                potential_data_by_socket,
+                                                                potential_reference_by_socket,
+                                                                required_data_by_socket);
+  reference_lifetimes_info->required_data_by_socket = std::move(required_data_by_socket);
+  return reference_lifetimes_info;
+}
+
+bool analyse_reference_lifetimes(bNodeTree &tree)
+{
+  std::unique_ptr<ReferenceLifetimesInfo> reference_lifetimes_info = make_reference_lifetimes_info(
+      tree);
+  std::unique_ptr<ReferenceLifetimesInfo> &stored_reference_lifetimes_info =
+      tree.runtime->reference_lifetimes_info;
+  if (!reference_lifetimes_info) {
+    if (!tree.runtime->reference_lifetimes_info) {
+      return false;
+    }
+    stored_reference_lifetimes_info.reset();
+    return true;
+  }
+
+  const bool interface_changed = stored_reference_lifetimes_info &&
+                                 stored_reference_lifetimes_info->tree_relations !=
+                                     reference_lifetimes_info->tree_relations;
+  stored_reference_lifetimes_info = std::move(reference_lifetimes_info);
+  return interface_changed;
 }
 
 }  // namespace blender::bke::node_tree_reference_lifetimes

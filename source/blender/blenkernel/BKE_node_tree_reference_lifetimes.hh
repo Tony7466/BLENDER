@@ -6,7 +6,6 @@
 #pragma once
 
 #include "BLI_bit_group_vector.hh"
-#include "BLI_linear_allocator_chunked_list.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_node_types.h"
@@ -35,7 +34,7 @@ struct ReferenceSetInfo {
   };
 
   /** Sockets that may contain the referenced data. */
-  linear_allocator::ChunkedList<const bNodeSocket *> potential_data_origins;
+  Vector<const bNodeSocket *> potential_data_origins;
 
   ReferenceSetInfo(Type type, const int index) : type(type), index(index)
   {
@@ -50,12 +49,12 @@ struct ReferenceSetInfo {
   friend std::ostream &operator<<(std::ostream &stream, const ReferenceSetInfo &source);
 };
 
-struct AnonymousAttributesInfo {
-  Vector<ReferenceSetInfo> attribute_sets;
-
-  BoundedBitSpan required_attribute_sets(const bNodeSocket &socket) const;
+struct ReferenceLifetimesInfo {
+  Vector<ReferenceSetInfo> reference_sets;
+  BitGroupVector<> required_data_by_socket;
+  nodes::aal::RelationsInNode tree_relations;
 };
 
-void analyse(const bNodeTree &tree);
+bool analyse_reference_lifetimes(bNodeTree &tree);
 
 }  // namespace blender::bke::node_tree_reference_lifetimes

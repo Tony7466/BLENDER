@@ -512,7 +512,9 @@ class NodeTreeMainUpdater {
       if (anonymous_attribute_inferencing::update_anonymous_attribute_relations(ntree)) {
         result.interface_changed = true;
       }
-      node_tree_reference_lifetimes::analyse(ntree);
+      if (node_tree_reference_lifetimes::analyse_reference_lifetimes(ntree)) {
+        result.interface_changed = true;
+      }
       if (nodes::gizmos::update_tree_gizmo_propagation(ntree)) {
         result.interface_changed = true;
       }

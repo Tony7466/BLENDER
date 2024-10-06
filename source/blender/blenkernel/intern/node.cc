@@ -71,6 +71,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_interface.hh"
+#include "BKE_node_tree_reference_lifetimes.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_preview_image.hh"
@@ -245,6 +246,18 @@ static void ntree_copy_data(Main * /*bmain*/,
       if (auto *socket_geometry_source = std::get_if<SocketGeometrySource>(&geometry_source.data))
       {
         socket_geometry_source->socket = socket_map.lookup(socket_geometry_source->socket);
+      }
+    }
+  }
+  if (ntree_src->runtime->reference_lifetimes_info) {
+    using namespace node_tree_reference_lifetimes;
+    dst_runtime.reference_lifetimes_info = std::make_unique<ReferenceLifetimesInfo>(
+        *ntree_src->runtime->reference_lifetimes_info);
+    for (ReferenceSetInfo &reference_set : dst_runtime.reference_lifetimes_info->reference_sets) {
+      if (ELEM(reference_set.type, ReferenceSetInfo::Type::LocalReferenceSet)) {
+        for (auto &socket : reference_set.potential_data_origins) {
+          socket = socket_map.lookup(socket);
+        }
       }
     }
   }
