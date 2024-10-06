@@ -550,11 +550,27 @@ static eV3D_OpEvent view3d_navigate_event(ViewOpsData *vod, const wmEvent *event
       if (event->type == EVT_ESCKEY) {
         return VIEW_CANCEL;
       }
+      if (event->type == EVT_DKEY) {
+        vod->viewops_flag ^= VIEWOPS_FLAG_DEPTH_NAVIGATE;
+      }
+      if (event->type == EVT_HKEY) {
+        U.uiflag ^= USER_ZOOM_HORIZ;
+        U.runtime.is_dirty = true;
+      }
+      if (event->type == EVT_IKEY) {
+        U.uiflag ^= USER_ZOOM_INVERT;
+        U.runtime.is_dirty = true;
+      }
+      if (event->type == EVT_PKEY) {
+        U.uiflag ^= USER_AUTOPERSP;
+        U.runtime.is_dirty = true;
+      }
       if (event->type == EVT_SKEY) {
         vod->viewops_flag ^= VIEWOPS_FLAG_ORBIT_SELECT;
       }
-      if (event->type == EVT_DKEY) {
-        vod->viewops_flag ^= VIEWOPS_FLAG_DEPTH_NAVIGATE;
+      if (event->type == EVT_TKEY) {
+        U.flag ^= USER_TRACKBALL;
+        U.runtime.is_dirty = true;
       }
       if (event->type == EVT_ZKEY) {
         vod->viewops_flag ^= VIEWOPS_FLAG_ZOOM_TO_MOUSE;
@@ -649,6 +665,14 @@ static void view3d_navigate_update_status(bContext *C, wmOperator *op, ViewOpsDa
     status.item_bool(IFACE_("Zoom Mouse Position"),
                      vod->viewops_flag & VIEWOPS_FLAG_ZOOM_TO_MOUSE,
                      ICON_EVENT_Z);
+    status.item_bool(IFACE_("Invert"), U.uiflag & USER_ZOOM_INVERT, ICON_EVENT_I);
+    status.item_bool(IFACE_("Horizontal"), U.uiflag & USER_ZOOM_HORIZ, ICON_EVENT_H);
+  }
+  if (vod->nav_type->flag & VIEWOPS_FLAG_PERSP_ENSURE) {
+    status.item_bool(IFACE_("Auto Perspective"), U.uiflag & USER_AUTOPERSP, ICON_EVENT_P);
+  }
+  if (vod->nav_type->flag & VIEWOPS_FLAG_ORBIT_SELECT) {
+    status.item_bool(IFACE_("Trackball"), U.flag & USER_TRACKBALL, ICON_EVENT_T);
   }
 }
 
