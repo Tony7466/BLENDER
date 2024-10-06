@@ -1434,8 +1434,6 @@ def km_uv_editor(params):
         ])
 
     if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
-        # Quick switch to select tool, since left select can't easily
-        # select with any tool active.
         items.extend([
             op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
         ])
@@ -1781,8 +1779,6 @@ def km_view3d(params):
         ])
 
     if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
-        # Quick switch to select tool, since left select can't easily
-        # select with any tool active.
         items.extend([
             op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
         ])
@@ -2916,13 +2912,6 @@ def km_sequencercommon(params):
         ("sequencer.refresh_all", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
     ])
 
-    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
-        # Quick switch to select tool, since left select can't easily
-        # select with any tool active.
-        items.extend([
-            op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
-        ])
-
     return keymap
 
 
@@ -3056,6 +3045,11 @@ def km_sequencer(params):
         ("sequencer.retiming_show", {"type": 'R', "value": 'PRESS', "ctrl": True}, None),
     ])
 
+    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        items.extend([
+            op_tool_cycle("builtin.select", {"type": 'W', "value": 'PRESS'}),
+        ])
+
     return keymap
 
 
@@ -3135,6 +3129,11 @@ def km_sequencerpreview(params):
     else:
         items.extend([
             ("sequencer.cursor_set", params.cursor_set_event, None),
+        ])
+
+    if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        items.extend([
+            op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
         ])
 
     return keymap
