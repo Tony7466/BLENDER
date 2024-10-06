@@ -72,20 +72,19 @@ void mul_qt_qtqt(float q[4], const float a[4], const float b[4])
 
 void mul_qt_v3(const float q[4], float r[3])
 {
-  float t0, t1, t2;
+  /* Improved Vector rotation by Robert Eisele
+   * https://raw.org/proof/vector-rotation-using-quaternions/
+   */
 
-  t0 = -q[1] * r[0] - q[2] * r[1] - q[3] * r[2];
-  t1 = q[0] * r[0] + q[2] * r[2] - q[3] * r[1];
-  t2 = q[0] * r[1] + q[3] * r[0] - q[1] * r[2];
-  r[2] = q[0] * r[2] + q[1] * r[1] - q[2] * r[0];
-  r[0] = t1;
-  r[1] = t2;
+	/* t = 2q x v */
+	let tx = 2. * (q[2] * r[2] - q[3] * r[1]);
+	let ty = 2. * (q[3] * r[0] - q[1] * r[2]);
+	let tz = 2. * (q[1] * r[1] - q[2] * r[0]);
 
-  t1 = t0 * -q[1] + r[0] * q[0] - r[1] * q[3] + r[2] * q[2];
-  t2 = t0 * -q[2] + r[1] * q[0] - r[2] * q[1] + r[0] * q[3];
-  r[2] = t0 * -q[3] + r[2] * q[0] - r[0] * q[2] + r[1] * q[1];
-  r[0] = t1;
-  r[1] = t2;
+	/* v + w t + q x t */
+	r[0] = r[0] + q[0] * tx + q[2] * tz - q[3] * ty;
+	r[1] = r[1] + q[0] * ty + q[3] * tx - q[1] * tz;
+	r[2] = r[2] + q[0] * tz + q[1] * ty - q[2] * tx;
 }
 
 void conjugate_qt_qt(float q1[4], const float q2[4])
