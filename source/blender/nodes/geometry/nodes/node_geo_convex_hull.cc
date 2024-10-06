@@ -10,6 +10,7 @@
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 
+#include "GEO_join_geometries.hh"
 #include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
@@ -23,7 +24,7 @@ namespace blender::nodes::node_geo_convex_hull_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
-  b.add_output<decl::Geometry>("Convex Hull");
+  b.add_output<decl::Geometry>("Convex Hull").propagate_all();
 }
 
 #ifdef WITH_BULLET
@@ -207,7 +208,8 @@ static Mesh *compute_hull(const GeometrySet &geometry_set)
   return hull_from_bullet(geometry_set.get_mesh(), positions);
 }
 
-static void convex_hull_grease_pencil(GeometrySet &geometry_set)
+static void convex_hull_grease_pencil(GeometrySet &geometry_set,
+                                      const AttributeFilter &attribute_filter)
 {
   using namespace blender::bke::greasepencil;
 
@@ -231,13 +233,8 @@ static void convex_hull_grease_pencil(GeometrySet &geometry_set)
     return;
   }
 
-  InstancesComponent &instances_component =
-      geometry_set.get_component_for_write<InstancesComponent>();
-  bke::Instances *instances = instances_component.get_for_write();
-  if (instances == nullptr) {
-    instances = new bke::Instances();
-    instances_component.replace(instances);
-  }
+  bke::Instances *instances = instances = new bke::Instances();
+
   for (Mesh *mesh : mesh_by_layer) {
     if (!mesh) {
       /* Add an empty reference so the number of layers and instances match.
@@ -251,6 +248,20 @@ static void convex_hull_grease_pencil(GeometrySet &geometry_set)
     const int handle = instances->add_reference(bke::InstanceReference{temp_set});
     instances->add_instance(handle, float4x4::identity());
   }
+
+  bke::copy_attributes(grease_pencil.attributes(),
+                       bke::AttrDomain::Layer,
+                       bke::AttrDomain::Instance,
+                       attribute_filter,
+                       instances->attributes_for_write());
+
+  InstancesComponent &dst_component = geometry_set.get_component_for_write<InstancesComponent>();
+  GeometrySet new_instances = geometry::join_geometries(
+      {GeometrySet::from_instances(dst_component.release()),
+       GeometrySet::from_instances(instances)},
+      attribute_filter);
+  dst_component.replace(new_instances.get_component_for_write<InstancesComponent>().release());
+
   geometry_set.replace_grease_pencil(nullptr);
 }
 
@@ -259,6 +270,8 @@ static void convex_hull_grease_pencil(GeometrySet &geometry_set)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
+
+  const NodeAttributeFilter &attribute_filter = params.get_attribute_filter("Convex Hull");
 
 #ifdef WITH_BULLET
 
@@ -269,7 +282,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     geometry_set.replace_mesh(mesh);
     if (geometry_set.has_grease_pencil()) {
-      convex_hull_grease_pencil(geometry_set);
+      convex_hull_grease_pencil(geometry_set, attribute_filter);
     }
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
   });

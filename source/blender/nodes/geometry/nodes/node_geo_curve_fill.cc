@@ -33,7 +33,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .hide_value()
       .description(
           "An index used to group curves together. Filling is done separately for each group");
-  b.add_output<decl::Geometry>("Mesh");
+  b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -244,7 +244,8 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
 
 static void curve_fill_calculate(GeometrySet &geometry_set,
                                  const GeometryNodeCurveFillMode mode,
-                                 const Field<int> &group_index)
+                                 const Field<int> &group_index,
+                                 const AttributeFilter &attribute_filter)
 {
   const CDT_output_type output_type = (mode == GEO_NODE_CURVE_FILL_MODE_NGONS) ?
                                           CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES :
@@ -279,13 +280,7 @@ static void curve_fill_calculate(GeometrySet &geometry_set,
       mesh_by_layer[layer_index] = cdts_to_mesh(results);
     }
     if (!mesh_by_layer.is_empty()) {
-      InstancesComponent &instances_component =
-          geometry_set.get_component_for_write<InstancesComponent>();
-      bke::Instances *instances = instances_component.get_for_write();
-      if (instances == nullptr) {
-        instances = new bke::Instances();
-        instances_component.replace(instances);
-      }
+      bke::Instances *instances = new bke::Instances();
       for (Mesh *mesh : mesh_by_layer) {
         if (!mesh) {
           /* Add an empty reference so the number of layers and instances match.
@@ -299,6 +294,20 @@ static void curve_fill_calculate(GeometrySet &geometry_set,
         const int handle = instances->add_reference(bke::InstanceReference{temp_set});
         instances->add_instance(handle, float4x4::identity());
       }
+
+      bke::copy_attributes(grease_pencil.attributes(),
+                           bke::AttrDomain::Layer,
+                           bke::AttrDomain::Instance,
+                           attribute_filter,
+                           instances->attributes_for_write());
+
+      InstancesComponent &dst_component =
+          geometry_set.get_component_for_write<InstancesComponent>();
+      GeometrySet new_instances = geometry::join_geometries(
+          {GeometrySet::from_instances(dst_component.release()),
+           GeometrySet::from_instances(instances)},
+          attribute_filter);
+      dst_component.replace(new_instances.get_component_for_write<InstancesComponent>().release());
     }
     geometry_set.replace_grease_pencil(nullptr);
   }
@@ -312,8 +321,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   const NodeGeometryCurveFill &storage = node_storage(params.node());
   const GeometryNodeCurveFillMode mode = (GeometryNodeCurveFillMode)storage.mode;
 
-  geometry_set.modify_geometry_sets(
-      [&](GeometrySet &geometry_set) { curve_fill_calculate(geometry_set, mode, group_index); });
+  const NodeAttributeFilter &attribute_filter = params.get_attribute_filter("Mesh");
+
+  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    curve_fill_calculate(geometry_set, mode, group_index, attribute_filter);
+  });
 
   params.set_output("Mesh", std::move(geometry_set));
 }
