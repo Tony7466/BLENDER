@@ -537,27 +537,73 @@ class NODE_MT_category_simulation(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        node_add_menu.add_simulation_zone(layout, label="Simulation")
-        node_add_menu.add_node_type(layout, "GeometryNodeCollisionShape")
+        layout.menu("NODE_MT_category_simulation_read")
+        # layout.menu("NODE_MT_category_simulation_sample")
+        layout.menu("NODE_MT_category_simulation_write")
+        layout.separator()
+        layout.menu("NODE_MT_category_simulation_operations")
+        layout.menu("NODE_MT_category_simulation_primitives")
+        # layout.menu("NODE_MT_category_simulation_topology")
+        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+
+
+class NODE_MT_category_simulation_read(Menu):
+    bl_idname = "NODE_MT_category_simulation_read"
+    bl_label = "Read"
+
+    def draw(self, _context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMass")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMotionState")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyActivationState")
+        layout.separator()
+        # TODO add constraint inputs here
+        layout.separator()
+        node_add_menu.add_node_type(layout, "GeometryNodeInputShapeBounds")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputShapeInfo")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputShapeCenterOfMass")
         node_add_menu.add_node_type(layout, "GeometryNodeCollisionShapeInertia")
+        node_add_menu.add_node_type(layout, "GeometryNodeShapeGeometry")
+        node_add_menu.draw_assets_for_catalog(layout, "Simulation/Read")
+
+
+class NODE_MT_category_simulation_write(Menu):
+    bl_idname = "NODE_MT_category_simulation_write"
+    bl_label = "Write"
+
+    def draw(self, _context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeSetBodyMotionType")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetBodyActivationState")
+        node_add_menu.draw_assets_for_catalog(layout, "Simulation/Write")
+
+
+class NODE_MT_category_simulation_operations(Menu):
+    bl_idname = "NODE_MT_category_simulation_operations"
+    bl_label = "Operations"
+
+    def draw(self, _context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeBodiesToPoints")
+        layout.separator()
+        node_add_menu.add_node_type(layout, "GeometryNodePhysicsTimeStep")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyAngularImpulse")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyForce")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyImpulse")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyTorque")
-        node_add_menu.add_node_type(layout, "GeometryNodePhysicsTimeStep")
+        node_add_menu.draw_assets_for_catalog(layout, "Simulation/Operations")
+
+
+class NODE_MT_category_simulation_primitives(Menu):
+    bl_idname = "NODE_MT_category_simulation_primitives"
+    bl_label = "Primitives"
+
+    def draw(self, _context):
+        layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsWorld")
+        node_add_menu.add_node_type(layout, "GeometryNodeCollisionShape")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsConstraints")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMass")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMotionState")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyActivationState")
-        node_add_menu.add_node_type(layout, "GeometryNodeSetBodyMotionType")
-        node_add_menu.add_node_type(layout, "GeometryNodeSetBodyActivationState")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputShapeBounds")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputShapeInfo")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputShapeCenterOfMass")
-        node_add_menu.add_node_type(layout, "GeometryNodeShapeGeometry")
-        node_add_menu.add_node_type(layout, "GeometryNodeBodiesToPoints")
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+        node_add_menu.draw_assets_for_catalog(layout, "Simulation/Primitives")
 
 
 class NODE_MT_category_GEO_TEXT(Menu):
@@ -876,6 +922,10 @@ classes = (
     NODE_MT_geometry_node_mesh_topology,
     NODE_MT_category_GEO_POINT,
     NODE_MT_category_simulation,
+    NODE_MT_category_simulation_read,
+    NODE_MT_category_simulation_write,
+    NODE_MT_category_simulation_operations,
+    NODE_MT_category_simulation_primitives,
     NODE_MT_category_GEO_VOLUME,
     NODE_MT_geometry_node_GEO_VOLUME_READ,
     NODE_MT_geometry_node_volume_sample,
