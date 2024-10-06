@@ -233,9 +233,10 @@ static void ntree_copy_data(Main * /*bmain*/,
         *ntree_src->runtime->reference_lifetimes_info);
     for (ReferenceSetInfo &reference_set : dst_runtime.reference_lifetimes_info->reference_sets) {
       if (ELEM(reference_set.type, ReferenceSetInfo::Type::LocalReferenceSet)) {
-        for (auto &socket : reference_set.potential_data_origins) {
-          socket = socket_map.lookup(socket);
-        }
+        reference_set.socket = socket_map.lookup(reference_set.socket);
+      }
+      for (auto &socket : reference_set.potential_data_origins) {
+        socket = socket_map.lookup(socket);
       }
     }
   }
