@@ -141,6 +141,8 @@ RESHAPE(float3x3, float3x4)
 #define bool2_array bool2[]
 #define bool3_array bool3[]
 #define bool4_array bool4[]
+#define ARRAY_T(type) type[]
+#define ARRAY_V
 
 #define SHADER_LIBRARY_CREATE_INFO(a)
 #define VERTEX_SHADER_CREATE_INFO(a)

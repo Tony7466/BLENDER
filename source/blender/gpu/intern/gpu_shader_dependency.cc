@@ -1037,8 +1037,8 @@ struct GPUSource {
       GPUSource *dependency_source = nullptr;
 
       {
-        /* Include directive has been mangled on purpose. See `datatoc.cc`. */
-        pos = source.find("//nclude \"", pos + 1);
+        /* Include directive has been mangled on purpose. See `glsl_preprocess.hh`. */
+        pos = source.find("\n//include \"", pos + 1);
         if (pos == -1) {
           return 0;
         }
