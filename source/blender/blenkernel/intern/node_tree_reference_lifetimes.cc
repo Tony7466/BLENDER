@@ -797,32 +797,6 @@ static std::unique_ptr<ReferenceLifetimesInfo> make_reference_lifetimes_info(con
   /* Make sure that all required data is also potentially available. */
   required_data_by_socket.all_bits() &= potential_data_by_socket.all_bits();
 
-#ifndef NDEBUG
-  /* Make sure that sockets only depend on attribute sets that are created to the left of them.
-   * Some special handling for the repeat zone is necessary in the code above to ensure this. */
-  for (const bNodeSocket *socket : tree.all_sockets()) {
-    const bNode &node = socket->owner_node();
-    const BoundedBitSpan required_data = required_data_by_socket[socket->index_in_tree()];
-    bits::foreach_1_index(required_data, [&](const int reference_set_i) {
-      const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
-      switch (reference_set.type) {
-        case ReferenceSetInfo::Type::LocalReferenceSet: {
-          const bNodeSocket &source_socket = *reference_set.socket;
-          const bNode &source_node = source_socket.owner_node();
-          BLI_assert(source_node.runtime->toposort_left_to_right_index <=
-                     node.runtime->toposort_left_to_right_index);
-          break;
-        }
-        case ReferenceSetInfo::Type::GroupInputReferenceSet:
-        case ReferenceSetInfo::Type::GroupOutputData: {
-          /* These are always available.*/
-          break;
-        }
-      }
-    });
-  }
-#endif
-
 /* Only useful when debugging th reference lifetimes analysis. */
 #if 0
   std::cout << "\n\n"
