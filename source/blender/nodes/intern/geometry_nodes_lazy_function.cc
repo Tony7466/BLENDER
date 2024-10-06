@@ -1524,7 +1524,7 @@ struct BuildGraphParams {
    * Nodes that propagate anonymous attributes have to know which of those attributes to propagate.
    * For that they have an attribute set input for each geometry output.
    */
-  Map<const bNodeSocket *, lf::InputSocket *> lf_attribute_set_input_by_output_geometry_bsocket;
+  Map<const bNodeSocket *, lf::InputSocket *> lf_reference_set_input_by_output;
   /**
    * Multi-input sockets are split into separate sockets, once for each incoming link.
    */
@@ -2247,9 +2247,8 @@ struct GeometryNodesLazyFunctionBuilder {
                                     Map<ReferenceSetIndex, lf::OutputSocket *> &lf_reference_sets)
   {
     const Vector<ReferenceSetIndex> all_required_reference_sets =
-        this->find_all_required_reference_sets(
-            graph_params.lf_attribute_set_input_by_output_geometry_bsocket,
-            graph_params.lf_reference_set_inputs);
+        this->find_all_required_reference_sets(graph_params.lf_reference_set_input_by_output,
+                                               graph_params.lf_reference_set_inputs);
 
     auto add_reference_set_zone_input = [&](const ReferenceSetIndex reference_set_i) {
       lf::GraphInputSocket &lf_graph_input = graph_params.lf_graph.add_input(
@@ -2414,9 +2413,8 @@ struct GeometryNodesLazyFunctionBuilder {
       Map<ReferenceSetIndex, lf::OutputSocket *> &lf_reference_sets)
   {
     const Vector<ReferenceSetIndex> all_required_reference_sets =
-        this->find_all_required_reference_sets(
-            graph_params.lf_attribute_set_input_by_output_geometry_bsocket,
-            graph_params.lf_reference_set_inputs);
+        this->find_all_required_reference_sets(graph_params.lf_reference_set_input_by_output,
+                                               graph_params.lf_reference_set_inputs);
     for (const ReferenceSetIndex reference_set_i : all_required_reference_sets) {
       const ReferenceSetInfo &reference_set = reference_lifetimes_.reference_sets[reference_set_i];
       switch (reference_set.type) {
@@ -2451,12 +2449,11 @@ struct GeometryNodesLazyFunctionBuilder {
   }
 
   Vector<ReferenceSetIndex> find_all_required_reference_sets(
-      const Map<const bNodeSocket *, lf::InputSocket *>
-          &lf_attribute_set_input_by_output_geometry_bsocket,
+      const Map<const bNodeSocket *, lf::InputSocket *> &lf_reference_set_input_by_output,
       const MultiValueMap<ReferenceSetIndex, lf::InputSocket *> &lf_reference_set_inputs)
   {
     BitVector<> all_required_reference_sets(reference_lifetimes_.reference_sets.size(), false);
-    for (const bNodeSocket *bsocket : lf_attribute_set_input_by_output_geometry_bsocket.keys()) {
+    for (const bNodeSocket *bsocket : lf_reference_set_input_by_output.keys()) {
       all_required_reference_sets |=
           reference_lifetimes_.required_data_by_socket[bsocket->index_in_tree()];
     }
@@ -2474,8 +2471,7 @@ struct GeometryNodesLazyFunctionBuilder {
   {
     JoinReferenceSetsCache join_reference_sets_cache;
     /* Pass reference sets to nodes so that they know which attributes to propagate. */
-    for (const auto &item : graph_params.lf_attribute_set_input_by_output_geometry_bsocket.items())
-    {
+    for (const auto &item : graph_params.lf_reference_set_input_by_output.items()) {
       const bNodeSocket &output_bsocket = *item.key;
       lf::InputSocket &lf_reference_set_input = *item.value;
 
@@ -2494,7 +2490,7 @@ struct GeometryNodesLazyFunctionBuilder {
         lf_reference_sets_to_join.append(lf_reference_sets.lookup(reference_set_i));
       });
 
-      if (lf::OutputSocket *lf_joined_reference_set = this->join_attribute_sets(
+      if (lf::OutputSocket *lf_joined_reference_set = this->join_reference_sets(
               lf_reference_sets_to_join,
               join_reference_sets_cache,
               graph_params.lf_graph,
@@ -2597,7 +2593,7 @@ struct GeometryNodesLazyFunctionBuilder {
   /**
    * Join multiple attributes set into a single attribute set that can be passed into a node.
    */
-  lf::OutputSocket *join_attribute_sets(const Span<lf::OutputSocket *> lf_attribute_set_sockets,
+  lf::OutputSocket *join_reference_sets(const Span<lf::OutputSocket *> lf_attribute_set_sockets,
                                         JoinReferenceSetsCache &cache,
                                         lf::Graph &lf_graph,
                                         Set<lf::InputSocket *> &socket_usage_inputs)
@@ -2980,7 +2976,7 @@ struct GeometryNodesLazyFunctionBuilder {
                                        [bsocket->index_in_all_outputs()];
         if (lf_input_index != -1) {
           lf::InputSocket &lf_input = lf_node.input(lf_input_index);
-          graph_params.lf_attribute_set_input_by_output_geometry_bsocket.add(bsocket, &lf_input);
+          graph_params.lf_reference_set_input_by_output.add(bsocket, &lf_input);
         }
       }
     }
@@ -3107,8 +3103,8 @@ struct GeometryNodesLazyFunctionBuilder {
         const int lf_input_index = mapping_->lf_input_index_for_attribute_propagation_to_output
                                        [bsocket->index_in_all_outputs()];
         if (lf_input_index != -1) {
-          graph_params.lf_attribute_set_input_by_output_geometry_bsocket.add(
-              bsocket, &lf_node.input(lf_input_index));
+          graph_params.lf_reference_set_input_by_output.add(bsocket,
+                                                            &lf_node.input(lf_input_index));
         }
       }
     }
