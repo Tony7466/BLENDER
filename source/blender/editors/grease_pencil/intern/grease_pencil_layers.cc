@@ -6,7 +6,6 @@
  * \ingroup edgreasepencil
  */
 
-#include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_report.hh"
@@ -19,8 +18,6 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
-
 #include "UI_interface.hh"
 
 #include "DNA_scene_types.h"
@@ -1089,83 +1086,6 @@ static void GREASE_PENCIL_OT_layer_duplicate_object(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "mode", copy_mode, 0, "Mode", "");
 }
 
-static AttributeOwner active_frame_get_attribute_owner(bContext *C)
-{
-  using namespace blender::bke::greasepencil;
-  Scene *scene = CTX_data_scene(C);
-  Object *object = CTX_data_active_object(C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-
-  if (!grease_pencil.has_active_layer()) {
-    return AttributeOwner();
-  }
-
-  Layer &layer = *grease_pencil.get_active_layer();
-
-  const int current_frame = scene->r.cfra;
-  Drawing *drawing = grease_pencil.get_drawing_at(layer, current_frame);
-
-  return AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
-}
-
-static bool grease_pencil_layer_attribute_remove_poll(bContext *C)
-{
-  if (!active_grease_pencil_layer_poll(C)) {
-    return false;
-  }
-
-  AttributeOwner owner = active_frame_get_attribute_owner(C);
-  CustomDataLayer *cd_layer = BKE_attributes_active_get(owner);
-
-  if (cd_layer != nullptr) {
-    return true;
-  }
-
-  return false;
-}
-
-static int grease_pencil_layer_attribute_remove_exec(bContext *C, wmOperator *op)
-{
-  using namespace blender::bke::greasepencil;
-  Object *object = CTX_data_active_object(C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-
-  if (!grease_pencil.has_active_layer()) {
-    return OPERATOR_CANCELLED;
-  }
-
-  AttributeOwner owner = active_frame_get_attribute_owner(C);
-  CustomDataLayer *cd_layer = BKE_attributes_active_get(owner);
-
-  if (!BKE_attribute_remove(owner, cd_layer->name, op->reports)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  int *active_index = BKE_attributes_active_index_p(owner);
-  if (*active_index > 0) {
-    *active_index -= 1;
-  }
-
-  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA, &grease_pencil);
-
-  return OPERATOR_FINISHED;
-}
-
-static void GREASE_PENCIL_OT_layer_attribute_remove(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Remove Attribute";
-  ot->idname = "GREASE_PENCIL_OT_layer_attribute_remove";
-  ot->description = "Remove attribute from the active Grease Pencil layer";
-
-  /* callbacks */
-  ot->exec = grease_pencil_layer_attribute_remove_exec;
-  ot->poll = grease_pencil_layer_attribute_remove_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_layers()
@@ -1191,6 +1111,4 @@ void ED_operatortypes_grease_pencil_layers()
   WM_operatortype_append(GREASE_PENCIL_OT_layer_mask_reorder);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_group_color_tag);
   WM_operatortype_append(GREASE_PENCIL_OT_layer_duplicate_object);
-
-  WM_operatortype_append(GREASE_PENCIL_OT_layer_attribute_remove);
 }
