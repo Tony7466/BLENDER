@@ -77,9 +77,9 @@ void mul_qt_v3(const float q[4], float r[3])
    */
 
 	/* t = 2q x v */
-	let tx = 2. * (q[2] * r[2] - q[3] * r[1]);
-	let ty = 2. * (q[3] * r[0] - q[1] * r[2]);
-	let tz = 2. * (q[1] * r[1] - q[2] * r[0]);
+	float tx = 2. * (q[2] * r[2] - q[3] * r[1]);
+	float ty = 2. * (q[3] * r[0] - q[1] * r[2]);
+	float tz = 2. * (q[1] * r[1] - q[2] * r[0]);
 
 	/* v + w t + q x t */
 	r[0] = r[0] + q[0] * tx + q[2] * tz - q[3] * ty;
