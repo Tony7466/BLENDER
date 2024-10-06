@@ -38,6 +38,13 @@ static CLG_LogRef LOG = {"gpu.vulkan"};
 
 namespace blender::gpu {
 
+static Vector<std::string> vk_extension_list;
+
+static const char *vk_extension_get(int i)
+{
+  return vk_extension_list[i].c_str();
+}
+
 static Vector<StringRefNull> missing_capabilities_get(VkPhysicalDevice vk_physical_device)
 {
   Vector<StringRefNull> missing_capabilities;
@@ -513,6 +520,20 @@ void VKBackend::capabilities_init(VKDevice &device)
 
   GCaps.max_parallel_compilations = BLI_system_thread_count();
   GCaps.mem_stats_support = true;
+
+  uint32_t vk_extension_count;
+  vkEnumerateDeviceExtensionProperties(device.physical_device_get(), nullptr, &vk_extension_count, nullptr);
+  GCaps.extensions_len = vk_extension_count;
+
+  Array<VkExtensionProperties> vk_extensions(vk_extension_count);
+  vkEnumerateDeviceExtensionProperties(
+      device.physical_device_get(), nullptr, &vk_extension_count, vk_extensions.data());
+
+  for (VkExtensionProperties &vk_extension : vk_extensions) {
+    vk_extension_list.append(vk_extension.extensionName);
+  }
+
+  GCaps.extension_get = vk_extension_get;
 
   detect_workarounds(device);
 }
