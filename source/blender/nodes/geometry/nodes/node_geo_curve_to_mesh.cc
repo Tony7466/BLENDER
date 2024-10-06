@@ -59,7 +59,7 @@ static void grease_pencil_to_mesh(GeometrySet &geometry_set,
   Array<Mesh *> mesh_by_layer(grease_pencil.layers().size(), nullptr);
 
   for (const int layer_index : grease_pencil.layers().index_range()) {
-    const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
+    const Drawing *drawing = grease_pencil.get_eval_drawing(grease_pencil.layer(layer_index));
     if (drawing == nullptr) {
       continue;
     }
@@ -92,10 +92,9 @@ static void grease_pencil_to_mesh(GeometrySet &geometry_set,
                        attribute_filter,
                        gp_instances->attributes_for_write());
 
-  InstancesComponent &dst_component = geometry_set.get_component_for_write<InstancesComponent>();
-  bke::Instances *dst_instances = dst_component.get_for_write();
+  bke::Instances *dst_instances = geometry_set.get_component_for_write<InstancesComponent>().release();
   GeometrySet new_instances = geometry::join_geometries({GeometrySet::from_instances(dst_instances), GeometrySet::from_instances(gp_instances)}, attribute_filter);
-  
+  geometry_set.get_component_for_write<InstancesComponent>().replace(new_instances.get_component_for_write<InstancesComponent>().release());
 
   geometry_set.replace_grease_pencil(nullptr);
 }
