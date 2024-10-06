@@ -26,18 +26,24 @@
 
 namespace blender::nodes::node_geo_voronoi {
 
+namespace {
+struct AttributeOutputs {
+  std::optional<std::string> cell_id;
+};
+}  // namespace
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(("Sites"));
-  b.add_input<decl::Geometry>(("Domain"));
-  b.add_input<decl::Vector>(("Min"));
-  b.add_input<decl::Vector>(("Max"));
-  b.add_input<decl::Bool>(("Periodic X"));
-  b.add_input<decl::Bool>(("Periodic Y"));
-  b.add_input<decl::Bool>(("Periodic Z"));
+  b.add_input<decl::Geometry>("Sites");
+  b.add_input<decl::Geometry>("Domain");
+  b.add_input<decl::Vector>("Min");
+  b.add_input<decl::Vector>("Max");
+  b.add_input<decl::Bool>("Periodic X");
+  b.add_input<decl::Bool>("Periodic Y");
+  b.add_input<decl::Bool>("Periodic Z");
   b.add_input<decl::Int>("Group ID").hide_value().field_on_all();
   b.add_output<decl::Geometry>("Voronoi");
-  // b.add_output<decl::Int>(N_("Group ID")).field_source();
+  b.add_output<decl::Int>("Cell ID").field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -46,7 +52,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiLayoutSetPropDecorate(layout, false);
 }
 
-static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain, 
+static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain, AttributeOutputs& attribute_outputs, 
                             const float3 &min, const float3 &max, const Field<int>& group_id, 
                             bool x_p, bool y_p, bool z_p){
   const MeshComponent *mesh_comp = sites.get_component<MeshComponent>();
@@ -88,6 +94,7 @@ static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain,
   Vector<float3> verts;
   Vector<int> face_sizes;
   Vector<int> corner_verts;
+  Vector<int> ids;
   double x,y,z;
 
   int offset = 0;
@@ -101,7 +108,7 @@ static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain,
     c.vertices(x,y,z,v);
 
     for(i = 0, j=0; i < neigh.size(); i++){
-      if(neigh[i] > id){
+      if(neigh[i] != id){
         l = f_vert[j];
         n = f_vert[j];
         face_sizes.append(n);
@@ -109,6 +116,7 @@ static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain,
           l=3*f_vert[j+k+1];
           verts.append(float3(v[l],v[l+1],v[l+2]));
           corner_verts.append(offset);
+          ids.append(id);
           offset++;
         }
       }
@@ -133,6 +141,15 @@ static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain,
     offset += size;
   }
 
+  MutableAttributeAccessor mesh_attributes = mesh->attributes_for_write();
+  SpanAttributeWriter<int> cell_id;
+
+  if (attribute_outputs.cell_id) {
+    cell_id = mesh_attributes.lookup_or_add_for_write_only_span<int>(
+        *attribute_outputs.cell_id, AttrDomain::Point);
+    std::copy(ids.begin(), ids.end(), cell_id.span.begin());
+  }
+
   bke::mesh_calc_edges(*mesh, true, false);
   return mesh;
 }
@@ -148,8 +165,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   const GeometrySet domain = params.extract_input<GeometrySet>("Domain");
   Field<int> id_field = params.extract_input<Field<int>>("Group ID");
 
+  // Map<int, std::unique_ptr<GeometrySet>> geometry_by_group_id;
+
+  AttributeOutputs attribute_outputs;
+  attribute_outputs.cell_id = params.get_output_anonymous_attribute_id_if_needed("Cell ID");
+
   if(site_geometry.has_mesh()){
-    Mesh *voronoi = compute_voronoi(site_geometry, domain, min, max, id_field, x_p, y_p, z_p);
+    Mesh *voronoi = compute_voronoi(site_geometry, domain, attribute_outputs, min, max, id_field, x_p, y_p, z_p);
     site_geometry.replace_mesh(voronoi);
   } else {
     params.error_message_add(NodeWarningType::Error,
