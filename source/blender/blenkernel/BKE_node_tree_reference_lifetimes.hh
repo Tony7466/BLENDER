@@ -14,20 +14,20 @@
 
 namespace blender::bke::node_tree_reference_lifetimes {
 
-struct ReferenceSetInfo {
-  enum class Type {
-    /**
-     * Corresponds to geometry outputs that may contain attributes that are propagated from a group
-     * input. In such cases, the caller may provide a set of attributes that should be propagated.
-     */
-    GroupOutputData,
-    /** Field inputs may require attributes. */
-    GroupInputReferenceSet,
-    /** Local fields may require attributes, e.g. the output of the Capture Attribute node.  */
-    LocalReferenceSet,
-  };
+enum class ReferenceSetType {
+  /**
+   * Corresponds to geometry outputs that may contain attributes that are propagated from a group
+   * input. In such cases, the caller may provide a set of attributes that should be propagated.
+   */
+  GroupOutputData,
+  /** Field inputs may require attributes. */
+  GroupInputReferenceSet,
+  /** Local fields may require attributes, e.g. the output of the Capture Attribute node.  */
+  LocalReferenceSet,
+};
 
-  Type type;
+struct ReferenceSetInfo {
+  ReferenceSetType type;
   union {
     /** Used for group interface sockets. */
     int index;
@@ -38,14 +38,15 @@ struct ReferenceSetInfo {
   /** Sockets that may contain the referenced data. */
   Vector<const bNodeSocket *> potential_data_origins;
 
-  ReferenceSetInfo(Type type, const int index) : type(type), index(index)
+  ReferenceSetInfo(ReferenceSetType type, const int index) : type(type), index(index)
   {
-    BLI_assert(ELEM(type, Type::GroupInputReferenceSet, Type::GroupOutputData));
+    BLI_assert(
+        ELEM(type, ReferenceSetType::GroupInputReferenceSet, ReferenceSetType::GroupOutputData));
   }
 
-  ReferenceSetInfo(Type type, const bNodeSocket *socket) : type(type), socket(socket)
+  ReferenceSetInfo(ReferenceSetType type, const bNodeSocket *socket) : type(type), socket(socket)
   {
-    BLI_assert(ELEM(type, Type::LocalReferenceSet));
+    BLI_assert(ELEM(type, ReferenceSetType::LocalReferenceSet));
   }
 
   friend std::ostream &operator<<(std::ostream &stream, const ReferenceSetInfo &source);

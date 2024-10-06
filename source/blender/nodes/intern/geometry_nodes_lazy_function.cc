@@ -63,6 +63,7 @@ using bke::bNodeTreeZones;
 using bke::SocketValueVariant;
 using bke::node_tree_reference_lifetimes::ReferenceLifetimesInfo;
 using bke::node_tree_reference_lifetimes::ReferenceSetInfo;
+using bke::node_tree_reference_lifetimes::ReferenceSetType;
 
 static const CPPType *get_socket_cpp_type(const bke::bNodeSocketType &typeinfo)
 {
@@ -2260,12 +2261,12 @@ struct GeometryNodesLazyFunctionBuilder {
     for (const ReferenceSetIndex reference_set_i : all_required_reference_sets) {
       const ReferenceSetInfo &reference_set = reference_lifetimes_.reference_sets[reference_set_i];
       switch (reference_set.type) {
-        case ReferenceSetInfo::Type::GroupOutputData:
-        case ReferenceSetInfo::Type::GroupInputReferenceSet: {
+        case ReferenceSetType::GroupOutputData:
+        case ReferenceSetType::GroupInputReferenceSet: {
           add_reference_set_zone_input(reference_set_i);
           break;
         }
-        case ReferenceSetInfo::Type::LocalReferenceSet: {
+        case ReferenceSetType::LocalReferenceSet: {
           const bNodeSocket &bsocket = *reference_set.socket;
           if (lf::OutputSocket *lf_socket = graph_params.lf_output_by_bsocket.lookup_default(
                   &bsocket, nullptr))
@@ -2422,7 +2423,7 @@ struct GeometryNodesLazyFunctionBuilder {
     for (const ReferenceSetIndex reference_set_i : all_required_reference_sets) {
       const ReferenceSetInfo &reference_set = reference_lifetimes_.reference_sets[reference_set_i];
       switch (reference_set.type) {
-        case ReferenceSetInfo::Type::LocalReferenceSet: {
+        case ReferenceSetType::LocalReferenceSet: {
           const bNodeSocket &bsocket = *reference_set.socket;
           lf::OutputSocket &lf_socket = *graph_params.lf_output_by_bsocket.lookup(&bsocket);
           lf::OutputSocket *lf_usage_socket = graph_params.usage_by_bsocket.lookup_default(
@@ -2432,7 +2433,7 @@ struct GeometryNodesLazyFunctionBuilder {
           lf_reference_sets.add_new(reference_set_i, &lf_reference_set_socket);
           break;
         }
-        case ReferenceSetInfo::Type::GroupInputReferenceSet: {
+        case ReferenceSetType::GroupInputReferenceSet: {
           const int group_input_i = reference_set.index;
           lf::GraphInputSocket &lf_socket = *group_input_sockets_[group_input_i];
           lf::OutputSocket *lf_usage_socket = group_input_usage_sockets_[group_input_i]->origin();
@@ -2441,7 +2442,7 @@ struct GeometryNodesLazyFunctionBuilder {
           lf_reference_sets.add_new(reference_set_i, &lf_reference_set_socket);
           break;
         }
-        case ReferenceSetInfo::Type::GroupOutputData: {
+        case ReferenceSetType::GroupOutputData: {
           const int group_output_i = reference_set.index;
           lf::GraphInputSocket *lf_reference_set_socket = attribute_set_by_geometry_output_.lookup(
               group_output_i);
@@ -2487,7 +2488,7 @@ struct GeometryNodesLazyFunctionBuilder {
       bits::foreach_1_index(required_reference_sets, [&](const ReferenceSetIndex reference_set_i) {
         const ReferenceSetInfo &reference_set =
             reference_lifetimes_.reference_sets[reference_set_i];
-        if (reference_set.type == ReferenceSetInfo::Type::LocalReferenceSet) {
+        if (reference_set.type == ReferenceSetType::LocalReferenceSet) {
           if (&reference_set.socket->owner_node() == &output_bsocket.owner_node()) {
             /* This reference is created in the current node, so it should not be an input. */
             return;

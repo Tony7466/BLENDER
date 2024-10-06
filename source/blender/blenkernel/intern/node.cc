@@ -232,7 +232,7 @@ static void ntree_copy_data(Main * /*bmain*/,
     dst_runtime.reference_lifetimes_info = std::make_unique<ReferenceLifetimesInfo>(
         *ntree_src->runtime->reference_lifetimes_info);
     for (ReferenceSetInfo &reference_set : dst_runtime.reference_lifetimes_info->reference_sets) {
-      if (ELEM(reference_set.type, ReferenceSetInfo::Type::LocalReferenceSet)) {
+      if (ELEM(reference_set.type, ReferenceSetType::LocalReferenceSet)) {
         reference_set.socket = socket_map.lookup(reference_set.socket);
       }
       for (auto &socket : reference_set.potential_data_origins) {
