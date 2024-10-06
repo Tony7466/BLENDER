@@ -44,7 +44,6 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_node_socket_value.hh"
-#include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_reference_lifetimes.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_type_conversions.hh"
@@ -59,7 +58,6 @@
 
 namespace blender::nodes {
 
-namespace aai = bke::anonymous_attribute_inferencing;
 using bke::bNodeTreeZone;
 using bke::bNodeTreeZones;
 using bke::SocketValueVariant;
@@ -1822,7 +1820,6 @@ class GeometryNodesLazyFunctionSideEffectProvider : public lf::GraphExecutor::Si
 struct GeometryNodesLazyFunctionBuilder {
  private:
   const bNodeTree &btree_;
-  const aai::AnonymousAttributeInferencingResult &attribute_inferencing_;
   const ReferenceLifetimesInfo &reference_lifetimes_;
   ResourceScope &scope_;
   NodeMultiFunctions &node_multi_functions_;
@@ -1872,7 +1869,6 @@ struct GeometryNodesLazyFunctionBuilder {
   GeometryNodesLazyFunctionBuilder(const bNodeTree &btree,
                                    GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
       : btree_(btree),
-        attribute_inferencing_(*btree.runtime->anonymous_attribute_inferencing),
         reference_lifetimes_(*btree.runtime->reference_lifetimes_info),
         scope_(lf_graph_info.scope),
         node_multi_functions_(lf_graph_info.scope.construct<NodeMultiFunctions>(btree)),
@@ -2338,7 +2334,7 @@ struct GeometryNodesLazyFunctionBuilder {
     this->build_group_input_usages(graph_params);
     this->add_default_inputs(graph_params);
 
-    this->build_attribute_propagation_input_node(lf_graph);
+    this->build_attribute_propagation_inputs(lf_graph);
 
     Map<ReferenceSetIndex, lf::OutputSocket *> lf_reference_sets;
     this->build_reference_sets_outside_of_zones(graph_params, lf_reference_sets);
@@ -2472,55 +2468,6 @@ struct GeometryNodesLazyFunctionBuilder {
     Vector<ReferenceSetIndex> indices;
     bits::foreach_1_index(all_required_reference_sets,
                           [&](const int index) { indices.append(index); });
-    return indices;
-  }
-
-  Vector<int> find_all_required_field_source_indices(
-      const Map<const bNodeSocket *, lf::InputSocket *>
-          &lf_attribute_set_input_by_output_geometry_bsocket,
-      const MultiValueMap<int, lf::InputSocket *> &lf_attribute_set_input_by_field_source_index)
-  {
-    BitVector<> all_required_field_sources(attribute_inferencing_.all_field_sources.size(), false);
-    for (const bNodeSocket *geometry_output_bsocket :
-         lf_attribute_set_input_by_output_geometry_bsocket.keys())
-    {
-      all_required_field_sources |=
-          attribute_inferencing_
-              .required_fields_by_geometry_socket[geometry_output_bsocket->index_in_tree()];
-    }
-    for (const int field_source_index : lf_attribute_set_input_by_field_source_index.keys()) {
-      all_required_field_sources[field_source_index].set();
-    }
-
-    Vector<int> indices;
-    bits::foreach_1_index(all_required_field_sources, [&](const int i) { indices.append(i); });
-    return indices;
-  }
-
-  Vector<int> find_all_required_caller_propagation_indices(
-      const Map<const bNodeSocket *, lf::InputSocket *>
-          &lf_attribute_set_input_by_output_geometry_bsocket,
-      const MultiValueMap<int, lf::InputSocket *>
-          &lf_attribute_set_input_by_caller_propagation_index)
-  {
-    BitVector<> all_required_caller_propagation_indices(
-        attribute_inferencing_.propagated_output_geometry_indices.size(), false);
-    for (const bNodeSocket *geometry_output_bs :
-         lf_attribute_set_input_by_output_geometry_bsocket.keys())
-    {
-      all_required_caller_propagation_indices |=
-          attribute_inferencing_
-              .propagate_to_output_by_geometry_socket[geometry_output_bs->index_in_tree()];
-    }
-    for (const int caller_propagation_index :
-         lf_attribute_set_input_by_caller_propagation_index.keys())
-    {
-      all_required_caller_propagation_indices[caller_propagation_index].set();
-    }
-
-    Vector<int> indices;
-    bits::foreach_1_index(all_required_caller_propagation_indices,
-                          [&](const int i) { indices.append(i); });
     return indices;
   }
 
@@ -3832,10 +3779,9 @@ struct GeometryNodesLazyFunctionBuilder {
    * should be propagated. Therefore, every one of these outputs gets a corresponding attribute
    * set input.
    */
-  void build_attribute_propagation_input_node(lf::Graph &lf_graph)
+  void build_attribute_propagation_inputs(lf::Graph &lf_graph)
   {
-    const aal::RelationsInNode &tree_relations =
-        btree_.runtime->anonymous_attribute_inferencing->tree_relations;
+    const aal::RelationsInNode &tree_relations = reference_lifetimes_.tree_relations;
     Vector<int> output_indices;
     for (const aal::PropagateRelation &relation : tree_relations.propagate_relations) {
       output_indices.append_non_duplicates(relation.to_geometry_output);

@@ -23,7 +23,6 @@
 #include "BKE_node.hh"
 #include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_reference_lifetimes.hh"
 #include "BKE_node_tree_update.hh"
 
@@ -509,9 +508,6 @@ class NodeTreeMainUpdater {
         result.interface_changed = true;
       }
       this->update_from_field_inference(ntree);
-      if (anonymous_attribute_inferencing::update_anonymous_attribute_relations(ntree)) {
-        result.interface_changed = true;
-      }
       if (node_tree_reference_lifetimes::analyse_reference_lifetimes(ntree)) {
         result.interface_changed = true;
       }
