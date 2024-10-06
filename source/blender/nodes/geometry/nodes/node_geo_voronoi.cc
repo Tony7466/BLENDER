@@ -1,21 +1,11 @@
 #include "BLI_array_utils.hh"
-#include "BLI_task.hh"
 #include "BLI_vector_set.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_customdata.hh"
-#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
-#include "BKE_mesh_runtime.hh"
-
-#include "GEO_mesh_selection.hh"
-#include "GEO_randomize.hh"
-
-#include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -41,20 +31,15 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Periodic X");
   b.add_input<decl::Bool>("Periodic Y");
   b.add_input<decl::Bool>("Periodic Z");
+  b.add_input<decl::Bool>("Boundary");
   b.add_input<decl::Int>("Group ID").hide_value().field_on_all();
   b.add_output<decl::Geometry>("Voronoi");
   b.add_output<decl::Int>("Cell ID").field_on_all();
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
-}
-
 static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain, AttributeOutputs& attribute_outputs, 
                             const float3 &min, const float3 &max, const Field<int>& group_id, 
-                            bool x_p, bool y_p, bool z_p){
+                            bool x_p, bool y_p, bool z_p, bool boundary){
   const MeshComponent *mesh_comp = sites.get_component<MeshComponent>();
   const Mesh *site_mesh = mesh_comp->get();
   const Span<float3> positions = site_mesh->vert_positions();
@@ -66,7 +51,6 @@ static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain, Attr
   field_evaluator.add(group_id);
   field_evaluator.evaluate();
   const VArray<int> group_ids = field_evaluator.get_evaluated<int>(0);
-  const VArraySpan<int> group_ids_span{group_ids};
   
   // Set the computational grid size
   const int n_x=7,n_y=7,n_z=14;
@@ -108,7 +92,7 @@ static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain, Attr
     c.vertices(x,y,z,v);
 
     for(i = 0, j=0; i < neigh.size(); i++){
-      if(neigh[i] != id){
+      if(neigh[i] != id && (boundary || neigh[i] > -1)){
         l = f_vert[j];
         n = f_vert[j];
         face_sizes.append(n);
@@ -148,6 +132,7 @@ static Mesh *compute_voronoi(GeometrySet& sites, const GeometrySet& domain, Attr
     cell_id = mesh_attributes.lookup_or_add_for_write_only_span<int>(
         *attribute_outputs.cell_id, AttrDomain::Point);
     std::copy(ids.begin(), ids.end(), cell_id.span.begin());
+    cell_id.finish();
   }
 
   bke::mesh_calc_edges(*mesh, true, false);
@@ -162,6 +147,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bool x_p = params.extract_input<bool>("Periodic X");
   const bool y_p = params.extract_input<bool>("Periodic Y");
   const bool z_p = params.extract_input<bool>("Periodic Z");
+  const bool boundary = params.extract_input<bool>("Boundary");
   const GeometrySet domain = params.extract_input<GeometrySet>("Domain");
   Field<int> id_field = params.extract_input<Field<int>>("Group ID");
 
@@ -171,7 +157,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   attribute_outputs.cell_id = params.get_output_anonymous_attribute_id_if_needed("Cell ID");
 
   if(site_geometry.has_mesh()){
-    Mesh *voronoi = compute_voronoi(site_geometry, domain, attribute_outputs, min, max, id_field, x_p, y_p, z_p);
+    Mesh *voronoi = compute_voronoi(site_geometry, domain, attribute_outputs, 
+                                    min, max, id_field, 
+                                    x_p, y_p, z_p, boundary);
     site_geometry.replace_mesh(voronoi);
   } else {
     params.error_message_add(NodeWarningType::Error,
@@ -188,7 +176,6 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_VORONOI, "Voronoi", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  ntype.draw_buttons = node_layout;
   blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
