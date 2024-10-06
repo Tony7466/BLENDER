@@ -34,14 +34,8 @@ std::ostream &operator<<(std::ostream &stream, const AttributeSetSource &source)
     case AttributeSetSource::Type::GroupOutput:
       stream << "Group Output: " << source.index;
       break;
-    case AttributeSetSource::Type::ClosureOutput:
-      stream << "Closure Output: " << source.socket->name;
-      break;
     case AttributeSetSource::Type::GroupInput:
       stream << "Group Input: " << source.index;
-      break;
-    case AttributeSetSource::Type::ClosureInput:
-      stream << "Closure Input: " << source.socket->name;
       break;
     case AttributeSetSource::Type::Local:
       stream << "Local: " << source.socket->name;
@@ -112,13 +106,12 @@ static const aal::RelationsInNode *get_relations_if_possible(const bNode &node)
 
 static bool can_contain_attribute_reference(const eNodeSocketDatatype socket_type)
 {
-  return nodes::socket_type_supports_fields(socket_type) ||
-         ELEM(socket_type, SOCK_BUNDLE, SOCK_CLOSURE);
+  return nodes::socket_type_supports_fields(socket_type);
 }
 
 static bool can_contain_attribute_data(const eNodeSocketDatatype socket_type)
 {
-  return ELEM(socket_type, SOCK_GEOMETRY, SOCK_BUNDLE, SOCK_CLOSURE);
+  return ELEM(socket_type, SOCK_GEOMETRY);
 }
 
 static const bNodeTreeZone *get_zone_of_node_if_full(const bNodeTreeZones *zones,
@@ -144,11 +137,6 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
   for (const bNode *node : tree.all_nodes()) {
     const aal::RelationsInNode *node_relations = nullptr;
     switch (node->type) {
-      case GEO_NODE_CLOSURE_INPUT:
-      case GEO_NODE_CLOSURE_OUTPUT: {
-        /* These nodes need special handling and don't use normal node relations. */
-        break;
-      }
       case GEO_NODE_SIMULATION_INPUT:
       case GEO_NODE_SIMULATION_OUTPUT:
       case GEO_NODE_BAKE: {
@@ -248,8 +236,7 @@ static Vector<AttributeSetSource> find_attribute_set_sources(
     const bNodeTree &tree,
     const Span<const aal::RelationsInNode *> &relations_by_node,
     LinearAllocator<> &allocator,
-    Vector<int> &r_group_output_set_sources,
-    Map<const bNodeTreeZone *, linear_allocator::ChunkedList<int>> &r_closure_output_set_sources)
+    Vector<int> &r_group_output_set_sources)
 {
   const bNodeTreeZones &zones = *tree.zones();
 
@@ -290,48 +277,6 @@ static Vector<AttributeSetSource> find_attribute_set_sources(
       }
     }
   }
-  for (const bNodeTreeZone *zone : zones.zones) {
-    if (zone->output_node->type != GEO_NODE_CLOSURE_OUTPUT) {
-      continue;
-    }
-    if (!zone->input_node || !zone->output_node) {
-      continue;
-    }
-    const Span<const bNodeSocket *> closure_input_sockets =
-        zone->input_node->output_sockets().drop_back(1);
-    const Span<const bNodeSocket *> closure_output_sockets =
-        zone->output_node->input_sockets().drop_back(1);
-
-    int found_sources_num = 0;
-    for (const bNodeSocket *closure_input_socket : closure_input_sockets) {
-      if (can_contain_attribute_reference(eNodeSocketDatatype(closure_input_socket->type))) {
-        attribute_set_sources.append(
-            {AttributeSetSource::Type::ClosureInput, closure_input_socket});
-        found_sources_num++;
-      }
-    }
-    for (const bNodeSocket *closure_output_socket : closure_output_sockets) {
-      if (can_contain_attribute_data(eNodeSocketDatatype(closure_output_socket->type))) {
-        r_closure_output_set_sources.lookup_or_add_default(zone).append(
-            allocator,
-            attribute_set_sources.append_and_get_index(
-                {AttributeSetSource::Type::ClosureOutput, closure_output_socket}));
-        found_sources_num++;
-      }
-    }
-    if (found_sources_num == 0) {
-      continue;
-    }
-    for (const bNodeSocket *closure_input_socket : closure_input_sockets) {
-      if (can_contain_attribute_data(eNodeSocketDatatype(closure_input_socket->type))) {
-        for (AttributeSetSource &source :
-             attribute_set_sources.as_mutable_span().take_back(found_sources_num))
-        {
-          source.potential_data_origins.append(allocator, closure_input_socket);
-        }
-      }
-    }
-  }
   for (const bNode *node : tree.all_nodes()) {
     if (node->is_muted()) {
       continue;
@@ -367,7 +312,6 @@ static void set_initial_data_and_reference_bits(
       r_potential_data_by_socket[socket->index_in_tree()][attribute_set_i].set();
     }
     switch (attribute_set_source.type) {
-      case AttributeSetSource::Type::ClosureInput:
       case AttributeSetSource::Type::Local: {
         r_potential_reference_by_socket[attribute_set_source.socket->index_in_tree()]
                                        [attribute_set_i]
@@ -381,8 +325,7 @@ static void set_initial_data_and_reference_bits(
         }
         break;
       }
-      case AttributeSetSource::Type::GroupOutput:
-      case AttributeSetSource::Type::ClosureOutput: {
+      case AttributeSetSource::Type::GroupOutput: {
         /* Nothing to do. */
         break;
       }
@@ -551,8 +494,6 @@ static void prepare_required_data_for_outputs(
     const bNodeTree &tree,
     const Span<AttributeSetSource> attribute_set_sources,
     const Span<int> group_output_set_sources,
-    const Map<const bNodeTreeZone *, linear_allocator::ChunkedList<int>>
-        &closure_output_set_sources,
     const BitGroupVector<> &potential_data_by_socket,
     const BitGroupVector<> &potential_reference_by_socket,
     const bNodeTreeZones *zones,
@@ -579,32 +520,6 @@ static void prepare_required_data_for_outputs(
       r_required_data_by_socket[index] |= potential_output_references;
       /* Make sure that only available data is also required. This is enforced in the end anyway,
        * but may reduce some unnecessary work. */
-      r_required_data_by_socket[index] &= potential_data_by_socket[index];
-    }
-  }
-  /* Initialize required data for closure output sockets. */
-  for (const bNodeTreeZone *zone : zones->zones) {
-    if (zone->output_node->type != GEO_NODE_CLOSURE_OUTPUT) {
-      continue;
-    }
-    if (!zone->input_node || !zone->output_node) {
-      continue;
-    }
-    const Span<const bNodeSocket *> sockets = zone->output_node->input_sockets().drop_back(1);
-    for (const int attribute_set_i : closure_output_set_sources.lookup(zone)) {
-      const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
-      BLI_assert(attribute_set_source.type == AttributeSetSource::Type::ClosureOutput);
-      const int index = attribute_set_source.socket->index_in_tree();
-      r_required_data_by_socket[index][attribute_set_i].set();
-    }
-    BitVector<> potential_output_references(attribute_set_sources.size(), false);
-    for (const bNodeSocket *socket : sockets) {
-      if (!can_contain_attribute_data(eNodeSocketDatatype(socket->type))) {
-        continue;
-      }
-      const int index = socket->index_in_tree();
-      r_required_data_by_socket[index] |= potential_output_references;
-      /* Make sure that only available data is also required. */
       r_required_data_by_socket[index] &= potential_data_by_socket[index];
     }
   }
@@ -854,9 +769,8 @@ void analyse(const bNodeTree &tree)
   Array<const aal::RelationsInNode *> relations_by_node = prepare_relations_by_node(tree, scope);
 
   Vector<int> group_output_set_sources;
-  Map<const bNodeTreeZone *, linear_allocator::ChunkedList<int>> closure_output_set_sources;
   Vector<AttributeSetSource> attribute_set_sources = find_attribute_set_sources(
-      tree, relations_by_node, allocator, group_output_set_sources, closure_output_set_sources);
+      tree, relations_by_node, allocator, group_output_set_sources);
 
   const int sockets_num = tree.all_sockets().size();
   const int attribute_sets_num = attribute_set_sources.size();
@@ -877,7 +791,6 @@ void analyse(const bNodeTree &tree)
   prepare_required_data_for_outputs(tree,
                                     attribute_set_sources,
                                     group_output_set_sources,
-                                    closure_output_set_sources,
                                     potential_data_by_socket,
                                     potential_reference_by_socket,
                                     zones,
@@ -900,8 +813,6 @@ void analyse(const bNodeTree &tree)
     bits::foreach_1_index(required_data, [&](const int attribute_set_i) {
       const AttributeSetSource &attribute_set_source = attribute_set_sources[attribute_set_i];
       switch (attribute_set_source.type) {
-        case AttributeSetSource::Type::ClosureOutput:
-        case AttributeSetSource::Type::ClosureInput:
         case AttributeSetSource::Type::Local: {
           const bNodeSocket &source_socket = *attribute_set_source.socket;
           const bNode &source_node = source_socket.owner_node();

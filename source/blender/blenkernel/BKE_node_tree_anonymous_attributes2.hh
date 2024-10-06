@@ -15,13 +15,11 @@ namespace blender::bke::anonymous_attribute_inferencing2 {
 
 struct AttributeSetSource {
   enum class Type {
-    /** Geometry, closure and bundle outputs may require attributes. */
+    /** Geometry outputs may require attributes. */
     GroupOutput,
-    ClosureOutput,
-    /** Field, closure and bundle input may require attributes. */
+    /** Field inputs may require attributes. */
     GroupInput,
-    ClosureInput,
-    /** Local field, closure and bundle may require attributes.  */
+    /** Local fields may require attributes.  */
     Local,
   };
 
@@ -29,7 +27,7 @@ struct AttributeSetSource {
   union {
     /** Used for group interface sockets. */
     int index;
-    /** Used for closure and local sockets. */
+    /** Used for local sockets. */
     const bNodeSocket *socket;
   };
 
@@ -42,7 +40,7 @@ struct AttributeSetSource {
 
   AttributeSetSource(Type type, const bNodeSocket *socket) : type(type), socket(socket)
   {
-    BLI_assert(ELEM(type, Type::ClosureInput, Type::ClosureOutput, Type::Local));
+    BLI_assert(ELEM(type, Type::Local));
   }
 
   friend std::ostream &operator<<(std::ostream &stream, const AttributeSetSource &source);
