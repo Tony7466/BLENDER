@@ -75,34 +75,6 @@ static bool or_into_each_other(MutableBoundedBitSpan a, MutableBoundedBitSpan b)
   return true;
 }
 
-static const aal::RelationsInNode *get_group_relations_if_possible(const bNode &node)
-{
-  BLI_assert(node.is_group());
-  const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node.id);
-  if (!group) {
-    return nullptr;
-  }
-  if (!bke::node_tree_is_registered(group)) {
-    return nullptr;
-  }
-  if (!group->runtime->reference_lifetimes_info) {
-    return nullptr;
-  }
-  return &group->runtime->reference_lifetimes_info->tree_relations;
-}
-
-static const aal::RelationsInNode *get_relations_if_possible(const bNode &node)
-{
-  if (node.is_group()) {
-    return get_group_relations_if_possible(node);
-  }
-  const NodeDeclaration *node_decl = node.declaration();
-  if (node_decl == nullptr) {
-    return nullptr;
-  }
-  return node_decl->anonymous_attribute_relations();
-}
-
 static bool can_contain_reference(const eNodeSocketDatatype socket_type)
 {
   return nodes::socket_type_supports_fields(socket_type);
@@ -221,8 +193,29 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
         node_relations = &relations;
         break;
       }
+      case NODE_REROUTE: {
+        static const aal::RelationsInNode reroute_relations = []() {
+          aal::RelationsInNode relations;
+          relations.propagate_relations.append({0, 0});
+          relations.reference_relations.append({0, 0});
+          return relations;
+        }();
+        node_relations = &reroute_relations;
+        break;
+      }
+      case NODE_GROUP:
+      case NODE_CUSTOM_GROUP: {
+        if (const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id)) {
+          if (group->runtime->reference_lifetimes_info) {
+            node_relations = &group->runtime->reference_lifetimes_info->tree_relations;
+          }
+        }
+        break;
+      }
       default: {
-        node_relations = get_relations_if_possible(*node);
+        if (const NodeDeclaration *node_decl = node->declaration()) {
+          node_relations = node_decl->anonymous_attribute_relations();
+        }
         break;
       }
     }
