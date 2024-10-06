@@ -2273,11 +2273,8 @@ struct GeometryNodesLazyFunctionBuilder {
           {
             lf::OutputSocket *lf_usage_socket = graph_params.usage_by_bsocket.lookup_default(
                 &bsocket, nullptr);
-            lf::OutputSocket &lf_reference_set_socket = this->get_extracted_attributes(
-                *lf_socket,
-                lf_usage_socket,
-                graph_params.lf_graph,
-                graph_params.socket_usage_inputs);
+            lf::OutputSocket &lf_reference_set_socket = this->get_extracted_reference_set(
+                *lf_socket, lf_usage_socket, graph_params);
             lf_reference_sets.add(reference_set_i, &lf_reference_set_socket);
           }
           else {
@@ -2428,8 +2425,8 @@ struct GeometryNodesLazyFunctionBuilder {
           lf::OutputSocket &lf_socket = *graph_params.lf_output_by_bsocket.lookup(&bsocket);
           lf::OutputSocket *lf_usage_socket = graph_params.usage_by_bsocket.lookup_default(
               &bsocket, nullptr);
-          lf::OutputSocket &lf_reference_set_socket = this->get_extracted_attributes(
-              lf_socket, lf_usage_socket, graph_params.lf_graph, graph_params.socket_usage_inputs);
+          lf::OutputSocket &lf_reference_set_socket = this->get_extracted_reference_set(
+              lf_socket, lf_usage_socket, graph_params);
           lf_reference_sets.add_new(reference_set_i, &lf_reference_set_socket);
           break;
         }
@@ -2437,8 +2434,8 @@ struct GeometryNodesLazyFunctionBuilder {
           const int group_input_i = reference_set.index;
           lf::GraphInputSocket &lf_socket = *group_input_sockets_[group_input_i];
           lf::OutputSocket *lf_usage_socket = group_input_usage_sockets_[group_input_i]->origin();
-          lf::OutputSocket &lf_reference_set_socket = this->get_extracted_attributes(
-              lf_socket, lf_usage_socket, graph_params.lf_graph, graph_params.socket_usage_inputs);
+          lf::OutputSocket &lf_reference_set_socket = this->get_extracted_reference_set(
+              lf_socket, lf_usage_socket, graph_params);
           lf_reference_sets.add_new(reference_set_i, &lf_reference_set_socket);
           break;
         }
@@ -2577,24 +2574,23 @@ struct GeometryNodesLazyFunctionBuilder {
     }
   }
 
-  lf::OutputSocket &get_extracted_attributes(lf::OutputSocket &lf_field_socket,
-                                             lf::OutputSocket *lf_usage_socket,
-                                             lf::Graph &lf_graph,
-                                             Set<lf::InputSocket *> &socket_usage_inputs)
+  lf::OutputSocket &get_extracted_reference_set(lf::OutputSocket &lf_field_socket,
+                                                lf::OutputSocket *lf_usage_socket,
+                                                BuildGraphParams &graph_params)
   {
     auto &lazy_function = scope_.construct<LazyFunctionForAnonymousAttributeSetExtract>();
-    lf::Node &lf_node = lf_graph.add_function(lazy_function);
+    lf::Node &lf_node = graph_params.lf_graph.add_function(lazy_function);
     lf::InputSocket &lf_use_input = lf_node.input(0);
     lf::InputSocket &lf_field_input = lf_node.input(1);
-    socket_usage_inputs.add_new(&lf_use_input);
+    graph_params.socket_usage_inputs.add_new(&lf_use_input);
     if (lf_usage_socket) {
-      lf_graph.add_link(*lf_usage_socket, lf_use_input);
+      graph_params.lf_graph.add_link(*lf_usage_socket, lf_use_input);
     }
     else {
       static const bool static_false = false;
       lf_use_input.set_default_value(&static_false);
     }
-    lf_graph.add_link(lf_field_socket, lf_field_input);
+    graph_params.lf_graph.add_link(lf_field_socket, lf_field_input);
     return lf_node.output(0);
   }
 
