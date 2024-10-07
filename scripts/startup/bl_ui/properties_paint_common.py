@@ -543,6 +543,34 @@ class StrokePanel(BrushPanel):
             row.prop(brush, "use_pressure_jitter", toggle=True, text="")
             col.row().prop(brush, "jitter_unit", expand=True)
 
+        if mode in ('PAINT_TEXTURE', 'PAINT_2D'):
+            col.separator()
+            col.row().prop(brush, "use_color_jitter", text="Randomize Color")
+            row = col.row(align=True)
+            row.enabled = brush.use_color_jitter
+            row.prop(brush, "hue_jitter", slider=True)
+            row.prop(brush, "use_stroke_random_hue", text="", icon='GP_SELECT_STROKES')
+            row.prop(brush, "use_random_press_hue", text="", icon='STYLUS_PRESSURE')
+            if brush.use_random_press_hue and self.is_popover is False:
+                col.template_curve_mapping(brush, "curve_random_hue", brush=True, use_negative_slope=True)
+
+            row = col.row(align=True)
+            row.enabled = brush.use_color_jitter
+            row.prop(brush, "saturation_jitter", slider=True)
+            row.prop(brush, "use_stroke_random_sat", text="", icon='GP_SELECT_STROKES')
+            row.prop(brush, "use_random_press_sat", text="", icon='STYLUS_PRESSURE')
+            if brush.use_random_press_sat and self.is_popover is False:
+                col.template_curve_mapping(brush, "curve_random_sat", brush=True, use_negative_slope=True)
+
+            row = col.row(align=True)
+            row.enabled = brush.use_color_jitter
+            row.prop(brush, "value_jitter", slider=True)
+            row.prop(brush, "use_stroke_random_val", text="", icon='GP_SELECT_STROKES')
+            row.prop(brush, "use_random_press_val", text="", icon='STYLUS_PRESSURE')
+            if brush.use_random_press_val and self.is_popover is False:
+                col.template_curve_mapping(brush, "curve_random_val", brush=True, use_negative_slope=True)
+
+
         col.separator()
         UnifiedPaintPanel.prop_unified(
             layout,

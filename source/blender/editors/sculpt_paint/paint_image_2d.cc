@@ -11,7 +11,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
 
@@ -76,6 +75,7 @@ struct BrushPainterCache {
 struct BrushPainter {
   Scene *scene;
   Brush *brush;
+  StrokeFactors stroke_factors;
 
   bool firsttouch; /* first paint op */
 
@@ -140,6 +140,7 @@ static BrushPainter *brush_painter_2d_new(Scene *scene, Brush *brush, bool inver
 
   painter->brush = brush;
   painter->scene = scene;
+  painter->stroke_factors = stroke_factors_new();
   painter->firsttouch = true;
   painter->cache_invert = invert;
 
@@ -390,8 +391,15 @@ static ImBuf *brush_painter_imbuf_new(
 
   /* get brush color */
   if (brush->image_brush_type == IMAGE_PAINT_BRUSH_TYPE_DRAW) {
-    paint_brush_color_get(
-        scene, brush, use_color_correction, cache->invert, distance, pressure, display, brush_rgb);
+    paint_brush_color_get(scene,
+                          brush,
+                          painter->stroke_factors,
+                          use_color_correction,
+                          cache->invert,
+                          distance,
+                          pressure,
+                          display,
+                          brush_rgb);
   }
   else {
     brush_rgb[0] = 1.0f;
@@ -474,8 +482,15 @@ static void brush_painter_imbuf_update(BrushPainter *painter,
 
   /* get brush color */
   if (brush->image_brush_type == IMAGE_PAINT_BRUSH_TYPE_DRAW) {
-    paint_brush_color_get(
-        scene, brush, use_color_correction, cache->invert, 0.0f, 1.0f, display, brush_rgb);
+    paint_brush_color_get(scene,
+                          brush,
+                          painter->stroke_factors,
+                          use_color_correction,
+                          cache->invert,
+                          0.0f,
+                          1.0f,
+                          display,
+                          brush_rgb);
   }
   else {
     brush_rgb[0] = 1.0f;
@@ -698,10 +713,12 @@ static void brush_painter_2d_refresh_cache(ImagePaintState *s,
 
   bool do_random = false;
   bool do_partial_update = false;
-  bool update_color = ((brush->flag & BRUSH_USE_GRADIENT) && (ELEM(brush->gradient_stroke_mode,
-                                                                   BRUSH_GRADIENT_SPACING_REPEAT,
-                                                                   BRUSH_GRADIENT_SPACING_CLAMP) ||
-                                                              (cache->last_pressure != pressure)));
+  bool update_color = ((brush->flag & BRUSH_USE_GRADIENT) &&
+                       (ELEM(brush->gradient_stroke_mode,
+                             BRUSH_GRADIENT_SPACING_REPEAT,
+                             BRUSH_GRADIENT_SPACING_CLAMP) ||
+                        (cache->last_pressure != pressure))) ||
+                      (brush->flag2 & BRUSH_JITTER_COLOR);
   float tex_rotation = -brush->mtex.rot;
   float mask_rotation = -brush->mask_mtex.rot;
 
