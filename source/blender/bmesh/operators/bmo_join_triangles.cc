@@ -538,7 +538,7 @@ static void rotate_to_plane(JoinEdgesState &s,
     printf("angle");
   }
 #else
-  (void)s;  // Ignore unused when release
+  UNUSED_VARS(s);
 #endif
 
   float rotation_axis[3];
