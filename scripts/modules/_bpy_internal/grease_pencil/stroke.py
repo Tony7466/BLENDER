@@ -207,7 +207,11 @@ class GreasePencilStroke(AttributeGetterSetter):
         """
         Return a slice of points in the stroke.
         """
-        return GreasePencilStrokePointSlice(self._drawing, self._curve_index, self._points_start_index, self._points_end_index)
+        return GreasePencilStrokePointSlice(
+            self._drawing,
+            self._curve_index,
+            self._points_start_index,
+            self._points_end_index)
 
     def add_points(self, count: int):
         """
