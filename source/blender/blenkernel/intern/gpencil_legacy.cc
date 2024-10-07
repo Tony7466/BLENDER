@@ -477,14 +477,6 @@ void BKE_gpencil_free_data(bGPdata *gpd, bool free_all)
   }
 }
 
-void BKE_gpencil_eval_delete(bGPdata *gpd_eval)
-{
-  BKE_gpencil_free_data(gpd_eval, true);
-  BKE_libblock_free_data(&gpd_eval->id, false);
-  BLI_assert(!gpd_eval->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
-  MEM_freeN(gpd_eval);
-}
-
 void BKE_gpencil_tag(bGPdata *gpd)
 {
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
@@ -1071,75 +1063,6 @@ bGPdata *BKE_gpencil_data_duplicate(Main *bmain, const bGPdata *gpd_src, bool in
 
 /* ************************************************** */
 /* GP Stroke API */
-
-void BKE_gpencil_stroke_sync_selection(bGPdata *gpd, bGPDstroke *gps)
-{
-  bGPDspoint *pt;
-  int i;
-
-  /* error checking */
-  if (gps == nullptr) {
-    return;
-  }
-
-  /* we'll stop when we find the first selected point,
-   * so initially, we must deselect
-   */
-  gps->flag &= ~GP_STROKE_SELECT;
-  BKE_gpencil_stroke_select_index_reset(gps);
-
-  for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-    if (pt->flag & GP_SPOINT_SELECT) {
-      gps->flag |= GP_STROKE_SELECT;
-      break;
-    }
-  }
-
-  if (gps->flag & GP_STROKE_SELECT) {
-    BKE_gpencil_stroke_select_index_set(gpd, gps);
-  }
-}
-
-void BKE_gpencil_curve_sync_selection(bGPdata *gpd, bGPDstroke *gps)
-{
-  bGPDcurve *gpc = gps->editcurve;
-  if (gpc == nullptr) {
-    return;
-  }
-
-  gps->flag &= ~GP_STROKE_SELECT;
-  BKE_gpencil_stroke_select_index_reset(gps);
-  gpc->flag &= ~GP_CURVE_SELECT;
-
-  bool is_selected = false;
-  for (int i = 0; i < gpc->tot_curve_points; i++) {
-    bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
-    BezTriple *bezt = &gpc_pt->bezt;
-
-    if (BEZT_ISSEL_ANY(bezt)) {
-      gpc_pt->flag |= GP_SPOINT_SELECT;
-    }
-    else {
-      gpc_pt->flag &= ~GP_SPOINT_SELECT;
-    }
-
-    if (gpc_pt->flag & GP_SPOINT_SELECT) {
-      is_selected = true;
-    }
-  }
-
-  if (is_selected) {
-    gpc->flag |= GP_CURVE_SELECT;
-    gps->flag |= GP_STROKE_SELECT;
-    BKE_gpencil_stroke_select_index_set(gpd, gps);
-  }
-}
-
-void BKE_gpencil_stroke_select_index_set(bGPdata *gpd, bGPDstroke *gps)
-{
-  gpd->select_last_index++;
-  gps->select_index = gpd->select_last_index;
-}
 
 void BKE_gpencil_stroke_select_index_reset(bGPDstroke *gps)
 {
@@ -2277,70 +2200,6 @@ void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)
   BLI_assert(palette != nullptr);
   BKE_paint_palette_set(&ts->gp_paint->paint, palette);
   BKE_paint_palette_set(&ts->gp_vertexpaint->paint, palette);
-}
-
-bool BKE_gpencil_from_image(
-    SpaceImage *sima, bGPdata *gpd, bGPDframe *gpf, const float size, const bool mask)
-{
-  Image *image = sima->image;
-  bool done = false;
-
-  if (image == nullptr) {
-    return false;
-  }
-
-  ImageUser iuser = sima->iuser;
-  void *lock;
-  ImBuf *ibuf;
-
-  ibuf = BKE_image_acquire_ibuf(image, &iuser, &lock);
-
-  if (ibuf && ibuf->byte_buffer.data) {
-    int img_x = ibuf->x;
-    int img_y = ibuf->y;
-
-    float color[4];
-    bGPDspoint *pt;
-    for (int row = 0; row < img_y; row++) {
-      /* Create new stroke */
-      bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, 0, img_x, size * 1000, false);
-      done = true;
-      for (int col = 0; col < img_x; col++) {
-        IMB_sampleImageAtLocation(ibuf, col, row, true, color);
-        pt = &gps->points[col];
-        pt->pressure = 1.0f;
-        pt->x = col * size;
-        pt->z = row * size;
-        if (!mask) {
-          copy_v3_v3(pt->vert_color, color);
-          pt->vert_color[3] = 1.0f;
-          pt->strength = color[3];
-        }
-        else {
-          zero_v3(pt->vert_color);
-          pt->vert_color[3] = 1.0f;
-          pt->strength = 1.0f - color[3];
-        }
-
-        /* Select Alpha points. */
-        if (pt->strength < 0.03f) {
-          gps->flag |= GP_STROKE_SELECT;
-          pt->flag |= GP_SPOINT_SELECT;
-        }
-      }
-
-      if (gps->flag & GP_STROKE_SELECT) {
-        BKE_gpencil_stroke_select_index_set(gpd, gps);
-      }
-
-      BKE_gpencil_stroke_geometry_update(gpd, gps);
-    }
-  }
-
-  /* Free memory. */
-  BKE_image_release_ibuf(image, ibuf, lock);
-
-  return done;
 }
 
 /**

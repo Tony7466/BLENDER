@@ -72,11 +72,6 @@ void BKE_gpencil_free_layers(struct ListBase *list);
 void BKE_gpencil_free_legacy_palette_data(struct ListBase *list);
 /** Free (or release) any data used by this grease pencil (does not free the gpencil itself). */
 void BKE_gpencil_free_data(struct bGPdata *gpd, bool free_all);
-/**
- * Delete grease pencil evaluated data
- * \param gpd_eval: Grease pencil data-block
- */
-void BKE_gpencil_eval_delete(struct bGPdata *gpd_eval);
 void BKE_gpencil_free_layer_masks(struct bGPDlayer *gpl);
 /**
  * Tag data-block for depsgraph update.
@@ -88,14 +83,6 @@ void BKE_gpencil_tag(struct bGPdata *gpd);
 void BKE_gpencil_batch_cache_dirty_tag(struct bGPdata *gpd);
 void BKE_gpencil_batch_cache_free(struct bGPdata *gpd);
 
-/**
- * Ensure selection status of stroke is in sync with its points.
- * \param gps: Grease pencil stroke
- */
-void BKE_gpencil_stroke_sync_selection(struct bGPdata *gpd, struct bGPDstroke *gps);
-void BKE_gpencil_curve_sync_selection(struct bGPdata *gpd, struct bGPDstroke *gps);
-/** Assign unique stroke ID for selection. */
-void BKE_gpencil_stroke_select_index_set(struct bGPdata *gpd, struct bGPDstroke *gps);
 /** Reset unique stroke ID for selection. */
 void BKE_gpencil_stroke_select_index_reset(struct bGPDstroke *gps);
 
@@ -620,18 +607,6 @@ float BKE_gpencil_multiframe_falloff_calc(
  * \param scene: Scene
  */
 void BKE_gpencil_palette_ensure(struct Main *bmain, struct Scene *scene);
-
-/**
- * Create grease pencil strokes from image
- * \param sima: Image
- * \param gpd: Grease pencil data-block
- * \param gpf: Grease pencil frame
- * \param size: Size
- * \param mask: Mask
- * \return  True if done
- */
-bool BKE_gpencil_from_image(
-    struct SpaceImage *sima, struct bGPdata *gpd, struct bGPDframe *gpf, float size, bool mask);
 
 /* Iterators */
 /**

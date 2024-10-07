@@ -454,20 +454,6 @@ bool BKE_gpencil_convert_mesh(struct Main *bmain,
                               bool use_vgroups);
 
 /**
- * Subdivide the grease pencil stroke so the number of points is target_number.
- * Does not change the shape of the stroke. The new points will be distributed as
- * uniformly as possible by repeatedly subdividing the current longest edge.
- *
- * \param gps: The stroke to be up-sampled.
- * \param target_number: The number of points the up-sampled stroke should have.
- * \param select: Select/Deselect the stroke.
- */
-void BKE_gpencil_stroke_uniform_subdivide(struct bGPdata *gpd,
-                                          struct bGPDstroke *gps,
-                                          uint32_t target_number,
-                                          bool select);
-
-/**
  * Stroke to view space
  * Transforms a stroke to view space.
  * This allows for manipulations in 2D but also easy conversion back to 3D.

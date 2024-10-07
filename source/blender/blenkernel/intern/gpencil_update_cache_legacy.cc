@@ -237,16 +237,6 @@ void BKE_gpencil_traverse_update_cache(GPencilUpdateCache *cache,
   gpencil_traverse_update_cache_ex(cache, ts, 0, user_data);
 }
 
-void BKE_gpencil_tag_full_update(bGPdata *gpd, bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke *gps)
-{
-  update_cache_node_create(gpd, gpl, gpf, gps, true);
-}
-
-void BKE_gpencil_tag_light_update(bGPdata *gpd, bGPDlayer *gpl, bGPDframe *gpf, bGPDstroke *gps)
-{
-  update_cache_node_create(gpd, gpl, gpf, gps, false);
-}
-
 void BKE_gpencil_free_update_cache(bGPdata *gpd)
 {
   GPencilUpdateCache *gpd_cache = gpd->runtime.update_cache;

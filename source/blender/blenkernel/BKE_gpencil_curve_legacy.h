@@ -59,14 +59,6 @@ void BKE_gpencil_editcurve_stroke_sync_selection(struct bGPdata *gpd,
                                                  struct bGPDstroke *gps,
                                                  struct bGPDcurve *gpc);
 /**
- * Sync the selection from edit-curve to stroke.
- */
-void BKE_gpencil_stroke_editcurve_sync_selection(struct bGPdata *gpd,
-                                                 struct bGPDstroke *gps,
-                                                 struct bGPDcurve *gpc);
-void BKE_gpencil_strokes_selected_update_editcurve(struct bGPdata *gpd);
-void BKE_gpencil_strokes_selected_sync_selection_editcurve(struct bGPdata *gpd);
-/**
  * Recalculate stroke points with the edit-curve of the stroke.
  */
 void BKE_gpencil_stroke_update_geometry_from_editcurve(struct bGPDstroke *gps,
