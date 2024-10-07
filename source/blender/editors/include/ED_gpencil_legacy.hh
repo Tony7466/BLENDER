@@ -347,7 +347,6 @@ Object *ED_gpencil_add_object(bContext *C, const float loc[3], unsigned short lo
  * Helper function to create default colors and drawing brushes.
  */
 void ED_gpencil_add_defaults(bContext *C, Object *ob);
-bool ED_object_gpencil_exit(Main *bmain, Object *ob);
 
 /**
  * Get drawing reference point for conversion or projection of the stroke
@@ -357,32 +356,6 @@ void ED_gpencil_drawing_reference_get(const Scene *scene,
                                       const Object *ob,
                                       char align_flag,
                                       float r_vec[3]);
-
-/* vertex groups */
-
-/**
- * Assign points to vertex group.
- */
-void ED_gpencil_vgroup_assign(bContext *C, Object *ob, float weight);
-/**
- * Remove points from vertex group.
- */
-void ED_gpencil_vgroup_remove(bContext *C, Object *ob);
-/**
- * Select points of vertex group.
- */
-void ED_gpencil_vgroup_select(bContext *C, Object *ob);
-/**
- * Un-select points of vertex group.
- */
-void ED_gpencil_vgroup_deselect(bContext *C, Object *ob);
-
-/* join objects */
-
-/**
- * Join objects called from OBJECT_OT_join.
- */
-int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op);
 
 /* texture coordinate utilities */
 

@@ -4389,9 +4389,6 @@ static int object_join_exec(bContext *C, wmOperator *op)
   else if (ob->type == OB_ARMATURE) {
     ret = ED_armature_join_objects_exec(C, op);
   }
-  else if (ob->type == OB_GPENCIL_LEGACY) {
-    ret = ED_gpencil_join_objects_exec(C, op);
-  }
   else if (ob->type == OB_GREASE_PENCIL) {
     ret = ED_grease_pencil_join_objects_exec(C, op);
   }
