@@ -784,7 +784,7 @@ static void rna_Gpencil_mask_point_update(bContext * /*C*/, PointerRNA *ptr)
   ts->gpencil_selectmode_sculpt &= ~GP_SCULPT_MASK_SELECTMODE_SEGMENT;
 }
 
-static void rna_Gpencil_mask_stroke_update(bContext */*C*/, PointerRNA *ptr)
+static void rna_Gpencil_mask_stroke_update(bContext * /*C*/, PointerRNA *ptr)
 {
   ToolSettings *ts = (ToolSettings *)ptr->data;
 
@@ -800,7 +800,7 @@ static void rna_Gpencil_mask_segment_update(bContext * /*C*/, PointerRNA *ptr)
   ts->gpencil_selectmode_sculpt &= ~GP_SCULPT_MASK_SELECTMODE_STROKE;
 }
 
-static void rna_Gpencil_vertex_mask_point_update(bContext */*C*/, PointerRNA *ptr)
+static void rna_Gpencil_vertex_mask_point_update(bContext * /*C*/, PointerRNA *ptr)
 {
   ToolSettings *ts = (ToolSettings *)ptr->data;
 
@@ -808,7 +808,7 @@ static void rna_Gpencil_vertex_mask_point_update(bContext */*C*/, PointerRNA *pt
   ts->gpencil_selectmode_vertex &= ~GP_VERTEX_MASK_SELECTMODE_SEGMENT;
 }
 
-static void rna_Gpencil_vertex_mask_stroke_update(bContext */*C*/, PointerRNA *ptr)
+static void rna_Gpencil_vertex_mask_stroke_update(bContext * /*C*/, PointerRNA *ptr)
 {
   ToolSettings *ts = (ToolSettings *)ptr->data;
 
@@ -816,7 +816,7 @@ static void rna_Gpencil_vertex_mask_stroke_update(bContext */*C*/, PointerRNA *p
   ts->gpencil_selectmode_vertex &= ~GP_VERTEX_MASK_SELECTMODE_SEGMENT;
 }
 
-static void rna_Gpencil_vertex_mask_segment_update(bContext */*C*/, PointerRNA *ptr)
+static void rna_Gpencil_vertex_mask_segment_update(bContext * /*C*/, PointerRNA *ptr)
 {
   ToolSettings *ts = (ToolSettings *)ptr->data;
 
