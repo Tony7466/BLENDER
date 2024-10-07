@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
+
 #include "BKE_attribute.hh"
 #include "BKE_collision_shape.hh"
 #include "BKE_instances.hh"
@@ -37,7 +39,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    Span<bke::CollisionShapePtr> shapes = geometry_set.get_physics()->state().shapes();
+    const bke::PhysicsGeometry &physics = *geometry_set.get_physics();
+    Span<bke::CollisionShapePtr> shapes = physics.state().shapes();
 
     bke::Instances *instances = new bke::Instances();
     instances->resize(shapes.size());
@@ -52,6 +55,21 @@ static void node_geo_exec(GeoNodeExecParams params)
       handles[i] = instances->add_reference(bke::InstanceReference{shape_geometry});
       transforms[i] = float4x4::identity();
     }
+
+    bke::AttributeAccessor src_attributes = physics.attributes();
+    bke::AttributeFilter attribute_filter = bke::AttributeFilterFromFunc(
+        [&](const StringRef name) {
+          if (src_attributes.is_builtin(name)) {
+            return bke::AttributeFilter::Result::AllowSkip;
+          }
+          return bke::AttributeFilter::Result::Process;
+        });
+
+    bke::copy_attributes(physics.attributes(),
+                         bke::AttrDomain::Instance,
+                         bke::AttrDomain::Instance,
+                         attribute_filter,
+                         instances->attributes_for_write());
 
     geometry_set = GeometrySet::from_instances(instances);
   });

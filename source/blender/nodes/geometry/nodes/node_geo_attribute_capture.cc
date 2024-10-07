@@ -178,26 +178,22 @@ static void node_geo_exec(GeoNodeExecParams params)
   };
 
   /* Run on the instances component separately to only affect the top level of instances. */
-  if (domain == AttrDomain::Instance) {
-    if (geometry_set.has_instances()) {
-      capture_on(geometry_set.get_component_for_write(GeometryComponent::Type::Instance));
-    }
+  if (geometry_set.has_instances() && domain == AttrDomain::Instance) {
+    capture_on(geometry_set.get_component_for_write(GeometryComponent::Type::Instance));
   }
-  else {
-    static const Array<GeometryComponent::Type> types = {GeometryComponent::Type::Mesh,
-                                                         GeometryComponent::Type::PointCloud,
-                                                         GeometryComponent::Type::Curve,
-                                                         GeometryComponent::Type::GreasePencil,
-                                                         GeometryComponent::Type::Physics};
 
-    geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-      for (const GeometryComponent::Type type : types) {
-        if (geometry_set.has(type)) {
-          capture_on(geometry_set.get_component_for_write(type));
-        }
+  static const Array<GeometryComponent::Type> types = {GeometryComponent::Type::Mesh,
+                                                        GeometryComponent::Type::PointCloud,
+                                                        GeometryComponent::Type::Curve,
+                                                        GeometryComponent::Type::GreasePencil,
+                                                        GeometryComponent::Type::Physics};
+  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
+    for (const GeometryComponent::Type type : types) {
+      if (geometry_set.has(type)) {
+        capture_on(geometry_set.get_component_for_write(type));
       }
-    });
-  }
+    }
+  });
 
   params.set_output("Geometry", geometry_set);
 }

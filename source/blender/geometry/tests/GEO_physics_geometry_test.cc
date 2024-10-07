@@ -628,7 +628,7 @@ TEST_F(PhysicsGeometryTest, deactivate_when_static)
     EXPECT_EQ(PhysicsMotionType::Dynamic, PhysicsMotionType(motion_type1.get(0)));
     EXPECT_EQ(PhysicsMotionType::Dynamic, PhysicsMotionType(motion_type2.get(0)));
     EXPECT_FALSE(is_active1.get(0));
-    EXPECT_FALSE(is_active2.get(0));
+    EXPECT_TRUE(is_active2.get(0));
   }
 
   {

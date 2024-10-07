@@ -307,8 +307,8 @@ void PhysicsWorldState::ensure_read_cache_no_lock() const
   /* Read from world data and ignore the cache.
    * Important! This also prevents deadlock caused by re-entering this function. */
   const AttributeAccessor src_attributes = this->world_data_attributes();
-  Set<std::string> local_body_attribute_names,
-      local_constraint_attribute_names,local_shape_attribute_names;
+  Set<std::string> local_body_attribute_names, local_constraint_attribute_names,
+      local_shape_attribute_names;
   for (const BodyAttribute attribute : all_body_attributes()) {
     if (physics_attribute_use_write_cache(attribute)) {
       local_body_attribute_names.add_new(physics_attribute_name(attribute));

@@ -126,7 +126,7 @@ class ShapeMatchFieldInput : public bke::PhysicsFieldInput {
   {
     if (domain == AttrDomain::Instance) {
       const Span<bke::CollisionShapePtr> shapes = physics.state().shapes();
-      Array<bool> matches(physics.state().shapes().size());
+      Array<bool> matches(shapes.size());
       mask.foreach_index(GrainSize(1024), [&](const int index) {
         matches[index] = (shapes[index] ? shapes[index]->type() == shape_type_ : false);
       });
