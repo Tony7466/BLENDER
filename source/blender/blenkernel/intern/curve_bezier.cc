@@ -181,6 +181,17 @@ void set_handle_position(const float3 &position,
   }
 }
 
+void align_handles(const IndexMask points_to_align,
+                   const Span<float3> positions,
+                   const Span<float3> align_with,
+                   MutableSpan<float3> align_handles)
+{
+  points_to_align.foreach_index(GrainSize(256), [&](const int point_i) {
+    align_handles[point_i] = calculate_aligned_handle(
+        positions[point_i], align_with[point_i], align_handles[point_i]);
+  });
+}
+
 void calculate_auto_handles(const bool cyclic,
                             const Span<int8_t> types_left,
                             const Span<int8_t> types_right,

@@ -223,6 +223,41 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
   }
 }
 
+static void align_handles(const TransCustomData &custom_data,
+                          const int layer,
+                          bke::CurvesGeometry &curves)
+{
+  if (ed::curves::get_curves_selection_attribute_names(curves).size() == 1) {
+    return;
+  }
+  const CurvesTransformData &transform_data = *static_cast<CurvesTransformData *>(
+      custom_data.data);
+
+  IndexMaskMemory memory;
+  const IndexMask &selected_left_handles = transform_data.selection_by_layer[layer + 1];
+  const IndexMask &selected_right_handles = IndexMask::from_difference(
+      transform_data.selection_by_layer[layer + 2], selected_left_handles, memory);
+
+  auto both_aligned_from_selection =
+      [&memory](const IndexMask &selected, VArray<int8_t> left_types, VArray<int8_t> right_types) {
+        return IndexMask::from_predicate(selected, GrainSize(4096), memory, [&](const int64_t i) {
+          return left_types[i] == BEZIER_HANDLE_ALIGN && right_types[i] == BEZIER_HANDLE_ALIGN;
+        });
+      };
+  bke::curves::bezier::align_handles(both_aligned_from_selection(selected_left_handles,
+                                                                 curves.handle_types_left(),
+                                                                 curves.handle_types_right()),
+                                     curves.positions(),
+                                     curves.handle_positions_left(),
+                                     curves.handle_positions_right_for_write());
+  bke::curves::bezier::align_handles(both_aligned_from_selection(selected_right_handles,
+                                                                 curves.handle_types_left(),
+                                                                 curves.handle_types_right()),
+                                     curves.positions(),
+                                     curves.handle_positions_right(),
+                                     curves.handle_positions_left_for_write());
+}
+
 static void recalcData_curves(TransInfo *t)
 {
   const Span<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
@@ -248,6 +283,7 @@ static void recalcData_curves(TransInfo *t)
       }
       curves.tag_positions_changed();
       curves.calculate_bezier_auto_handles();
+      align_handles(tc.custom.type, 0, curves);
     }
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
   }
