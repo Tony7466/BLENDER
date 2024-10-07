@@ -2,8 +2,15 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#ifdef GLSL_CPP_STUBS
+#  include "draw_command_shared.hh"
+#endif
 #include "draw_defines.hh"
 #include "gpu_shader_create_info.hh"
+
+#ifndef DRW_VIEW_LEN
+#  define DRW_VIEW_LEN 1
+#endif
 
 /* -------------------------------------------------------------------- */
 /** \name Resource ID
@@ -84,6 +91,77 @@ GPU_SHADER_CREATE_INFO(draw_modelmat_instanced_attr)
 PUSH_CONSTANT(MAT4, ModelMatrix)
 PUSH_CONSTANT(MAT4, ModelMatrixInverse)
 ADDITIONAL_INFO(draw_view)
+GPU_SHADER_CREATE_END()
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Draw Resource ID
+ * New implementation using gl_BaseInstance and storage buffers.
+ * \{ */
+
+GPU_SHADER_CREATE_INFO(draw_resource_id_new)
+DEFINE("UNIFORM_RESOURCE_ID_NEW")
+/* TODO (Miguel Pozo): This is an int for compatibility.
+ * It should become uint once the "Next" ports are complete. */
+STORAGE_BUF(DRW_RESOURCE_ID_SLOT, READ, int, resource_id_buf[])
+DEFINE_VALUE("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID]")
+GPU_SHADER_CREATE_END()
+
+GPU_SHADER_CREATE_INFO(draw_resource_with_custom_id_new)
+DEFINE("UNIFORM_RESOURCE_ID_NEW")
+DEFINE("WITH_CUSTOM_IDS")
+STORAGE_BUF(DRW_RESOURCE_ID_SLOT, READ, int2, resource_id_buf[])
+DEFINE_VALUE("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].x")
+DEFINE_VALUE("drw_CustomID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].y")
+GPU_SHADER_CREATE_END()
+
+/**
+ * Workaround the lack of gl_BaseInstance by binding the resource_id_buf as vertex buf.
+ */
+GPU_SHADER_CREATE_INFO(draw_resource_id_fallback)
+DEFINE("UNIFORM_RESOURCE_ID_NEW")
+VERTEX_IN(15, INT, drw_ResourceID)
+GPU_SHADER_CREATE_END()
+
+GPU_SHADER_CREATE_INFO(draw_resource_with_custom_id_fallback)
+DEFINE("UNIFORM_RESOURCE_ID_NEW")
+DEFINE("WITH_CUSTOM_IDS")
+VERTEX_IN(15, IVEC2, vertex_in_drw_ResourceID)
+DEFINE_VALUE("drw_ResourceID", "vertex_in_drw_ResourceID.x")
+DEFINE_VALUE("drw_CustomID", "vertex_in_drw_ResourceID.y")
+GPU_SHADER_CREATE_END()
+
+/** TODO mask view id bits. */
+GPU_SHADER_CREATE_INFO(draw_resource_handle_new)
+DEFINE_VALUE("resource_handle", "drw_ResourceID")
+GPU_SHADER_CREATE_END()
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Draw Object Resources
+ * \{ */
+
+GPU_SHADER_CREATE_INFO(draw_modelmat_new_common)
+TYPEDEF_SOURCE("draw_shader_shared.hh")
+STORAGE_BUF(DRW_OBJ_MAT_SLOT, READ, ObjectMatrices, drw_matrix_buf[])
+DEFINE("DRAW_MODELMAT_CREATE_INFO")
+DEFINE_VALUE("drw_ModelMatrixInverse", "drw_matrix_buf[resource_id].model_inverse")
+DEFINE_VALUE("drw_ModelMatrix", "drw_matrix_buf[resource_id].model")
+/* TODO For compatibility with old shaders. To be removed. */
+DEFINE_VALUE("ModelMatrixInverse", "drw_ModelMatrixInverse")
+DEFINE_VALUE("ModelMatrix", "drw_ModelMatrix")
+GPU_SHADER_CREATE_END()
+
+GPU_SHADER_CREATE_INFO(draw_modelmat_new)
+ADDITIONAL_INFO(draw_modelmat_new_common)
+ADDITIONAL_INFO(draw_resource_id_new)
+GPU_SHADER_CREATE_END()
+
+GPU_SHADER_CREATE_INFO(draw_modelmat_new_with_custom_id)
+ADDITIONAL_INFO(draw_modelmat_new_common)
+ADDITIONAL_INFO(draw_resource_with_custom_id_new)
 GPU_SHADER_CREATE_END()
 
 /** \} */
@@ -268,77 +346,6 @@ PUSH_CONSTANT(INT, visibility_word_per_draw)
 PUSH_CONSTANT(INT, view_shift)
 PUSH_CONSTANT(BOOL, use_custom_ids)
 COMPUTE_SOURCE("draw_command_generate_comp.glsl")
-GPU_SHADER_CREATE_END()
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Draw Resource ID
- * New implementation using gl_BaseInstance and storage buffers.
- * \{ */
-
-GPU_SHADER_CREATE_INFO(draw_resource_id_new)
-DEFINE("UNIFORM_RESOURCE_ID_NEW")
-/* TODO (Miguel Pozo): This is an int for compatibility.
- * It should become uint once the "Next" ports are complete. */
-STORAGE_BUF(DRW_RESOURCE_ID_SLOT, READ, int, resource_id_buf[])
-DEFINE_VALUE("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID]")
-GPU_SHADER_CREATE_END()
-
-GPU_SHADER_CREATE_INFO(draw_resource_with_custom_id_new)
-DEFINE("UNIFORM_RESOURCE_ID_NEW")
-DEFINE("WITH_CUSTOM_IDS")
-STORAGE_BUF(DRW_RESOURCE_ID_SLOT, READ, int2, resource_id_buf[])
-DEFINE_VALUE("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].x")
-DEFINE_VALUE("drw_CustomID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].y")
-GPU_SHADER_CREATE_END()
-
-/**
- * Workaround the lack of gl_BaseInstance by binding the resource_id_buf as vertex buf.
- */
-GPU_SHADER_CREATE_INFO(draw_resource_id_fallback)
-DEFINE("UNIFORM_RESOURCE_ID_NEW")
-VERTEX_IN(15, INT, drw_ResourceID)
-GPU_SHADER_CREATE_END()
-
-GPU_SHADER_CREATE_INFO(draw_resource_with_custom_id_fallback)
-DEFINE("UNIFORM_RESOURCE_ID_NEW")
-DEFINE("WITH_CUSTOM_IDS")
-VERTEX_IN(15, IVEC2, vertex_in_drw_ResourceID)
-DEFINE_VALUE("drw_ResourceID", "vertex_in_drw_ResourceID.x")
-DEFINE_VALUE("drw_CustomID", "vertex_in_drw_ResourceID.y")
-GPU_SHADER_CREATE_END()
-
-/** TODO mask view id bits. */
-GPU_SHADER_CREATE_INFO(draw_resource_handle_new)
-DEFINE_VALUE("resource_handle", "drw_ResourceID")
-GPU_SHADER_CREATE_END()
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Draw Object Resources
- * \{ */
-
-GPU_SHADER_CREATE_INFO(draw_modelmat_new_common)
-TYPEDEF_SOURCE("draw_shader_shared.hh")
-STORAGE_BUF(DRW_OBJ_MAT_SLOT, READ, ObjectMatrices, drw_matrix_buf[])
-DEFINE("DRAW_MODELMAT_CREATE_INFO")
-DEFINE_VALUE("drw_ModelMatrixInverse", "drw_matrix_buf[resource_id].model_inverse")
-DEFINE_VALUE("drw_ModelMatrix", "drw_matrix_buf[resource_id].model")
-/* TODO For compatibility with old shaders. To be removed. */
-DEFINE_VALUE("ModelMatrixInverse", "drw_ModelMatrixInverse")
-DEFINE_VALUE("ModelMatrix", "drw_ModelMatrix")
-GPU_SHADER_CREATE_END()
-
-GPU_SHADER_CREATE_INFO(draw_modelmat_new)
-ADDITIONAL_INFO(draw_modelmat_new_common)
-ADDITIONAL_INFO(draw_resource_id_new)
-GPU_SHADER_CREATE_END()
-
-GPU_SHADER_CREATE_INFO(draw_modelmat_new_with_custom_id)
-ADDITIONAL_INFO(draw_modelmat_new_common)
-ADDITIONAL_INFO(draw_resource_with_custom_id_new)
 GPU_SHADER_CREATE_END()
 
 /** \} */

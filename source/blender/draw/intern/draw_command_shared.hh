@@ -6,7 +6,7 @@
  * \ingroup draw
  */
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  include "BLI_span.hh"
 #  include "GPU_shader_shared_utils.hh"
 
@@ -47,7 +47,7 @@ struct DrawGroup {
 
   /* CPU specific region of the struct. Should be kept constant after recording.
    * Can be used by GPU but needs to be initialized by GPU before usage. */
-#ifdef GPU_SHADER
+#if defined(GPU_SHADER) || defined(GLSL_CPP_STUBS)
   uint _cpu_reserved_1;
   uint _cpu_reserved_2;
 
@@ -97,6 +97,6 @@ BLI_STATIC_ASSERT_ALIGN(DrawPrototype, 16)
 
 /** \} */
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 };  // namespace blender::draw::command
 #endif

@@ -8,6 +8,8 @@
  * language.
  */
 
+#pragma once
+
 /* __cplusplus is true when compiling with MSL, so ensure we are not inside a shader. */
 #if defined(GPU_SHADER) || defined(GLSL_CPP_STUBS)
 #  define IS_CPP 0
@@ -15,9 +17,9 @@
 #  define IS_CPP 1
 #endif
 
-#if IS_CPP
-#  pragma once
+#include "eevee_defines.hh"
 
+#if IS_CPP
 #  include "BLI_math_bits.h"
 #  include "BLI_memory_utils.hh"
 
@@ -25,8 +27,6 @@
 
 #  include "draw_manager.hh"
 #  include "draw_pass.hh"
-
-#  include "eevee_defines.hh"
 
 #  include "GPU_shader_shared.hh"
 
@@ -1045,9 +1045,12 @@ static inline float3 light_position_get(LightData light)
   return transform_location(light.object_to_world);
 }
 
-#ifdef GPU_SHADER
+#ifndef CHECK_TYPE_PAIR
 #  define CHECK_TYPE_PAIR(a, b)
 #  define CHECK_TYPE(a, b)
+#endif
+
+#if defined(GPU_SHADER) || defined(GLSL_CPP_STUBS)
 #  define FLOAT_AS_INT floatBitsToInt
 #  define INT_AS_FLOAT intBitsToFloat
 #  define TYPECAST_NOOP
@@ -1558,7 +1561,7 @@ static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTileP
   tile.lod_offset = shadow_lod_offset_unpack(data >> 16u);
   /* -- 32 bits -- */
   tile.is_valid = data != 0u;
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
   /* Make tests pass on CPU but it is not required for proper rendering. */
   if (tile.lod == 0) {
     tile.lod_offset.x = 0;

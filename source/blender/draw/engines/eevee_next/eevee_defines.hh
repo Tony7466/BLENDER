@@ -9,7 +9,7 @@
  * dragging larger headers into the createInfo pipeline which would cause problems.
  */
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  pragma once
 #endif
 

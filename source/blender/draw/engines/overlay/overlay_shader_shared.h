@@ -45,7 +45,7 @@ enum OVERLAY_GridBits {
   PLANE_IMAGE = (1u << 11u),
   CUSTOM_GRID = (1u << 12u),
 };
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 ENUM_OPERATORS(OVERLAY_GridBits, CUSTOM_GRID)
 #endif
 
@@ -278,7 +278,7 @@ struct BoneEnvelopeData {
   float4 state_color;
   float4 x_axis;
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
   BoneEnvelopeData() = default;
 
   /* For bone fills. */
@@ -329,7 +329,7 @@ struct BoneStickData {
   float4 head_color;
   float4 tail_color;
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
   BoneStickData() = default;
 
   /* For bone fills. */
@@ -349,7 +349,7 @@ struct BoneStickData {
 };
 BLI_STATIC_ASSERT_ALIGN(BoneStickData, 16)
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  ifdef __cplusplus
 }
 #  endif

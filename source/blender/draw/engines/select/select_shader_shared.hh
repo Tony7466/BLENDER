@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  pragma once
 
 #  include "GPU_shader_shared_utils.hh"
@@ -25,6 +25,6 @@ struct SelectInfoData {
 };
 BLI_STATIC_ASSERT_ALIGN(SelectInfoData, 16)
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 }  // namespace blender::draw::select
 #endif

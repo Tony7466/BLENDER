@@ -140,7 +140,7 @@ struct ObjectMatrices {
   float4x4 model;
   float4x4 model_inverse;
 
-#if !defined(GPU_SHADER) && defined(__cplusplus)
+#if !defined(GPU_SHADER) && defined(__cplusplus) && !defined(GLSL_CPP_STUBS)
   void sync(const Object &object);
   void sync(const float4x4 &model_matrix);
 #endif
@@ -179,7 +179,7 @@ struct ObjectInfos {
   eObjectInfoFlag flag;
 #endif
 
-#if !defined(GPU_SHADER) && defined(__cplusplus)
+#if !defined(GPU_SHADER) && defined(__cplusplus) && !defined(GLSL_CPP_STUBS)
   void sync();
   void sync(const blender::draw::ObjectRef ref, bool is_active_object);
 #endif
@@ -215,7 +215,7 @@ struct ObjectBounds {
   /** Radius of the inscribed sphere derived from the bounding corner. Computed on GPU. */
 #define _inner_sphere_radius bounding_corners[3].w
 
-#if !defined(GPU_SHADER) && defined(__cplusplus)
+#if !defined(GPU_SHADER) && defined(__cplusplus) && !defined(GLSL_CPP_STUBS)
   void sync();
   void sync(const Object &ob, float inflate_bounds = 0.0f);
   void sync(const float3 &center, const float3 &size);
@@ -273,7 +273,7 @@ struct ObjectAttribute {
   float data_x, data_y, data_z, data_w;
   uint hash_code;
 
-#if !defined(GPU_SHADER) && defined(__cplusplus)
+#if !defined(GPU_SHADER) && defined(__cplusplus) && !defined(GLSL_CPP_STUBS)
   bool sync(const blender::draw::ObjectRef &ref, const GPUUniformAttr &attr);
 #endif
 };
@@ -289,7 +289,7 @@ struct LayerAttribute {
   uint buffer_length; /* Only in the first record. */
   uint _pad1, _pad2;
 
-#if !defined(GPU_SHADER) && defined(__cplusplus)
+#if !defined(GPU_SHADER) && defined(__cplusplus) && !defined(GLSL_CPP_STUBS)
   bool sync(const Scene *scene, const ViewLayer *layer, const GPULayerAttr &attr);
 #endif
 };

@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  pragma once
 
 #  include "GPU_shader_shared_utils.hh"
@@ -50,7 +50,7 @@ enum gpLightType {
 #define GP_VERTEX_ID_SHIFT 2
 
 /* Avoid compiler funkiness with enum types not being strongly typed in C. */
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  define gpMaterialFlag uint
 #  define gpLightType uint
 #endif
@@ -60,7 +60,7 @@ struct gpMaterial {
   float4 fill_color;
   float4 fill_mix_color;
   float4 fill_uv_rot_scale;
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
   float2 fill_uv_offset;
   float2 alignment_rot;
   float stroke_texture_mix;
@@ -121,7 +121,7 @@ struct gpLight {
 BLI_STATIC_ASSERT_ALIGN(gpLight, 16)
 #endif
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  undef gpMaterialFlag
 #  undef gpLightType
 #endif

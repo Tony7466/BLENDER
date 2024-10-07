@@ -6,7 +6,7 @@
  * \ingroup draw
  */
 
-#ifndef GPU_SHADER
+#if !defined(GPU_SHADER) && !defined(GLSL_CPP_STUBS)
 #  include "GPU_shader_shared_utils.hh"
 
 typedef struct GlobalsUboStorage GlobalsUboStorage;
