@@ -205,16 +205,17 @@ static IntersectingLineInfo intersecting_lines(
     const float3 &a, const float3 &b, const float3 &c, const float3 &d, const float distance)
 {
   IntersectingLineInfo isectinfo{};
-
   if (isect_line_line_epsilon_v3(
           a, b, c, d, isectinfo.isect_point_ab, isectinfo.isect_point_cd, curve_isect_eps))
   {
+    /* Discard intersections too far away. */
     if (math::distance(isectinfo.isect_point_ab, isectinfo.isect_point_cd) > distance) {
       isectinfo.intersects = false;
       return isectinfo;
     }
     /* Check intersection is on both line segments ab and cd. Lambda value is
-     * required for interpolation. */
+     * captured for interpolation. Epsilon is required for matches very close to the segment end
+     * points. */
     isectinfo.lambda_ab = closest_to_line_v3(isectinfo.closest_ab, isectinfo.isect_point_ab, a, b);
     if (isectinfo.lambda_ab < -curve_isect_eps || isectinfo.lambda_ab > 1.0f + curve_isect_eps) {
       isectinfo.intersects = false;
@@ -226,7 +227,7 @@ static IntersectingLineInfo intersecting_lines(
       return isectinfo;
     }
     if (math::distance(isectinfo.closest_ab, isectinfo.closest_cd) <= distance) {
-      /* Remove epsilon. */
+      /* Remove epsilon and clamp to 0,1 range. */
       isectinfo.lambda_ab = math::clamp(isectinfo.lambda_ab, 0.0f, 1.0f);
       isectinfo.lambda_cd = math::clamp(isectinfo.lambda_cd, 0.0f, 1.0f);
       isectinfo.intersects = true;
@@ -592,6 +593,7 @@ static void set_curve_intersections_project(const bke::CurvesGeometry &src_curve
                 if (isectinfo.intersects && (midline || is_last_segment)) {
                   float3 cl_ab = math::interpolate(ab.og_start, ab.og_end, isectinfo.lambda_ab);
                   float3 cl_cd = math::interpolate(cd.og_start, cd.og_end, isectinfo.lambda_cd);
+                  /* Store direction of projected line, not original line. */
                   add_intersection_data(
                       local_data,
                       cl_ab,
