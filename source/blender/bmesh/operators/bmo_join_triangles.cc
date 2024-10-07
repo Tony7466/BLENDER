@@ -457,9 +457,8 @@ static size_t add_without_duplicates(BMEdge *merge_edges[8],
    * of the array. */
   BLI_assert(count < 8);
 
-  /* Don't add null pointers */
-  if (merge_edge == nullptr)
-    return count;
+  /* Don't add null pointers.  Another 'can't happen' safeguard. */
+  BLI_assert(merge_edge == nullptr);
 
   /* Don't add duplicates */
   for (size_t index = 0; index < count; index++) {
@@ -856,8 +855,8 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
    * - Some of our neighbor triangles' manifold edges... might have non-traingle neighbors.
    * Therefore... We can have _up to eight_ mergable edges, but we often see less. */
   size_t neighbor_count = 0;
-  BMEdge *merge_edges[8];
-  BMLoop *shared_loops[8];
+  BMEdge *merge_edges[8] = {nullptr};
+  BMLoop *shared_loops[8] = {nullptr};
 
   /* Get the four loops around the face */
   BMLoop *l_a = face->l_first;
