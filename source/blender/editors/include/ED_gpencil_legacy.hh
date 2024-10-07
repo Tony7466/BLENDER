@@ -160,8 +160,6 @@ void ED_operatortypes_gpencil_legacy();
  */
 void ED_gpencil_strokes_copybuf_free();
 
-// XXX STUFF BELOW STILL USED BY ANNOTATIONS
-
 /* ------------ Grease-Pencil Drawing API ------------------ */
 /* `drawgpencil.cc` */
 
