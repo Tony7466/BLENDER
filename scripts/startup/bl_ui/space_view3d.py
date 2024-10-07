@@ -690,7 +690,7 @@ class _draw_tool_settings_context_mode:
         return True
 
 
-def draw_layer_topbar_menu(context, layout):
+def draw_topbar_grease_pencil_layer_panel(context, layout):
     grease_pencil = context.object.data
     layer = grease_pencil.layers.active
     group = grease_pencil.layer_groups.active
@@ -827,6 +827,9 @@ class VIEW3D_HT_header(Header):
                 panel="VIEW3D_PT_proportional_edit",
             )
 
+        if object_mode == 'EDIT' and obj.type == 'GREASEPENCIL':
+            draw_topbar_grease_pencil_layer_panel(context, layout)
+
     def draw(self, context):
         layout = self.layout
 
@@ -951,11 +954,7 @@ class VIEW3D_HT_header(Header):
                     panel="VIEW3D_PT_grease_pencil_lock",
                 )
 
-            if mode_string in {
-                'EDIT_GREASE_PENCIL',
-                'PAINT_GREASE_PENCIL',
-                'SCULPT_GREASE_PENCIL'}:
-                    draw_layer_topbar_menu(context, layout)
+            draw_topbar_grease_pencil_layer_panel(context, layout)
 
             if object_mode == 'PAINT_GREASE_PENCIL':
                 # FIXME: this is bad practice!
@@ -1014,11 +1013,11 @@ class VIEW3D_HT_header(Header):
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_color_attributes", icon='GROUP_VCOL')
         elif object_mode == 'VERTEX_GREASE_PENCIL':
-            draw_layer_topbar_menu(context, layout)
+            draw_topbar_grease_pencil_layer_panel(context, layout)
         elif object_mode in {'WEIGHT_PAINT', 'WEIGHT_GREASE_PENCIL'}:
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_vertex_groups", icon='GROUP_VERTEX')
-            draw_layer_topbar_menu(context, row)
+            draw_topbar_grease_pencil_layer_panel(context, row)
 
             if object_mode != 'WEIGHT_GREASE_PENCIL':
                 layout.popover(
