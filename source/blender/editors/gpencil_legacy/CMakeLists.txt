@@ -21,7 +21,6 @@ set(INC_SYS
 set(SRC
   annotate_draw.cc
   annotate_paint.cc
-  drawgpencil.cc
   editaction_gpencil.cc
   gpencil_data.cc
   gpencil_edit.cc

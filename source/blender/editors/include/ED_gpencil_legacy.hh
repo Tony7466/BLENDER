@@ -14,7 +14,6 @@ struct PointerRNA;
 
 struct Brush;
 struct GP_SpaceConversion;
-struct GpRandomSettings;
 struct bGPDframe;
 struct bGPDlayer;
 struct bGPDspoint;

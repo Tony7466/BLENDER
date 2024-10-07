@@ -98,25 +98,6 @@ ListBase gpencil_strokes_copypastebuf = {nullptr, nullptr};
  */
 static GHash *gpencil_strokes_copypastebuf_colors = nullptr;
 
-static GHash *gpencil_strokes_copypastebuf_colors_name_to_material_create(Main *bmain)
-{
-  GHash *name_to_ma = BLI_ghash_str_new(__func__);
-
-  for (Material *ma = static_cast<Material *>(bmain->materials.first); ma != nullptr;
-       ma = static_cast<Material *>(ma->id.next))
-  {
-    char *name = BKE_id_to_unique_string_key(&ma->id);
-    BLI_ghash_insert(name_to_ma, name, ma);
-  }
-
-  return name_to_ma;
-}
-
-static void gpencil_strokes_copypastebuf_colors_name_to_material_free(GHash *name_to_ma)
-{
-  BLI_ghash_free(name_to_ma, MEM_freeN, nullptr);
-}
-
 void ED_gpencil_strokes_copybuf_free()
 {
   bGPDstroke *gps, *gpsn;
@@ -146,34 +127,6 @@ void ED_gpencil_strokes_copybuf_free()
   }
 
   gpencil_strokes_copypastebuf.first = gpencil_strokes_copypastebuf.last = nullptr;
-}
-
-GHash *gpencil_copybuf_validate_colormap(bContext *C)
-{
-  Main *bmain = CTX_data_main(C);
-  Object *ob = CTX_data_active_object(C);
-  GHash *new_colors = BLI_ghash_int_new("GPencil Paste Dst Colors");
-  GHashIterator gh_iter;
-
-  /* For each color, check if exist and add if not */
-  GHash *name_to_ma = gpencil_strokes_copypastebuf_colors_name_to_material_create(bmain);
-
-  GHASH_ITER (gh_iter, gpencil_strokes_copypastebuf_colors) {
-    int *key = static_cast<int *>(BLI_ghashIterator_getKey(&gh_iter));
-    const char *ma_name = static_cast<const char *>(BLI_ghashIterator_getValue(&gh_iter));
-    Material *ma = static_cast<Material *>(BLI_ghash_lookup(name_to_ma, ma_name));
-
-    BKE_gpencil_object_material_ensure(bmain, ob, ma);
-
-    /* Store this mapping (for use later when pasting) */
-    if (!BLI_ghash_haskey(new_colors, POINTER_FROM_INT(*key))) {
-      BLI_ghash_insert(new_colors, POINTER_FROM_INT(*key), ma);
-    }
-  }
-
-  gpencil_strokes_copypastebuf_colors_name_to_material_free(name_to_ma);
-
-  return new_colors;
 }
 
 /** \} */
@@ -237,101 +190,6 @@ void GPENCIL_OT_annotation_active_frame_delete(wmOperatorType *ot)
   /* callbacks */
   ot->exec = gpencil_actframe_delete_exec;
   ot->poll = annotation_actframe_delete_poll;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Delete/Dissolve Utilities
- * \{ */
-
-enum eGP_DeleteMode {
-  /* delete selected stroke points */
-  GP_DELETEOP_POINTS = 0,
-  /* delete selected strokes */
-  GP_DELETEOP_STROKES = 1,
-  /* delete active frame */
-  GP_DELETEOP_FRAME = 2,
-};
-
-enum eGP_DissolveMode {
-  /* dissolve all selected points */
-  GP_DISSOLVE_POINTS = 0,
-  /* dissolve between selected points */
-  GP_DISSOLVE_BETWEEN = 1,
-  /* dissolve unselected points */
-  GP_DISSOLVE_UNSELECT = 2,
-};
-
-/* ----------------------------------- */
-
-/* Split selected strokes into segments, splitting on selected points */
-static int gpencil_delete_selected_points(bContext *C)
-{
-  Object *ob = CTX_data_active_object(C);
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
-  const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
-  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
-  bool changed = false;
-
-  CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
-    bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
-                                                                    gpl->actframe);
-
-    for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
-      if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-
-        if (gpf == nullptr) {
-          continue;
-        }
-
-        /* simply delete strokes which are selected */
-        LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
-
-          /* skip strokes that are invalid for current view */
-          if (ED_gpencil_stroke_can_use(C, gps) == false) {
-            continue;
-          }
-          /* check if the color is editable */
-          if (ED_gpencil_stroke_material_editable(ob, gpl, gps) == false) {
-            continue;
-          }
-
-          if (gps->flag & GP_STROKE_SELECT) {
-            /* deselect old stroke, since it will be used as template for the new strokes */
-            gps->flag &= ~GP_STROKE_SELECT;
-            BKE_gpencil_stroke_select_index_reset(gps);
-
-            if (is_curve_edit) {
-              bGPDcurve *gpc = gps->editcurve;
-              BKE_gpencil_curve_delete_tagged_points(
-                  gpd, gpf, gps, gps->next, gpc, GP_CURVE_POINT_SELECT);
-            }
-            else {
-              /* delete unwanted points by splitting stroke into several smaller ones */
-              BKE_gpencil_stroke_delete_tagged_points(
-                  gpd, gpf, gps, gps->next, GP_SPOINT_SELECT, false, false, 0);
-            }
-
-            changed = true;
-          }
-        }
-      }
-    }
-  }
-  CTX_DATA_END;
-
-  if (changed) {
-    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
-    return OPERATOR_FINISHED;
-  }
-  return OPERATOR_CANCELLED;
-}
-
-int gpencil_delete_selected_point_wrap(bContext *C)
-{
-  return gpencil_delete_selected_points(C);
 }
 
 /** \} */
