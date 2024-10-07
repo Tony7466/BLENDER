@@ -1073,41 +1073,6 @@ void ED_gpencil_reset_layers_parent(Depsgraph *depsgraph, Object *obact, bGPdata
 /* ******************************************************** */
 /* GP Object Stuff */
 
-Object *ED_gpencil_add_object(bContext *C, const float loc[3], ushort local_view_bits)
-{
-  const float rot[3] = {0.0f};
-
-  Object *ob = blender::ed::object::add_type(
-      C, OB_GPENCIL_LEGACY, nullptr, loc, rot, false, local_view_bits);
-
-  /* create default brushes and colors */
-  ED_gpencil_add_defaults(C, ob);
-
-  return ob;
-}
-
-void ED_gpencil_add_defaults(bContext *C, Object *ob)
-{
-  Main *bmain = CTX_data_main(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
-
-  BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_paint);
-
-  /* ensure a color exists and is assigned to object */
-  BKE_gpencil_object_material_ensure_from_active_input_toolsettings(bmain, ob, ts);
-
-  /* Ensure multi-frame falloff curve. */
-  if (ts->gp_sculpt.cur_falloff == nullptr) {
-    ts->gp_sculpt.cur_falloff = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
-    CurveMapping *gp_falloff_curve = ts->gp_sculpt.cur_falloff;
-    BKE_curvemapping_init(gp_falloff_curve);
-    BKE_curvemap_reset(gp_falloff_curve->cm,
-                       &gp_falloff_curve->clipr,
-                       CURVE_PRESET_GAUSS,
-                       CURVEMAP_SLOPE_POSITIVE);
-  }
-}
-
 void ED_gpencil_brush_draw_eraser(Brush *brush, int x, int y)
 {
   short radius = short(brush->size);

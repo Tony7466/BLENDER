@@ -338,16 +338,6 @@ void ED_gpencil_stroke_init_data(bGPDstroke *gps,
                                  int totpoints,
                                  const float mat[4][4]);
 
-/* ------------ Object Utilities ------------ */
-/**
- * Helper function to create new #OB_GPENCIL_LEGACY Object.
- */
-Object *ED_gpencil_add_object(bContext *C, const float loc[3], unsigned short local_view_bits);
-/**
- * Helper function to create default colors and drawing brushes.
- */
-void ED_gpencil_add_defaults(bContext *C, Object *ob);
-
 /**
  * Get drawing reference point for conversion or projection of the stroke
  * \param r_vec: Reference point found
