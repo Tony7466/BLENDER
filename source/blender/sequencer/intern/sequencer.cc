@@ -316,25 +316,17 @@ static void seq_new_fix_links_recursive(Sequence *seq,
                                         blender::Map<Sequence *, Sequence *> strip_map)
 {
   if (seq->type & SEQ_TYPE_EFFECT) {
-    if (seq->seq1 && strip_map.contains(seq->seq1)) {
-      seq->seq1 = strip_map.lookup(seq->seq1);
-    }
-    if (seq->seq2 && strip_map.contains(seq->seq2)) {
-      seq->seq2 = strip_map.lookup(seq->seq2);
-    }
+    seq->seq1 = strip_map.lookup_default(seq->seq1, seq->seq1);
+    seq->seq2 = strip_map.lookup_default(seq->seq2, seq->seq2);
   }
 
   LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
-    if (strip_map.contains(smd->mask_sequence)) {
-      smd->mask_sequence = strip_map.lookup(smd->mask_sequence);
-    }
+    smd->mask_sequence = strip_map.lookup_default(smd->mask_sequence, smd->mask_sequence);
   }
 
   if (SEQ_is_strip_connected(seq)) {
     LISTBASE_FOREACH (SeqConnection *, con, &seq->connections) {
-      if (strip_map.contains(con->seq_ref)) {
-        con->seq_ref = strip_map.lookup(con->seq_ref);
-      }
+      con->seq_ref = strip_map.lookup_default(con->seq_ref, con->seq_ref);
     }
   }
 
