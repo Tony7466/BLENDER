@@ -159,6 +159,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::extern::fmtlib
 )
 
 if(WITH_PYTHON)

@@ -733,6 +733,8 @@ static void initialize_group_input(const bNodeTree &tree,
       if (get_context_value(context_identifier, io_input.socket_type, r_value)) {
         return;
       }
+      typeinfo->get_geometry_nodes_cpp_value(io_input.socket_data, r_value);
+      return;
     }
   }
   const IDProperty *property = IDP_GetPropertyFromGroup(properties, io_input.identifier);

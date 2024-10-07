@@ -15,6 +15,8 @@
 #include <cstring> /* required for STREQ later on. */
 #include <optional>
 
+#include <fmt/format.h>
+
 #include "DNA_modifier_types.h"
 #include "MEM_guardedalloc.h"
 
@@ -965,14 +967,12 @@ void DepsgraphRelationBuilder::build_object_modifiers(Object *object)
           if (context_identifier.is_empty()) {
             continue;
           }
-          const bool is_custom_property_context = context_identifier.startswith("[\"") &&
-                                                  context_identifier.endswith("\"]");
-          if (!is_custom_property_context) {
-            continue;
-          }
+          /* TODO: Only do this when the context is not already available on the modifier or
+           * object. */
+          const std::string custom_prop_str = fmt::format("[\"{}\"]", context_identifier);
           const PointerRNA scene_ptr = RNA_id_pointer_create(&scene_->id);
-          this->build_driver_id_property(scene_ptr, context_identifier.c_str());
-          RNAPathKey variable_key(scene_ptr, context_identifier.c_str(), RNAPointerSource::EXIT);
+          this->build_driver_id_property(scene_ptr, custom_prop_str.c_str());
+          RNAPathKey variable_key(scene_ptr, custom_prop_str.c_str(), RNAPointerSource::EXIT);
           add_relation(variable_key, modifier_key, "Custom Property -> Geometry Nodes");
         }
       }
