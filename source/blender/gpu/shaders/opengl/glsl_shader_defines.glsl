@@ -6,6 +6,26 @@
 /** IMPORTANT: Be wary of size and alignment matching for types that are present
  * in C++ shared code. */
 
+/* Matrix reshaping functions. Needs to be declared before matrix type aliases. */
+#define RESHAPE(name, mat_to, mat_from) \
+  mat_to to_##name(mat_from m) \
+  { \
+    return mat_to(m); \
+  }
+
+/* clang-format off */
+RESHAPE(float2x2, mat2x2, mat3x3)
+RESHAPE(float2x2, mat2x2, mat4x4)
+RESHAPE(float3x3, mat3x3, mat4x4)
+RESHAPE(float3x3, mat3x3, mat2x2)
+RESHAPE(float4x4, mat4x4, mat2x2)
+RESHAPE(float4x4, mat4x4, mat3x3)
+/* clang-format on */
+/* TODO(fclem): Remove. Use Transform instead. */
+RESHAPE(float3x3, mat3x3, mat3x4)
+
+#undef RESHAPE
+
 /* Boolean in GLSL are 32bit in interface structs. */
 #define bool32_t bool
 #define bool2 bvec2
@@ -104,26 +124,6 @@ bool is_zero(vec4 A)
   return all(equal(A, vec4(0.0)));
 }
 
-/* Matrix reshaping functions. */
-#define RESHAPE(mat_to, mat_from) \
-  mat_to to_##mat_to(mat_from m) \
-  { \
-    return mat_to(m); \
-  }
-
-/* clang-format off */
-RESHAPE(float2x2, float3x3)
-RESHAPE(float2x2, float4x4)
-RESHAPE(float3x3, float4x4)
-RESHAPE(float3x3, float2x2)
-RESHAPE(float4x4, float2x2)
-RESHAPE(float4x4, float3x3)
-/* clang-format on */
-/* TODO(fclem): Remove. Use Transform instead. */
-RESHAPE(float3x3, float3x4)
-
-#undef RESHAPE
-
 /* Array syntax compatibility. */
 #define float_array float[]
 #define float2_array vec2[]
@@ -148,3 +148,12 @@ RESHAPE(float3x3, float3x4)
 #define VERTEX_SHADER_CREATE_INFO(a)
 #define FRAGMENT_SHADER_CREATE_INFO(a)
 #define COMPUTE_SHADER_CREATE_INFO(a)
+
+#define _in_sta
+#define _in_end
+#define _out_sta
+#define _out_end
+#define _inout_sta
+#define _inout_end
+#define _shared_sta
+#define _shared_end
