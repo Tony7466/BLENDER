@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
+#include <string>
 
 #include "DNA_pointcloud_types.h"
 
@@ -130,15 +131,19 @@ static void add_intersection_data(IntersectionData &data,
                                   const bool duplicate,
                                   const float3 duplicate_pos)
 {
-  data.sortkey.append(std::to_string(curve_id) + ":" + std::to_string(length) + ":" +
-                      std::to_string(duplicate));
   data.position.append(position);
   data.curve_id.append(curve_id);
   data.length.append(length);
-  data.factor.append(math::safe_divide(length, curve_length));
+  const float factor = math::safe_divide(length, curve_length);
+  data.factor.append(factor);
   data.direction.append(direction);
   data.duplicate.append(duplicate);
   data.duplicate_pos.append(duplicate_pos);
+
+  /* Create sortkey. */
+  std::string sortkey = std::to_string(curve_id);
+  sortkey.insert(0, 8 - sortkey.length(), '0');
+  data.sortkey.append(sortkey + ":" + std::to_string(factor) + ":" + std::to_string(duplicate));
 }
 
 static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionData &r_data)
@@ -214,16 +219,19 @@ static IntersectingLineInfo intersecting_lines(
     }
     /* Check intersection is on both line segments ab and cd. */
     isectinfo.lambda_ab = closest_to_line_v3(isectinfo.closest_ab, isectinfo.isect_point_ab, a, b);
-    if (isectinfo.lambda_ab < 0.0f || isectinfo.lambda_ab > 1.0f) {
+    if (isectinfo.lambda_ab < -curve_isect_eps || isectinfo.lambda_ab > 1.0f + curve_isect_eps) {
       isectinfo.intersects = false;
       return isectinfo;
     }
     isectinfo.lambda_cd = closest_to_line_v3(isectinfo.closest_cd, isectinfo.isect_point_cd, c, d);
-    if (isectinfo.lambda_cd < 0.0f || isectinfo.lambda_cd > 1.0f) {
+    if (isectinfo.lambda_cd < -curve_isect_eps || isectinfo.lambda_cd > 1.0f + curve_isect_eps) {
       isectinfo.intersects = false;
       return isectinfo;
     }
     if (math::distance(isectinfo.closest_ab, isectinfo.closest_cd) <= distance) {
+      /*Remove epsilon.*/
+      isectinfo.lambda_ab = math::clamp(isectinfo.lambda_ab, 0.0f, 1.0f);
+      isectinfo.lambda_cd = math::clamp(isectinfo.lambda_cd, 0.0f, 1.0f);
       isectinfo.intersects = true;
       return isectinfo;
     }
@@ -422,7 +430,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                     ab.start, ab.end, cd.start, cd.end, min_distance);
                 /* To avoid duplicates, discard intersections where lambda is 1.0f except if it is
                  * the last segment. */
-                const bool midline = isectinfo.lambda_ab != 1.0f && isectinfo.lambda_cd != 1.0f;
+                const bool midline = isectinfo.lambda_ab < 1.0f && isectinfo.lambda_cd < 1.0f;
                 const bool is_last_segment = ab.is_last_segment || cd.is_last_segment;
                 if (isectinfo.intersects && (midline || is_last_segment)) {
                   add_intersection_data(
