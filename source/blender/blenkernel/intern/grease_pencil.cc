@@ -2032,12 +2032,12 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
   /* Store the frame that this grease pencil is evaluated on. */
   grease_pencil->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
+  GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil,
+                                                             GeometryOwnershipType::ReadOnly);
   /* The layer adjustments for tinting and radii offsets are applied before modifier evaluation.
    * This ensures that the evaluated geometry contains the modifications. In the future, it would
    * be better to move these into modifiers. For now, these are hardcoded. */
-  grease_pencil_do_layer_adjustments(*grease_pencil);
-  GeometrySet geometry_set = GeometrySet::from_grease_pencil(grease_pencil,
-                                                             GeometryOwnershipType::ReadOnly);
+  grease_pencil_do_layer_adjustments(*geometry_set.get_grease_pencil_for_write());
   /* Only add the edit hint component in edit mode for now so users can properly select deformed
    * drawings. */
   if (object->mode == OB_MODE_EDIT) {
