@@ -4,6 +4,7 @@
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_tree_reference_lifetimes.hh"
 
 #include "NOD_geometry.hh"
 #include "NOD_node_declaration.hh"
@@ -12,10 +13,6 @@
 #include "BLI_resource_scope.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
-
-namespace blender::bke::anonymous_attribute_inferencing {
-const nodes::aal::RelationsInNode &get_relations_in_node(const bNode &node, ResourceScope &scope);
-}
 
 namespace blender::bke::node_structure_type_inferencing {
 
@@ -45,6 +42,8 @@ bool update_structure_type_inferencing(bNodeTree &tree)
   }
 
   ResourceScope scope;
+  Array<const nodes::anonymous_attribute_lifetime::RelationsInNode *> relations_by_node =
+      node_tree_reference_lifetimes::prepare_relations_by_node(tree, scope);
 
   Array<SocketUsageInfo> socket_usages(tree.all_sockets().size());
   /* TODO: Handle zones. */
@@ -71,9 +70,11 @@ bool update_structure_type_inferencing(bNodeTree &tree)
         break;
       }
       default: {
-        const nodes::aal::RelationsInNode &relations =
-            anonymous_attribute_inferencing::get_relations_in_node(*node, scope);
-        for (const nodes::aal::ReferenceRelation &relation : relations.reference_relations) {
+        const nodes::aal::RelationsInNode *relations = relations_by_node[node->index()];
+        if (!relations) {
+          break;
+        }
+        for (const nodes::aal::ReferenceRelation &relation : relations->reference_relations) {
           const bNodeSocket &input_socket = node->input_socket(relation.from_field_input);
           const bNodeSocket &output_socket = node->output_socket(relation.to_field_output);
           if (!input_socket.is_available() || !output_socket.is_available()) {
@@ -189,10 +190,11 @@ bool update_structure_type_inferencing(bNodeTree &tree)
         break;
       }
       default: {
-        const nodes::aal::RelationsInNode &relations =
-            anonymous_attribute_inferencing::get_relations_in_node(*node, scope);
-
-        for (const nodes::aal::ReferenceRelation &relation : relations.reference_relations) {
+        const nodes::aal::RelationsInNode *relations = relations_by_node[node->index()];
+        if (!relations) {
+          break;
+        }
+        for (const nodes::aal::ReferenceRelation &relation : relations->reference_relations) {
           const bNodeSocket &output_socket = node->output_socket(relation.to_field_output);
           if (!output_socket.is_available()) {
             continue;
@@ -200,7 +202,7 @@ bool update_structure_type_inferencing(bNodeTree &tree)
           socket_structure_types[output_socket.index_in_tree()] = StructureType::Single;
         }
 
-        for (const nodes::aal::ReferenceRelation &relation : relations.reference_relations) {
+        for (const nodes::aal::ReferenceRelation &relation : relations->reference_relations) {
           const bNodeSocket &output_socket = node->output_socket(relation.to_field_output);
           if (!output_socket.is_available()) {
             continue;

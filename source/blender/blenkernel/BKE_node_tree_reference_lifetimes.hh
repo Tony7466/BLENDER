@@ -26,6 +26,7 @@
  */
 
 #include "BLI_bit_group_vector.hh"
+#include "BLI_resource_scope.hh"
 #include "BLI_vector.hh"
 
 #include "DNA_node_types.h"
@@ -33,6 +34,8 @@
 #include "NOD_node_declaration.hh"
 
 namespace blender::bke::node_tree_reference_lifetimes {
+
+namespace aal = nodes::aal;
 
 enum class ReferenceSetType {
   /**
@@ -97,5 +100,8 @@ struct ReferenceLifetimesInfo {
 };
 
 bool analyse_reference_lifetimes(bNodeTree &tree);
+
+Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNodeTree &tree,
+                                                              ResourceScope &scope);
 
 }  // namespace blender::bke::node_tree_reference_lifetimes

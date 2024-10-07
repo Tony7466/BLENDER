@@ -25,7 +25,6 @@ namespace blender::bke::node_tree_reference_lifetimes {
 
 using bits::BitInt;
 using nodes::NodeDeclaration;
-namespace aal = nodes::aal;
 
 std::ostream &operator<<(std::ostream &stream, const ReferenceSetInfo &info)
 {
@@ -101,8 +100,8 @@ static const bNodeTreeZone *get_zone_of_node_if_full(const bNodeTreeZones *zones
   return zone;
 }
 
-static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNodeTree &tree,
-                                                                     ResourceScope &scope)
+Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNodeTree &tree,
+                                                              ResourceScope &scope)
 {
   Array<const aal::RelationsInNode *> relations_by_node(tree.all_nodes().size());
   for (const bNode *node : tree.all_nodes()) {
