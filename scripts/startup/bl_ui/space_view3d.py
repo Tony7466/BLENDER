@@ -713,6 +713,7 @@ def draw_topbar_grease_pencil_layer_panel(context, layout):
         icon=icon,
     )
 
+
 class VIEW3D_HT_header(Header):
     bl_space_type = 'VIEW_3D'
 
