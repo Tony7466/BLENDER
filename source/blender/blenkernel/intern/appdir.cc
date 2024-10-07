@@ -51,7 +51,10 @@
 #  endif
 /* #mkdtemp on OSX (and probably all *BSD?), not worth making specific check for this OS. */
 #  include <unistd.h>
-#endif /* WIN32 */
+
+#  include <pwd.h> /* For `passwd` access. */
+
+#endif /* !WIN32 */
 
 static const char _str_null[] = "(null)";
 #define STR_OR_FALLBACK(a) ((a) ? (a) : _str_null)
@@ -168,13 +171,26 @@ const char *BKE_appdir_folder_default_or_root()
 
 const char *BKE_appdir_folder_home()
 {
+  const char *home = nullptr;
+
 #ifdef WIN32
-  return BLI_getenv("userprofile");
-#elif defined(__APPLE__)
-  return BLI_expand_tilde("~/");
+  home = BLI_getenv("userprofile");
 #else
-  return BLI_getenv("HOME");
+
+#  if defined(__APPLE__)
+  home = BLI_expand_tilde("~/");
+#  endif
+  if (home == nullptr) {
+    home = BLI_getenv("HOME");
+    if (home == nullptr) {
+      if (const passwd *pwuser = getpwuid(getuid())) {
+        home = pwuser->pw_dir;
+      }
+    }
+  }
 #endif
+
+  return home;
 }
 
 bool BKE_appdir_folder_documents(char *dir)
