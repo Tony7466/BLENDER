@@ -1415,6 +1415,8 @@ Vector<FCurve *> fcurves_in_listbase_filtered(ListBase /* FCurve * */ fcurves,
  * Remove the given FCurve from the action by searching for it in all channelbags.
  * This assumes that an FCurve can only exist in an action once.
  *
+ * Compatible with both legacy and layered Actions.
+ *
  *  \returns true if the given FCurve was removed.
  *
  * \see action_fcurve_detach

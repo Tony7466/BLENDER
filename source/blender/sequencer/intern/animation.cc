@@ -86,8 +86,7 @@ void SEQ_free_animdata(Scene *scene, Sequence *seq)
 
   animrig::Action &action = scene->adt->action->wrap();
   for (FCurve *fcu : fcurves) {
-    action_fcurve_detach(action, *fcu);
-    BKE_fcurve_free(fcu);
+    action_fcurve_remove(action, *fcu);
   }
 }
 
@@ -147,7 +146,7 @@ void SEQ_animation_restore_original(Scene *scene, SeqAnimationBackup *backup)
  */
 static void seq_animation_duplicate(Sequence *seq,
                                     animrig::Action &dst,
-                                    animrig::slot_handle_t dst_slot_handle,
+                                    const animrig::slot_handle_t dst_slot_handle,
                                     SeqAnimationBackup *src)
 {
   if (seq->type == SEQ_TYPE_META) {
@@ -157,14 +156,17 @@ static void seq_animation_duplicate(Sequence *seq,
   }
 
   Vector<FCurve *> fcurves = {};
-  if (!BLI_listbase_is_empty(&src->curves)) {
-    fcurves = animrig::fcurves_in_listbase_filtered(
-        src->curves, [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
-  }
-  else {
+  BLI_assert_msg(BLI_listbase_is_empty(&src->curves) || src->channel_bag.fcurves().is_empty(),
+                 "SeqAnimationBackup has fcurves for both legacy and layered actions, which "
+                 "should never happen.");
+  if (BLI_listbase_is_empty(&src->curves)) {
     fcurves = animrig::fcurves_in_span_filtered(
         src->channel_bag.fcurves(),
         [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
+  }
+  else {
+    fcurves = animrig::fcurves_in_listbase_filtered(
+        src->curves, [&](const FCurve &fcurve) { return SEQ_fcurve_matches(*seq, fcurve); });
   }
 
   for (const FCurve *fcu : fcurves) {
@@ -173,9 +175,9 @@ static void seq_animation_duplicate(Sequence *seq,
     /* Handling groups properly requires more work, so we ignore them for now.
      *
      * Note that when legacy actions are deprecated, then we can handle channel
-     * groups way more easily because we know they're stored in the duplicate
-     * channelbag in `src`, and we therefore don't have to worry that they might
-     * have already been freed.*/
+     * groups way more easily because we know they're stored in the
+     * already-duplicated channelbag in `src`, and we therefore don't have to
+     * worry that they might have already been freed.*/
     fcu_copy->grp = nullptr;
 
     animrig::action_fcurve_attach(dst, dst_slot_handle, *fcu_copy, std::nullopt);
