@@ -324,6 +324,8 @@ class BrushSelectPanel(BrushPanel):
         BrushAssetShelf.draw_popup_selector(col, context, brush, show_name=False)
         if brush:
             col.prop(brush, "name", text="")
+            if brush.has_unsaved_changes:
+                col.label(text="* Unsaved Changes")
 
         if brush is None:
             return
