@@ -111,11 +111,12 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
                                                      CURVE_TYPE_BEZIER,
                                                      curves.curves_range(),
                                                      curves_transform_data->memory);
-    Vector<index_mask::IndexMask::Initializer> bezier_point_ranges;
+    Vector<index_mask::IndexMask::Initializer> bezier_point_ranges(bezier_curves[i].size());
     OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    bezier_curves[i].foreach_index([&](const int bezier_curve_i) {
-      bezier_point_ranges.append(points_by_curve[bezier_curve_i]);
-    });
+    bezier_curves[i].foreach_index(
+        GrainSize(512), [&](const int curve_i, const int bezier_curve_i) {
+          bezier_point_ranges[bezier_curve_i] = points_by_curve[curve_i];
+        });
     const IndexMask bezier_points = IndexMask::from_initializers(bezier_point_ranges,
                                                                  curves_transform_data->memory);
 
