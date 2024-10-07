@@ -357,10 +357,12 @@ using FoundFCurveCallbackConst =
     blender::FunctionRef<void(const FCurve *fcurve, const char *bone_name)>;
 
 /**
- * Calls `callback` for every fcurve in `action` that targets a bone.
+ * Calls `callback` for every fcurve in `action` that targets any bone.
  *
  * For layered actions this is currently limited to fcurves in the first slot of
- * the action.
+ * the action. This is because these functions are intended for use by pose
+ * library code, which currently (as of writing this) only use the first slot in
+ * layered actions.
  */
 void BKE_action_find_fcurves_with_bones(bAction *action, FoundFCurveCallback callback);
 void BKE_action_find_fcurves_with_bones(const bAction *action, FoundFCurveCallbackConst callback);
