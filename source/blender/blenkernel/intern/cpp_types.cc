@@ -11,6 +11,7 @@
 #include "BKE_cpp_types.hh"
 #include "BKE_geometry_nodes_bundle.hh"
 #include "BKE_geometry_nodes_closure.hh"
+#include "BKE_geometry_nodes_reference_set.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
 #include "BKE_node_socket_value.hh"
@@ -36,7 +37,7 @@ BLI_CPP_TYPE_MAKE(MStringProperty, CPPTypeFlags::None);
 BLI_CPP_TYPE_MAKE(blender::bke::BundlePtr, CPPTypeFlags::None);
 BLI_CPP_TYPE_MAKE(blender::bke::ClosurePtr, CPPTypeFlags::None);
 
-BLI_CPP_TYPE_MAKE(blender::bke::AnonymousAttributeSet, CPPTypeFlags::None);
+BLI_CPP_TYPE_MAKE(blender::bke::GeometryNodesReferenceSet, CPPTypeFlags::None);
 BLI_CPP_TYPE_MAKE(blender::bke::SocketValueVariant, CPPTypeFlags::Printable);
 BLI_VECTOR_CPP_TYPE_MAKE(blender::bke::SocketValueVariant);
 
@@ -59,7 +60,7 @@ void BKE_cpp_types_init()
   BLI_CPP_TYPE_REGISTER(blender::bke::BundlePtr);
   BLI_CPP_TYPE_REGISTER(blender::bke::ClosurePtr);
 
-  BLI_CPP_TYPE_REGISTER(blender::bke::AnonymousAttributeSet);
+  BLI_CPP_TYPE_REGISTER(blender::bke::GeometryNodesReferenceSet);
   BLI_CPP_TYPE_REGISTER(blender::bke::SocketValueVariant);
   BLI_VECTOR_CPP_TYPE_REGISTER(blender::bke::SocketValueVariant);
 }
