@@ -28,7 +28,7 @@
 
 /* This macro was is used to keep track of our math for the error values and ensure it's not
  * getting out of control. It's left in, in debug builds only, as guardrails, but it really isn't
- * worth bothering with the asserts in release builds. This COULD be removed outright, but the
+ * worth bothering with the asserts in release builds. This _could_ be removed outright, but the
  * diagnostic value seems worthwhile given the small performance penalty during debug.
  */
 #ifndef NDEBUG
@@ -78,10 +78,10 @@
 #define FACE_OUT (1 << 0)
 #define FACE_INPUT (1 << 2)
 
-/* improvement rnages from 0..1.  Always impove just a a litle. */
+/** Improvement ranges from 0..1.  Always impove just a a litle. */
 constexpr float minimum_improvement = 0.01f;
 
-/* improvement rnages from 0..1.  Never improve fully. */
+/** Improvement ranges from 0..1.  Never improve fully. */
 constexpr float maximum_improvement = 0.99f;
 
 /* -------------------------------------------------------------------- */
@@ -96,32 +96,41 @@ struct JoinEdgesState {
   /** An index that allows looking up the `HeapNode` in `s.heap` from a `BMEdge*`. */
   blender::Map<BMEdge *, HeapNode *> index;
 
-  /** True when topology is being used.  Allows skipping expensive processing if not. */
+  /** True when topo_influnce is not equal to zero.  Allows skipping expensive processing. */
   bool use_topo_influence;
 
-  /** A float indicating the influence for topology.  Ranges from 0-200. */
+  /** A UI parameter indicating the influence for topology.  Ranges from 0-2. */
   float topo_influnce;
 
-  /** a bool indiciating whether to select all merged quads, or just the unmerged triangeles */
+  /** A UI parameter indiciating to select all merged quads, or just unmerged triangles,. */
   bool select_tris_only;
 
   /** The same `BMesh*` that was passed to the operator, used in many functions. */
   BMesh *bm;
 
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
-  /* The number of merges to allow before stopping */
+  /** This is a count of the number of merges to allow before stopping.
+   * This is a UI parameter set by the user when debugging. */
   int debug_merge_cap;
 
-  /* the number of merges processed so far */
+  /** This is a count of how many merges have been processed so far. */
   int debug_merge_count;
 
-  /* The index of the neighbor to visualise */
+  /** This is the index of the neighbor edge improvement to be visualised, or 0, if none.
+   * This is a UI parameter set by the user when debugging.
+   * valid range 0...8*n on step 0 (processing the n existing quads in initial selection)
+   * valid range 0...8 on each edge merge.
+   * The visualization algorithm behaves, if you set it too high, just doesn't do anything.
+   */
   int debug_neighbor;
 
-  /* The number of neighbors processed so far */
+  /** This is a count of how many neighbors have been processed so far
+   * This is used to count neighbor merges during step 0 (processing existing quads) */
   int debug_neighbor_global_count;
 
-  /* true, when merge cap and neighbor debug say to debug. */
+  /** This is a flag which indicates if this is the algorithm step the user has chosen for
+   * interactive debug. When set, prints values, modifies the selection logic, halts processing
+   * partway through, etc. */
   bool debug_this_step;
 #endif
 };
@@ -241,7 +250,7 @@ static void bm_edge_to_quad_verts(const BMEdge *e, const BMVert *r_v_quad[4])
 /** \name Delimit processing
  * \{ */
 
-/* cache customdata delimiters */
+/** cache customdata delimiters */
 struct DelimitData_CD {
   int cd_type;
   int cd_size;
@@ -603,7 +612,7 @@ static float compute_alignment(JoinEdgesState &s,
                                const float plane_normal[3])
 {
   /* Many meshes have lots of curvature or sharp edges.  Pairs of quads shoulnd't be penalized
-   * SOLELY becuase they represent a curved surface or define an edge.  So we rotate quad_b around
+   * _worse_ becuase they represent a curved surface or define an edge.  So we rotate quad_b around
    * its common edge with quad_a until both are, as much as possible, in the same plane.  This
    * ensures the best possible chance to align */
   float quad_b_coordinates[4][3];
@@ -743,7 +752,7 @@ static void reprioritize_join(JoinEdgesState &s,
 
   ASSERT_VALID_ERROR_METRIC(current_join_error);
 
-  /* Never make a join WORSE becuase of topology around it.
+  /* Never make a join _worse_ becuase of topology around it.
    * Becuase we are sorted during the join phase of the algorithm, this should ONLY happen when
    * processing any pre-existing quads in the input mesh during setup.  They might have high error.
    * If they do, ignore them. */
@@ -794,7 +803,7 @@ static void reprioritize_join(JoinEdgesState &s,
    * algorithm becomes crazy.
    *
    * Further, if we allow a multiplier of exactly 1.0, then all eight edges around the neighbor
-   * quad would end up with a quality that is EXACTLY equal to the neighbor quad - and each other -
+   * quad would end up with a quality that is _exactly_ equal to the neighbor - and each other --
    * losing valuable information about their relative sorting.  In order to preserve that, the
    * multiplier is capped at 99%. -- The last 1% that is left uncorrected is enough to preserve
    * relative ordering.
@@ -842,10 +851,10 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
 
   /* Identify any mergable edges of any neighbor triangles that face us.
    * - Some of our four edges... might not be manifold.
-   * - Some of our neighbors... might not be triangles.
+   * - Some of our neighbor faces... might not be triangles.
    * - Some of our neighbor triangles... might have other nonmanifold (unmergable) edges.
    * - Some of our neighbor triangles' manifold edges... might have non-traingle neighbors.
-   * Therefore... We can have UP TO EIGHT mergable edges, but we often see less. */
+   * Therefore... We can have _up to eight_ mergable edges, but we often see less. */
   size_t neighbor_count = 0;
   BMEdge *merge_edges[8];
   BMLoop *shared_loops[8];
