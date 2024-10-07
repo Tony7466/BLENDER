@@ -29,8 +29,8 @@ set(_optix_SEARCH_DIRS
 # TODO: Which environment uses this?
 if(DEFINED ENV{PROGRAMDATA})
   list(APPEND _optix_SEARCH_DIRS
-    "$ENV{PROGRAMDATA}/NVIDIA Corporation/OptiX SDK 7.3.0"
     "$ENV{PROGRAMDATA}/NVIDIA Corporation/OptiX SDK 7.4.0"
+    "$ENV{PROGRAMDATA}/NVIDIA Corporation/OptiX SDK 7.3.0"
   )
 endif()
 
