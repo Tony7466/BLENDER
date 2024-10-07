@@ -1779,11 +1779,6 @@ typedef struct NodeGeometryCurveTrim {
   uint8_t mode;
 } NodeGeometryCurveTrim;
 
-typedef struct NodeGeometryCurveIntersections {
-  /* GeometryNodeCurveIntersectionMode. */
-  uint8_t mode;
-} NodeGeometryCurveIntersections;
-
 typedef struct NodeGeometryCurveToPoints {
   /** #GeometryNodeCurveResampleMode. */
   uint8_t mode;

@@ -27,16 +27,13 @@ namespace blender::nodes::node_geo_curve_intersection_cc {
 /* Epsilon value for curve intersections and bvh tree. */
 constexpr float curve_isect_eps = 0.000001f;
 
-NODE_STORAGE_FUNCS(NodeGeometryCurveIntersections)
-
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
   b.add_input<decl::Geometry>("Mesh")
       .only_realized_data()
       .supported_type(GeometryComponent::Type::Mesh)
-      .make_available(
-          [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_INTERSECT_SURFACE; });
+      .make_available([](bNode &node) { node.custom1 = GEO_NODE_CURVE_INTERSECT_SURFACE; });
   b.add_input<decl::Bool>("Self Intersections")
       .default_value(false)
       .description("Include self intersections");
@@ -45,13 +42,11 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("Include all intersections except self intersections");
   b.add_input<decl::Vector>("Direction")
       .default_value({0.0f, 0.0f, 1.0f})
-      .make_available(
-          [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_INTERSECT_PLANE; })
+      .make_available([](bNode &node) { node.custom1 = GEO_NODE_CURVE_INTERSECT_PLANE; })
       .description("Direction of orthographic plane");
   b.add_input<decl::Vector>("Center")
       .subtype(PROP_DISTANCE)
-      .make_available(
-          [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_INTERSECT_PLANE; })
+      .make_available([](bNode &node) { node.custom1 = GEO_NODE_CURVE_INTERSECT_PLANE; })
       .description("Center of plane");
   b.add_input<decl::Float>("Distance")
       .subtype(PROP_DISTANCE)
@@ -67,19 +62,12 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometryCurveIntersections *data = MEM_cnew<NodeGeometryCurveIntersections>(__func__);
-
-  data->mode = GEO_NODE_CURVE_INTERSECT_CURVE;
-  node->custom1 = data->mode;
-  node->storage = data;
+  node->custom1 = GEO_NODE_CURVE_INTERSECT_CURVE;
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
 {
-  const NodeGeometryCurveIntersections &storage = node_storage(*node);
-  const GeometryNodeCurveIntersectionMode mode = GeometryNodeCurveIntersectionMode(storage.mode);
-
-  node->custom1 = mode;
+  const GeometryNodeCurveIntersectionMode mode = GeometryNodeCurveIntersectionMode(node->custom1);
 
   bNodeSocket *mesh = static_cast<bNodeSocket *>(node->inputs.first)->next;
   bNodeSocket *self = mesh->next;
@@ -683,8 +671,8 @@ static IntersectionData sort_intersection_data(IntersectionData &data, const boo
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  const NodeGeometryCurveIntersections &storage = node_storage(params.node());
-  const GeometryNodeCurveIntersectionMode mode = GeometryNodeCurveIntersectionMode(storage.mode);
+  const GeometryNodeCurveIntersectionMode mode = GeometryNodeCurveIntersectionMode(
+      params.node().custom1);
 
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
@@ -835,7 +823,7 @@ static void node_rna(StructRNA *srna)
                     "Mode",
                     "Method to find intersection positions for the spline",
                     mode_items,
-                    NOD_storage_enum_accessors(mode));
+                    NOD_inline_enum_accessors(custom1));
 }
 
 static void node_register()
@@ -848,10 +836,6 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
-  blender::bke::node_type_storage(&ntype,
-                                  "NodeGeometryCurveIntersections",
-                                  node_free_standard_storage,
-                                  node_copy_standard_storage);
   blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
