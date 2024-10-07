@@ -921,11 +921,9 @@ set(INC_GLSL
   ../gpu/
 )
 
-# blender_add_lib(shader_check "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 cmake_policy(SET CMP0119 NEW)
 set_source_files_properties(intern/shaders/draw_debug_print_display_vert.glsl LANGUAGE CXX)
-# add_library(shader_check MODULE intern/shaders/draw_debug_print_display_vert.glsl)
-add_library(shader_check MODULE ../gpu/shaders/gpu_glsl_cpp_stubs.cc)
+add_library(shader_check MODULE intern/shaders/draw_debug_print_display_vert.glsl)
 set_target_properties(shader_check PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(shader_check PUBLIC ${INC_GLSL})
 

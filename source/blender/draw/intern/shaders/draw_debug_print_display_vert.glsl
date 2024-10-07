@@ -6,6 +6,10 @@
  * Display characters using an ascii table. Outputs one point per character.
  */
 
+#include "gpu_glsl_cpp_stubs.hh"
+
+VERTEX_SHADER_CREATE_INFO(create_info::draw_debug_print_display)
+
 void main()
 {
   /* Skip first 4 chars containing header data. */
