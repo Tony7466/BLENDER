@@ -2351,9 +2351,7 @@ void node_draw_link(const bContext &C,
 
   if (link.flag & NODE_LINK_VALID) {
     /* special indicated link, on drop-node */
-    if ((link.flag & NODE_LINK_INSERT_TARGET || link.flag & NODE_LINK_INSERT_TARGET_LINKDRAG) &&
-        !(link.flag & NODE_LINK_INSERT_TARGET_INVALID))
-    {
+    if (link.flag & NODE_LINK_INSERT_TARGET && !(link.flag & NODE_LINK_INSERT_TARGET_INVALID)) {
       th_col1 = th_col2 = TH_ACTIVE;
     }
     else if (link.flag & NODE_LINK_MUTED) {

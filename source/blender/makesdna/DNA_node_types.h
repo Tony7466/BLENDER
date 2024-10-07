@@ -643,11 +643,6 @@ enum {
    * with the node.
    */
   NODE_LINK_INSERT_TARGET_INVALID = 1 << 5,
-  /**
-   * Node should be inserted on this node, but must use the already linked socket after
-   * link-drag-search as it's input socket.
-   */
-  NODE_LINK_INSERT_TARGET_LINKDRAG = 1 << 6,
 };
 
 typedef struct bNestedNodePath {
