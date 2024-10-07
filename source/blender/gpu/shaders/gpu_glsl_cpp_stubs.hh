@@ -815,14 +815,18 @@ void groupMemoryBarrier() {}
 
 /** \} */
 
-/* GLSL main function must return void. C++ need to return int. */
+/* GLSL main function must return void. C++ need to return int.
+ * Inject real main (C++) inside the GLSL main definition. */
 #define main() \
-  _fake_main(); \
+  /* Fake main prototype. */ \
+  /* void */ _fake_main(); \
+  /* Real main. */ \
   int main() \
   { \
     _fake_main(); \
     return 0; \
   } \
+  /* Fake main definition. */ \
   void _fake_main()
 
 #define GLSL_CPP_STUBS
