@@ -1208,14 +1208,6 @@ PhysicsWorldState &PhysicsGeometry::state_for_write()
 
   PhysicsWorldState *new_state = new PhysicsWorldState(*world_state_);
 
-  new_state->try_move_data(*world_state_,
-                           world_state_->bodies_num(),
-                           world_state_->constraints_num(),
-                           world_state_->bodies_range(),
-                           world_state_->constraints_range(),
-                           0,
-                           0);
-
   world_state_->remove_user_and_delete_if_last();
   world_state_ = new_state;
 
