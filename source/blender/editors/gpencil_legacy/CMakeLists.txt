@@ -23,7 +23,6 @@ set(SRC
   annotate_paint.cc
   drawgpencil.cc
   editaction_gpencil.cc
-  gpencil_armature.cc
   gpencil_data.cc
   gpencil_edit.cc
   gpencil_ops.cc

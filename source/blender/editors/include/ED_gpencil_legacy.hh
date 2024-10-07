@@ -299,44 +299,7 @@ int ED_gpencil_session_active();
  */
 int ED_undo_gpencil_step(bContext *C, int step); /* eUndoStepDir. */
 
-/* ------------ Grease-Pencil Armature ------------------ */
-bool ED_gpencil_add_armature(const bContext *C, ReportList *reports, Object *ob, Object *ob_arm);
-bool ED_gpencil_add_armature_weights(
-    const bContext *C, ReportList *reports, Object *ob, Object *ob_arm, int mode);
-
-/* keep this aligned with gpencil_armature enum */
-#define GP_PAR_ARMATURE_NAME 0
-#define GP_PAR_ARMATURE_AUTO 1
-
-/* ------------ Transformation Utilities ------------ */
-
-/**
- * Reset parent matrix for all layers.
- */
-void ED_gpencil_reset_layers_parent(Depsgraph *depsgraph, Object *obact, bGPdata *gpd);
-
-/* Cursor utilities. */
-
-/**
- * Draw eraser cursor.
- */
-void ED_gpencil_brush_draw_eraser(Brush *brush, int x, int y);
-
 /* ----------- Add Primitive Utilities -------------- */
-
-/** Number of values defining each point in the built-in data buffers for primitives. */
-#define GP_PRIM_DATABUF_SIZE 5
-/**
- * Populate stroke with point data from data buffers.
- * \param gps: Grease pencil stroke
- * \param array: Flat array of point data values. Each entry has #GP_PRIM_DATABUF_SIZE values.
- * \param totpoints: Total of points
- * \param mat: 4x4 transform matrix to transform points into the right coordinate space.
- */
-void ED_gpencil_stroke_init_data(bGPDstroke *gps,
-                                 const float *array,
-                                 int totpoints,
-                                 const float mat[4][4]);
 
 /**
  * Get drawing reference point for conversion or projection of the stroke

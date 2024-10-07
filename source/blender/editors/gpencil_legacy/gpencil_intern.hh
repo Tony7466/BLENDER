@@ -392,14 +392,6 @@ GHash *gpencil_copybuf_validate_colormap(bContext *C);
  */
 int gpencil_delete_selected_point_wrap(bContext *C);
 
-/**
- * Subdivide a stroke once, by adding a point half way between each pair of existing points
- * \param gpd: Datablock
- * \param gps: Stroke data
- * \param subdivide: Number of times to subdivide
- */
-void gpencil_subdivide_stroke(bGPdata *gpd, bGPDstroke *gps, int subdivide);
-
 /* Layers Enums -------------------------------------- */
 
 /**
