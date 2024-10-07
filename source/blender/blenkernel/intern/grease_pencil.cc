@@ -1956,9 +1956,6 @@ static void grease_pencil_do_layer_adjustments(GreasePencil &grease_pencil)
   using namespace bke::greasepencil;
 
   const bke::AttributeAccessor layer_attributes = grease_pencil.attributes();
-  if (!layer_attributes.contains("tint_color") && !layer_attributes.contains("radius_offset")) {
-    return;
-  }
 
   struct LayerDrawingInfo {
     Drawing *drawing;
@@ -2024,6 +2021,7 @@ static void grease_pencil_do_layer_adjustments(GreasePencil &grease_pencil)
 
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
 {
+  using namespace blender;
   using namespace blender::bke;
   /* Free any evaluated data and restore original data. */
   BKE_object_free_derived_caches(object);
@@ -2037,7 +2035,10 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   /* The layer adjustments for tinting and radii offsets are applied before modifier evaluation.
    * This ensures that the evaluated geometry contains the modifications. In the future, it would
    * be better to move these into modifiers. For now, these are hardcoded. */
-  grease_pencil_do_layer_adjustments(*geometry_set.get_grease_pencil_for_write());
+  const bke::AttributeAccessor layer_attributes = grease_pencil->attributes();
+  if (layer_attributes.contains("tint_color") || layer_attributes.contains("radius_offset")) {
+    grease_pencil_do_layer_adjustments(*geometry_set.get_grease_pencil_for_write());
+  }
   /* Only add the edit hint component in edit mode for now so users can properly select deformed
    * drawings. */
   if (object->mode == OB_MODE_EDIT) {
