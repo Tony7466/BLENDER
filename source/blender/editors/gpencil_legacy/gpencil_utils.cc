@@ -229,12 +229,6 @@ bGPdata **ED_annotation_data_get_pointers(const bContext *C, PointerRNA *r_ptr)
 }
 /* -------------------------------------------------------- */
 
-bGPdata *ED_gpencil_data_get_active_direct(ScrArea *area, Object *ob)
-{
-  bGPdata **gpd_ptr = ED_gpencil_data_get_pointers_direct(area, ob, nullptr);
-  return (gpd_ptr) ? *(gpd_ptr) : nullptr;
-}
-
 bGPdata *ED_annotation_data_get_active_direct(ID *screen_id, ScrArea *area, Scene *scene)
 {
   bGPdata **gpd_ptr = ED_annotation_data_get_pointers_direct(screen_id, area, scene, nullptr);
@@ -254,17 +248,6 @@ bGPdata *ED_annotation_data_get_active(const bContext *C)
 {
   bGPdata **gpd_ptr = ED_annotation_data_get_pointers(C, nullptr);
   return (gpd_ptr) ? *(gpd_ptr) : nullptr;
-}
-
-bGPdata *ED_gpencil_data_get_active_evaluated(const bContext *C)
-{
-  ScrArea *area = CTX_wm_area(C);
-
-  const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  Object *ob = CTX_data_active_object(C);
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-
-  return ED_gpencil_data_get_active_direct(area, ob_eval);
 }
 
 /* -------------------------------------------------------- */

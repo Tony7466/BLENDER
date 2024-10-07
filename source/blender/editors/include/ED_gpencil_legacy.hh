@@ -85,15 +85,6 @@ bGPdata **ED_gpencil_data_get_pointers(const bContext *C, PointerRNA *r_ptr);
  * Get the active Grease Pencil data-block
  */
 bGPdata *ED_gpencil_data_get_active(const bContext *C);
-/**
- * Get the evaluated copy of the active Grease Pencil data-block (where applicable)
- * - For the 3D View (i.e. "GP Objects"), this gives the evaluated copy of the GP data-block
- *   (i.e. a copy of the active GP data-block for the active object, where modifiers have been
- *   applied). This is needed to correctly work with "Copy-on-Write".
- * - For all other editors (i.e. "GP Annotations"), this just gives the active data-block
- *   like for #ED_gpencil_data_get_active()
- */
-bGPdata *ED_gpencil_data_get_active_evaluated(const bContext *C);
 
 /**
  * Context independent (i.e. each required part is passed in instead).
@@ -103,8 +94,6 @@ bGPdata *ED_gpencil_data_get_active_evaluated(const bContext *C);
  * when context info is not available.
  */
 bGPdata **ED_gpencil_data_get_pointers_direct(ScrArea *area, Object *ob, PointerRNA *r_ptr);
-/* Get the active Grease Pencil data-block, when context is not available */
-bGPdata *ED_gpencil_data_get_active_direct(ScrArea *area, Object *ob);
 
 /**
  * Get the active Grease Pencil data-block
