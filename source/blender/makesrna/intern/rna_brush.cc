@@ -3740,12 +3740,12 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "use_paint_grease_pencil", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_PAINT_GPENCIL_LEGACY);
+  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_PAINT_GREASE_PENCIL);
   RNA_def_property_ui_text(prop, "Use Paint", "Use this brush in grease pencil drawing mode");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "use_vertex_grease_pencil", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_VERTEX_GPENCIL_LEGACY);
+  RNA_def_property_boolean_sdna(prop, nullptr, "ob_mode", OB_MODE_VERTEX_GREASE_PENCIL);
   RNA_def_property_ui_text(
       prop, "Use Vertex", "Use this brush in grease pencil vertex color mode");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
