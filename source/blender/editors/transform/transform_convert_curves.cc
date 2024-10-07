@@ -123,31 +123,24 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     /* Alter selection as in legacy curves bezt_select_to_transform_triple_flag(). */
     if (bezier_points.size() > 0) {
       blender::IndexMaskMemory memory;
-      std::array<MutableSpan<int8_t>, 2> handle_types = {curves.handle_types_left_for_write(),
-                                                         curves.handle_types_right_for_write()};
+      MutableSpan<int8_t> left_handle_types = curves.handle_types_left_for_write();
+      MutableSpan<int8_t> right_handle_types = curves.handle_types_right_for_write();
 
-      auto mask_from_type = [&bezier_points, &memory](VArray<int8_t> types,
-                                                      const HandleType type) {
+      auto from_type = [&bezier_points, &memory](VArray<int8_t> types, const HandleType type) {
         return IndexMask::from_predicate(bezier_points,
                                          GrainSize(4096),
                                          memory,
                                          [&](const int64_t i) { return types[i] == type; });
       };
 
-      std::array<const IndexMask, 2> aligned_handles = {
-          mask_from_type(curves.handle_types_left(), BEZIER_HANDLE_ALIGN),
-          mask_from_type(curves.handle_types_right(), BEZIER_HANDLE_ALIGN),
-      };
+      const IndexMask aligned_left = from_type(curves.handle_types_left(), BEZIER_HANDLE_ALIGN);
+      const IndexMask aligned_right = from_type(curves.handle_types_right(), BEZIER_HANDLE_ALIGN);
 
-      std::array<const IndexMask, 2> auto_handles = {
-          mask_from_type(curves.handle_types_left(), BEZIER_HANDLE_AUTO),
-          mask_from_type(curves.handle_types_right(), BEZIER_HANDLE_AUTO),
-      };
+      const IndexMask auto_left = from_type(curves.handle_types_left(), BEZIER_HANDLE_AUTO);
+      const IndexMask auto_right = from_type(curves.handle_types_right(), BEZIER_HANDLE_AUTO);
 
-      std::array<const IndexMask, 2> vector_handles = {
-          mask_from_type(curves.handle_types_left(), BEZIER_HANDLE_VECTOR),
-          mask_from_type(curves.handle_types_right(), BEZIER_HANDLE_VECTOR),
-      };
+      const IndexMask vector_left = from_type(curves.handle_types_left(), BEZIER_HANDLE_VECTOR);
+      const IndexMask vector_right = from_type(curves.handle_types_right(), BEZIER_HANDLE_VECTOR);
 
       index_mask::ExprBuilder builder;
       const index_mask::Expr &selected_knots = builder.intersect(
@@ -156,8 +149,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
        * BEZIER_HANDLE_AUTO. */
       const index_mask::Expr &must_be_selected_expr = builder.intersect(
           {&selected_knots,
-           &builder.merge({&aligned_handles[0], &auto_handles[0]}),
-           &builder.merge({&aligned_handles[1], &auto_handles[1]})});
+           &builder.merge({&aligned_left, &auto_left}),
+           &builder.merge({&aligned_right, &auto_right})});
 
       /* Select bezier handles that must be transformed if the knot (main control point) is
        * selected. */
@@ -171,20 +164,29 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
       const index_mask::Expr &nonselected_knots = builder.subtract(&bezier_points,
                                                                    {&selected_knots});
-
-      for (const int side : IndexRange(handle_types.size())) {
-        /* Selected BEZIER_HANDLE_AUTO handles. */
+      {
+        /* Selected BEZIER_HANDLE_AUTO left handles. */
         const IndexMask &convert_to_align = evaluate_expression(
-            builder.intersect(
-                {&nonselected_knots, &selection_per_attribute[1 + side], &auto_handles[side]}),
+            builder.intersect({&nonselected_knots, &selection_per_attribute[1], &auto_left}),
             memory);
-        index_mask::masked_fill(handle_types[side], int8_t(BEZIER_HANDLE_ALIGN), convert_to_align);
-        /* Selected BEZIER_HANDLE_VECTOR handles. */
+        index_mask::masked_fill(left_handle_types, int8_t(BEZIER_HANDLE_ALIGN), convert_to_align);
+        /* Selected BEZIER_HANDLE_VECTOR left handles. */
         const IndexMask &convert_to_free = evaluate_expression(
-            builder.intersect(
-                {&nonselected_knots, &selection_per_attribute[1 + side], &vector_handles[side]}),
+            builder.intersect({&nonselected_knots, &selection_per_attribute[1], &vector_left}),
             memory);
-        index_mask::masked_fill(handle_types[side], int8_t(BEZIER_HANDLE_FREE), convert_to_free);
+        index_mask::masked_fill(left_handle_types, int8_t(BEZIER_HANDLE_FREE), convert_to_free);
+      }
+      {
+        /* Selected BEZIER_HANDLE_AUTO right handles. */
+        const IndexMask &convert_to_align = evaluate_expression(
+            builder.intersect({&nonselected_knots, &selection_per_attribute[2], &auto_right}),
+            memory);
+        index_mask::masked_fill(right_handle_types, int8_t(BEZIER_HANDLE_ALIGN), convert_to_align);
+        /* Selected BEZIER_HANDLE_VECTOR right handles. */
+        const IndexMask &convert_to_free = evaluate_expression(
+            builder.intersect({&nonselected_knots, &selection_per_attribute[2], &vector_right}),
+            memory);
+        index_mask::masked_fill(right_handle_types, int8_t(BEZIER_HANDLE_FREE), convert_to_free);
       }
     }
 
