@@ -1,1 +1,2 @@
 Referenced by issue #123787, EEVEE-NEXT - Shadows Break with Subdivision Surface (RDNA2 only?)
+Referenced by commit 7d33cd9877d2e4a35b6359ab113c01672ddfc56d, GHOST/Wayland: reference the stable tablet-v2 API
