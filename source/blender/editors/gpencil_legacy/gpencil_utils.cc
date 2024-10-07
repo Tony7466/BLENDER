@@ -277,26 +277,6 @@ bool ED_gpencil_data_owner_is_annotation(PointerRNA *owner_ptr)
 }
 
 /* ******************************************************** */
-/* Keyframe Indicator Checks */
-
-bool ED_gpencil_has_keyframe_v3d(Scene * /*scene*/, Object *ob, int cfra)
-{
-  if (ob && ob->data && (ob->type == OB_GPENCIL_LEGACY)) {
-    bGPDlayer *gpl = BKE_gpencil_layer_active_get(static_cast<bGPdata *>(ob->data));
-    if (gpl) {
-      if (gpl->actframe) {
-        /* XXX: assumes that frame has been fetched already */
-        return (gpl->actframe->framenum == cfra);
-      }
-      /* XXX: disabled as could be too much of a penalty */
-      // return BKE_gpencil_layer_frame_find(gpl, cfra);
-    }
-  }
-
-  return false;
-}
-
-/* ******************************************************** */
 /* Poll Callbacks */
 
 bool gpencil_add_poll(bContext *C)
@@ -476,39 +456,6 @@ bool gpencil_stroke_inside_circle(const float mval[2], int rad, int x0, int y0, 
 }
 
 /* ******************************************************** */
-/* Selection Validity Testing */
-
-bool ED_gpencil_frame_has_selected_stroke(const bGPDframe *gpf)
-{
-  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-    if (gps->flag & GP_STROKE_SELECT) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool ED_gpencil_layer_has_selected_stroke(const bGPDlayer *gpl, const bool is_multiedit)
-{
-  bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
-                                                                  gpl->actframe);
-  for (bGPDframe *gpf = init_gpf; gpf; gpf = gpf->next) {
-    if ((gpf == gpl->actframe) || ((gpf->flag & GP_FRAME_SELECT) && (is_multiedit))) {
-      if (ED_gpencil_frame_has_selected_stroke(gpf)) {
-        return true;
-      }
-    }
-    /* If not multi-edit, exit loop. */
-    if (!is_multiedit) {
-      break;
-    }
-  }
-
-  return false;
-}
-
-/* ******************************************************** */
 /* Stroke Validity Testing */
 
 bool ED_gpencil_stroke_can_use_direct(const ScrArea *area, const bGPDstroke *gps)
@@ -551,20 +498,6 @@ bool ED_gpencil_stroke_material_editable(Object *ob, const bGPDlayer *gpl, const
       return false;
     }
     if (((gpl->flag & GP_LAYER_UNLOCK_COLOR) == 0) && (gp_style->flag & GP_MATERIAL_LOCKED)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool ED_gpencil_stroke_material_visible(Object *ob, const bGPDstroke *gps)
-{
-  /* check if the color is editable */
-  MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
-
-  if (gp_style != nullptr) {
-    if (gp_style->flag & GP_MATERIAL_HIDE) {
       return false;
     }
   }
@@ -814,82 +747,6 @@ void gpencil_point_3d_to_xy(const GP_SpaceConversion *gsc,
   }
 }
 
-bool gpencil_point_xy_to_3d(const GP_SpaceConversion *gsc,
-                            Scene *scene,
-                            const float screen_co[2],
-                            float r_out[3])
-{
-  const RegionView3D *rv3d = static_cast<const RegionView3D *>(gsc->region->regiondata);
-  float rvec[3];
-
-  ED_gpencil_drawing_reference_get(scene, gsc->ob, scene->toolsettings->gpencil_v3d_align, rvec);
-
-  float zfac = ED_view3d_calc_zfac(rv3d, rvec);
-
-  float mval_prj[2];
-
-  if (ED_view3d_project_float_global(gsc->region, rvec, mval_prj, V3D_PROJ_TEST_NOP) ==
-      V3D_PROJ_RET_OK)
-  {
-    float dvec[3];
-    float xy_delta[2];
-    sub_v2_v2v2(xy_delta, mval_prj, screen_co);
-    ED_view3d_win_to_delta(gsc->region, xy_delta, zfac, dvec);
-    sub_v3_v3v3(r_out, rvec, dvec);
-
-    return true;
-  }
-  zero_v3(r_out);
-  return false;
-}
-
-void gpencil_stroke_convertcoords_tpoint(Scene *scene,
-                                         ARegion *region,
-                                         Object *ob,
-                                         const tGPspoint *point2D,
-                                         float *depth,
-                                         float r_out[3])
-{
-  ToolSettings *ts = scene->toolsettings;
-
-  if (depth && (*depth == DEPTH_INVALID)) {
-    depth = nullptr;
-  }
-
-  int mval_i[2];
-  round_v2i_v2fl(mval_i, point2D->m_xy);
-
-  if ((depth != nullptr) && ED_view3d_autodist_simple(region, mval_i, r_out, 0, depth)) {
-    /* projecting onto 3D-Geometry
-     * - nothing more needs to be done here, since view_autodist_simple() has already done it
-     */
-  }
-  else {
-    float mval_prj[2];
-    float rvec[3];
-
-    /* Current method just converts each point in screen-coordinates to
-     * 3D-coordinates using the 3D-cursor as reference.
-     */
-    ED_gpencil_drawing_reference_get(scene, ob, ts->gpencil_v3d_align, rvec);
-    const float zfac = ED_view3d_calc_zfac(static_cast<const RegionView3D *>(region->regiondata),
-                                           rvec);
-
-    if (ED_view3d_project_float_global(region, rvec, mval_prj, V3D_PROJ_TEST_NOP) ==
-        V3D_PROJ_RET_OK)
-    {
-      float dvec[3];
-      float xy_delta[2];
-      sub_v2_v2v2(xy_delta, mval_prj, point2D->m_xy);
-      ED_view3d_win_to_delta(region, xy_delta, zfac, dvec);
-      sub_v3_v3v3(r_out, rvec, dvec);
-    }
-    else {
-      zero_v3(r_out);
-    }
-  }
-}
-
 void ED_gpencil_drawing_reference_get(const Scene *scene,
                                       const Object *ob,
                                       char align_flag,
@@ -1006,84 +863,6 @@ tGPspoint *ED_gpencil_sbuffer_ensure(tGPspoint *buffer_array,
   }
 
   return buffer_array;
-}
-
-void ED_gpencil_layer_merge(bGPdata *gpd,
-                            bGPDlayer *gpl_src,
-                            bGPDlayer *gpl_dst,
-                            const bool reverse)
-{
-  /* Collect frames of gpl_dst in hash table to avoid O(n^2) lookups. */
-  GHash *gh_frames_dst = BLI_ghash_int_new_ex(__func__, 64);
-  LISTBASE_FOREACH (bGPDframe *, gpf_dst, &gpl_dst->frames) {
-    BLI_ghash_insert(gh_frames_dst, POINTER_FROM_INT(gpf_dst->framenum), gpf_dst);
-  }
-
-  /* Read all frames from merge layer and add any missing in destination layer,
-   * copying all previous strokes to keep the image equals.
-   * Need to do it in a separated loop to avoid strokes accumulation. */
-  LISTBASE_FOREACH (bGPDframe *, gpf_src, &gpl_src->frames) {
-    /* Try to find frame in destination layer hash table. */\
-    bGPDframe *gpf_dst = static_cast<bGPDframe *>(
-        BLI_ghash_lookup(gh_frames_dst, POINTER_FROM_INT(gpf_src->framenum)));
-    if (!gpf_dst) {
-      gpf_dst = BKE_gpencil_layer_frame_get(gpl_dst, gpf_src->framenum, GP_GETFRAME_ADD_COPY);
-      /* Use same frame type. */
-      gpf_dst->key_type = gpf_src->key_type;
-      BLI_ghash_insert(gh_frames_dst, POINTER_FROM_INT(gpf_src->framenum), gpf_dst);
-    }
-
-    /* Copy current source frame to further frames
-     * that are keyframes in destination layer and not in source layer
-     * to keep the image equals. */
-    if (gpf_dst->next && (!gpf_src->next || (gpf_dst->next->framenum < gpf_src->next->framenum))) {
-      gpf_dst = gpf_dst->next;
-      BKE_gpencil_layer_frame_get(gpl_src, gpf_dst->framenum, GP_GETFRAME_ADD_COPY);
-    }
-  }
-
-  /* Read all frames from merge layer and add strokes. */
-  LISTBASE_FOREACH (bGPDframe *, gpf_src, &gpl_src->frames) {
-    /* Try to find frame in destination layer hash table. */
-    bGPDframe *gpf_dst = static_cast<bGPDframe *>(
-        BLI_ghash_lookup(gh_frames_dst, POINTER_FROM_INT(gpf_src->framenum)));
-    /* Add to tail all strokes. */
-    if (gpf_dst) {
-      if (reverse) {
-        BLI_movelisttolist_reverse(&gpf_dst->strokes, &gpf_src->strokes);
-      }
-      else {
-        BLI_movelisttolist(&gpf_dst->strokes, &gpf_src->strokes);
-      }
-    }
-  }
-
-  /* Add Masks to destination layer. */
-  LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl_src->mask_layers) {
-    /* Don't add merged layers or missing layer names. */
-    if (!BKE_gpencil_layer_named_get(gpd, mask->name) || STREQ(mask->name, gpl_src->info) ||
-        STREQ(mask->name, gpl_dst->info))
-    {
-      continue;
-    }
-    if (!BKE_gpencil_layer_mask_named_get(gpl_dst, mask->name)) {
-      bGPDlayer_Mask *mask_new = static_cast<bGPDlayer_Mask *>(MEM_dupallocN(mask));
-      BLI_addtail(&gpl_dst->mask_layers, mask_new);
-      gpl_dst->act_mask++;
-    }
-  }
-
-  /* Set destination layer as active. */
-  BKE_gpencil_layer_active_set(gpd, gpl_dst);
-
-  /* Now delete merged layer. */
-  BKE_gpencil_layer_delete(gpd, gpl_src);
-  BLI_ghash_free(gh_frames_dst, nullptr, nullptr);
-
-  /* Reorder masking. */
-  if (gpl_dst->mask_layers.first) {
-    BKE_gpencil_layer_mask_sort(gpd, gpl_dst);
-  }
 }
 
 static void gpencil_layer_new_name_get(bGPdata *gpd, char *r_name, size_t name_maxncpy)

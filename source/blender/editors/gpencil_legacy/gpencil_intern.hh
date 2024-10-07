@@ -312,42 +312,7 @@ void gpencil_point_3d_to_xy(const GP_SpaceConversion *gsc,
                             const float pt[3],
                             float xy[2]);
 
-/**
- * Project screen-space coordinates to 3D-space
- *
- * For use with editing tools where it is easier to perform the operations in 2D,
- * and then later convert the transformed points back to 3D.
- *
- * \param screen_co: The screen-space 2D coordinates to convert to
- * \param r_out: The resulting 3D coordinates of the input point
- *
- * \note We include this as a utility function, since the standard method
- * involves quite a few steps, which are invariably always the same
- * for all GPencil operations. So, it's nicer to just centralize these.
- *
- * \warning Assumes that it is getting called in a 3D view only.
- */
-bool gpencil_point_xy_to_3d(const GP_SpaceConversion *gsc,
-                            Scene *scene,
-                            const float screen_co[2],
-                            float r_out[3]);
-
 /* helper to convert 2d to 3d */
-
-/**
- * Convert #tGPspoint (temporary 2D/screen-space point data used by GP modal operators)
- * to 3D coordinates.
- *
- * \param point2D: The screen-space 2D point data to convert.
- * \param depth: Depth array (via #ED_view3d_depth_read_cached()).
- * \param r_out: The resulting 2D point data.
- */
-void gpencil_stroke_convertcoords_tpoint(Scene *scene,
-                                         ARegion *region,
-                                         Object *ob,
-                                         const tGPspoint *point2D,
-                                         float *depth,
-                                         float r_out[3]);
 
 /* Poll Callbacks ------------------------------------ */
 /* `gpencil_utils.cc` */

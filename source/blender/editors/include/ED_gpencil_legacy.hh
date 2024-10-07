@@ -137,17 +137,6 @@ bGPdata *ED_annotation_data_get_active_direct(ID *screen_id, ScrArea *area, Scen
  */
 bool ED_gpencil_data_owner_is_annotation(PointerRNA *owner_ptr);
 
-/* 3D View */
-
-/**
- * Check whether there's an active GP keyframe on the current frame.
- */
-bool ED_gpencil_has_keyframe_v3d(Scene *scene, Object *ob, int cfra);
-
-/* ----------- Stroke Editing Utilities ---------------- */
-bool ED_gpencil_frame_has_selected_stroke(const bGPDframe *gpf);
-bool ED_gpencil_layer_has_selected_stroke(const bGPDlayer *gpl, bool is_multiedit);
-
 /**
  * Check whether given stroke can be edited given the supplied context.
  * TODO: do we need additional flags for screen-space vs data-space?.
@@ -157,8 +146,6 @@ bool ED_gpencil_stroke_can_use_direct(const ScrArea *area, const bGPDstroke *gps
 bool ED_gpencil_stroke_can_use(const bContext *C, const bGPDstroke *gps);
 /** Check whether given stroke can be edited for the current color */
 bool ED_gpencil_stroke_material_editable(Object *ob, const bGPDlayer *gpl, const bGPDstroke *gps);
-/** Check whether given stroke is visible for the current material. */
-bool ED_gpencil_stroke_material_visible(Object *ob, const bGPDstroke *gps);
 
 /* ----------- Grease Pencil Operators ----------------- */
 
@@ -168,12 +155,12 @@ void ED_operatortypes_gpencil_legacy();
 
 /* ------------- Copy-Paste Buffers -------------------- */
 
-/* Strokes copybuf */
-
 /**
  * Free copy/paste buffer data.
  */
 void ED_gpencil_strokes_copybuf_free();
+
+// XXX STUFF BELOW STILL USED BY ANNOTATIONS
 
 /* ------------ Grease-Pencil Drawing API ------------------ */
 /* `drawgpencil.cc` */
@@ -253,11 +240,6 @@ bool ED_gpencil_layer_frames_delete(bGPDlayer *gpl);
  * Duplicate selected frames from given gp-layer.
  */
 void ED_gpencil_layer_frames_duplicate(bGPDlayer *gpl);
-
-/**
- * Merge two layers.
- */
-void ED_gpencil_layer_merge(bGPdata *gpd, bGPDlayer *gpl_src, bGPDlayer *gpl_dst, bool reverse);
 
 /**
  * Set keyframe type for selected frames from given gp-layer
