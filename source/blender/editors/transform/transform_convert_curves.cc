@@ -10,6 +10,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
+#include "BLI_index_mask_expression.hh"
 #include "BLI_inplace_priority_queue.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_span.hh"
@@ -88,8 +89,6 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
   const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
 
-  Vector<int> must_be_selected;
-
   /* Count selected elements per object and create TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
     TransDataContainer &tc = trans_data_contrainers[i];
@@ -112,72 +111,87 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
                                                      CURVE_TYPE_BEZIER,
                                                      curves.curves_range(),
                                                      curves_transform_data->memory);
+    Vector<index_mask::IndexMask::Initializer> bezier_point_ranges;
+    OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    bezier_curves[i].foreach_index([&](const int bezier_curve_i) {
+      bezier_point_ranges.append(points_by_curve[bezier_curve_i]);
+    });
+    const IndexMask bezier_points = IndexMask::from_initializers(bezier_point_ranges,
+                                                                 curves_transform_data->memory);
+
     /* Alter selection as in legacy curves bezt_select_to_transform_triple_flag(). */
-    if (!bezier_curves[i].is_empty()) {
-      const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-      std::array<MutableSpan<int8_t>, 2> handle_types_lr = {curves.handle_types_left_for_write(),
-                                                            curves.handle_types_right_for_write()};
+    if (bezier_points.size() > 0) {
+      blender::IndexMaskMemory memory;
+      std::array<MutableSpan<int8_t>, 2> handle_types = {curves.handle_types_left_for_write(),
+                                                         curves.handle_types_right_for_write()};
 
-      must_be_selected.clear();
-      bezier_curves[i].foreach_index([&](const int bezier_index) {
-        for (const int point_i : points_by_curve[bezier_index]) {
-          const bool knot_is_selected = selection_per_attribute[0].contains(point_i);
-          if (knot_is_selected) {
-            const HandleType type_left = HandleType(handle_types_lr[0][point_i]);
-            const HandleType type_right = HandleType(handle_types_lr[1][point_i]);
-            if (ELEM(type_left, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN) &&
-                ELEM(type_right, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN))
-            {
-              must_be_selected.append(point_i);
-            }
-          }
-          else {
-            for (const int side : IndexRange(handle_types_lr.size())) {
-              const bool handle_is_selected = selection_per_attribute[side + 1].contains(point_i);
-              if (handle_is_selected) {
-                switch (handle_types_lr[side][point_i]) {
-                  case BEZIER_HANDLE_AUTO:
-                    handle_types_lr[side][point_i] = BEZIER_HANDLE_ALIGN;
-                    break;
-                  case BEZIER_HANDLE_VECTOR:
-                    handle_types_lr[side][point_i] = BEZIER_HANDLE_FREE;
-                    break;
-                  default:
-                }
-              }
-            }
-          }
-        }
-      });
+      auto mask_from_type = [&bezier_points, &memory](VArray<int8_t> types,
+                                                      const HandleType type) {
+        return IndexMask::from_predicate(bezier_points,
+                                         GrainSize(4096),
+                                         memory,
+                                         [&](const int64_t i) { return types[i] == type; });
+      };
 
-      /* Select bezier handles that must be transformed if the main control point is selected. */
-      IndexMask must_be_selected_mask = IndexMask::from_indices(must_be_selected.as_span(),
-                                                                curves_transform_data->memory);
-      if (must_be_selected.size()) {
+      std::array<const IndexMask, 2> aligned_handles = {
+          mask_from_type(curves.handle_types_left(), BEZIER_HANDLE_ALIGN),
+          mask_from_type(curves.handle_types_right(), BEZIER_HANDLE_ALIGN),
+      };
+
+      std::array<const IndexMask, 2> auto_handles = {
+          mask_from_type(curves.handle_types_left(), BEZIER_HANDLE_AUTO),
+          mask_from_type(curves.handle_types_right(), BEZIER_HANDLE_AUTO),
+      };
+
+      std::array<const IndexMask, 2> vector_handles = {
+          mask_from_type(curves.handle_types_left(), BEZIER_HANDLE_VECTOR),
+          mask_from_type(curves.handle_types_right(), BEZIER_HANDLE_VECTOR),
+      };
+
+      index_mask::ExprBuilder builder;
+      const index_mask::Expr &selected_knots = builder.intersect(
+          {&bezier_points, &selection_per_attribute[0]});
+      /* If knot is selected and left and right handle is BEZIER_HANDLE_ALIGN or
+       * BEZIER_HANDLE_AUTO. */
+      const index_mask::Expr &must_be_selected_expr = builder.intersect(
+          {&selected_knots,
+           &builder.merge({&aligned_handles[0], &auto_handles[0]}),
+           &builder.merge({&aligned_handles[1], &auto_handles[1]})});
+
+      /* Select bezier handles that must be transformed if the knot (main control point) is
+       * selected. */
+      IndexMask must_be_selected_mask = evaluate_expression(must_be_selected_expr, memory);
+      if (must_be_selected_mask.size()) {
         selection_per_attribute[1] = IndexMask::from_union(
             selection_per_attribute[1], must_be_selected_mask, curves_transform_data->memory);
         selection_per_attribute[2] = IndexMask::from_union(
             selection_per_attribute[2], must_be_selected_mask, curves_transform_data->memory);
       }
+
+      const index_mask::Expr &nonselected_knots = builder.subtract(&bezier_points,
+                                                                   {&selected_knots});
+
+      for (const int side : IndexRange(handle_types.size())) {
+        /* Selected BEZIER_HANDLE_AUTO handles. */
+        const IndexMask &convert_to_align = evaluate_expression(
+            builder.intersect(
+                {&nonselected_knots, &selection_per_attribute[1 + side], &auto_handles[side]}),
+            memory);
+        index_mask::masked_fill(handle_types[side], int8_t(BEZIER_HANDLE_ALIGN), convert_to_align);
+        /* Selected BEZIER_HANDLE_VECTOR handles. */
+        const IndexMask &convert_to_free = evaluate_expression(
+            builder.intersect(
+                {&nonselected_knots, &selection_per_attribute[1 + side], &vector_handles[side]}),
+            memory);
+        index_mask::masked_fill(handle_types[side], int8_t(BEZIER_HANDLE_FREE), convert_to_free);
+      }
     }
 
     if (use_proportional_edit) {
-      Array<int> bezier_point_offset_data(bezier_curves[i].size() + 1);
-      OffsetIndices<int> bezier_offsets = offset_indices::gather_selected_offsets(
-          curves.points_by_curve(), bezier_curves[i], bezier_point_offset_data);
-
-      const int bezier_point_count = bezier_offsets.total_size();
-      tc.data_len = curves.points_num() + 2 * bezier_point_count;
+      tc.data_len = curves.points_num() + 2 * bezier_points.size();
       points_to_transform_per_attribute[i].append(curves.points_range());
 
-      if (bezier_point_count > 0) {
-        Vector<index_mask::IndexMask::Initializer> bezier_point_ranges;
-        OffsetIndices<int> points_by_curve = curves.points_by_curve();
-        bezier_curves[i].foreach_index(GrainSize(512), [&](const int bezier_curve_i) {
-          bezier_point_ranges.append(points_by_curve[bezier_curve_i]);
-        });
-        IndexMask bezier_points = IndexMask::from_initializers(bezier_point_ranges,
-                                                               curves_transform_data->memory);
+      if (bezier_points.size() > 0) {
         points_to_transform_per_attribute[i].append(bezier_points);
         points_to_transform_per_attribute[i].append(bezier_points);
       }
