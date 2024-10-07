@@ -11,18 +11,14 @@
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
 
-#include "BLI_bounds.hh"
 #include "BLI_kdopbvh.h"
 #include "BLI_math_geom.h"
-#include "BLI_noise.hh"
 #include "BLI_task.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "NOD_rna_define.hh"
-
-#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -215,17 +211,22 @@ struct Segment {
   float curve_length;
 };
 
-/* Check intersection between line ab and line cd. */
+/* Check intersection between the line segments ab and cd. Return true if this exists on both line
+ * segments. */
 static IntersectingLineInfo intersecting_lines(
     const float3 &a, const float3 &b, const float3 &c, const float3 &d, const float distance)
 {
   IntersectingLineInfo isectinfo{};
-  if (isect_line_line_v3(a, b, c, d, isectinfo.isect_point_ab, isectinfo.isect_point_cd)) {
+
+  if (isect_line_line_epsilon_v3(
+          a, b, c, d, isectinfo.isect_point_ab, isectinfo.isect_point_cd, curve_isect_eps))
+  {
     if (math::distance(isectinfo.isect_point_ab, isectinfo.isect_point_cd) > distance) {
       isectinfo.intersects = false;
       return isectinfo;
     }
-    /* Check intersection is on both line segments ab and cd. */
+    /* Check intersection is on both line segments ab and cd. Lambda value is
+     * required for interpolation. */
     isectinfo.lambda_ab = closest_to_line_v3(isectinfo.closest_ab, isectinfo.isect_point_ab, a, b);
     if (isectinfo.lambda_ab < -curve_isect_eps || isectinfo.lambda_ab > 1.0f + curve_isect_eps) {
       isectinfo.intersects = false;
@@ -237,7 +238,7 @@ static IntersectingLineInfo intersecting_lines(
       return isectinfo;
     }
     if (math::distance(isectinfo.closest_ab, isectinfo.closest_cd) <= distance) {
-      /*Remove epsilon.*/
+      /* Remove epsilon. */
       isectinfo.lambda_ab = math::clamp(isectinfo.lambda_ab, 0.0f, 1.0f);
       isectinfo.lambda_cd = math::clamp(isectinfo.lambda_cd, 0.0f, 1.0f);
       isectinfo.intersects = true;
@@ -633,7 +634,8 @@ static void set_curve_intersections_project(const bke::CurvesGeometry &src_curve
 }
 
 /* Sorting intersections by sortkey (which is curve_id, factor (postion on curve) and pair
- * point), should not be too impactfull as the number of intersections is likely to be low. */
+ * point), should not be too impactfull as the number of intersections is likely to be low. On high
+ * intersection counts this is slow. */
 static IntersectionData sort_intersection_data(IntersectionData &data, const bool store_pair_data)
 {
   const int64_t data_size = data.position.size();
@@ -795,7 +797,7 @@ static void node_geo_exec(GeoNodeExecParams params)
             bke::AttributeInitVArray(VArray<float3>::ForSpan(sorted_data.pair_position)));
       }
 
-      // geometry::debug_randomize_point_order(pointcloud);
+      // geometry::debug_randomize_point_order(pointcloud); #include "GEO_randomize.hh"
     }
   });
 
