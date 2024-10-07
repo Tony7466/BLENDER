@@ -57,13 +57,16 @@ static void ensure_action_and_slot_for_id(Main *bmain, ID &id)
   bAction *dna_action = blender::animrig::id_action_ensure(bmain, &id);
   BLI_assert(dna_action != nullptr);
 
-  if (!blender::animrig::legacy::action_treat_as_legacy(*dna_action)) {
-    blender::animrig::Action &action = dna_action->wrap();
-    blender::animrig::Slot *slot = blender::animrig::assign_action_ensure_slot_for_keying(action,
-                                                                                          id);
-    BLI_assert(slot != nullptr);
-    UNUSED_VARS_NDEBUG(slot);
+  if (blender::animrig::legacy::action_treat_as_legacy(*dna_action)) {
+    /* We don't ensure a slot for legacy actions, since they don't have slots. */
+    return;
   }
+
+  blender::animrig::Action &action = dna_action->wrap();
+  blender::animrig::Slot *slot = blender::animrig::assign_action_ensure_slot_for_keying(action,
+                                                                                        id);
+  BLI_assert(slot != nullptr);
+  UNUSED_VARS_NDEBUG(slot);
 }
 
 FCurve *AnimationImporter::create_fcurve(int array_index, const char *rna_path)
@@ -475,6 +478,8 @@ void AnimationImporter::Assign_color_animations(const COLLADAFW::UniqueId &listi
                                                 AnimData &adt,
                                                 const char *anim_type)
 {
+  BLI_assert(adt.action != nullptr);
+
   char rna_path[100];
   STRNCPY(rna_path, anim_type);
 
@@ -531,6 +536,8 @@ void AnimationImporter::Assign_float_animations(const COLLADAFW::UniqueId &listi
                                                 AnimData &adt,
                                                 const char *anim_type)
 {
+  BLI_assert(adt.action != nullptr);
+
   char rna_path[100];
   if (animlist_map.find(listid) == animlist_map.end()) {
     return;
@@ -590,6 +597,8 @@ void AnimationImporter::Assign_lens_animations(const COLLADAFW::UniqueId &listid
                                                const char *anim_type,
                                                int fov_type)
 {
+  BLI_assert(adt.action != nullptr);
+
   char rna_path[100];
   if (animlist_map.find(listid) == animlist_map.end()) {
     return;
