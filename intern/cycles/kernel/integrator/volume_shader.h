@@ -426,7 +426,6 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
                                           ConstIntegratorGenericState state,
                                           ccl_private ShaderData *ccl_restrict sd,
                                           const uint32_t path_flag,
-                                          const ccl_global KernelOctreeNode *knode,
                                           StackReadOp stack_read)
 {
   /* If path is being terminated, we are tracing a shadow ray or evaluating
@@ -447,31 +446,18 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
   sd->flag = SD_IS_VOLUME_SHADER_EVAL;
   sd->object_flag = 0;
 
-  bool leaf_node_processed = false;
   for (int i = 0;; i++) {
-    /* Process volume octree. */
-    if (!leaf_node_processed) {
-      sd->object = knode->objects[i];
-      sd->shader = knode->shaders[i];
-      if (sd->object == OBJECT_NONE) {
-        leaf_node_processed = true;
-        i = 0;
-      }
+    const VolumeStack entry = stack_read(i);
+    if (entry.shader == SHADER_NONE) {
+      break;
     }
 
-    /* Process volume stack. */
-    if (leaf_node_processed) {
-      const VolumeStack entry = stack_read(i);
-      if (entry.shader == SHADER_NONE) {
-        break;
-      }
-      /* Setup shader-data from stack. it's mostly setup already in shader_setup_from_volume, this
-       * switching should be quick. */
-      sd->object = entry.object;
-      sd->shader = entry.shader;
-    }
-
+    /* Setup shader-data from stack. it's mostly setup already in
+     * shader_setup_from_volume, this switching should be quick. */
+    sd->object = entry.object;
     sd->lamp = LAMP_NONE;
+    sd->shader = entry.shader;
+
     sd->flag &= ~SD_SHADER_FLAGS;
     sd->flag |= kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
     sd->object_flag &= ~SD_OBJECT_FLAGS;
@@ -482,7 +468,6 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
       if (shadow && !(kernel_data_fetch(objects, sd->object).visibility &
                       (path_flag & PATH_RAY_ALL_VISIBILITY)))
       {
-        /* TODO(weizhen): revisit. */
         /* If volume is invisible to shadow ray, the hit is not registered, but the volume is still
          * in the stack. Skip the volume in such cases. */
         /* NOTE: `SHADOW_CATCHER_PATH_VISIBILITY()` is omitted because `path_flag` is just
