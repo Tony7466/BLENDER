@@ -414,44 +414,6 @@ void BKE_gpencil_stroke_join(struct bGPDstroke *gps_a,
  * \param start_idx: Index of the point to be the start point.
  */
 void BKE_gpencil_stroke_start_set(struct bGPDstroke *gps, int start_idx);
-/**
- * Copy the stroke of the frame to all frames selected (except current).
- */
-void BKE_gpencil_stroke_copy_to_keyframes(struct bGPdata *gpd,
-                                          struct bGPDlayer *gpl,
-                                          struct bGPDframe *gpf,
-                                          struct bGPDstroke *gps,
-                                          bool tail);
-
-/**
- * Convert a mesh object to grease pencil stroke.
- *
- * \param bmain: Main thread pointer.
- * \param depsgraph: Original depsgraph.
- * \param scene: Original scene.
- * \param ob_gp: Grease pencil object to add strokes.
- * \param ob_mesh: Mesh to convert.
- * \param angle: Limit angle to consider a edge-loop ends.
- * \param thickness: Thickness of the strokes.
- * \param offset: Offset along the normals.
- * \param matrix: Transformation matrix.
- * \param frame_offset: Destination frame number offset.
- * \param use_seams: Only export seam edges.
- * \param use_faces: Export faces as filled strokes.
- */
-bool BKE_gpencil_convert_mesh(struct Main *bmain,
-                              struct Depsgraph *depsgraph,
-                              struct Scene *scene,
-                              struct Object *ob_gp,
-                              struct Object *ob_mesh,
-                              float angle,
-                              int thickness,
-                              float offset,
-                              const float matrix[4][4],
-                              int frame_offset,
-                              bool use_seams,
-                              bool use_faces,
-                              bool use_vgroups);
 
 /**
  * Stroke to view space

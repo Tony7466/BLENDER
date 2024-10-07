@@ -83,9 +83,6 @@ void BKE_gpencil_tag(struct bGPdata *gpd);
 void BKE_gpencil_batch_cache_dirty_tag(struct bGPdata *gpd);
 void BKE_gpencil_batch_cache_free(struct bGPdata *gpd);
 
-/** Reset unique stroke ID for selection. */
-void BKE_gpencil_stroke_select_index_reset(struct bGPDstroke *gps);
-
 /**
  * Add a new gp-frame to the given layer.
  * \param gpl: Grease pencil layer
@@ -135,38 +132,7 @@ struct bGPDlayer *BKE_gpencil_layer_duplicate(const struct bGPDlayer *gpl_src,
                                               bool dup_frames,
                                               bool dup_strokes);
 
-/**
- * Make a copy of a given gpencil data settings.
- */
-void BKE_gpencil_data_copy_settings(const struct bGPdata *gpd_src, struct bGPdata *gpd_dst);
 
-/**
- * Make a copy of a given gpencil layer settings.
- */
-void BKE_gpencil_layer_copy_settings(const struct bGPDlayer *gpl_src, struct bGPDlayer *gpl_dst);
-
-/**
- * Make a copy of a given gpencil frame settings.
- */
-void BKE_gpencil_frame_copy_settings(const struct bGPDframe *gpf_src, struct bGPDframe *gpf_dst);
-
-/**
- * Make a copy of a given gpencil stroke settings.
- */
-void BKE_gpencil_stroke_copy_settings(const struct bGPDstroke *gps_src,
-                                      struct bGPDstroke *gps_dst);
-
-/**
- * Make a copy of strokes between gpencil frames.
- * \param gpf_src: Source grease pencil frame
- * \param gpf_dst: Destination grease pencil frame
- */
-void BKE_gpencil_frame_copy_strokes(struct bGPDframe *gpf_src, struct bGPDframe *gpf_dst);
-/* Create a hash with the list of selected frame number. */
-void BKE_gpencil_frame_selected_hash(struct bGPdata *gpd, struct GHash *r_list);
-
-/* Make a copy of a given gpencil stroke editcurve */
-struct bGPDcurve *BKE_gpencil_stroke_curve_duplicate(struct bGPDcurve *gpc_src);
 /**
  * Make a copy of a given grease-pencil stroke.
  * \param gps_src: Source grease pencil strokes.
@@ -186,66 +152,6 @@ struct bGPDstroke *BKE_gpencil_stroke_duplicate(struct bGPDstroke *gps_src,
 struct bGPdata *BKE_gpencil_data_duplicate(struct Main *bmain,
                                            const struct bGPdata *gpd,
                                            bool internal_copy);
-
-/**
- * Delete the last stroke of the given frame.
- * \param gpl: Grease pencil layer
- * \param gpf: Grease pencil frame
- */
-void BKE_gpencil_frame_delete_laststroke(struct bGPDlayer *gpl, struct bGPDframe *gpf);
-
-/* materials */
-/**
- * Reassign strokes using a material.
- * \param gpd: Grease pencil data-block
- * \param totcol: Total materials
- * \param index: Index of the material
- */
-void BKE_gpencil_material_index_reassign(struct bGPdata *gpd, int totcol, int index);
-/**
- * Remove strokes using a material.
- * \param gpd: Grease pencil data-block
- * \param index: Index of the material
- * \return True if removed
- */
-bool BKE_gpencil_material_index_used(struct bGPdata *gpd, int index);
-/**
- * Remap material
- * \param gpd: Grease pencil data-block
- * \param remap: Remap index
- * \param remap_len: Remap length
- */
-void BKE_gpencil_material_remap(struct bGPdata *gpd,
-                                const unsigned int *remap,
-                                unsigned int remap_len);
-/**
- * Load a table with material conversion index for merged materials.
- * \param ob: Grease pencil object.
- * \param hue_threshold: Threshold for Hue.
- * \param sat_threshold: Threshold for Saturation.
- * \param val_threshold: Threshold for Value.
- * \param r_mat_table: return material table.
- * \return True if done.
- */
-bool BKE_gpencil_merge_materials_table_get(struct Object *ob,
-                                           float hue_threshold,
-                                           float sat_threshold,
-                                           float val_threshold,
-                                           struct GHash *r_mat_table);
-/**
- * Merge similar materials
- * \param ob: Grease pencil object
- * \param hue_threshold: Threshold for Hue
- * \param sat_threshold: Threshold for Saturation
- * \param val_threshold: Threshold for Value
- * \param r_removed: Number of materials removed
- * \return True if done
- */
-bool BKE_gpencil_merge_materials(struct Object *ob,
-                                 float hue_threshold,
-                                 float sat_threshold,
-                                 float val_threshold,
-                                 int *r_removed);
 
 /* statistics functions */
 /**
@@ -607,7 +513,6 @@ float BKE_gpencil_multiframe_falloff_calc(
  * \param scene: Scene
  */
 void BKE_gpencil_palette_ensure(struct Main *bmain, struct Scene *scene);
-
 /* Iterators */
 /**
  * Frame & stroke are NULL if it is a layer callback.
@@ -691,17 +596,6 @@ void BKE_gpencil_update_layer_transforms(const struct Depsgraph *depsgraph, stru
 int BKE_gpencil_material_find_index_by_name_prefix(struct Object *ob, const char *name_prefix);
 
 void BKE_gpencil_blend_read_data(struct BlendDataReader *reader, struct bGPdata *gpd);
-
-bool BKE_gpencil_can_avoid_full_copy_on_write(const struct Depsgraph *depsgraph,
-                                              struct bGPdata *gpd);
-
-/**
- * Update the geometry of the evaluated bGPdata.
- * This function will:
- *    1) Copy the original data over to the evaluated object.
- *    2) Update the original pointers in the runtime structs.
- */
-void BKE_gpencil_update_on_write(struct bGPdata *gpd_orig, struct bGPdata *gpd_eval);
 
 #ifdef __cplusplus
 }
