@@ -237,7 +237,6 @@ static float quad_calc_error(const float v1[3],
  */
 static void bm_edge_to_quad_verts(const BMEdge *e, const BMVert *r_v_quad[4])
 {
-  BLI_assert(e);
   BLI_assert(BM_edge_is_manifold(e));
   BLI_assert(e->l->f->len == 3 && e->l->radial_next->f->len == 3);
   r_v_quad[0] = e->l->v;
@@ -906,7 +905,6 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
 static BMFace *join_edge(JoinEdgesState &s, BMEdge *e)
 {
   /* Nonmanifold edges can't be merged. */
-  BLI_assert(e);
   BLI_assert(BM_edge_is_manifold(e));
 
   /* Identify the loops on either side of the joinable edge */
