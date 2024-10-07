@@ -421,9 +421,10 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
 
   /* All connected strips (that are selected and at the cut frame) must also be duplicated. */
   for (Sequence *strip : strips) {
-    blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(seq);
-    connections.remove_if([&](Sequence *seq) {
-      return !(seq->flag & SELECT) || !seq_edit_split_intersect_check(scene, seq, timeline_frame);
+    blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(strip);
+    connections.remove_if([&](Sequence *connection) {
+      return !(connection->flag & SELECT) ||
+             !seq_edit_split_intersect_check(scene, connection, timeline_frame);
     });
     strips.add_multiple(connections.as_span());
   }
