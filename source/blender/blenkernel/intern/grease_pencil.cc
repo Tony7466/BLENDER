@@ -3149,9 +3149,9 @@ blender::bke::greasepencil::Layer &GreasePencil::duplicate_layer(
   const int numLayers = layers().size();
   CustomData_realloc(&layers_data, numLayers, numLayers + 1);
   if (duplicate_layer_idx.has_value()) {
-    for (int i = 0; i < layers_data.totlayer; i++) {
+    for (const int layer_index : IndexRange(layers_data.totlayer)) {
       CustomData_copy_data_layer(
-          &layers_data, &layers_data, i, i, duplicate_layer_idx.value(), numLayers, 1);
+          &layers_data, &layers_data, layer_index, layer_index, *duplicate_layer_idx, numLayers, 1);
     }
   }
   bke::greasepencil::Layer *new_layer = MEM_new<bke::greasepencil::Layer>(__func__,
