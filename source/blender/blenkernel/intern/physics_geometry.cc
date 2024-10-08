@@ -636,7 +636,7 @@ bool PhysicsWorldState::try_move_data(const PhysicsWorldState &src,
   }
 
   /* Copy attributes write caches. */
-  const bke::AttributeFilter attribute_filter = bke::AttributeFilterFromFunc(
+  const bke::AttributeFilterFromFunc attribute_filter = bke::AttributeFilterFromFunc(
       [&](const StringRef name) {
         const std::optional<PhysicsBodyAttribute> body_attribute = find_body_attribute(name);
         const std::optional<PhysicsConstraintAttribute> constraint_attribute =
