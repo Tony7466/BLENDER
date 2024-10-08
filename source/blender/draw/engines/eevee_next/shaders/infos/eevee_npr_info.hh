@@ -33,7 +33,6 @@ GPU_SHADER_CREATE_INFO(npr_surface_common)
                      "eevee_shared",
                      "eevee_global_ubo",
                      "eevee_light_data",
-                     "eevee_lightprobe_data",
                      "eevee_shadow_data",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
