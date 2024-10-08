@@ -306,13 +306,6 @@ void BKE_gpencil_layer_frames_sort(struct bGPDlayer *gpl, bool *r_has_duplicate_
  */
 void BKE_gpencil_brush_material_set(struct Brush *brush, struct Material *material);
 
-/**
- * Check if stroke has any point selected
- * \param gps: Grease pencil stroke
- * \return True if selected
- */
-bool BKE_gpencil_stroke_select_check(const struct bGPDstroke *gps);
-
 /* vertex groups */
 /**
  * Ensure stroke has vertex group.

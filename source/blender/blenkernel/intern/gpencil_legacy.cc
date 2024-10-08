@@ -1374,20 +1374,6 @@ void BKE_gpencil_brush_material_set(Brush *brush, Material *ma)
 }
 
 /* ************************************************** */
-
-bool BKE_gpencil_stroke_select_check(const bGPDstroke *gps)
-{
-  const bGPDspoint *pt;
-  int i;
-  for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-    if (pt->flag & GP_SPOINT_SELECT) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/* ************************************************** */
 /* GP Object - Vertex Groups */
 
 void BKE_gpencil_vgroup_remove(Object *ob, bDeformGroup *defgroup)
