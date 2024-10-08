@@ -7,14 +7,17 @@
  */
 
 #include "BKE_appdir.hh"
+
 #include "BLI_fileops.hh"
 #include "BLI_hash.hh"
 #include "BLI_path_utils.hh"
 #include "BLI_time.h"
-
-#include "vk_shader_compiler.hh"
+#ifdef _WIN32
+#  include "BLI_winstuff.h"
+#endif
 
 #include "vk_shader.hh"
+#include "vk_shader_compiler.hh"
 
 namespace blender::gpu {
 VKShaderCompiler::VKShaderCompiler()
