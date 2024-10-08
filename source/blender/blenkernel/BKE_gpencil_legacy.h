@@ -349,11 +349,6 @@ typedef void (*gpIterCb)(struct bGPDlayer *layer,
                          struct bGPDstroke *stroke,
                          void *thunk);
 
-void BKE_gpencil_visible_stroke_iter(struct bGPdata *gpd,
-                                     gpIterCb layer_cb,
-                                     gpIterCb stroke_cb,
-                                     void *thunk);
-
 void BKE_gpencil_visible_stroke_advanced_iter(struct ViewLayer *view_layer,
                                               struct Object *ob,
                                               gpIterCb layer_cb,
