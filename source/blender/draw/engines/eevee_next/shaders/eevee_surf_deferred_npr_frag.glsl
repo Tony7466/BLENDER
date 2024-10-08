@@ -76,7 +76,7 @@ vec4 TextureHandle_eval_impl(TextureHandle tex, vec2 offset, bool texel_offset)
     texel = ivec2(uv * uniform_buf.film.render_extent);
   }
 
-  texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
+  texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent - ivec2(1));
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
   vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
