@@ -25,6 +25,14 @@ set(INC
   ../compositor/realtime_compositor/cached_resources
   ../windowmanager
 
+  # For shader includes
+  engines/eevee_next/shaders
+  engines/workbench/shaders
+  engines/overlay/shaders
+  intern/shaders
+  ../gpu/shaders/common
+  ../gpu/shaders
+
   ../../../intern/opensubdiv
 )
 
@@ -290,6 +298,7 @@ set(SRC
   engines/overlay/overlay_engine.h
   engines/overlay/overlay_next_antialiasing.hh
   engines/overlay/overlay_next_armature.hh
+  engines/overlay/overlay_next_attribute_viewer.hh
   engines/overlay/overlay_next_background.hh
   engines/overlay/overlay_next_bounds.hh
   engines/overlay/overlay_next_camera.hh
@@ -495,6 +504,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_shadow_tilemap_init_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_tilemap_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_tilemap_rendermap_comp.glsl
+  engines/eevee_next/shaders/eevee_shadow_visibility_comp.glsl
   engines/eevee_next/shaders/eevee_spherical_harmonics_lib.glsl
   engines/eevee_next/shaders/eevee_subsurface_convolve_comp.glsl
   engines/eevee_next/shaders/eevee_subsurface_lib.glsl
@@ -798,7 +808,7 @@ set(GLSL_SRC
 set(GLSL_C)
 
 foreach(GLSL_FILE ${GLSL_SRC})
-  data_to_c_simple(${GLSL_FILE} GLSL_C STRIP_LEADING_C_COMMENTS)
+  glsl_to_c(${GLSL_FILE} GLSL_C)
 endforeach()
 
 blender_add_lib(bf_draw_shaders "${GLSL_C}" "" "" "")

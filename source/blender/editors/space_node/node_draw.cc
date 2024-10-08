@@ -685,8 +685,8 @@ static Vector<NodeInterfaceItemData> node_build_item_data(bNode &node)
       ++panel_runtime;
     }
     else if (dynamic_cast<const nodes::SeparatorDeclaration *>(item_decl->get())) {
-      ++item_decl;
       result.append(NodeInterfaceItemData::separator());
+      ++item_decl;
     }
   }
   return result;
@@ -894,18 +894,20 @@ static void add_panel_items_recursive(const bContext &C,
       }
     }
     else if (item.is_valid_separator()) {
-      uiLayout *layout = UI_block_layout(&block,
-                                         UI_LAYOUT_VERTICAL,
-                                         UI_LAYOUT_PANEL,
-                                         locx + NODE_DYS,
-                                         locy,
-                                         NODE_WIDTH(node) - NODE_DY,
-                                         NODE_DY,
-                                         0,
-                                         UI_style_get_dpi());
-      uiItemS_ex(layout, 1.0, LayoutSeparatorType::Line);
-      UI_block_layout_resolve(&block, nullptr, nullptr);
-      locy -= NODE_ITEM_SPACING_Y;
+      if (!is_parent_collapsed) {
+        uiLayout *layout = UI_block_layout(&block,
+                                           UI_LAYOUT_VERTICAL,
+                                           UI_LAYOUT_PANEL,
+                                           locx + NODE_DYS,
+                                           locy,
+                                           NODE_WIDTH(node) - NODE_DY,
+                                           NODE_DY,
+                                           0,
+                                           UI_style_get_dpi());
+        uiItemS_ex(layout, 1.0, LayoutSeparatorType::Line);
+        UI_block_layout_resolve(&block, nullptr, nullptr);
+        locy -= NODE_ITEM_SPACING_Y;
+      }
     }
     else {
       /* Should not happen. */
@@ -2613,42 +2615,12 @@ static void node_draw_panels(bNodeTree &ntree, const bNode &node, uiBlock &block
   }
 }
 
-static int node_error_type_to_icon(const geo_log::NodeWarningType type)
-{
-  switch (type) {
-    case geo_log::NodeWarningType::Error:
-      return ICON_CANCEL;
-    case geo_log::NodeWarningType::Warning:
-      return ICON_ERROR;
-    case geo_log::NodeWarningType::Info:
-      return ICON_INFO;
-  }
-
-  BLI_assert(false);
-  return ICON_ERROR;
-}
-
-static uint8_t node_error_type_priority(const geo_log::NodeWarningType type)
-{
-  switch (type) {
-    case geo_log::NodeWarningType::Error:
-      return 3;
-    case geo_log::NodeWarningType::Warning:
-      return 2;
-    case geo_log::NodeWarningType::Info:
-      return 1;
-  }
-
-  BLI_assert(false);
-  return 0;
-}
-
 static geo_log::NodeWarningType node_error_highest_priority(Span<geo_log::NodeWarning> warnings)
 {
-  uint8_t highest_priority = 0;
+  int highest_priority = 0;
   geo_log::NodeWarningType highest_priority_type = geo_log::NodeWarningType::Info;
   for (const geo_log::NodeWarning &warning : warnings) {
-    const uint8_t priority = node_error_type_priority(warning.type);
+    const int priority = node_warning_type_severity(warning.type);
     if (priority > highest_priority) {
       highest_priority = priority;
       highest_priority_type = warning.type;
@@ -2750,7 +2722,7 @@ static void node_add_error_message_button(const TreeDrawContext &tree_draw_ctx,
   uiBut *but = uiDefIconBut(&block,
                             UI_BTYPE_BUT,
                             0,
-                            node_error_type_to_icon(display_type),
+                            geo_log::node_warning_type_icon(display_type),
                             icon_offset,
                             rect.ymax - NODE_DY,
                             NODE_HEADER_ICON_SIZE,
@@ -4457,7 +4429,7 @@ static void add_rect_corner_positions(Vector<float2> &positions, const rctf &rec
 
 static void find_bounds_by_zone_recursive(const SpaceNode &snode,
                                           const bNodeTreeZone &zone,
-                                          const Span<std::unique_ptr<bNodeTreeZone>> all_zones,
+                                          const Span<const bNodeTreeZone *> all_zones,
                                           MutableSpan<Vector<float2>> r_bounds_by_zone)
 {
   const float node_padding = UI_UNIT_X;
@@ -4586,7 +4558,7 @@ static void node_draw_zones_and_frames(const bContext &C,
   using ZoneOrNode = std::variant<const bNodeTreeZone *, const bNode *>;
   Vector<ZoneOrNode> draw_order;
   for (const int zone_i : IndexRange(zones_num)) {
-    draw_order.append(zones->zones[zone_i].get());
+    draw_order.append(zones->zones[zone_i]);
   }
   for (const bNode *node : ntree.all_nodes()) {
     if (node->flag & NODE_BACKGROUND) {

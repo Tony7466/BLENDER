@@ -1655,6 +1655,8 @@ struct sAreaMoveData {
   int bigger, smaller, origval, step;
   eScreenAxis dir_axis;
   AreaMoveSnapType snap_type;
+  bScreen *screen;
+  void *draw_callback; /* Call #screen_draw_move_highlight */
 };
 
 /* helper call to move area-edge, sets limits
@@ -1757,6 +1759,13 @@ static void area_move_set_limits(wmWindow *win,
   }
 }
 
+static void area_move_draw_cb(const wmWindow * /*win*/, void *userdata)
+{
+  const wmOperator *op = static_cast<const wmOperator *>(userdata);
+  const sAreaMoveData *md = static_cast<sAreaMoveData *>(op->customdata);
+  screen_draw_move_highlight(md->screen, md->dir_axis);
+}
+
 /* validate selection inside screen, set variables OK */
 /* return false: init failed */
 static bool area_move_init(bContext *C, wmOperator *op)
@@ -1798,6 +1807,9 @@ static bool area_move_init(bContext *C, wmOperator *op)
       win, screen, md->dir_axis, &md->bigger, &md->smaller, &use_bigger_smaller_snap);
 
   md->snap_type = use_bigger_smaller_snap ? SNAP_BIGGER_SMALLER_ONLY : SNAP_AREAGRID;
+
+  md->screen = screen;
+  md->draw_callback = WM_draw_cb_activate(CTX_wm_window(C), area_move_draw_cb, op);
 
   return true;
 }
@@ -1988,6 +2000,11 @@ static void area_move_apply(bContext *C, wmOperator *op)
 
 static void area_move_exit(bContext *C, wmOperator *op)
 {
+  sAreaMoveData *md = static_cast<sAreaMoveData *>(op->customdata);
+  if (md->draw_callback) {
+    WM_draw_cb_exit(CTX_wm_window(C), md->draw_callback);
+  }
+
   MEM_SAFE_FREE(op->customdata);
 
   /* this makes sure aligned edges will result in aligned grabbing */
@@ -3787,7 +3804,7 @@ void static area_docking_apply(bContext *C, wmOperator *op)
   bool same_area = (jd->sa1 == jd->sa2);
 
   if (!(jd->dock_target == AreaDockTarget::Center)) {
-    eScreenAxis dir = (ELEM(jd->dock_target, AreaDockTarget::Left, AreaDockTarget::Right)) ?
+    eScreenAxis dir = ELEM(jd->dock_target, AreaDockTarget::Left, AreaDockTarget::Right) ?
                           SCREEN_AXIS_V :
                           SCREEN_AXIS_H;
 
@@ -3846,11 +3863,23 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
     }
   }
 
+  if (jd->sa1 && jd->sa1 == jd->sa2) {
+    if (jd->split_fac >= 0.0001f) {
+      /* Mouse inside source area, so allow splitting. */
+      return (jd->split_dir == SCREEN_AXIS_V) ? WM_CURSOR_V_SPLIT : WM_CURSOR_H_SPLIT;
+    }
+    return WM_CURSOR_EDIT;
+  }
+
+  if (jd->dir != SCREEN_DIR_NONE || jd->dock_target != AreaDockTarget::None) {
 #if defined(__APPLE__)
-  return WM_CURSOR_HAND_CLOSED;
+    return WM_CURSOR_HAND_CLOSED;
 #else
-  return WM_CURSOR_MOVE;
+    return WM_CURSOR_MOVE;
 #endif
+  }
+
+  return WM_CURSOR_PICK_AREA;
 }
 
 static float area_docking_snap(const float pos, const wmEvent *event)
@@ -3963,7 +3992,7 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
     if (fac_y > 0.4f && fac_y < 0.6f) {
       return AreaDockTarget::Center;
     }
-    if ((float(y) > float(jd->sa2->winy) / 2.0f)) {
+    if (float(y) > float(jd->sa2->winy) / 2.0f) {
       jd->factor = area_docking_snap(1.0f - float(y) / float(jd->sa2->winy), event);
       return AreaDockTarget::Top;
     }
@@ -3976,7 +4005,7 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
     if (fac_x > 0.4f && fac_x < 0.6f) {
       return AreaDockTarget::Center;
     }
-    if ((float(x) > float(jd->sa2->winx) / 2.0f)) {
+    if (float(x) > float(jd->sa2->winx) / 2.0f) {
       jd->factor = area_docking_snap(1.0f - float(x) / float(jd->sa2->winx), event);
       return AreaDockTarget::Right;
     }
@@ -4336,8 +4365,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
     if (dir != SCREEN_DIR_NONE) {
       uiItemFullO(layout,
                   "SCREEN_OT_area_join",
-                  (ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S)) ? IFACE_("Join Up") :
-                                                            IFACE_("Join Right"),
+                  ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S) ? IFACE_("Join Up") : IFACE_("Join Right"),
                   ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S) ? ICON_AREA_JOIN_UP : ICON_AREA_JOIN,
                   nullptr,
                   WM_OP_EXEC_DEFAULT,
@@ -4349,7 +4377,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
       uiItemFullO(
           layout,
           "SCREEN_OT_area_join",
-          (ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S)) ? IFACE_("Join Down") : IFACE_("Join Left"),
+          ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S) ? IFACE_("Join Down") : IFACE_("Join Left"),
           ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S) ? ICON_AREA_JOIN_DOWN : ICON_AREA_JOIN_LEFT,
           nullptr,
           WM_OP_EXEC_DEFAULT,
@@ -4918,9 +4946,6 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
 
   PointerRNA ptr;
 
-  /* Mouse position as if in middle of area. */
-  const int loc[2] = {BLI_rcti_cent_x(&area->totrct), BLI_rcti_cent_y(&area->totrct)};
-
   uiItemFullO(layout,
               "SCREEN_OT_area_join",
               IFACE_("Move/Split Area"),
@@ -4929,7 +4954,6 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
               &ptr);
-  RNA_int_set_array(&ptr, "source_xy", loc);
 
   uiItemS(layout);
 

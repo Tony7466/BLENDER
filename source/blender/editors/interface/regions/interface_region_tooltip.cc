@@ -429,7 +429,7 @@ static bool ui_tooltip_period_needed(blender::StringRef tip)
     return false;
   }
 
-  /* Already ends with puncuation. */
+  /* Already ends with punctuation. */
   if (ELEM(tip.back(), '.', '!', '?')) {
     return false;
   }
@@ -1038,7 +1038,7 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_button_or_extra_icon(
                                 {},
                                 UI_TIP_STYLE_MONO,
                                 UI_TIP_LC_PYTHON,
-                                true);
+                                (data->fields.size() > 0));
     }
 
     if (but->rnapoin.owner_id) {
@@ -1175,7 +1175,7 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_gizmo(bContext *C, wm
               {},
               UI_TIP_STYLE_HEADER,
               UI_TIP_LC_VALUE,
-              true);
+              false);
         }
 
         /* Shortcut */
