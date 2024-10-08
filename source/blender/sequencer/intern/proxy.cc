@@ -259,7 +259,6 @@ static void seq_proxy_build_frame(const SeqRenderData *context,
                                   const bool overwrite)
 {
   char filepath[PROXY_MAXFILE];
-  int quality;
   int rectx, recty;
   ImBuf *ibuf_tmp, *ibuf;
   Scene *scene = context->scene;
@@ -291,20 +290,26 @@ static void seq_proxy_build_frame(const SeqRenderData *context,
     ibuf = ibuf_tmp;
   }
 
-  /* depth = 32 is intentionally left in, otherwise ALPHA channels
-   * won't work... */
-  quality = seq->strip->proxy->quality;
-  ibuf->ftype = IMB_FTYPE_JPG;
-  ibuf->foptions.quality = quality;
+  const int quality = seq->strip->proxy->quality;
+  const bool save_float = ibuf->float_buffer.data != nullptr;
 
-  /* unsupported feature only confuses other s/w */
-  if (ibuf->planes == 32) {
-    ibuf->planes = 24;
+  ibuf->foptions.quality = quality;
+  if (save_float) {
+    /* Float image: save as EXR with FP16 data and DWAA compression. */
+    ibuf->ftype = IMB_FTYPE_OPENEXR;
+    ibuf->foptions.flag = OPENEXR_HALF | R_IMF_EXR_CODEC_DWAA;
+  }
+  else {
+    /* Byte image: save as JPG. */
+    ibuf->ftype = IMB_FTYPE_JPG;
+    if (ibuf->planes == 32) {
+      ibuf->planes = 24; /* JPGs do not support alpha. */
+    }
   }
 
   BLI_file_ensure_parent_dir_exists(filepath);
 
-  const bool ok = IMB_saveiff(ibuf, filepath, IB_rect);
+  const bool ok = IMB_saveiff(ibuf, filepath, save_float ? IB_rectfloat : IB_rect);
   if (ok == false) {
     perror(filepath);
   }
