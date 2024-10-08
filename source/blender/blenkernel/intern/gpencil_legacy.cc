@@ -1373,29 +1373,6 @@ void BKE_gpencil_brush_material_set(Brush *brush, Material *ma)
   }
 }
 
-Material *BKE_gpencil_object_material_new(Main *bmain, Object *ob, const char *name, int *r_index)
-{
-  Material *ma = BKE_gpencil_material_add(bmain, name);
-  id_us_min(&ma->id); /* no users yet */
-
-  BKE_object_material_slot_add(bmain, ob);
-  BKE_object_material_assign(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
-
-  if (r_index) {
-    *r_index = ob->actcol - 1;
-  }
-  return ma;
-}
-
-int BKE_gpencil_object_material_get_index_from_brush(Object *ob, Brush *brush)
-{
-  if ((brush) && (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED)) {
-    return BKE_gpencil_object_material_index_get(ob, brush->gpencil_settings->material);
-  }
-
-  return ob->actcol - 1;
-}
-
 /* ************************************************** */
 
 bool BKE_gpencil_stroke_select_check(const bGPDstroke *gps)
@@ -1521,34 +1498,6 @@ float BKE_gpencil_multiframe_falloff_calc(
   }
 
   return value;
-}
-
-int BKE_gpencil_object_material_index_get(Object *ob, Material *ma)
-{
-  short *totcol = BKE_object_material_len_p(ob);
-  Material *read_ma = nullptr;
-  for (short i = 0; i < *totcol; i++) {
-    read_ma = BKE_object_material_get(ob, i + 1);
-    if (ma == read_ma) {
-      return i;
-    }
-  }
-
-  return -1;
-}
-
-int BKE_gpencil_object_material_index_get_by_name(Object *ob, const char *name)
-{
-  short *totcol = BKE_object_material_len_p(ob);
-  Material *read_ma = nullptr;
-  for (short i = 0; i < *totcol; i++) {
-    read_ma = BKE_object_material_get(ob, i + 1);
-    if (STREQ(name, read_ma->id.name + 2)) {
-      return i;
-    }
-  }
-
-  return -1;
 }
 
 void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)

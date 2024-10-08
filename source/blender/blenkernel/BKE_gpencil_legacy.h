@@ -306,38 +306,6 @@ void BKE_gpencil_layer_frames_sort(struct bGPDlayer *gpl, bool *r_has_duplicate_
  */
 void BKE_gpencil_brush_material_set(struct Brush *brush, struct Material *material);
 
-/* Object */
-
-/**
- * Creates a new grease-pencil material and assigns it to object.
- * \param bmain: Main pointer
- * \param ob: Grease pencil object
- * \param name: Material name
- * \param r_index: value is set to zero based index of the new material if \a r_index is not NULL.
- * \return Material pointer.
- */
-struct Material *BKE_gpencil_object_material_new(struct Main *bmain,
-                                                 struct Object *ob,
-                                                 const char *name,
-                                                 int *r_index);
-
-/**
- * Get material index (0-based like mat_nr not #Object::actcol).
- * \param ob: Grease pencil object
- * \param ma: Material
- * \return Index of the material
- */
-int BKE_gpencil_object_material_index_get(struct Object *ob, struct Material *ma);
-int BKE_gpencil_object_material_index_get_by_name(struct Object *ob, const char *name);
-
-/**
- * Returns the material index for a brush with respect to its pinned state.
- * \param ob: Grease pencil object
- * \param brush: Brush
- * \return Material index.
- */
-int BKE_gpencil_object_material_get_index_from_brush(struct Object *ob, struct Brush *brush);
-
 /**
  * Check if stroke has any point selected
  * \param gps: Grease pencil stroke
