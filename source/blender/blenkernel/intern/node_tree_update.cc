@@ -1158,18 +1158,19 @@ class NodeTreeMainUpdater {
       return false;
     };
 
-    LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+    const auto update_link = [ntree, is_invalid_enum_ref](bNodeLink *link,
+                                                          bool is_internal) -> void {
       link->flag |= NODE_LINK_VALID;
       if (!link->fromsock->is_available() || !link->tosock->is_available()) {
         link->flag &= ~NODE_LINK_VALID;
-        continue;
+        return;
       }
       if (is_invalid_enum_ref(*link->fromsock) || is_invalid_enum_ref(*link->tosock)) {
         link->flag &= ~NODE_LINK_VALID;
         ntree.runtime->link_errors_by_target_node.add(
             link->tonode->identifier,
             NodeLinkError{TIP_("Use node groups to reuse the same menu multiple times")});
-        continue;
+        return;
       }
       if (ntree.type == NTREE_GEOMETRY) {
         if (link->fromsock->runtime->field_state == FieldSocketState::IsField &&
@@ -1178,8 +1179,9 @@ class NodeTreeMainUpdater {
           link->flag &= ~NODE_LINK_VALID;
           ntree.runtime->link_errors_by_target_node.add(
               link->tonode->identifier,
-              NodeLinkError{TIP_("The node input does not support fields")});
-          continue;
+              NodeLinkError{TIP_(is_internal ? "The node output does not support fields" :
+                                               "The node input does not support fields")});
+          return;
         }
       }
       const bNode &from_node = *link->fromnode;
@@ -1191,7 +1193,7 @@ class NodeTreeMainUpdater {
         ntree.runtime->link_errors_by_target_node.add(
             link->tonode->identifier,
             NodeLinkError{TIP_("The links form a cycle which is not supported")});
-        continue;
+        return;
       }
       if (ntree.typeinfo->validate_link) {
         const eNodeSocketDatatype from_type = eNodeSocketDatatype(link->fromsock->type);
@@ -1205,8 +1207,21 @@ class NodeTreeMainUpdater {
                                         TIP_("Conversion is not supported"),
                                         TIP_(link->fromsock->typeinfo->label),
                                         TIP_(link->tosock->typeinfo->label))});
-          continue;
+          return;
         }
+      }
+    };
+
+    LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
+      update_link(link, false);
+    }
+
+    LISTBASE_FOREACH (bNode *, node, &ntree.nodes) {
+      if (!node->is_muted()) {
+        continue;
+      }
+      for (bNodeLink &link : node->runtime->internal_links) {
+        update_link(&link, true);
       }
     }
   }

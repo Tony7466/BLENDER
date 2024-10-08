@@ -2210,8 +2210,9 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
 
   UI_GetThemeColor4fv(th_col3, draw_config.outline_color);
 
-  if (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS &&
-      snode.overlay.flag & SN_OVERLAY_SHOW_WIRE_COLORS)
+  if ((snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+      (snode.overlay.flag & SN_OVERLAY_SHOW_WIRE_COLORS) &&
+      !(!(link.flag & NODE_LINK_VALID) && (link.fromnode == link.tonode)))
   {
     const bNodeTree &node_tree = *snode.edittree;
     PointerRNA from_node_ptr = RNA_pointer_create(

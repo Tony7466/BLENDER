@@ -1192,7 +1192,7 @@ static void node_draw_mute_line(const bContext &C,
 
   for (const bNodeLink &link : node.internal_links()) {
     if (!bke::node_link_is_hidden(&link)) {
-      node_draw_link_bezier(C, v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
+      node_draw_link(C, v2d, snode, link, false);
     }
   }
 
@@ -3055,6 +3055,14 @@ static void node_get_invalid_links_extra_info(const SpaceNode &snode,
   }
   NodeExtraInfoRow row;
   row.text = IFACE_("Invalid Link");
+  if (node.is_muted()) {
+    for (const bNodeLink &link : node.internal_links()) {
+      if (!(link.flag & NODE_LINK_VALID)) {
+        row.text = IFACE_("Invalid Internal Link");
+        break;
+      }
+    }
+  }
 
   row.tooltip_fn = [](bContext *C, void *arg, const char * /*tip*/) {
     const bNodeTree &tree = *CTX_wm_space_node(C)->edittree;
