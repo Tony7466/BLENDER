@@ -250,12 +250,6 @@ struct bGPDstroke *BKE_gpencil_stroke_delete_tagged_points(struct bGPdata *gpd,
                                                            bool select,
                                                            bool flat_cap,
                                                            int limit);
-void BKE_gpencil_curve_delete_tagged_points(struct bGPdata *gpd,
-                                            struct bGPDframe *gpf,
-                                            struct bGPDstroke *gps,
-                                            struct bGPDstroke *next_stroke,
-                                            struct bGPDcurve *gpc,
-                                            int tag_flags);
 
 /**
  * Flip stroke.

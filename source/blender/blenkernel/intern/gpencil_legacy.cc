@@ -782,17 +782,6 @@ bGPDstroke *BKE_gpencil_stroke_add(
   return gps;
 }
 
-bGPDstroke *BKE_gpencil_stroke_add_existing_style(
-    bGPDframe *gpf, bGPDstroke *existing, int mat_idx, int totpoints, short thickness)
-{
-  bGPDstroke *gps = BKE_gpencil_stroke_add(gpf, mat_idx, totpoints, thickness, false);
-  /* Copy run-time color data so that strokes added in the modifier has the style.
-   * There are depsgraph reference pointers inside,
-   * change the copy function if interfere with future drawing implementation. */
-  gps->runtime = blender::dna::shallow_copy(existing->runtime);
-  return gps;
-}
-
 bGPDcurve *BKE_gpencil_stroke_editcurve_new(const int tot_curve_points)
 {
   bGPDcurve *new_gp_curve = (bGPDcurve *)MEM_callocN(sizeof(bGPDcurve), __func__);
@@ -1170,27 +1159,6 @@ bGPDlayer *BKE_gpencil_layer_named_get(bGPdata *gpd, const char *name)
   return static_cast<bGPDlayer *>(BLI_findstring(&gpd->layers, name, offsetof(bGPDlayer, info)));
 }
 
-bGPDlayer_Mask *BKE_gpencil_layer_mask_named_get(bGPDlayer *gpl, const char *name)
-{
-  if (name[0] == '\0') {
-    return nullptr;
-  }
-  return static_cast<bGPDlayer_Mask *>(
-      BLI_findstring(&gpl->mask_layers, name, offsetof(bGPDlayer_Mask, name)));
-}
-
-bGPDlayer_Mask *BKE_gpencil_layer_mask_add(bGPDlayer *gpl, const char *name)
-{
-
-  bGPDlayer_Mask *mask = static_cast<bGPDlayer_Mask *>(
-      MEM_callocN(sizeof(bGPDlayer_Mask), "bGPDlayer_Mask"));
-  BLI_addtail(&gpl->mask_layers, mask);
-  STRNCPY(mask->name, name);
-  gpl->act_mask++;
-
-  return mask;
-}
-
 void BKE_gpencil_layer_mask_remove(bGPDlayer *gpl, bGPDlayer_Mask *mask)
 {
   BLI_freelinkN(&gpl->mask_layers, mask);
@@ -1272,13 +1240,6 @@ void BKE_gpencil_layer_mask_cleanup(bGPdata *gpd, bGPDlayer *gpl)
   }
 }
 
-void BKE_gpencil_layer_mask_cleanup_all_layers(bGPdata *gpd)
-{
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    BKE_gpencil_layer_mask_cleanup(gpd, gpl);
-  }
-}
-
 static int gpencil_cb_cmp_frame(void *thunk, const void *a, const void *b)
 {
   const bGPDframe *frame_a = static_cast<const bGPDframe *>(a);
@@ -1320,27 +1281,6 @@ bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
   }
 
   /* no active layer found */
-  return nullptr;
-}
-
-bGPDlayer *BKE_gpencil_layer_get_by_name(bGPdata *gpd, const char *name, int first_if_not_found)
-{
-  /* error checking */
-  if (ELEM(nullptr, gpd, gpd->layers.first)) {
-    return nullptr;
-  }
-
-  /* loop over layers until found (assume only one active) */
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    if (STREQ(name, gpl->info)) {
-      return gpl;
-    }
-  }
-
-  /* no such layer */
-  if (first_if_not_found) {
-    return static_cast<bGPDlayer *>(gpd->layers.first);
-  }
   return nullptr;
 }
 
@@ -1418,19 +1358,6 @@ void BKE_gpencil_layer_delete(bGPdata *gpd, bGPDlayer *gpl)
   BLI_freelinkN(&gpd->layers, gpl);
 }
 
-Material *BKE_gpencil_brush_material_get(Brush *brush)
-{
-  Material *ma = nullptr;
-
-  if ((brush != nullptr) && (brush->gpencil_settings != nullptr) &&
-      (brush->gpencil_settings->material != nullptr))
-  {
-    ma = brush->gpencil_settings->material;
-  }
-
-  return ma;
-}
-
 void BKE_gpencil_brush_material_set(Brush *brush, Material *ma)
 {
   BLI_assert(brush);
@@ -1444,38 +1371,6 @@ void BKE_gpencil_brush_material_set(Brush *brush, Material *ma)
     }
     brush->gpencil_settings->material = ma;
   }
-}
-
-Material *BKE_gpencil_object_material_ensure_from_brush(Main *bmain, Object *ob, Brush *brush)
-{
-  if (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
-    Material *ma = BKE_gpencil_brush_material_get(brush);
-
-    /* check if the material is already on object material slots and add it if missing */
-    if (ma && BKE_gpencil_object_material_index_get(ob, ma) < 0) {
-      BKE_object_material_slot_add(bmain, ob);
-      BKE_object_material_assign(bmain, ob, ma, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
-    }
-
-    return ma;
-  }
-
-  /* using active material instead */
-  return BKE_object_material_get(ob, ob->actcol);
-}
-
-int BKE_gpencil_object_material_ensure(Main *bmain, Object *ob, Material *material)
-{
-  if (!material) {
-    return -1;
-  }
-  int index = BKE_gpencil_object_material_index_get(ob, material);
-  if (index < 0) {
-    BKE_object_material_slot_add(bmain, ob);
-    BKE_object_material_assign(bmain, ob, material, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
-    return ob->totcol - 1;
-  }
-  return index;
 }
 
 Material *BKE_gpencil_object_material_new(Main *bmain, Object *ob, const char *name, int *r_index)
@@ -1492,18 +1387,6 @@ Material *BKE_gpencil_object_material_new(Main *bmain, Object *ob, const char *n
   return ma;
 }
 
-Material *BKE_gpencil_object_material_from_brush_get(Object *ob, Brush *brush)
-{
-  if ((brush) && (brush->gpencil_settings) &&
-      (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED))
-  {
-    Material *ma = BKE_gpencil_brush_material_get(brush);
-    return ma;
-  }
-
-  return BKE_object_material_get(ob, ob->actcol);
-}
-
 int BKE_gpencil_object_material_get_index_from_brush(Object *ob, Brush *brush)
 {
   if ((brush) && (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED)) {
@@ -1511,62 +1394,6 @@ int BKE_gpencil_object_material_get_index_from_brush(Object *ob, Brush *brush)
   }
 
   return ob->actcol - 1;
-}
-
-Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettings(Main *bmain,
-                                                                            Object *ob,
-                                                                            ToolSettings *ts)
-{
-  if (ts && ts->gp_paint && BKE_paint_brush(&ts->gp_paint->paint)) {
-    return BKE_gpencil_object_material_ensure_from_active_input_brush(
-        bmain, ob, BKE_paint_brush(&ts->gp_paint->paint));
-  }
-
-  return BKE_gpencil_object_material_ensure_from_active_input_brush(bmain, ob, nullptr);
-}
-
-Material *BKE_gpencil_object_material_ensure_from_active_input_brush(Main *bmain,
-                                                                     Object *ob,
-                                                                     Brush *brush)
-{
-  if (brush) {
-    Material *ma = BKE_gpencil_object_material_ensure_from_brush(bmain, ob, brush);
-    if (ma) {
-      return ma;
-    }
-    if (brush->gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
-      /* it is easier to just unpin a nullptr material, instead of setting a new one */
-      brush->gpencil_settings->flag &= ~GP_BRUSH_MATERIAL_PINNED;
-    }
-  }
-  return BKE_gpencil_object_material_ensure_from_active_input_material(ob);
-}
-
-Material *BKE_gpencil_object_material_ensure_from_active_input_material(Object *ob)
-{
-  Material *ma = BKE_object_material_get(ob, ob->actcol);
-  if (ma) {
-    return ma;
-  }
-
-  return BKE_material_default_gpencil();
-}
-
-Material *BKE_gpencil_object_material_ensure_active(Object *ob)
-{
-  Material *ma = nullptr;
-
-  /* sanity checks */
-  if (ob == nullptr) {
-    return nullptr;
-  }
-
-  ma = BKE_gpencil_object_material_ensure_from_active_input_material(ob);
-  if (ma->gp_style == nullptr) {
-    BKE_gpencil_material_attr_init(ma);
-  }
-
-  return ma;
 }
 
 /* ************************************************** */
@@ -1696,25 +1523,6 @@ float BKE_gpencil_multiframe_falloff_calc(
   return value;
 }
 
-void BKE_gpencil_stats_update(bGPdata *gpd)
-{
-  gpd->totlayer = 0;
-  gpd->totframe = 0;
-  gpd->totstroke = 0;
-  gpd->totpoint = 0;
-
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    gpd->totlayer++;
-    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      gpd->totframe++;
-      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-        gpd->totstroke++;
-        gpd->totpoint += gps->totpoints;
-      }
-    }
-  }
-}
-
 int BKE_gpencil_object_material_index_get(Object *ob, Material *ma)
 {
   short *totcol = BKE_object_material_len_p(ob);
@@ -1741,19 +1549,6 @@ int BKE_gpencil_object_material_index_get_by_name(Object *ob, const char *name)
   }
 
   return -1;
-}
-
-Material *BKE_gpencil_object_material_ensure_by_name(Main *bmain,
-                                                     Object *ob,
-                                                     const char *name,
-                                                     int *r_index)
-{
-  int index = BKE_gpencil_object_material_index_get_by_name(ob, name);
-  if (index != -1) {
-    *r_index = index;
-    return BKE_object_material_get(ob, index + 1);
-  }
-  return BKE_gpencil_object_material_new(bmain, ob, name, r_index);
 }
 
 void BKE_gpencil_palette_ensure(Main *bmain, Scene *scene)

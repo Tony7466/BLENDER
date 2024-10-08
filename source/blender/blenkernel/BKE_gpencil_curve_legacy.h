@@ -28,12 +28,6 @@ struct bGPDcurve *BKE_gpencil_stroke_editcurve_generate(struct bGPDstroke *gps,
                                                         float corner_angle,
                                                         float stroke_radius);
 /**
- * Updates the edit-curve for a stroke. Frees the old curve if one exists and generates a new one.
- */
-void BKE_gpencil_stroke_editcurve_update(struct bGPdata *gpd,
-                                         struct bGPDlayer *gpl,
-                                         struct bGPDstroke *gps);
-/**
  * Sync the selection from stroke to edit-curve.
  */
 void BKE_gpencil_editcurve_stroke_sync_selection(struct bGPdata *gpd,

@@ -246,28 +246,6 @@ bGPDcurve *BKE_gpencil_stroke_editcurve_generate(bGPDstroke *gps,
   return editcurve;
 }
 
-void BKE_gpencil_stroke_editcurve_update(bGPdata *gpd, bGPDlayer *gpl, bGPDstroke *gps)
-{
-  if (gps == nullptr || gps->totpoints < 0) {
-    return;
-  }
-
-  if (gps->editcurve != nullptr) {
-    BKE_gpencil_free_stroke_editcurve(gps);
-  }
-
-  float defaultpixsize = 1000.0f / gpd->pixfactor;
-  float stroke_radius = ((gps->thickness + gpl->line_change) / defaultpixsize) / 2.0f;
-
-  bGPDcurve *editcurve = BKE_gpencil_stroke_editcurve_generate(
-      gps, gpd->curve_edit_threshold, gpd->curve_edit_corner_angle, stroke_radius);
-  if (editcurve == nullptr) {
-    return;
-  }
-
-  gps->editcurve = editcurve;
-}
-
 void BKE_gpencil_editcurve_stroke_sync_selection(bGPdata * /*gpd*/,
                                                  bGPDstroke *gps,
                                                  bGPDcurve *gpc)

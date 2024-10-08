@@ -153,13 +153,6 @@ struct bGPdata *BKE_gpencil_data_duplicate(struct Main *bmain,
                                            const struct bGPdata *gpd,
                                            bool internal_copy);
 
-/* statistics functions */
-/**
- * Calc grease pencil statistics functions.
- * \param gpd: Grease pencil data-block
- */
-void BKE_gpencil_stats_update(struct bGPdata *gpd);
-
 /**
  * Create a new stroke, with pre-allocated data buffers.
  * \param mat_idx: Index of the material
@@ -179,22 +172,6 @@ struct bGPDstroke *BKE_gpencil_stroke_new(int mat_idx, int totpoints, short thic
  */
 struct bGPDstroke *BKE_gpencil_stroke_add(
     struct bGPDframe *gpf, int mat_idx, int totpoints, short thickness, bool insert_at_head);
-
-/**
- * Add a stroke and copy the temporary drawing color value
- * from one of the existing stroke.
- * \param gpf: Grease pencil frame
- * \param existing: Stroke with the style to copy
- * \param mat_idx: Material index
- * \param totpoints: Total points
- * \param thickness: Stroke thickness
- * \return Pointer to new stroke
- */
-struct bGPDstroke *BKE_gpencil_stroke_add_existing_style(struct bGPDframe *gpf,
-                                                         struct bGPDstroke *existing,
-                                                         int mat_idx,
-                                                         int totpoints,
-                                                         short thickness);
 
 struct bGPDcurve *BKE_gpencil_stroke_editcurve_new(int tot_curve_points);
 
@@ -283,13 +260,6 @@ void BKE_gpencil_layer_delete(struct bGPdata *gpd, struct bGPDlayer *gpl);
 void BKE_gpencil_layer_autolock_set(struct bGPdata *gpd, bool unlock);
 
 /**
- * Add grease pencil mask layer.
- * \param gpl: Grease pencil layer
- * \param name: Name of the mask
- * \return Pointer to new mask layer
- */
-struct bGPDlayer_Mask *BKE_gpencil_layer_mask_add(struct bGPDlayer *gpl, const char *name);
-/**
  * Remove grease pencil mask layer.
  * \param gpl: Grease pencil layer
  * \param mask: Grease pencil mask layer
@@ -301,13 +271,6 @@ void BKE_gpencil_layer_mask_remove(struct bGPDlayer *gpl, struct bGPDlayer_Mask 
  * \param name: Name of the mask layer
  */
 void BKE_gpencil_layer_mask_remove_ref(struct bGPdata *gpd, const char *name);
-/**
- * Get mask layer by name.
- * \param gpl: Grease pencil layer
- * \param name: Mask name
- * \return Pointer to mask layer
- */
-struct bGPDlayer_Mask *BKE_gpencil_layer_mask_named_get(struct bGPDlayer *gpl, const char *name);
 /**
  * Sort grease pencil mask layers.
  * \param gpd: Grease pencil data-block
@@ -327,10 +290,6 @@ void BKE_gpencil_layer_mask_copy(const struct bGPDlayer *gpl_src, struct bGPDlay
  * Clean any invalid mask layer.
  */
 void BKE_gpencil_layer_mask_cleanup(struct bGPdata *gpd, struct bGPDlayer *gpl);
-/**
- * Clean any invalid mask layer for all layers.
- */
-void BKE_gpencil_layer_mask_cleanup_all_layers(struct bGPdata *gpd);
 
 /**
  * Sort grease pencil frames.
@@ -339,17 +298,7 @@ void BKE_gpencil_layer_mask_cleanup_all_layers(struct bGPdata *gpd);
  */
 void BKE_gpencil_layer_frames_sort(struct bGPDlayer *gpl, bool *r_has_duplicate_frames);
 
-struct bGPDlayer *BKE_gpencil_layer_get_by_name(struct bGPdata *gpd,
-                                                const char *name,
-                                                int first_if_not_found);
-
 /* Brush */
-/**
- * Get grease pencil material from brush.
- * \param brush: Brush
- * \return Pointer to material
- */
-struct Material *BKE_gpencil_brush_material_get(struct Brush *brush);
 /**
  * Set grease pencil brush material.
  * \param brush: Brush
@@ -358,36 +307,6 @@ struct Material *BKE_gpencil_brush_material_get(struct Brush *brush);
 void BKE_gpencil_brush_material_set(struct Brush *brush, struct Material *material);
 
 /* Object */
-/**
- * Get active color, and add all default settings if we don't find anything.
- * \param ob: Grease pencil object
- * \return Material pointer
- */
-struct Material *BKE_gpencil_object_material_ensure_active(struct Object *ob);
-/**
- * Adds the pinned material to the object if necessary.
- * \param bmain: Main pointer
- * \param ob: Grease pencil object
- * \param brush: Brush
- * \return Pointer to material
- */
-struct Material *BKE_gpencil_object_material_ensure_from_brush(struct Main *bmain,
-                                                               struct Object *ob,
-                                                               struct Brush *brush);
-/**
- * Assigns the material to object (if not already present) and returns its index (mat_nr).
- * \param bmain: Main pointer
- * \param ob: Grease pencil object
- * \param material: Material
- * \return Index of the material
- */
-int BKE_gpencil_object_material_ensure(struct Main *bmain,
-                                       struct Object *ob,
-                                       struct Material *material);
-struct Material *BKE_gpencil_object_material_ensure_by_name(struct Main *bmain,
-                                                            struct Object *ob,
-                                                            const char *name,
-                                                            int *r_index);
 
 /**
  * Creates a new grease-pencil material and assigns it to object.
@@ -412,46 +331,12 @@ int BKE_gpencil_object_material_index_get(struct Object *ob, struct Material *ma
 int BKE_gpencil_object_material_index_get_by_name(struct Object *ob, const char *name);
 
 /**
- * Returns the material for a brush with respect to its pinned state.
- * \param ob: Grease pencil object
- * \param brush: Brush
- * \return Material pointer
- */
-struct Material *BKE_gpencil_object_material_from_brush_get(struct Object *ob,
-                                                            struct Brush *brush);
-/**
  * Returns the material index for a brush with respect to its pinned state.
  * \param ob: Grease pencil object
  * \param brush: Brush
  * \return Material index.
  */
 int BKE_gpencil_object_material_get_index_from_brush(struct Object *ob, struct Brush *brush);
-
-/**
- * Guaranteed to return a material assigned to object. Returns never NULL.
- * \param bmain: Main pointer
- * \param ob: Grease pencil object
- * \return Material pointer.
- */
-struct Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettings(
-    struct Main *bmain, struct Object *ob, struct ToolSettings *ts);
-/**
- * Guaranteed to return a material assigned to object. Returns never NULL.
- * \param bmain: Main pointer
- * \param ob: Grease pencil object.
- * \param brush: Brush
- * \return Material pointer
- */
-struct Material *BKE_gpencil_object_material_ensure_from_active_input_brush(struct Main *bmain,
-                                                                            struct Object *ob,
-                                                                            struct Brush *brush);
-/**
- * Guaranteed to return a material assigned to object. Returns never NULL.
- * Only use this for materials unrelated to user input.
- * \param ob: Grease pencil object
- * \return Material pointer
- */
-struct Material *BKE_gpencil_object_material_ensure_from_active_input_material(struct Object *ob);
 
 /**
  * Check if stroke has any point selected
@@ -478,14 +363,6 @@ void BKE_gpencil_vgroup_remove(struct Object *ob, struct bDeformGroup *defgroup)
  * \param gps_dst: Destination grease pencil stroke
  */
 void BKE_gpencil_stroke_weights_duplicate(struct bGPDstroke *gps_src, struct bGPDstroke *gps_dst);
-
-/* Set active frame by layer. */
-/**
- * Set current grease pencil active frame.
- * \param depsgraph: Current depsgraph
- * \param gpd: Grease pencil data-block.
- */
-void BKE_gpencil_frame_active_set(struct Depsgraph *depsgraph, struct bGPdata *gpd);
 
 /**
  * Get range of selected frames in layer.
