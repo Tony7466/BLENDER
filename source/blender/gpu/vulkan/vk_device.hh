@@ -53,12 +53,21 @@ struct VKWorkarounds {
      */
     bool r8g8b8 = false;
   } vertex_formats;
+
+  /**
+   * Is the workaround for devices that don't support
+   * #VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR::fragmentShaderBarycentric enabled.
+   * If set to true, the backend would inject a geometry shader to produce barycentric coordinates.
+   */
+  bool fragment_shader_barycentric = false;
 };
 
 /**
  * Shared resources between contexts that run in the same thread.
  */
 class VKThreadData : public NonCopyable, NonMovable {
+  static constexpr uint32_t resource_pools_count = 3;
+
  public:
   /** Thread ID this instance belongs to. */
   pthread_t thread_id;
@@ -70,7 +79,7 @@ class VKThreadData : public NonCopyable, NonMovable {
    * NOTE: Initialized to `UINT32_MAX` to detect first change.
    */
   uint32_t resource_pool_index = UINT32_MAX;
-  std::array<VKResourcePool, 5> resource_pools;
+  std::array<VKResourcePool, resource_pools_count> resource_pools;
 
   /**
    * The current rendering depth.
@@ -81,6 +90,12 @@ class VKThreadData : public NonCopyable, NonMovable {
    * when the rendering_depth set to 0.
    */
   int32_t rendering_depth = 0;
+
+  /**
+   * Number of contexts registered in the current thread.
+   * Discarded resources are destroyed when all contexts are unregistered.
+   */
+  int32_t num_contexts = 0;
 
   VKThreadData(VKDevice &device,
                pthread_t thread_id,
@@ -106,7 +121,7 @@ class VKThreadData : public NonCopyable, NonMovable {
       resource_pool_index = 1;
     }
     else {
-      resource_pool_index = (resource_pool_index + 1) % 5;
+      resource_pool_index = (resource_pool_index + 1) % resource_pools_count;
     }
   }
 };
@@ -136,10 +151,10 @@ class VKDevice : public NonCopyable {
 
   /** Allocator used for texture and buffers and other resources. */
   VmaAllocator mem_allocator_ = VK_NULL_HANDLE;
-  VkPipelineCache vk_pipeline_cache_ = VK_NULL_HANDLE;
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceProperties vk_physical_device_properties_ = {};
+  VkPhysicalDeviceDriverProperties vk_physical_device_driver_properties_ = {};
   VkPhysicalDeviceMemoryProperties vk_physical_device_memory_properties_ = {};
   /** Features support. */
   VkPhysicalDeviceFeatures vk_physical_device_features_ = {};
@@ -153,9 +168,6 @@ class VKDevice : public NonCopyable {
   /* Workarounds */
   VKWorkarounds workarounds_;
 
-  /** Buffer to bind to unbound resource locations. */
-  VKBuffer dummy_buffer_;
-
   std::string glsl_patch_;
   Vector<VKThreadData *> thread_data_;
 
@@ -163,6 +175,8 @@ class VKDevice : public NonCopyable {
   render_graph::VKResourceStateTracker resources;
   VKDiscardPool orphaned_data;
   VKPipelinePool pipelines;
+  /** Buffer to bind to unbound resource locations. */
+  VKBuffer dummy_buffer;
 
   /**
    * This struct contains the functions pointer to extension provided functions.
@@ -230,11 +244,6 @@ class VKDevice : public NonCopyable {
     return mem_allocator_;
   }
 
-  VkPipelineCache vk_pipeline_cache_get() const
-  {
-    return vk_pipeline_cache_;
-  }
-
   VKDescriptorSetLayouts &descriptor_set_layouts_get()
   {
     return descriptor_set_layouts_;
@@ -250,19 +259,13 @@ class VKDevice : public NonCopyable {
     return debugging_tools_;
   }
 
-  VKSamplers &samplers()
+  const VKSamplers &samplers() const
   {
     return samplers_;
   }
 
   bool is_initialized() const;
   void init(void *ghost_context);
-  /**
-   * Initialize a dummy buffer that can be bound for missing attributes.
-   *
-   * Dummy buffer can only be initialized after the command buffer of the context is retrieved.
-   */
-  void init_dummy_buffer(VKContext &context);
   void reinit();
   void deinit();
 
@@ -314,12 +317,8 @@ class VKDevice : public NonCopyable {
   void context_unregister(VKContext &context);
   Span<std::reference_wrapper<VKContext>> contexts_get() const;
 
-  const VKBuffer &dummy_buffer_get() const
-  {
-    return dummy_buffer_;
-  }
-
   void memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb) const;
+  static void debug_print(std::ostream &os, const VKDiscardPool &discard_pool);
   void debug_print();
 
   /** \} */
@@ -331,11 +330,15 @@ class VKDevice : public NonCopyable {
   void init_physical_device_extensions();
   void init_debug_callbacks();
   void init_memory_allocator();
-  void init_pipeline_cache();
   /**
    * Initialize the functions struct with extension specific function pointer.
    */
   void init_functions();
+
+  /**
+   * Initialize a dummy buffer that can be bound for missing attributes.
+   */
+  void init_dummy_buffer();
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

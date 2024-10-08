@@ -2,9 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(select_lib.glsl)
+#include "common_view_lib.glsl"
+#include "gpu_shader_utildefines_lib.glsl"
+#include "select_lib.glsl"
 
 void main()
 {
@@ -38,10 +38,10 @@ void main()
 
 #  ifndef CUSTOM_DEPTH_BIAS_CONST
 /* TODO(fclem): Cleanup after overlay next. */
-#    ifdef CUSTOM_DEPTH_BIAS
-  const bool use_custom_depth_bias = true;
-#    else
+#    ifndef CUSTOM_DEPTH_BIAS
   const bool use_custom_depth_bias = false;
+#    else
+  const bool use_custom_depth_bias = true;
 #    endif
 #  endif
 

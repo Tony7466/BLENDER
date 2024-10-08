@@ -17,11 +17,11 @@
 #include "GPU_texture.hh"
 #include "GPU_uniform_buffer.hh"
 
-#include "../generic/py_capi_utils.h"
-#include "../generic/python_compat.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/py_capi_utils.hh"
+#include "../generic/python_compat.hh"
+#include "../generic/python_utildefines.hh"
 
-#include "../mathutils/mathutils.h"
+#include "../mathutils/mathutils.hh"
 
 #include "gpu_py.hh"
 #include "gpu_py_texture.hh"
@@ -1009,7 +1009,7 @@ static PyObject *pygpu_shader_create_from_info(BPyGPUShader * /*self*/, BPyGPUSh
     return nullptr;
   }
 
-  GPUShader *shader = GPU_shader_create_from_info(o->info);
+  GPUShader *shader = GPU_shader_create_from_info_python(o->info);
   if (!shader) {
     PyErr_SetString(PyExc_Exception, "Shader Compile Error, see console for more details");
     return nullptr;
