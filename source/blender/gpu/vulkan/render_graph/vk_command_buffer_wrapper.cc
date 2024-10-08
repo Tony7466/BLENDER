@@ -90,17 +90,23 @@ void VKCommandBufferWrapper::end_recording()
   vkEndCommandBuffer(vk_command_buffer_);
 }
 
-void VKCommandBufferWrapper::submit_with_cpu_synchronization()
+void VKCommandBufferWrapper::submit_with_cpu_synchronization(VkFence vk_fence)
 {
+  if (vk_fence == VK_NULL_HANDLE) {
+    vk_fence = vk_fence_;
+  }
   VKDevice &device = VKBackend::get().device;
-  vkResetFences(device.vk_handle(), 1, &vk_fence_);
-  vkQueueSubmit(device.queue_get(), 1, &vk_submit_info_, vk_fence_);
+  vkResetFences(device.vk_handle(), 1, &vk_fence);
+  vkQueueSubmit(device.queue_get(), 1, &vk_submit_info_, vk_fence);
 }
 
-void VKCommandBufferWrapper::wait_for_cpu_synchronization()
+void VKCommandBufferWrapper::wait_for_cpu_synchronization(VkFence vk_fence)
 {
+  if (vk_fence == VK_NULL_HANDLE) {
+    vk_fence = vk_fence_;
+  }
   VKDevice &device = VKBackend::get().device;
-  while (vkWaitForFences(device.vk_handle(), 1, &vk_fence_, true, UINT64_MAX) == VK_TIMEOUT) {
+  while (vkWaitForFences(device.vk_handle(), 1, &vk_fence, true, UINT64_MAX) == VK_TIMEOUT) {
   }
 }
 

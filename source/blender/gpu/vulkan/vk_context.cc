@@ -21,6 +21,10 @@
 
 namespace blender::gpu {
 
+static uint64_t s_number = 0;
+
+#define LOG std::cout << __func__ << "[" << number << "]: main=" << BLI_thread_is_main() << "\n";
+
 VKContext::VKContext(void *ghost_window, void *ghost_context, VKThreadData &thread_data)
     : thread_data_(thread_data), render_graph(thread_data_.render_graph)
 {
@@ -28,17 +32,19 @@ VKContext::VKContext(void *ghost_window, void *ghost_context, VKThreadData &thre
   ghost_context_ = ghost_context;
 
   state_manager = new VKStateManager();
-  imm = &thread_data.resource_pool_get().immediate;
 
   back_left = new VKFrameBuffer("back_left");
   front_left = new VKFrameBuffer("front_left");
   active_fb = back_left;
 
   compiler = &VKBackend::get().shader_compiler;
+  number = s_number++;
+  LOG
 }
 
 VKContext::~VKContext()
 {
+  LOG
   if (surface_texture_) {
     back_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
     front_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
@@ -105,6 +111,7 @@ void VKContext::sync_backbuffer()
 
 void VKContext::activate()
 {
+  LOG
   /* Make sure no other context is already bound to this thread. */
   BLI_assert(is_active_ == false);
 
@@ -117,15 +124,20 @@ void VKContext::activate()
 
 void VKContext::deactivate()
 {
+  LOG
   rendering_end();
   immDeactivate();
   is_active_ = false;
 }
 
-void VKContext::begin_frame() {}
+void VKContext::begin_frame()
+{
+  LOG
+}
 
 void VKContext::end_frame()
 {
+  LOG
   /* Enable this to track how resources are managed per thread and resource pool. */
 #if 0
   VKDevice &device = VKBackend::get().device;

@@ -39,6 +39,8 @@ class VKContext : public Context, NonCopyable {
   VKThreadData &thread_data_;
 
  public:
+  uint64_t number;
+
   render_graph::VKRenderGraph &render_graph;
 
   VKContext(void *ghost_window, void *ghost_context, VKThreadData &thread_data);
