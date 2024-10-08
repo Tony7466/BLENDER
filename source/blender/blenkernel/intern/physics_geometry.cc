@@ -609,29 +609,31 @@ bool PhysicsWorldState::try_move_data(const PhysicsWorldState &src,
 {
   BLI_assert(this->is_mutable());
 
-  if (src.world_data_ == nullptr) {
-    return false;
-  }
-  std::scoped_lock src_lock(src.world_data_mutex_);
-  if (src.world_data_ == nullptr) {
-    return false;
-  }
+  {
+    if (src.world_data_ == nullptr) {
+      return false;
+    }
+    std::scoped_lock src_lock(src.world_data_mutex_);
+    if (src.world_data_ == nullptr) {
+      return false;
+    }
 
-  std::scoped_lock dst_lock(world_data_mutex_);
-  if (world_data_) {
-    delete world_data_;
-    world_data_ = nullptr;
+    std::scoped_lock dst_lock(world_data_mutex_);
+    if (world_data_) {
+      delete world_data_;
+      world_data_ = nullptr;
+    }
+
+    world_data_ = src.world_data_;
+    src.world_data_ = nullptr;
+
+    world_data_->resize(body_num,
+                        constraint_num,
+                        src_body_mask,
+                        src_constraint_mask,
+                        dst_body_offset,
+                        dst_constraint_offset);
   }
-
-  world_data_ = src.world_data_;
-  src.world_data_ = nullptr;
-
-  world_data_->resize(body_num,
-                      constraint_num,
-                      src_body_mask,
-                      src_constraint_mask,
-                      dst_body_offset,
-                      dst_constraint_offset);
 
   /* Copy attributes write caches. */
   const bke::AttributeFilter attribute_filter = bke::AttributeFilterFromFunc(

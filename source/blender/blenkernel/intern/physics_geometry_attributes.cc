@@ -1156,7 +1156,7 @@ GAttributeReader PhysicsStateBodyAttributeProvider::try_get_for_read(const void 
    * In cached read+write mode this should be ignored, among other things to avoid deadlock since
    * building the cache will try reading the attribute in turn. */
   if (access_mode_ != PhysicsStateAttributeAccessMode::CachedReadWrite) {
-    state.ensure_read_cache_no_lock();
+    state.ensure_read_cache();
   }
 
   const GArray<> *data = state.body_data_.lookup_ptr(attribute_);
@@ -1241,7 +1241,7 @@ GAttributeReader PhysicsStateConstraintAttributeProvider::try_get_for_read(const
    * In cached read+write mode this should be ignored, among other things to avoid deadlock since
    * building the cache will try reading the attribute in turn. */
   if (access_mode_ != PhysicsStateAttributeAccessMode::CachedReadWrite) {
-    state.ensure_read_cache_no_lock();
+    state.ensure_read_cache();
   }
 
   const GArray<> *data = state.constraint_data_.lookup_ptr(attribute_);
