@@ -40,6 +40,9 @@ class VKShaderModule {
    */
   std::string combined_sources;
 
+  /**
+   * Hash of the combined sources. Used to generate the name inside spirv cache.
+   */
   std::string sources_hash;
 
   /**
@@ -72,6 +75,9 @@ class VKShaderModule {
    * `vk_shader_module`.
    */
   void finalize(StringRefNull name);
+
+  /** Build the sources hash from the combined_sources. */
+  void build_sources_hash();
 };
 
 }  // namespace blender::gpu

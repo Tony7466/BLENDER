@@ -11,6 +11,9 @@
 #include "vk_memory.hh"
 #include "vk_shader.hh"
 
+#include <iomanip>
+#include <sstream>
+
 namespace blender::gpu {
 VKShaderModule::~VKShaderModule()
 {
@@ -49,6 +52,17 @@ void VKShaderModule::finalize(StringRefNull name)
   vkCreateShaderModule(
       device.vk_handle(), &create_info, vk_allocation_callbacks, &vk_shader_module);
   debug::object_label(vk_shader_module, name.c_str());
+}
+
+void VKShaderModule::build_sources_hash()
+{
+  DefaultHash<std::string> hasher;
+  BLI_assert(!combined_sources.empty());
+  uint64_t hash = hasher(combined_sources);
+  std::stringstream ss;
+  ss << std::setfill('0') << std::setw(sizeof(uint64_t) * 2) << std::hex << hash;
+  sources_hash = ss.str();
+  BLI_assert(!sources_hash.empty());
 }
 
 }  // namespace blender::gpu

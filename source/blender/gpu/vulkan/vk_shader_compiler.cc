@@ -33,10 +33,18 @@ VKShaderCompiler::~VKShaderCompiler()
 /** \name SPIR-V disk cache
  * \{ */
 
-static std::string cache_dir_get()
+struct SPIRVSidecar {
+  /** Size of the SPIRV binary. */
+  uint64_t spirv_size;
+};
+
+static std::optional<std::string> cache_dir_get()
 {
-  char tmp_dir_buffer[1024];
-  BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer));
+  char tmp_dir_buffer[FILE_MAX];
+  /* Shader builder doesn't return the correct appdir*/
+  if (!BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer))) {
+    return std::nullopt;
+  }
 
   std::string cache_dir = std::string(tmp_dir_buffer) + "vk-spirv-cache" + SEP_STR;
   BLI_dir_create_recursive(cache_dir.c_str());
@@ -47,23 +55,43 @@ static std::string cache_dir_get()
 static bool read_spirv_from_disk(VKShaderModule &shader_module)
 {
   if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    /* Renderdoc uses spirv shaders including debug information. */
     return false;
   }
-  DefaultHash<std::string> hasher;
-  shader_module.sources_hash = std::to_string(hasher(shader_module.combined_sources));
+  std::optional<std::string> cache_dir = cache_dir_get();
+  if (!cache_dir.has_value()) {
+    return false;
+  }
+  shader_module.build_sources_hash();
+  std::string spirv_path = (*cache_dir) + SEP_STR + shader_module.sources_hash + ".spv";
+  std::string sidecar_path = (*cache_dir) + SEP_STR + shader_module.sources_hash + ".sidecar.bin";
 
-  std::string cache_path = cache_dir_get() + SEP_STR + shader_module.sources_hash + ".spv";
-
-  if (!BLI_exists(cache_path.c_str())) {
+  if (!BLI_exists(spirv_path.c_str()) || !BLI_exists(sidecar_path.c_str())) {
     return false;
   }
 
-  BLI_file_touch(cache_path.c_str());
-  fstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
-  std::streamsize size = file.tellg();
-  file.seekg(0, std::ios::beg);
+  BLI_file_touch(spirv_path.c_str());
+  BLI_file_touch(sidecar_path.c_str());
+
+  /* Read sidecar*/
+  fstream sidecar_file(sidecar_path, std::ios::binary | std::ios::in | std::ios::ate);
+  std::streamsize sidecar_size_on_disk = sidecar_file.tellg();
+  SPIRVSidecar sidecar = {};
+  if (sidecar_size_on_disk != sizeof(sidecar)) {
+    return false;
+  }
+  sidecar_file.seekg(0, std::ios::beg);
+  sidecar_file.read(reinterpret_cast<char *>(&sidecar), sizeof(sidecar));
+
+  /* Read spirv binary */
+  fstream spirv_file(spirv_path, std::ios::binary | std::ios::in | std::ios::ate);
+  std::streamsize size = spirv_file.tellg();
+  if (size != sidecar.spirv_size) {
+    return false;
+  }
+  spirv_file.seekg(0, std::ios::beg);
   shader_module.spirv_binary.resize(size / 4);
-  file.read(reinterpret_cast<char *>(shader_module.spirv_binary.data()), size);
+  spirv_file.read(reinterpret_cast<char *>(shader_module.spirv_binary.data()), size);
   return true;
 }
 
@@ -72,22 +100,35 @@ static void write_spirv_to_disk(VKShaderModule &shader_module)
   if (G.debug & G_DEBUG_GPU_RENDERDOC) {
     return;
   }
-  BLI_assert(!shader_module.sources_hash.empty());
-  std::string cache_path = cache_dir_get() + SEP_STR + shader_module.sources_hash + ".spv";
+  std::optional<std::string> cache_dir = cache_dir_get();
+  if (!cache_dir.has_value()) {
+    return;
+  }
 
-  fstream file(cache_path, std::ios::binary | std::ios::out);
+  /* Write the spirv binary */
+  std::string spirv_path = (*cache_dir) + SEP_STR + shader_module.sources_hash + ".spv";
   size_t size = (shader_module.compilation_result.end() -
                  shader_module.compilation_result.begin()) *
                 sizeof(uint32_t);
-  file.write(reinterpret_cast<const char *>(shader_module.compilation_result.begin()), size);
+  fstream spirv_file(spirv_path, std::ios::binary | std::ios::out);
+  spirv_file.write(reinterpret_cast<const char *>(shader_module.compilation_result.begin()), size);
+
+  /* Write the sidecar */
+  SPIRVSidecar sidecar = {size};
+  std::string sidecar_path = (*cache_dir) + SEP_STR + shader_module.sources_hash + ".sidecar.bin";
+  fstream sidecar_file(sidecar_path, std::ios::binary | std::ios::out);
+  sidecar_file.write(reinterpret_cast<const char *>(&sidecar), sizeof(SPIRVSidecar));
 }
 
 void VKShaderCompiler::cache_dir_clear_old()
 {
-  std::string cache_dir = cache_dir_get();
+  std::optional<std::string> cache_dir = cache_dir_get();
+  if (!cache_dir.has_value()) {
+    return;
+  }
 
   direntry *entries = nullptr;
-  uint32_t dir_len = BLI_filelist_dir_contents(cache_dir.c_str(), &entries);
+  uint32_t dir_len = BLI_filelist_dir_contents(cache_dir->c_str(), &entries);
   for (int i : blender::IndexRange(dir_len)) {
     direntry entry = entries[i];
     if (S_ISDIR(entry.s.st_mode)) {
