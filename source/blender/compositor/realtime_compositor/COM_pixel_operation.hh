@@ -74,6 +74,9 @@ class PixelOperation : public Operation {
   /* A map that associates the identifier of each input of the operation with the output socket it
    * is linked to. This is needed to help the compiler establish links between operations. */
   Map<std::string, DOutputSocket> inputs_to_linked_outputs_map_;
+  /* A map that associates the output socket of a node that is not part of the pixel operation to
+   * the identifier of the input of the operation that was declared for it. */
+  Map<DOutputSocket, std::string> outputs_to_declared_inputs_map_;
   /* A map that associates the output socket that provides the result of an output of the operation
    * with the identifier of that output. This is needed to help the compiler establish links
    * between operations. */

@@ -11,6 +11,7 @@
 #include "BLI_generic_span.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_map.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -225,8 +226,17 @@ mf::Variable *MultiFunctionProcedureOperation::get_multi_function_input_variable
     DInputSocket input_socket, DOutputSocket output_socket)
 {
   /* An input was already declared for that same output socket, so no need to declare it again and
-   * we just return its variable. */
+   * we just return its variable. But we update the domain priority of the input descriptor to be
+   * the higher priority of the existing descriptor and the descriptor of the new input socket.
+   * That's because the same output might be connected to multiple inputs inside the multi-function
+   * procedure operation which have different proprieties. */
   if (output_to_variable_map_.contains(output_socket)) {
+    const std::string input_identifier = outputs_to_declared_inputs_map_.lookup(output_socket);
+    InputDescriptor &input_descriptor = this->get_input_descriptor(input_identifier);
+    input_descriptor.domain_priority = math::min(
+        input_descriptor.domain_priority,
+        input_descriptor_from_input_socket(input_socket.bsocket()).domain_priority);
+
     return output_to_variable_map_.lookup(output_socket);
   }
 
@@ -249,6 +259,9 @@ mf::Variable *MultiFunctionProcedureOperation::get_multi_function_input_variable
 
   /* Map the identifier of the operation input to the output socket it is linked to. */
   inputs_to_linked_outputs_map_.add_new(input_identifier, output_socket);
+
+  /* Map the output socket to the identifier of the operation input that was declared for it. */
+  outputs_to_declared_inputs_map_.add_new(output_socket, input_identifier);
 
   return &variable;
 }
