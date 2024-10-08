@@ -432,6 +432,13 @@ void *BLI_file_read_binary_as_mem(const char *filepath, size_t pad_bytes, size_t
  */
 void BLI_file_free_lines(struct LinkNode *lines);
 
+/**
+ * Get the user's home directory, i.e.
+ * - Unix: `$HOME`
+ * - Windows: `%userprofile%`
+ */
+const char *BLI_dir_home(void);
+
 #ifdef __APPLE__
 /**
  * Expand the leading `~` in the given path to `/Users/$USER`.
