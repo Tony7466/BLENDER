@@ -67,57 +67,12 @@ void BKE_gpencil_stroke_boundingbox_calc(struct bGPDstroke *gps);
  * \param r_normal: Return Normal vector normalized
  */
 void BKE_gpencil_stroke_normal(const struct bGPDstroke *gps, float r_normal[3]);
-/**
- * Reduce a series of points to a simplified version,
- * but maintains the general shape of the series.
- *
- * Ramer - Douglas - Peucker algorithm
- * by http://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm
- * \param gpd: Grease pencil data-block
- * \param gps: Grease pencil stroke
- * \param epsilon: Epsilon value to define precision of the algorithm
- */
-void BKE_gpencil_stroke_simplify_adaptive(struct bGPdata *gpd,
-                                          struct bGPDstroke *gps,
-                                          float epsilon);
-/**
- * Simplify alternate vertex of stroke except extremes.
- * \param gpd: Grease pencil data-block
- * \param gps: Grease pencil stroke
- */
-void BKE_gpencil_stroke_simplify_fixed(struct bGPdata *gpd, struct bGPDstroke *gps);
-/**
- * Subdivide a stroke
- * \param gpd: Grease pencil data-block
- * \param gps: Stroke
- * \param level: Level of subdivision
- * \param type: Type of subdivision
- */
-void BKE_gpencil_stroke_subdivide(struct bGPdata *gpd,
-                                  struct bGPDstroke *gps,
-                                  int level,
-                                  int type);
+
 /**
  * Trim stroke to the first intersection or loop.
  * \param gps: Stroke data
  */
 bool BKE_gpencil_stroke_trim(struct bGPdata *gpd, struct bGPDstroke *gps);
-/**
- * Reduce a series of points when the distance is below a threshold.
- * Special case for first and last points (both are kept) for other points,
- * the merge point always is at first point.
- *
- * \param gpd: Grease pencil data-block.
- * \param gpf: Grease Pencil frame.
- * \param gps: Grease Pencil stroke.
- * \param threshold: Distance between points.
- * \param use_unselected: Set to true to analyze all stroke and not only selected points.
- */
-void BKE_gpencil_stroke_merge_distance(struct bGPdata *gpd,
-                                       struct bGPDframe *gpf,
-                                       struct bGPDstroke *gps,
-                                       float threshold,
-                                       bool use_unselected);
 
 /**
  * Get points of stroke always flat to view not affected
@@ -200,18 +155,6 @@ void BKE_gpencil_point_coords_apply_with_mat4(struct bGPdata *gpd,
                                               const float mat[4][4]);
 
 /**
- * Resample a stroke
- * \param gpd: Grease pencil data-block
- * \param gps: Stroke to sample
- * \param dist: Distance of one segment
- * \param sharp_threshold: Threshold for preserving sharp corners
- */
-bool BKE_gpencil_stroke_sample(struct bGPdata *gpd,
-                               struct bGPDstroke *gps,
-                               const float dist,
-                               const bool select,
-                               const float sharp_threshold);
-/**
  * Apply smooth position to stroke point.
  * \param gps: Stroke to smooth
  * \param i: Point index
@@ -293,47 +236,7 @@ void BKE_gpencil_stroke_smooth(struct bGPDstroke *gps,
  * \param gps: Stroke to close
  */
 bool BKE_gpencil_stroke_close(struct bGPDstroke *gps);
-/**
- * Dissolve points in stroke.
- * \param gpd: Grease pencil data-block
- * \param gpf: Grease pencil frame
- * \param gps: Grease pencil stroke
- * \param tag: Type of tag for point
- */
-void BKE_gpencil_dissolve_points(struct bGPdata *gpd,
-                                 struct bGPDframe *gpf,
-                                 struct bGPDstroke *gps,
-                                 short tag);
 
-/**
- * Backbone stretch similar to Freestyle.
- * \param gps: Stroke to sample.
- * \param dist: Length of the added section.
- * \param overshoot_fac: Relative length of the curve which is used to determine the extension.
- * \param mode: Affect to Start, End or Both extremes (0->Both, 1->Start, 2->End).
- * \param follow_curvature: True for approximating curvature of given overshoot.
- * \param extra_point_count: When follow_curvature is true, use this amount of extra points.
- */
-bool BKE_gpencil_stroke_stretch(struct bGPDstroke *gps,
-                                float dist,
-                                float overshoot_fac,
-                                short mode,
-                                bool follow_curvature,
-                                int extra_point_count,
-                                float segment_influence,
-                                float max_angle,
-                                bool invert_curvature);
-/**
- * Trim stroke to needed segments.
- * \param gps: Target stroke.
- * \param index_from: the index of the first point to be used in the trimmed result.
- * \param index_to: the index of the last point to be used in the trimmed result.
- * \param keep_point: Keep strokes with one point. False remove the single points strokes
- */
-bool BKE_gpencil_stroke_trim_points(struct bGPDstroke *gps,
-                                    int index_from,
-                                    int index_to,
-                                    const bool keep_point);
 /**
  * Split the given stroke into several new strokes, partitioning
  * it based on whether the stroke points have a particular flag
@@ -358,27 +261,6 @@ void BKE_gpencil_curve_delete_tagged_points(struct bGPdata *gpd,
  * Flip stroke.
  */
 void BKE_gpencil_stroke_flip(struct bGPDstroke *gps);
-/**
- * Split stroke.
- * \param gpd: Grease pencil data-block.
- * \param gpf: Grease pencil frame.
- * \param gps: Grease pencil original stroke.
- * \param before_index: Position of the point to split.
- * \param remaining_gps: Secondary stroke after split.
- * \return True if the split was done
- */
-bool BKE_gpencil_stroke_split(struct bGPdata *gpd,
-                              struct bGPDframe *gpf,
-                              struct bGPDstroke *gps,
-                              int before_index,
-                              struct bGPDstroke **remaining_gps);
-/**
- * Shrink the stroke by length.
- * \param gps: Stroke to shrink
- * \param dist: delta length
- * \param mode: 1->Start, 2->End
- */
-bool BKE_gpencil_stroke_shrink(struct bGPDstroke *gps, float dist, short mode);
 
 /**
  * Calculate grease pencil stroke length.
@@ -409,11 +291,6 @@ void BKE_gpencil_stroke_join(struct bGPDstroke *gps_a,
                              bool fit_thickness,
                              bool smooth,
                              bool auto_flip);
-/**
- * Set stroke start point in the selected index. Only works for Cyclic strokes.
- * \param start_idx: Index of the point to be the start point.
- */
-void BKE_gpencil_stroke_start_set(struct bGPDstroke *gps, int start_idx);
 
 /**
  * Stroke to view space
