@@ -72,19 +72,24 @@ void mul_qt_qtqt(float q[4], const float a[4], const float b[4])
 
 void mul_qt_v3(const float q[4], float r[3])
 {
-  /* Improved Vector rotation by Robert Eisele
+  /* Improved Vector rotation by Robert Eisele, requires q to be normalized
    * https://raw.org/proof/vector-rotation-using-quaternions/
    */
 
-	/* t = 2q x v */
-	float tx = 2. * (q[2] * r[2] - q[3] * r[1]);
-	float ty = 2. * (q[3] * r[0] - q[1] * r[2]);
-	float tz = 2. * (q[1] * r[1] - q[2] * r[0]);
+  /* t = q x v */
+  float tx = q[2] * r[2] - q[3] * r[1];
+  float ty = q[3] * r[0] - q[1] * r[2];
+  float tz = q[1] * r[1] - q[2] * r[0];
 
-	/* v + w t + q x t */
-	r[0] = r[0] + q[0] * tx + q[2] * tz - q[3] * ty;
-	r[1] = r[1] + q[0] * ty + q[3] * tx - q[1] * tz;
-	r[2] = r[2] + q[0] * tz + q[1] * ty - q[2] * tx;
+  /* t = 2t */
+  tx = tx + tx;
+  ty = ty + ty;
+  tz = tz + tz;
+
+  /* v + w t + q x t */
+  r[0] = r[0] + q[0] * tx + q[2] * tz - q[3] * ty;
+  r[1] = r[1] + q[0] * ty + q[3] * tx - q[1] * tz;
+  r[2] = r[2] + q[0] * tz + q[1] * ty - q[2] * tx;
 }
 
 void conjugate_qt_qt(float q1[4], const float q2[4])

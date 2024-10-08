@@ -313,7 +313,7 @@ template<typename T>
 [[nodiscard]] inline VecBase<T, 3> transform_point(const QuaternionBase<T> &q,
                                                    const VecBase<T, 3> &v)
 {
-  /* Improved Vector rotation by Robert Eisele
+  /* Improved Vector rotation by Robert Eisele, requires q to be normalized
    * https://raw.org/proof/vector-rotation-using-quaternions/
    */
 
@@ -326,10 +326,15 @@ template<typename T>
   T vy = v.y;
   T vz = v.z;
 
-  /* t = 2q x v */
-  T tx = 2 * (qy * vz - qz * vy);
-  T ty = 2 * (qz * vx - qx * vz);
-  T tz = 2 * (qx * vy - qy * vx);
+  /* t = q x v */
+  T tx = qy * vz - qz * vy;
+  T ty = qz * vx - qx * vz;
+  T tz = qx * vy - qy * vx;
+
+  /* t = 2t */
+  tx = tx + tx;
+  ty = ty + ty;
+  tz = tz + tz;
 
   /* v + w t + q x t */
   VecBase<T, 3> R;
