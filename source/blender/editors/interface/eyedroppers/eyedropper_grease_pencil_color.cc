@@ -24,7 +24,7 @@
 #include "DNA_space_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
@@ -203,7 +203,7 @@ static void eyedropper_add_material(bContext *C,
    * depending of the secondary key (LMB: Stroke, Shift: Fill, Shift+Ctrl: Stroke/Fill)
    */
   int idx;
-  Material *ma_new = BKE_gpencil_object_material_new(bmain, ob, "Material", &idx);
+  Material *ma_new = BKE_grease_pencil_object_material_new(bmain, ob, "Material", &idx);
   WM_main_add_notifier(NC_OBJECT | ND_OB_SHADING, &ob->id);
   WM_main_add_notifier(NC_MATERIAL | ND_SHADING_LINKS, nullptr);
   DEG_relations_tag_update(bmain);
