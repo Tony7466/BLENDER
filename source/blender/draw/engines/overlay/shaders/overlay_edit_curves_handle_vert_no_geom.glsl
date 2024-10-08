@@ -104,12 +104,11 @@ void main()
         globalsBlock.color_wire, globalsBlock.color_vertex_select, vert_selection[line_end_point]);
   }
 
-  vec4 outer_color = is_active ?
-                         mix(colorActiveSpline,
-                             inner_color,
-                             0.25) /* Minimize active color bleeding on inner_color. */
-                         :
-                         vec4(inner_color.rgb, 0.0);
+  vec4 outer_color = is_active ? mix(colorActiveSpline,
+                                     inner_color,
+                                     0.25) /* Minimize active color bleeding on inner_color. */
+                                 :
+                                 vec4(inner_color.rgb, 0.0);
 
   vec2 v1_2 = (ndc_pos[1].xy / ndc_pos[1].w - ndc_pos[0].xy / ndc_pos[0].w) * sizeViewport;
   vec2 offset = sizeEdge * 4.0 * sizeViewportInv; /* 4.0 is eyeballed */
