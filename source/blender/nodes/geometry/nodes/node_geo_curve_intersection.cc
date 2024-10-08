@@ -98,12 +98,13 @@ struct IntersectionData {
   Vector<float3> direction;
   Vector<bool> pair;
   Vector<float3> pair_position;
-  Vector<std::string> sortkey;
+  Vector<float> sortkey;
 };
 
 using ThreadLocalData = threading::EnumerableThreadSpecific<IntersectionData>;
 
 static void add_intersection_data(IntersectionData &data,
+                                  const int pos_index,
                                   const float3 position,
                                   const float3 direction,
                                   const int curve_id,
@@ -125,9 +126,8 @@ static void add_intersection_data(IntersectionData &data,
   }
 
   /* Create sortkey for index. */
-  std::string sortkey = std::to_string(curve_id);
-  sortkey.insert(0, 9 - sortkey.length(), '0');
-  data.sortkey.append(sortkey + ":" + std::to_string(factor) + ":" + std::to_string(pair));
+  float sortkey = curve_id * 100000 + pos_index * 2 + factor;
+  data.sortkey.append(sortkey);
 }
 
 static void gather_thread_storage(ThreadLocalData &thread_storage,
@@ -347,7 +347,8 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
                                                                            cyclic[curve_i]);
         const float length = src_curves.evaluated_length_total_for_curve(curve_i, cyclic[curve_i]);
 
-        auto add_closest = [&](const float3 a,
+        auto add_closest = [&](const int index,
+                               const float3 a,
                                const float3 b,
                                const float len_start,
                                const float len_end,
@@ -358,6 +359,7 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
             const float len_at_isect = math::interpolate(len_start, len_end, lambda);
             const float3 dir_of_isect = math::normalize(b - a);
             add_intersection_data(local_data,
+                                  index,
                                   closest,
                                   dir_of_isect,
                                   curve_i,
@@ -375,14 +377,14 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
           const float3 b = positions[1 + index];
           const float len_start = (index == 0) ? 0.0f : lengths[index - 1];
           const float len_end = lengths[index];
-          add_closest(a, b, len_start, len_end, length);
+          add_closest(index, a, b, len_start, len_end, length);
         }
         if (cyclic[curve_i]) {
           const float3 a = positions.last();
           const float3 b = positions.first();
           const float len_start = lengths.last();
           const float len_end = 1.0f;
-          add_closest(a, b, len_start, len_end, length);
+          add_closest(positions.size(), a, b, len_start, len_end, length);
         }
       }
     });
@@ -438,6 +440,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                 if (isectinfo.intersects && (midline || is_last_segment)) {
                   add_intersection_data(
                       local_data,
+                      ab.pos_index,
                       isectinfo.closest_ab,
                       math::normalize(ab.end - ab.start),
                       ab.curve_index,
@@ -448,6 +451,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                       store_pair_data);
                   add_intersection_data(
                       local_data,
+                      cd.pos_index,
                       isectinfo.closest_cd,
                       math::normalize(cd.end - cd.start),
                       cd.curve_index,
@@ -529,6 +533,7 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
                   const float3 dir_of_isect = math::normalize(seg.end - seg.start);
                   const float3 closest = math::interpolate(seg.start, seg.end, lambda);
                   add_intersection_data(local_data,
+                                        seg.pos_index,
                                         closest,
                                         dir_of_isect,
                                         seg.curve_index,
@@ -596,6 +601,7 @@ static void set_curve_intersections_project(const bke::CurvesGeometry &src_curve
                   /* Store direction of projected line, not original line. */
                   add_intersection_data(
                       local_data,
+                      ab.pos_index,
                       cl_ab,
                       math::normalize(ab.end - ab.start),
                       ab.curve_index,
@@ -606,6 +612,7 @@ static void set_curve_intersections_project(const bke::CurvesGeometry &src_curve
                       store_pair_data);
                   add_intersection_data(
                       local_data,
+                      cd.pos_index,
                       cl_cd,
                       math::normalize(cd.end - cd.start),
                       cd.curve_index,
@@ -630,18 +637,18 @@ static IntersectionData sort_intersection_data(IntersectionData &data, const boo
 {
   const int64_t data_size = data.position.size();
 
-  Vector<std::pair<int64_t, std::string>> sort_index;
+  Vector<std::pair<int64_t, float>> sort_index;
   sort_index.reserve(data_size);
 
   for (int64_t i = 0; i < data_size; i++) {
-    const std::string value = data.sortkey[i];
-    sort_index.append(std::pair(i, value));
+    sort_index.append(std::pair(i, data.sortkey[i]));
   }
 
   std::sort(sort_index.begin(),
             sort_index.end(),
-            [&](const std::pair<int64_t, std::string> &a,
-                const std::pair<int64_t, std::string> &b) { return (a.second < b.second); });
+            [&](const std::pair<int64_t, float> &a, const std::pair<int64_t, float> &b) {
+              return (a.second < b.second);
+            });
 
   /* Ignore sortdata for return data. */
   IntersectionData r_data;
