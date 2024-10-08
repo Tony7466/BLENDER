@@ -3769,7 +3769,7 @@ def km_grease_pencil_paint_mode(params):
         op_menu("GREASE_PENCIL_MT_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
 
         # Merge Down
-        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True}, None),
+        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True}, {"properties": [("mode", 'ACTIVE')]}),
 
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
@@ -3892,7 +3892,7 @@ def km_grease_pencil_edit_mode(params):
         op_menu("GREASE_PENCIL_MT_move_to_layer", {"type": 'M', "value": 'PRESS'}),
 
         # Merge Down
-        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True}, None),
+        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True},  {"properties": [("mode", 'ACTIVE')]}),
 
         # Edit Lines overlay
         ("wm.context_toggle", {"type": 'Q', "value": 'PRESS', "shift": True},
@@ -3984,7 +3984,7 @@ def km_grease_pencil_sculpt_mode(params):
          {"properties": [("type", "ALL_FRAMES")]}),
 
         # Merge Down
-        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True}, None),
+        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True},  {"properties": [("mode", 'ACTIVE')]}),
 
         # Copy/paste
         ("grease_pencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
@@ -4050,7 +4050,7 @@ def km_grease_pencil_weight_paint(params):
         op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
 
         # Merge Down
-        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True}, None),
+        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True},  {"properties": [("mode", 'ACTIVE')]}),
 
         # Keyframe Menu
         op_menu("VIEW3D_MT_edit_greasepencil_animation", {"type": 'I', "value": 'PRESS'}),
@@ -4133,7 +4133,7 @@ def km_grease_pencil_vertex_paint(params):
         op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
 
         # Merge Down
-        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True}, None),
+        ("grease_pencil.layer_merge", {"type": 'M', "value": 'PRESS', "ctrl": True, "shift": True},  {"properties": [("mode", 'ACTIVE')]}),
 
         # Keyframe Menu
         op_menu("VIEW3D_MT_edit_greasepencil_animation", {"type": 'I', "value": 'PRESS'}),
