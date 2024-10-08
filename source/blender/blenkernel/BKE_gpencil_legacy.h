@@ -308,17 +308,6 @@ void BKE_gpencil_brush_material_set(struct Brush *brush, struct Material *materi
 
 /* vertex groups */
 /**
- * Ensure stroke has vertex group.
- * \param gps: Grease pencil stroke
- */
-void BKE_gpencil_dvert_ensure(struct bGPDstroke *gps);
-/**
- * Remove a vertex group.
- * \param ob: Grease pencil object
- * \param defgroup: deform group
- */
-void BKE_gpencil_vgroup_remove(struct Object *ob, struct bDeformGroup *defgroup);
-/**
  * Make a copy of a given gpencil weights.
  * \param gps_src: Source grease pencil stroke
  * \param gps_dst: Destination grease pencil stroke
