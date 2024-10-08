@@ -295,7 +295,7 @@ static void eyedropper_set_brush_color(bContext *C, const float3 &col_conv)
 }
 
 /* Set the material or the palette color. */
-static void eyedropper_gpencil_color_set(bContext *C,
+static void eyedropper_grease_pencil_color_set(bContext *C,
                                          const wmEvent *event,
                                          EyedropperGreasePencil *eye)
 {
@@ -386,7 +386,7 @@ static int eyedropper_grease_pencil_modal(bContext *C, wmOperator *op, const wmE
           eyedropper_grease_pencil_color_sample(C, eye, event->xy);
 
           /* Create material. */
-          eyedropper_gpencil_color_set(C, event, eye);
+          eyedropper_grease_pencil_color_set(C, event, eye);
           WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 
           eyedropper_grease_pencil_exit(C, op);
