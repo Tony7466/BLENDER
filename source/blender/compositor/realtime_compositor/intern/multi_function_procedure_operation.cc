@@ -187,6 +187,10 @@ Array<mf::Variable *> MultiFunctionProcedureOperation::get_input_variables(DNode
        * variable that represents an input to the multi-function procedure operation is used. */
       input_variables[i] = this->get_multi_function_input_variable(input, output);
     }
+
+    /* Implicitly convert the variable type if needed by adding a call to an implicit conversion
+     * function. */
+    input_variables[i] = this->do_variable_implicit_conversion(input, output, input_variables[i]);
   }
 
   return input_variables;
@@ -264,6 +268,81 @@ mf::Variable *MultiFunctionProcedureOperation::get_multi_function_input_variable
   outputs_to_declared_inputs_map_.add_new(output_socket, input_identifier);
 
   return &variable;
+}
+
+/* Returns a multi-function that implicitly converts from the given variable type to the given
+ * expected type. nullptr will be returned if no conversion is needed. */
+static mf::MultiFunction *get_conversion_function(const ResultType variable_type,
+                                                  const ResultType expected_type)
+{
+  /* No conversion needed. */
+  if (expected_type == variable_type) {
+    return nullptr;
+  }
+
+  if (variable_type == ResultType::Float && expected_type == ResultType::Vector) {
+    static auto float_to_vector_function = mf::build::SI1_SO<float, float4>(
+        "Float To Vector",
+        [](const float &input) { return float4(float3(input), 1.0f); },
+        mf::build::exec_presets::AllSpanOrSingle());
+    return &float_to_vector_function;
+  }
+
+  if (variable_type == ResultType::Float && expected_type == ResultType::Color) {
+    static auto float_to_color_function = mf::build::SI1_SO<float, float4>(
+        "Float To Color",
+        [](const float &input) { return float4(float3(input), 1.0f); },
+        mf::build::exec_presets::AllSpanOrSingle());
+    return &float_to_color_function;
+  }
+
+  if (variable_type == ResultType::Vector && expected_type == ResultType::Float) {
+    static auto vector_to_float_function = mf::build::SI1_SO<float4, float>(
+        "Vector To Float",
+        [](const float4 &input) { return (input.x + input.y + input.z) / 3.0f; },
+        mf::build::exec_presets::AllSpanOrSingle());
+    return &vector_to_float_function;
+  }
+
+  if (variable_type == ResultType::Vector && expected_type == ResultType::Color) {
+    static auto vector_to_color_function = mf::build::SI1_SO<float4, float4>(
+        "Vector To Color",
+        [](const float4 &input) { return float4(input.xyz(), 1.0f); },
+        mf::build::exec_presets::AllSpanOrSingle());
+    return &vector_to_color_function;
+  }
+
+  if (variable_type == ResultType::Color && expected_type == ResultType::Float) {
+    static auto color_to_float_function = mf::build::SI1_SO<float4, float>(
+        "Color To Float",
+        [](const float4 &input) { return (input.x + input.y + input.z) / 3.0f; },
+        mf::build::exec_presets::AllSpanOrSingle());
+    return &color_to_float_function;
+  }
+
+  if (variable_type == ResultType::Color && expected_type == ResultType::Vector) {
+    /* No conversion needed. */
+    return nullptr;
+  }
+
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+mf::Variable *MultiFunctionProcedureOperation::do_variable_implicit_conversion(
+    DInputSocket input_socket, DOutputSocket output_socket, mf::Variable *variable)
+{
+  const ResultType expected_type = get_node_socket_result_type(input_socket.bsocket());
+  const ResultType variable_type = get_node_socket_result_type(output_socket.bsocket());
+
+  const mf::MultiFunction *function = get_conversion_function(variable_type, expected_type);
+  if (!function) {
+    return variable;
+  }
+
+  mf::Variable *converted_variable = procedure_builder_.add_call<1>(*function, {variable})[0];
+  implicit_variables_.append(converted_variable);
+  return converted_variable;
 }
 
 void MultiFunctionProcedureOperation::assign_output_variables(DNode node,
