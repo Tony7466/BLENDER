@@ -114,16 +114,10 @@ const char *BLI_dir_home()
 #ifdef WIN32
   home_dir = BLI_getenv("userprofile");
 #else
-
-#  if defined(__APPLE__)
-  home_dir = BLI_expand_tilde("~/");
-#  endif
+  home_dir = BLI_getenv("HOME");
   if (home_dir == nullptr) {
-    home_dir = BLI_getenv("HOME");
-    if (home_dir == nullptr) {
-      if (const passwd *pwuser = getpwuid(getuid())) {
-        home_dir = pwuser->pw_dir;
-      }
+    if (const passwd *pwuser = getpwuid(getuid())) {
+      home_dir = pwuser->pw_dir;
     }
   }
 #endif
