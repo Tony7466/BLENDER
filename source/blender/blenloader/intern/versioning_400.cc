@@ -4847,10 +4847,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 26)) {
     hide_simulation_node_skip_socket_value(*bmain);
-
-    if (DNA_struct_member_exists(fd->filesdna, "NodeTwoXYs", "short", "x1")) {
-      // TODO: set NodeTwoXYs.left to old NodeTwoXYs.x1;
-    }
   }
 
   /**
