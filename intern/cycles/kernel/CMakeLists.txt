@@ -161,6 +161,11 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/bssrdf.h
   closure/emissive.h
   closure/volume.h
+  closure/volume_util.h
+  closure/volume_henyey_greenstein.h
+  closure/volume_rayleigh.h
+  closure/volume_fournier_forand.h
+  closure/volume_draine.h
   closure/bsdf_principled_hair_chiang.h
   closure/bsdf_principled_hair_huang.h
 )
@@ -1057,7 +1062,7 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
 
   # Set defaults for spir64 and spir64_gen options
   if(NOT DEFINED CYCLES_ONEAPI_SYCL_OPTIONS_spir64)
-    set(CYCLES_ONEAPI_SYCL_OPTIONS_spir64 "-options '-ze-opt-large-register-file -ze-opt-regular-grf-kernel integrator_intersect -ze-opt-large-grf-kernel shade -ze-opt-no-local-to-generic'")
+    set(CYCLES_ONEAPI_SYCL_OPTIONS_spir64 "-options '-cl-fast-relaxed-math -ze-opt-large-register-file -ze-opt-regular-grf-kernel integrator_intersect -ze-opt-large-grf-kernel shade -ze-opt-no-local-to-generic'")
   endif()
   if(NOT DEFINED CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen)
     set(CYCLES_ONEAPI_SYCL_OPTIONS_spir64_gen "${CYCLES_ONEAPI_SYCL_OPTIONS_spir64}" CACHE STRING "Extra build options for spir64_gen target")
@@ -1220,10 +1225,6 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
     list(APPEND sycl_compiler_flags -fPIC)
     list(APPEND sycl_compiler_flags -fvisibility=hidden)
 
-    # We avoid getting __FAST_MATH__ to be defined when building on CentOS-7 and Rocky-8
-    # until the compilation issues it triggers at either AoT or JIT stages gets fixed.
-    list(APPEND sycl_compiler_flags -fhonor-nans)
-
     # Add $ORIGIN to `cycles_kernel_oneapi.so` RPATH so `libsycl.so` and
     # `libpi_level_zero.so` can be placed next to it and get found.
     list(APPEND sycl_compiler_flags -Wl,-rpath,'$$ORIGIN')
@@ -1328,11 +1329,11 @@ endif()
 set_source_files_properties(device/cpu/kernel.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_KERNEL_FLAGS}")
 
 if(CXX_HAS_SSE42)
-  set_source_files_properties(device/cpu/kernel_sse42.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_SSE42_KERNEL_FLAGS}")
+  set_source_files_properties(device/cpu/kernel_sse42.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_SSE42_FLAGS}")
 endif()
 
 if(CXX_HAS_AVX2)
-  set_source_files_properties(device/cpu/kernel_avx2.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_AVX2_KERNEL_FLAGS}")
+  set_source_files_properties(device/cpu/kernel_avx2.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_AVX2_FLAGS}")
 endif()
 
 # Warnings to avoid using doubles in the kernel.

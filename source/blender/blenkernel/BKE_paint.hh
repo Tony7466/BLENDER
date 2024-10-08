@@ -211,11 +211,17 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref);
 
 Brush *BKE_paint_brush(Paint *paint);
 const Brush *BKE_paint_brush_for_read(const Paint *paint);
-Brush *BKE_paint_brush_from_essentials(Main *bmain, const char *name);
+Brush *BKE_paint_brush_from_essentials(Main *bmain, eObjectMode obmode, const char *name);
+
+/**
+ * Check if brush \a brush may be set/activated for \a paint. Passing null for \a brush will return
+ * true.
+ */
+bool BKE_paint_brush_poll(const Paint *paint, const Brush *brush);
 
 /**
  * Activates \a brush for painting, and updates #Paint.brush_asset_reference so the brush can be
- * restored after file read.
+ * restored after file read. No change is done if #BKE_paint_brush_poll() returns false.
  *
  * \return True on success. If \a brush is already active, this is considered a success (the brush
  * asset reference will still be updated).
@@ -246,9 +252,9 @@ void BKE_paint_brushes_validate(Main *bmain, Paint *paint);
 
 Brush *BKE_paint_eraser_brush(Paint *paint);
 const Brush *BKE_paint_eraser_brush_for_read(const Paint *paint);
-Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, const char *name);
 
 bool BKE_paint_eraser_brush_set(Paint *paint, Brush *brush);
+Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, eObjectMode ob_mode, const char *name);
 bool BKE_paint_eraser_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_eraser_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
 

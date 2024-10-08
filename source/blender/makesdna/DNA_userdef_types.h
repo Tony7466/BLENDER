@@ -165,7 +165,9 @@ typedef struct ThemeUI {
   float menu_shadow_fac;
   short menu_shadow_width;
 
+  unsigned char editor_border[4];
   unsigned char editor_outline[4];
+  unsigned char editor_outline_active[4];
 
   /* Transparent Grid */
   unsigned char transparent_checker_primary[4], transparent_checker_secondary[4];
@@ -1292,7 +1294,8 @@ typedef enum eUserpref_UI_Flag {
   USER_ZOOM_TO_MOUSEPOS = (1 << 20),
   USER_SHOW_FPS = (1 << 21),
   USER_REGISTER_ALL_USERS = (1 << 22),
-  USER_UIFLAG_UNUSED_4 = (1 << 23), /* Cleared. */
+  /** Actually implemented in .py. */
+  USER_FILTER_BRUSHES_BY_TOOL = (1 << 23),
   USER_CONTINUOUS_MOUSE = (1 << 24),
   USER_ZOOM_INVERT = (1 << 25),
   USER_ZOOM_HORIZ = (1 << 26), /* for CONTINUE and DOLLY zoom */

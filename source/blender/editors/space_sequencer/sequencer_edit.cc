@@ -10,7 +10,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_math_vector.h"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_string.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -1764,8 +1764,12 @@ static int sequencer_delete_exec(bContext *C, wmOperator *op)
   SEQ_edit_remove_flagged_sequences(scene, seqbasep);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
+  if (scene->adt && scene->adt->action) {
+    DEG_id_tag_update(&scene->adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+  }
   DEG_relations_tag_update(bmain);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  WM_event_add_notifier(C, NC_SCENE | ND_ANIMCHAN, scene);
   return OPERATOR_FINISHED;
 }
 

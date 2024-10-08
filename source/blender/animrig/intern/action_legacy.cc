@@ -5,6 +5,10 @@
 #include "ANIM_action.hh"
 #include "ANIM_action_legacy.hh"
 
+#include "BLI_listbase_wrapper.hh"
+
+#include "BKE_fcurve.hh"
+
 namespace blender::animrig::legacy {
 
 static Strip *first_keyframe_strip(Action &action)
@@ -138,11 +142,7 @@ static Vector<FCurveType *> fcurves_for_action_slot_templated(ActionType &action
   /* Legacy Action. */
   if (action.is_action_legacy()) {
 #endif /* WITH_ANIM_BAKLAVA */
-    Vector<FCurveType *> legacy_fcurves;
-    LISTBASE_FOREACH (FCurveType *, fcurve, &action.curves) {
-      legacy_fcurves.append(fcurve);
-    }
-    return legacy_fcurves;
+    return listbase_to_vector<FCurveType>(action.curves);
 #ifdef WITH_ANIM_BAKLAVA
   }
 
@@ -278,6 +278,57 @@ bool action_treat_as_legacy(const bAction &action)
     return !may_do_layered;
   }
   return action_wrap.is_action_legacy();
+}
+
+bool action_fcurves_remove(bAction &action,
+                           const slot_handle_t slot_handle,
+                           const StringRefNull rna_path_prefix)
+{
+  BLI_assert(!rna_path_prefix.is_empty());
+  if (rna_path_prefix.is_empty()) {
+    return false;
+  }
+
+  Action &action_wrapped = action.wrap();
+
+  /* Legacy Action. Code is 'borrowed' from fcurves_path_remove_fix() in
+   * blenkernel/intern/anim_data.cc */
+  if (action_wrapped.is_action_legacy()) {
+    bool any_removed = false;
+    LISTBASE_FOREACH_MUTABLE (FCurve *, fcurve, &action.curves) {
+      if (!fcurve->rna_path) {
+        continue;
+      }
+
+      if (STRPREFIX(fcurve->rna_path, rna_path_prefix.c_str())) {
+        BLI_remlink(&action.curves, fcurve);
+        BKE_fcurve_free(fcurve);
+        any_removed = true;
+      }
+    }
+    return any_removed;
+  }
+
+  /* Layered Action. */
+  ChannelBag *bag = channelbag_for_action_slot(action.wrap(), slot_handle);
+  if (!bag) {
+    return false;
+  }
+
+  bool any_removed = false;
+  for (int64_t fcurve_index = 0; fcurve_index < bag->fcurve_array_num; fcurve_index++) {
+    FCurve *fcurve = bag->fcurve(fcurve_index);
+    if (!fcurve->rna_path) {
+      continue;
+    }
+
+    if (STRPREFIX(fcurve->rna_path, rna_path_prefix.c_str())) {
+      bag->fcurve_remove_by_index(fcurve_index);
+      fcurve_index--;
+      any_removed = true;
+    }
+  }
+  return any_removed;
 }
 
 }  // namespace blender::animrig::legacy
