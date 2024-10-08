@@ -276,6 +276,7 @@ template<> struct VecBase<bool, 4> : VecSwizzle4<bool> {
 };
 
 using uint = unsigned int;
+using uint32_t = unsigned int; /* For typed enums. */
 
 using float2 = VecBase<double, 2>;
 using float3 = VecBase<double, 3>;
@@ -508,13 +509,13 @@ IMG_TEMPLATE void imageFence(const T &) = delete;
 #define imageLoadFast imageLoad
 #define imageStoreFast imageStore
 
-IMG_TEMPLATE uint imageAtomicAdd(T &, IntCoord, uint) {}
-IMG_TEMPLATE uint imageAtomicMin(T &, IntCoord, uint) {}
-IMG_TEMPLATE uint imageAtomicMax(T &, IntCoord, uint) {}
-IMG_TEMPLATE uint imageAtomicAnd(T &, IntCoord, uint) {}
-IMG_TEMPLATE uint imageAtomicXor(T &, IntCoord, uint) {}
-IMG_TEMPLATE uint imageAtomicExchange(T &, IntCoord, uint) {}
-IMG_TEMPLATE uint imageAtomicCompSwap(T &, IntCoord, uint, uint) {}
+IMG_TEMPLATE uint imageAtomicAdd(T &, IntCoord, uint) RET;
+IMG_TEMPLATE uint imageAtomicMin(T &, IntCoord, uint) RET;
+IMG_TEMPLATE uint imageAtomicMax(T &, IntCoord, uint) RET;
+IMG_TEMPLATE uint imageAtomicAnd(T &, IntCoord, uint) RET;
+IMG_TEMPLATE uint imageAtomicXor(T &, IntCoord, uint) RET;
+IMG_TEMPLATE uint imageAtomicExchange(T &, IntCoord, uint) RET;
+IMG_TEMPLATE uint imageAtomicCompSwap(T &, IntCoord, uint, uint) RET;
 /* Cannot write to a read only image. */
 IMG_TEMPLATE uint imageAtomicAdd(const T &, IntCoord, uint) = delete;
 IMG_TEMPLATE uint imageAtomicMin(const T &, IntCoord, uint) = delete;
@@ -570,21 +571,21 @@ template<int D> VecBase<int, D> bitfieldInsert(VecBase<int, D>, VecBase<int, D>,
 template<int D> VecBase<int, D> bitfieldInsert(VecBase<uint, D>, VecBase<uint, D>, int, int) RET;
 template<int D> VecBase<int, D> bitfieldReverse(VecBase<int, D>) RET;
 template<int D> VecBase<int, D> bitfieldReverse(VecBase<uint, D>) RET;
-int bitCount(int) RET;
-int bitCount(uint) RET;
-int bitfieldExtract(int) RET;
-int bitfieldExtract(uint) RET;
-int bitfieldInsert(int) RET;
-int bitfieldInsert(uint) RET;
-int bitfieldReverse(int) RET;
-int bitfieldReverse(uint) RET;
+static inline int bitCount(int) RET;
+static inline int bitCount(uint) RET;
+static inline int bitfieldExtract(int) RET;
+static inline int bitfieldExtract(uint) RET;
+static inline int bitfieldInsert(int) RET;
+static inline int bitfieldInsert(uint) RET;
+static inline int bitfieldReverse(int) RET;
+static inline int bitfieldReverse(uint) RET;
 
 template<int D> VecBase<int, D> findLSB(VecBase<int, D>) RET;
 template<int D> VecBase<int, D> findLSB(VecBase<uint, D>) RET;
 template<int D> VecBase<int, D> findMSB(VecBase<int, D>) RET;
 template<int D> VecBase<int, D> findMSB(VecBase<uint, D>) RET;
-int findMSB(int) RET;
-int findMSB(uint) RET;
+static inline int findMSB(int) RET;
+static inline int findMSB(uint) RET;
 
 /* Math Functions. */
 template<typename T> T abs(T) RET;
@@ -618,7 +619,7 @@ template<typename T> T sqrt(T) RET;
 template<typename T> T step(T) RET;
 template<typename T> T trunc(T) RET;
 template<typename T, typename U> T ldexp(T, U) RET;
-double smoothstep(double, double, double) RET;
+static inline double smoothstep(double, double, double) RET;
 
 template<typename T> T acos(T) RET;
 template<typename T> T acosh(T) RET;
@@ -638,13 +639,13 @@ template<typename T> T degrees(T) RET;
 template<typename T> T radians(T) RET;
 
 /* Declared explicitely to avoid type errors. */
-double mix(double, double, double) RET;
+static inline double mix(double, double, double) RET;
 template<int D> VecBase<double, D> mix(VecBase<double, D>, VecBase<double, D>, double) RET;
 template<typename T, int D> VecBase<T, D> mix(VecBase<T, D>, VecBase<T, D>, VecBase<bool, D>) RET;
 
 #define select(A, B, C) mix(A, B, C)
 
-VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) RET;
+static inline VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) RET;
 template<int D> float dot(VecBase<double, D>, VecBase<double, D>) RET;
 template<int D> float distance(VecBase<double, D>, VecBase<double, D>) RET;
 template<int D> float length(VecBase<double, D>) RET;
@@ -654,10 +655,10 @@ template<int D> VecBase<int, D> floatBitsToInt(VecBase<double, D>) RET;
 template<int D> VecBase<uint, D> floatBitsToUint(VecBase<double, D>) RET;
 template<int D> VecBase<double, D> intBitsToFloat(VecBase<int, D>) RET;
 template<int D> VecBase<double, D> uintBitsToFloat(VecBase<uint, D>) RET;
-int floatBitsToInt(double) RET;
-uint floatBitsToUint(double) RET;
-double intBitsToFloat(int) RET;
-double uintBitsToFloat(uint) RET;
+static inline int floatBitsToInt(double) RET;
+static inline uint floatBitsToUint(double) RET;
+static inline double intBitsToFloat(int) RET;
+static inline double uintBitsToFloat(uint) RET;
 
 namespace gl_FragmentShader {
 /* Derivative functions. */
@@ -672,34 +673,34 @@ template<typename T, int D> float reflect(VecBase<T, D>, VecBase<T, D>) RET;
 template<typename T, int D> float refract(VecBase<T, D>, VecBase<T, D>, double) RET;
 
 /* Atomic operations. */
-int atomicAdd(int &, int) RET;
-int atomicAnd(int &, int) RET;
-int atomicOr(int &, int) RET;
-int atomicXor(int &, int) RET;
-int atomicMin(int &, int) RET;
-int atomicMax(int &, int) RET;
-int atomicExchange(int &, int) RET;
-int atomicCompSwap(int &, int, int) RET;
-uint atomicAdd(uint &, uint) RET;
-uint atomicAnd(uint &, uint) RET;
-uint atomicOr(uint &, uint) RET;
-uint atomicXor(uint &, uint) RET;
-uint atomicMin(uint &, uint) RET;
-uint atomicMax(uint &, uint) RET;
-uint atomicExchange(uint &, uint) RET;
-uint atomicCompSwap(uint &, uint, uint) RET;
+static inline int atomicAdd(int &, int) RET;
+static inline int atomicAnd(int &, int) RET;
+static inline int atomicOr(int &, int) RET;
+static inline int atomicXor(int &, int) RET;
+static inline int atomicMin(int &, int) RET;
+static inline int atomicMax(int &, int) RET;
+static inline int atomicExchange(int &, int) RET;
+static inline int atomicCompSwap(int &, int, int) RET;
+static inline uint atomicAdd(uint &, uint) RET;
+static inline uint atomicAnd(uint &, uint) RET;
+static inline uint atomicOr(uint &, uint) RET;
+static inline uint atomicXor(uint &, uint) RET;
+static inline uint atomicMin(uint &, uint) RET;
+static inline uint atomicMax(uint &, uint) RET;
+static inline uint atomicExchange(uint &, uint) RET;
+static inline uint atomicCompSwap(uint &, uint, uint) RET;
 
 /* Packing functions. */
-uint packHalf2x16(float2) RET;
-uint packUnorm2x16(float2) RET;
-uint packSnorm2x16(float2) RET;
-uint packUnorm4x8(float4) RET;
-uint packSnorm4x8(float4) RET;
-float2 unpackHalf2x16(uint) RET;
-float2 unpackUnorm2x16(uint) RET;
-float2 unpackSnorm2x16(uint) RET;
-float4 unpackUnorm4x8(uint) RET;
-float4 unpackSnorm4x8(uint) RET;
+static inline uint packHalf2x16(float2) RET;
+static inline uint packUnorm2x16(float2) RET;
+static inline uint packSnorm2x16(float2) RET;
+static inline uint packUnorm4x8(float4) RET;
+static inline uint packSnorm4x8(float4) RET;
+static inline float2 unpackHalf2x16(uint) RET;
+static inline float2 unpackUnorm2x16(uint) RET;
+static inline float2 unpackSnorm2x16(uint) RET;
+static inline float4 unpackUnorm4x8(uint) RET;
+static inline float4 unpackSnorm4x8(uint) RET;
 
 /* Matrices functions. */
 template<int C, int R> float determinant(MatBase<C, R>) RET;
@@ -707,9 +708,9 @@ template<int C, int R> MatBase<C, R> inverse(MatBase<C, R>) RET;
 template<int C, int R> MatBase<R, C> transpose(MatBase<C, R>) RET;
 
 /* TODO(fclem): Should be in a lib instead of being impemented by each backend. */
-bool is_zero(vec2) RET;
-bool is_zero(vec3) RET;
-bool is_zero(vec4) RET;
+static inline bool is_zero(vec2) RET;
+static inline bool is_zero(vec3) RET;
+static inline bool is_zero(vec4) RET;
 
 #undef RET
 
@@ -779,12 +780,12 @@ const uint gl_LocalInvocationIndex = {};
 #define shared
 
 namespace gl_ComputeShader {
-void barrier() {}
-void memoryBarrier() {}
-void memoryBarrierShared() {}
-void memoryBarrierImage() {}
-void memoryBarrierBuffer() {}
-void groupMemoryBarrier() {}
+static inline void barrier() {}
+static inline void memoryBarrier() {}
+static inline void memoryBarrierShared() {}
+static inline void memoryBarrierImage() {}
+static inline void memoryBarrierBuffer() {}
+static inline void groupMemoryBarrier() {}
 }  // namespace gl_ComputeShader
 
 /** \} */
