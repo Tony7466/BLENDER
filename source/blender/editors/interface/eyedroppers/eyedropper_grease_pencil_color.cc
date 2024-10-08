@@ -296,8 +296,8 @@ static void eyedropper_set_brush_color(bContext *C, const float3 &col_conv)
 
 /* Set the material or the palette color. */
 static void eyedropper_grease_pencil_color_set(bContext *C,
-                                         const wmEvent *event,
-                                         EyedropperGreasePencil *eye)
+                                               const wmEvent *event,
+                                               EyedropperGreasePencil *eye)
 {
   const bool is_ctrl = (event->modifier & KM_CTRL) != 0;
   const bool is_shift = (event->modifier & KM_SHIFT) != 0;

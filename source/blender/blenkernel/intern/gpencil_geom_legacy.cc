@@ -762,7 +762,7 @@ void BKE_gpencil_stroke_uv_update(bGPDstroke *gps)
   }
 }
 
-void BKE_gpencil_stroke_geometry_update(bGPdata */*gpd*/, bGPDstroke *gps)
+void BKE_gpencil_stroke_geometry_update(bGPdata * /*gpd*/, bGPDstroke *gps)
 {
   if (gps == nullptr) {
     return;

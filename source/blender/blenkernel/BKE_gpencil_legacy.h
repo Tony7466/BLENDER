@@ -132,7 +132,6 @@ struct bGPDlayer *BKE_gpencil_layer_duplicate(const struct bGPDlayer *gpl_src,
                                               bool dup_frames,
                                               bool dup_strokes);
 
-
 /**
  * Make a copy of a given grease-pencil stroke.
  * \param gps_src: Source grease pencil strokes.

@@ -130,7 +130,8 @@ int GreasePencilImporter::create_material(const StringRefNull name,
   if (mat_index == -1) {
     Main *bmain = CTX_data_main(&context_.C);
     int new_idx;
-    Material *mat_gp = BKE_grease_pencil_object_material_new(bmain, object_, name.c_str(), &new_idx);
+    Material *mat_gp = BKE_grease_pencil_object_material_new(
+        bmain, object_, name.c_str(), &new_idx);
     MaterialGPencilStyle *gp_style = mat_gp->gp_style;
     gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
     gp_style->flag &= ~GP_MATERIAL_FILL_SHOW;
