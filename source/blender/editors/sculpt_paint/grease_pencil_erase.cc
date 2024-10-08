@@ -777,7 +777,6 @@ struct EraseOperationExecutor {
 
   bool stroke_eraser(const bke::CurvesGeometry &src,
                      const Span<float2> screen_space_positions,
-                     const Span<bool> screen_space_valid,
                      bke::CurvesGeometry &dst) const
   {
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
@@ -790,9 +789,6 @@ struct EraseOperationExecutor {
 
           /* One-point stroke : remove the stroke if the point lies inside of the eraser. */
           if (src_curve_points.size() == 1) {
-            if (!screen_space_valid[src_curve_points.first()]) {
-              return true;
-            }
             const float2 &point_pos = screen_space_positions[src_curve_points.first()];
             const float dist_to_eraser = math::distance(point_pos, this->mouse_position);
             return !(dist_to_eraser < this->eraser_radius);
@@ -801,9 +797,6 @@ struct EraseOperationExecutor {
           /* If any segment of the stroke is closer to the eraser than its radius, then remove
            * the stroke. */
           for (const int src_point : src_curve_points.drop_back(1)) {
-            if (!screen_space_valid[src_curve_points.first()]) {
-              continue;
-            }
             const float dist_to_eraser = dist_to_line_segment_v2(
                 this->mouse_position,
                 screen_space_positions[src_point],
@@ -814,11 +807,6 @@ struct EraseOperationExecutor {
           }
 
           if (src_cyclic[src_curve]) {
-            if ((!screen_space_valid[src_curve_points.first()]) ||
-                (!screen_space_valid[src_curve_points.last()]))
-            {
-              return false;
-            }
             const float dist_to_eraser = dist_to_line_segment_v2(
                 this->mouse_position,
                 screen_space_positions[src_curve_points.first()],
@@ -891,7 +879,6 @@ struct EraseOperationExecutor {
 
           /* Compute screen space positions. */
           Array<float2> screen_space_positions(src.points_num());
-          Array<bool> screen_space_valid(src.points_num());
           threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
             for (const int src_point : src_points) {
               const int result = ED_view3d_project_float_global(
@@ -899,8 +886,13 @@ struct EraseOperationExecutor {
                   math::transform_point(layer.to_world_space(*ob_eval),
                                         deformation.positions[src_point]),
                   screen_space_positions[src_point],
-                  V3D_PROJ_TEST_CLIP_NEAR);
-              screen_space_valid[src_point] = (result == V3D_PROJ_RET_OK);
+                  V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_FAR);
+              if (result != V3D_PROJ_RET_OK) {
+                /* Set the screen space position to a impossibly far coordinate for all the points
+                 * that are outside near/far clipping planes, this is to prevent accidental
+                 * intersections with strokes not visibly present in the camera. */
+                screen_space_positions[src_point] = float2(1e20);
+              }
             }
           });
 
@@ -909,7 +901,7 @@ struct EraseOperationExecutor {
           bool erased = false;
           switch (self.eraser_mode_) {
             case GP_BRUSH_ERASER_STROKE:
-              erased = stroke_eraser(src, screen_space_positions, screen_space_valid, dst);
+              erased = stroke_eraser(src, screen_space_positions, dst);
               break;
             case GP_BRUSH_ERASER_HARD:
               erased = hard_eraser(src, screen_space_positions, dst, self.keep_caps_);
