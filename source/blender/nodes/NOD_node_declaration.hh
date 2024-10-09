@@ -443,6 +443,10 @@ class PanelDeclaration : public ItemDeclaration {
   void update_or_build(const bNodePanelState &old_panel, bNodePanelState &new_panel) const;
 };
 
+/**
+ * This is a base class for #NodeDeclarationBuilder and #PanelDeclarationBuilder. It unifies the
+ * behavior of adding sockets and other items to the root node and to panels.
+ */
 class DeclarationListBuilder {
  public:
   NodeDeclarationBuilder &node_decl_builder;
@@ -506,6 +510,7 @@ class NodeDeclaration {
  public:
   /* Contains all items including recursive children.*/
   Vector<ItemDeclarationPtr> all_items;
+  /* Contains only the items in the root. */
   Vector<ItemDeclaration *> root_items;
   /* All input and output socket declarations. */
   Vector<SocketDeclaration *> inputs;
