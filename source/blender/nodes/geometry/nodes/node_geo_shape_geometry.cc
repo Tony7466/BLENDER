@@ -26,9 +26,6 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  using ShapeAttribute = bke::PhysicsShapeAttribute;
-  using ShapeType = bke::CollisionShape::ShapeType;
-
   /* Share geometry for instances if the collision shapes are the same. */
   Map<const bke::CollisionShape *, GeometrySet> shape_geometry_map;
 

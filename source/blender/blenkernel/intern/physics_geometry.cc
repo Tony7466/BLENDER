@@ -622,6 +622,9 @@ bool PhysicsWorldState::try_move_data(const PhysicsWorldState &src,
       return false;
     }
 
+    /* Ensure valid read cache before moving data. */
+    src.ensure_read_cache_no_lock();
+
     std::scoped_lock dst_lock(world_data_mutex_);
     if (world_data_) {
       delete world_data_;
@@ -655,20 +658,20 @@ bool PhysicsWorldState::try_move_data(const PhysicsWorldState &src,
                    bke::AttributeFilter::Result::AllowSkip;
       });
 
-  bke::gather_attributes(src.attributes(),
+  bke::gather_attributes(src.state_attributes(),
                          bke::AttrDomain::Point,
                          bke::AttrDomain::Point,
                          attribute_filter,
                          src_body_mask,
                          dst_body_offset,
-                         this->attributes_for_write());
-  bke::gather_attributes(src.attributes(),
+                         this->state_attributes_for_write());
+  bke::gather_attributes(src.state_attributes(),
                          bke::AttrDomain::Edge,
                          bke::AttrDomain::Edge,
                          attribute_filter,
                          src_constraint_mask,
                          dst_constraint_offset,
-                         this->attributes_for_write());
+                         this->state_attributes_for_write());
   return true;
 }
 
