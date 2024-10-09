@@ -58,7 +58,8 @@ BLI_NOINLINE static void apply_z_axis_falloff(const Span<float3> vert_positions,
 {
   BLI_assert(factors.size() == verts.size());
   for (const int i : factors.index_range()) {
-    const float local_z_distance = math::abs(math::transform_point(mat, vert_positions[verts[i]]).z);
+    const float local_z_distance = math::abs(
+        math::transform_point(mat, vert_positions[verts[i]]).z);
     factors[i] *= 1 - local_z_distance;
   }
 }
