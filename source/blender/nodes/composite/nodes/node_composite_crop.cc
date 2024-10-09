@@ -43,14 +43,9 @@ static void node_composit_init_crop(bNodeTree * /*ntree*/, bNode *node)
   NodeTwoXYs *nxy = MEM_cnew<NodeTwoXYs>(__func__);
   node->storage = nxy;
   nxy->x1 = 0;
-  nxy->x2 = 1024;
-  nxy->y1 = 1024;
+  nxy->x2 = 0;
+  nxy->y1 = 0;
   nxy->y2 = 0;
-
-  nxy->fac_x1 = 0.0f;
-  nxy->fac_x2 = 1.0f;
-  nxy->fac_y1 = 1.0f;
-  nxy->fac_y2 = 0.0f;
 }
 
 static void node_composit_buts_crop(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

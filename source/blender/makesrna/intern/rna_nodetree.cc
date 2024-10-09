@@ -2402,1877 +2402,1868 @@ void rna_Node_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
-void rna_Node_Crop_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  /* Prevent users from creating an invalid rect. */
-  int max_y = RNA_int_get(ptr, "max_y");
-  int min_y = RNA_int_get(ptr, "min_y");
-  if (max_y > min_y) {
-    RNA_int_set(ptr, "max_y", min_y);
-  }
-
-  int max_x = RNA_int_get(ptr, "max_x");
-  int min_x = RNA_int_get(ptr, "min_x");
-  if (min_x > max_x) {
-    RNA_int_set(ptr, "min_x", max_x);
-  }
-
-  float rel_max_x = RNA_float_get(ptr, "rel_max_x");
-  float rel_min_x = RNA_float_get(ptr, "rel_min_x");
-  if (rel_min_x > rel_max_x) {
-    RNA_float_set(ptr, "rel_min_x", rel_max_x);
-  }
-
-  float rel_max_y = RNA_float_get(ptr, "rel_max_y");
-  float rel_min_y = RNA_float_get(ptr, "rel_min_y");
-  if (rel_max_y > rel_min_y) {
-    RNA_float_set(ptr, "rel_max_y", rel_min_y);
-  }
-
-  rna_Node_update(bmain, nullptr, ptr);
-}
-
-void rna_Node_update_relations(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  rna_Node_update(bmain, scene, ptr);
-  DEG_relations_tag_update(bmain);
-}
-
-static void rna_Node_socket_value_update(ID *id, bNode * /*node*/, bContext *C)
-{
-  BKE_ntree_update_tag_all(reinterpret_cast<bNodeTree *>(id));
-  ED_node_tree_propagate_change(C, CTX_data_main(C), reinterpret_cast<bNodeTree *>(id));
-}
-
-static void rna_Node_select_set(PointerRNA *ptr, bool value)
+static void rna_NodeCrop_min_x_set(PointerRNA *ptr, int value)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  blender::bke::node_set_selected(node, value);
+  NodeTwoXYs *data = static_cast<NodeTwoXYs *>(node->storage);
+  data->x1 = value;
+  if (value > data->x2) {
+    data->x1 = data->x2;
+  }
 }
 
-static void rna_Node_name_set(PointerRNA *ptr, const char *value)
+static void rna_NodeCrop_max_y_set(PointerRNA *ptr, int value)
 {
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNode *node = static_cast<bNode *>(ptr->data);
-  char oldname[sizeof(node->name)];
-
-  /* make a copy of the old name first */
-  STRNCPY(oldname, node->name);
-  /* set new name */
-  STRNCPY_UTF8(node->name, value);
-
-  blender::bke::node_unique_name(ntree, node);
-
-  /* fix all the animation data which may link to this */
-  BKE_animdata_fix_paths_rename_all(nullptr, "nodes", oldname, node->name);
+  NodeTwoXYs *data = static_cast<NodeTwoXYs *>(node->storage);
+  data->y2 = value;
+  if (data->y2 > data->y1) {
+    data->y2 = data->y1;
+  }
 }
 
-static bool allow_changing_sockets(bNode *node)
+static void rna_NodeCrop_rel_min_x_set(PointerRNA *ptr, float value)
 {
-  return ELEM(node->type, NODE_CUSTOM, SH_NODE_SCRIPT, CMP_NODE_OUTPUT_FILE);
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeTwoXYs *data = static_cast<NodeTwoXYs *>(node->storage);
+  data->fac_x1 = value;
+  if (data->fac_x1 > data->fac_x2) {
+    data->fac_x1 = data->fac_x2;
+  }
 }
 
-static bNodeSocket *rna_Node_inputs_new(ID *id,
-                                        bNode *node,
-                                        Main *bmain,
-                                        ReportList *reports,
-                                        const char *type,
-                                        const char *name,
-                                        const char *identifier,
-                                        const bool use_multi_input)
+static void rna_NodeCrop_rel_max_y_set(PointerRNA *ptr, float value)
 {
-  if (!allow_changing_sockets(node)) {
-    BKE_report(reports, RPT_ERROR, "Cannot add socket to built-in node");
-    return nullptr;
+  bNode *node = static_cast<bNode *>(ptr->data);
+  NodeTwoXYs *data = static_cast<NodeTwoXYs *>(node->storage);
+  data->fac_y2 = value;
+  if (data->fac_y2 > data->fac_y1) {
+    data->fac_y2 = data->fac_y1;
   }
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocket *sock = blender::bke::node_add_socket(ntree, node, SOCK_IN, type, identifier, name);
-
-  if (sock == nullptr) {
-    BKE_report(reports, RPT_ERROR, "Unable to create socket");
+  void rna_Node_update_relations(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    rna_Node_update(bmain, scene, ptr);
+    DEG_relations_tag_update(bmain);
   }
-  else {
+
+  static void rna_Node_socket_value_update(ID * id, bNode * /*node*/, bContext * C)
+  {
+    BKE_ntree_update_tag_all(reinterpret_cast<bNodeTree *>(id));
+    ED_node_tree_propagate_change(C, CTX_data_main(C), reinterpret_cast<bNodeTree *>(id));
+  }
+
+  static void rna_Node_select_set(PointerRNA * ptr, bool value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    blender::bke::node_set_selected(node, value);
+  }
+
+  static void rna_Node_name_set(PointerRNA * ptr, const char *value)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+    char oldname[sizeof(node->name)];
+
+    /* make a copy of the old name first */
+    STRNCPY(oldname, node->name);
+    /* set new name */
+    STRNCPY_UTF8(node->name, value);
+
+    blender::bke::node_unique_name(ntree, node);
+
+    /* fix all the animation data which may link to this */
+    BKE_animdata_fix_paths_rename_all(nullptr, "nodes", oldname, node->name);
+  }
+
+  static bool allow_changing_sockets(bNode * node)
+  {
+    return ELEM(node->type, NODE_CUSTOM, SH_NODE_SCRIPT, CMP_NODE_OUTPUT_FILE);
+  }
+
+  static bNodeSocket *rna_Node_inputs_new(ID * id,
+                                          bNode * node,
+                                          Main * bmain,
+                                          ReportList * reports,
+                                          const char *type,
+                                          const char *name,
+                                          const char *identifier,
+                                          const bool use_multi_input)
+  {
+    if (!allow_changing_sockets(node)) {
+      BKE_report(reports, RPT_ERROR, "Cannot add socket to built-in node");
+      return nullptr;
+    }
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    bNodeSocket *sock = blender::bke::node_add_socket(
+        ntree, node, SOCK_IN, type, identifier, name);
+
+    if (sock == nullptr) {
+      BKE_report(reports, RPT_ERROR, "Unable to create socket");
+    }
+    else {
+      if (use_multi_input) {
+        sock->flag |= SOCK_MULTI_INPUT;
+      }
+      ED_node_tree_propagate_change(nullptr, bmain, ntree);
+      WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+    }
+
+    return sock;
+  }
+
+  static bNodeSocket *rna_Node_outputs_new(ID * id,
+                                           bNode * node,
+                                           Main * bmain,
+                                           ReportList * reports,
+                                           const char *type,
+                                           const char *name,
+                                           const char *identifier,
+                                           const bool use_multi_input)
+  {
+    if (!allow_changing_sockets(node)) {
+      BKE_report(reports, RPT_ERROR, "Cannot add socket to built-in node");
+      return nullptr;
+    }
+
     if (use_multi_input) {
-      sock->flag |= SOCK_MULTI_INPUT;
+      BKE_report(reports, RPT_ERROR, "Output sockets cannot be multi-input");
+      return nullptr;
     }
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    bNodeSocket *sock = blender::bke::node_add_socket(
+        ntree, node, SOCK_OUT, type, identifier, name);
+
+    if (sock == nullptr) {
+      BKE_report(reports, RPT_ERROR, "Unable to create socket");
+    }
+    else {
+      ED_node_tree_propagate_change(nullptr, bmain, ntree);
+      WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+    }
+
+    return sock;
+  }
+
+  static void rna_Node_socket_remove(
+      ID * id, bNode * node, Main * bmain, ReportList * reports, bNodeSocket * sock)
+  {
+    if (!allow_changing_sockets(node)) {
+      BKE_report(reports, RPT_ERROR, "Unable to remove socket from built-in node");
+      return;
+    }
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+
+    if (BLI_findindex(&node->inputs, sock) == -1 && BLI_findindex(&node->outputs, sock) == -1) {
+      BKE_reportf(reports, RPT_ERROR, "Unable to locate socket '%s' in node", sock->identifier);
+    }
+    else {
+      blender::bke::node_remove_socket(ntree, node, sock);
+
+      ED_node_tree_propagate_change(nullptr, bmain, ntree);
+      WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+    }
+  }
+
+  static void rna_Node_inputs_clear(ID * id, bNode * node, Main * bmain, ReportList * reports)
+  {
+    if (!allow_changing_sockets(node)) {
+      BKE_report(reports, RPT_ERROR, "Unable to remove sockets from built-in node");
+      return;
+    }
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    bNodeSocket *sock, *nextsock;
+
+    for (sock = static_cast<bNodeSocket *>(node->inputs.first); sock; sock = nextsock) {
+      nextsock = sock->next;
+      blender::bke::node_remove_socket(ntree, node, sock);
+    }
+
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
 
-  return sock;
-}
+  static void rna_Node_outputs_clear(ID * id, bNode * node, Main * bmain, ReportList * reports)
+  {
+    if (!allow_changing_sockets(node)) {
+      BKE_report(reports, RPT_ERROR, "Unable to remove socket from built-in node");
+      return;
+    }
 
-static bNodeSocket *rna_Node_outputs_new(ID *id,
-                                         bNode *node,
-                                         Main *bmain,
-                                         ReportList *reports,
-                                         const char *type,
-                                         const char *name,
-                                         const char *identifier,
-                                         const bool use_multi_input)
-{
-  if (!allow_changing_sockets(node)) {
-    BKE_report(reports, RPT_ERROR, "Cannot add socket to built-in node");
-    return nullptr;
-  }
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    bNodeSocket *sock, *nextsock;
 
-  if (use_multi_input) {
-    BKE_report(reports, RPT_ERROR, "Output sockets cannot be multi-input");
-    return nullptr;
-  }
+    for (sock = static_cast<bNodeSocket *>(node->outputs.first); sock; sock = nextsock) {
+      nextsock = sock->next;
+      blender::bke::node_remove_socket(ntree, node, sock);
+    }
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocket *sock = blender::bke::node_add_socket(ntree, node, SOCK_OUT, type, identifier, name);
-
-  if (sock == nullptr) {
-    BKE_report(reports, RPT_ERROR, "Unable to create socket");
-  }
-  else {
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
 
-  return sock;
-}
+  static void rna_Node_inputs_move(
+      ID * id, bNode * node, Main * bmain, ReportList * reports, int from_index, int to_index)
+  {
+    if (!allow_changing_sockets(node)) {
+      BKE_report(reports, RPT_ERROR, "Unable to move sockets in built-in node");
+      return;
+    }
 
-static void rna_Node_socket_remove(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, bNodeSocket *sock)
-{
-  if (!allow_changing_sockets(node)) {
-    BKE_report(reports, RPT_ERROR, "Unable to remove socket from built-in node");
-    return;
-  }
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    bNodeSocket *sock;
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    if (from_index == to_index) {
+      return;
+    }
+    if (from_index < 0 || to_index < 0) {
+      return;
+    }
 
-  if (BLI_findindex(&node->inputs, sock) == -1 && BLI_findindex(&node->outputs, sock) == -1) {
-    BKE_reportf(reports, RPT_ERROR, "Unable to locate socket '%s' in node", sock->identifier);
-  }
-  else {
-    blender::bke::node_remove_socket(ntree, node, sock);
+    sock = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, from_index));
+    if (to_index < from_index) {
+      bNodeSocket *nextsock = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, to_index));
+      if (nextsock) {
+        BLI_remlink(&node->inputs, sock);
+        BLI_insertlinkbefore(&node->inputs, nextsock, sock);
+      }
+    }
+    else {
+      bNodeSocket *prevsock = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, to_index));
+      if (prevsock) {
+        BLI_remlink(&node->inputs, sock);
+        BLI_insertlinkafter(&node->inputs, prevsock, sock);
+      }
+    }
 
+    BKE_ntree_update_tag_node_property(ntree, node);
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
-}
 
-static void rna_Node_inputs_clear(ID *id, bNode *node, Main *bmain, ReportList *reports)
-{
-  if (!allow_changing_sockets(node)) {
-    BKE_report(reports, RPT_ERROR, "Unable to remove sockets from built-in node");
-    return;
+  static void rna_Node_outputs_move(
+      ID * id, bNode * node, Main * bmain, ReportList * reports, int from_index, int to_index)
+  {
+    if (!allow_changing_sockets(node)) {
+      BKE_report(reports, RPT_ERROR, "Unable to move sockets in built-in node");
+      return;
+    }
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    bNodeSocket *sock;
+
+    if (from_index == to_index) {
+      return;
+    }
+    if (from_index < 0 || to_index < 0) {
+      return;
+    }
+
+    sock = static_cast<bNodeSocket *>(BLI_findlink(&node->outputs, from_index));
+    if (to_index < from_index) {
+      bNodeSocket *nextsock = static_cast<bNodeSocket *>(BLI_findlink(&node->outputs, to_index));
+      if (nextsock) {
+        BLI_remlink(&node->outputs, sock);
+        BLI_insertlinkbefore(&node->outputs, nextsock, sock);
+      }
+    }
+    else {
+      bNodeSocket *prevsock = static_cast<bNodeSocket *>(BLI_findlink(&node->outputs, to_index));
+      if (prevsock) {
+        BLI_remlink(&node->outputs, sock);
+        BLI_insertlinkafter(&node->outputs, prevsock, sock);
+      }
+    }
+
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocket *sock, *nextsock;
-
-  for (sock = static_cast<bNodeSocket *>(node->inputs.first); sock; sock = nextsock) {
-    nextsock = sock->next;
-    blender::bke::node_remove_socket(ntree, node, sock);
+  static void rna_Node_width_range(
+      PointerRNA * ptr, float *min, float *max, float *softmin, float *softmax)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    *min = *softmin = node->typeinfo->minwidth;
+    *max = *softmax = node->typeinfo->maxwidth;
   }
 
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-static void rna_Node_outputs_clear(ID *id, bNode *node, Main *bmain, ReportList *reports)
-{
-  if (!allow_changing_sockets(node)) {
-    BKE_report(reports, RPT_ERROR, "Unable to remove socket from built-in node");
-    return;
+  static void rna_Node_height_range(
+      PointerRNA * ptr, float *min, float *max, float *softmin, float *softmax)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    *min = *softmin = node->typeinfo->minheight;
+    *max = *softmax = node->typeinfo->maxheight;
   }
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocket *sock, *nextsock;
-
-  for (sock = static_cast<bNodeSocket *>(node->outputs.first); sock; sock = nextsock) {
-    nextsock = sock->next;
-    blender::bke::node_remove_socket(ntree, node, sock);
+  static void rna_Node_dimensions_get(PointerRNA * ptr, float *value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    blender::bke::node_dimensions_get(node, &value[0], &value[1]);
   }
 
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
+  /* ******** Node Types ******** */
 
-static void rna_Node_inputs_move(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, int from_index, int to_index)
-{
-  if (!allow_changing_sockets(node)) {
-    BKE_report(reports, RPT_ERROR, "Unable to move sockets in built-in node");
-    return;
+  static void rna_NodeInternalSocketTemplate_name_get(PointerRNA * ptr, char *value)
+  {
+    blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
+        ptr->data);
+    strcpy(value, stemp->name);
   }
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocket *sock;
-
-  if (from_index == to_index) {
-    return;
-  }
-  if (from_index < 0 || to_index < 0) {
-    return;
+  static int rna_NodeInternalSocketTemplate_name_length(PointerRNA * ptr)
+  {
+    blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
+        ptr->data);
+    return strlen(stemp->name);
   }
 
-  sock = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, from_index));
-  if (to_index < from_index) {
-    bNodeSocket *nextsock = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, to_index));
-    if (nextsock) {
-      BLI_remlink(&node->inputs, sock);
-      BLI_insertlinkbefore(&node->inputs, nextsock, sock);
+  static void rna_NodeInternalSocketTemplate_identifier_get(PointerRNA * ptr, char *value)
+  {
+    blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
+        ptr->data);
+    strcpy(value, stemp->identifier);
+  }
+
+  static int rna_NodeInternalSocketTemplate_identifier_length(PointerRNA * ptr)
+  {
+    blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
+        ptr->data);
+    return strlen(stemp->identifier);
+  }
+
+  static int rna_NodeInternalSocketTemplate_type_get(PointerRNA * ptr)
+  {
+    blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
+        ptr->data);
+    return stemp->type;
+  }
+
+  static PointerRNA rna_NodeInternal_input_template(StructRNA * srna, int index)
+  {
+    blender::bke::bNodeType *ntype = static_cast<blender::bke::bNodeType *>(
+        RNA_struct_blender_type_get(srna));
+    if (ntype && ntype->inputs) {
+      blender::bke::bNodeSocketTemplate *stemp = ntype->inputs;
+      int i = 0;
+      while (i < index && stemp->type >= 0) {
+        i++;
+        stemp++;
+      }
+      if (i == index && stemp->type >= 0) {
+        PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_NodeInternalSocketTemplate, stemp);
+        return ptr;
+      }
+    }
+    return PointerRNA_NULL;
+  }
+
+  static PointerRNA rna_NodeInternal_output_template(StructRNA * srna, int index)
+  {
+    blender::bke::bNodeType *ntype = static_cast<blender::bke::bNodeType *>(
+        RNA_struct_blender_type_get(srna));
+    if (ntype && ntype->outputs) {
+      blender::bke::bNodeSocketTemplate *stemp = ntype->outputs;
+      int i = 0;
+      while (i < index && stemp->type >= 0) {
+        i++;
+        stemp++;
+      }
+      if (i == index && stemp->type >= 0) {
+        PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_NodeInternalSocketTemplate, stemp);
+        return ptr;
+      }
+    }
+    return PointerRNA_NULL;
+  }
+
+  static bool rna_NodeInternal_poll(StructRNA * srna, bNodeTree * ntree)
+  {
+    blender::bke::bNodeType *ntype = static_cast<blender::bke::bNodeType *>(
+        RNA_struct_blender_type_get(srna));
+    const char *disabled_hint;
+    return ntype && (!ntype->poll || ntype->poll(ntype, ntree, &disabled_hint));
+  }
+
+  static bool rna_NodeInternal_poll_instance(bNode * node, bNodeTree * ntree)
+  {
+    blender::bke::bNodeType *ntype = node->typeinfo;
+    const char *disabled_hint;
+    if (ntype->poll_instance) {
+      return ntype->poll_instance(node, ntree, &disabled_hint);
+    }
+    else {
+      /* fall back to basic poll function */
+      return !ntype->poll || ntype->poll(ntype, ntree, &disabled_hint);
     }
   }
-  else {
-    bNodeSocket *prevsock = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, to_index));
-    if (prevsock) {
-      BLI_remlink(&node->inputs, sock);
-      BLI_insertlinkafter(&node->inputs, prevsock, sock);
+
+  static void rna_NodeInternal_update(ID * id, bNode * node, Main * bmain)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  }
+
+  static void rna_NodeInternal_draw_buttons(ID * id, bNode * node, bContext * C, uiLayout * layout)
+  {
+    if (node->typeinfo->draw_buttons) {
+      PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
+      node->typeinfo->draw_buttons(layout, C, &ptr);
     }
   }
 
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-static void rna_Node_outputs_move(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, int from_index, int to_index)
-{
-  if (!allow_changing_sockets(node)) {
-    BKE_report(reports, RPT_ERROR, "Unable to move sockets in built-in node");
-    return;
-  }
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocket *sock;
-
-  if (from_index == to_index) {
-    return;
-  }
-  if (from_index < 0 || to_index < 0) {
-    return;
-  }
-
-  sock = static_cast<bNodeSocket *>(BLI_findlink(&node->outputs, from_index));
-  if (to_index < from_index) {
-    bNodeSocket *nextsock = static_cast<bNodeSocket *>(BLI_findlink(&node->outputs, to_index));
-    if (nextsock) {
-      BLI_remlink(&node->outputs, sock);
-      BLI_insertlinkbefore(&node->outputs, nextsock, sock);
+  static void rna_NodeInternal_draw_buttons_ext(
+      ID * id, bNode * node, bContext * C, uiLayout * layout)
+  {
+    if (node->typeinfo->draw_buttons_ex) {
+      PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
+      node->typeinfo->draw_buttons_ex(layout, C, &ptr);
     }
-  }
-  else {
-    bNodeSocket *prevsock = static_cast<bNodeSocket *>(BLI_findlink(&node->outputs, to_index));
-    if (prevsock) {
-      BLI_remlink(&node->outputs, sock);
-      BLI_insertlinkafter(&node->outputs, prevsock, sock);
+    else if (node->typeinfo->draw_buttons) {
+      PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
+      node->typeinfo->draw_buttons(layout, C, &ptr);
     }
   }
 
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-static void rna_Node_width_range(
-    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  *min = *softmin = node->typeinfo->minwidth;
-  *max = *softmax = node->typeinfo->maxwidth;
-}
-
-static void rna_Node_height_range(
-    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  *min = *softmin = node->typeinfo->minheight;
-  *max = *softmax = node->typeinfo->maxheight;
-}
-
-static void rna_Node_dimensions_get(PointerRNA *ptr, float *value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  blender::bke::node_dimensions_get(node, &value[0], &value[1]);
-}
-
-/* ******** Node Types ******** */
-
-static void rna_NodeInternalSocketTemplate_name_get(PointerRNA *ptr, char *value)
-{
-  blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
-      ptr->data);
-  strcpy(value, stemp->name);
-}
-
-static int rna_NodeInternalSocketTemplate_name_length(PointerRNA *ptr)
-{
-  blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
-      ptr->data);
-  return strlen(stemp->name);
-}
-
-static void rna_NodeInternalSocketTemplate_identifier_get(PointerRNA *ptr, char *value)
-{
-  blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
-      ptr->data);
-  strcpy(value, stemp->identifier);
-}
-
-static int rna_NodeInternalSocketTemplate_identifier_length(PointerRNA *ptr)
-{
-  blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
-      ptr->data);
-  return strlen(stemp->identifier);
-}
-
-static int rna_NodeInternalSocketTemplate_type_get(PointerRNA *ptr)
-{
-  blender::bke::bNodeSocketTemplate *stemp = static_cast<blender::bke::bNodeSocketTemplate *>(
-      ptr->data);
-  return stemp->type;
-}
-
-static PointerRNA rna_NodeInternal_input_template(StructRNA *srna, int index)
-{
-  blender::bke::bNodeType *ntype = static_cast<blender::bke::bNodeType *>(
-      RNA_struct_blender_type_get(srna));
-  if (ntype && ntype->inputs) {
-    blender::bke::bNodeSocketTemplate *stemp = ntype->inputs;
-    int i = 0;
-    while (i < index && stemp->type >= 0) {
-      i++;
-      stemp++;
+  static StructRNA *rna_NodeCustomGroup_register(Main * bmain,
+                                                 ReportList * reports,
+                                                 void *data,
+                                                 const char *identifier,
+                                                 StructValidateFunc validate,
+                                                 StructCallbackFunc call,
+                                                 StructFreeFunc free)
+  {
+    blender::bke::bNodeType *nt = rna_Node_register_base(
+        bmain, reports, &RNA_NodeCustomGroup, data, identifier, validate, call, free);
+    if (!nt) {
+      return nullptr;
     }
-    if (i == index && stemp->type >= 0) {
-      PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_NodeInternalSocketTemplate, stemp);
-      return ptr;
-    }
-  }
-  return PointerRNA_NULL;
-}
 
-static PointerRNA rna_NodeInternal_output_template(StructRNA *srna, int index)
-{
-  blender::bke::bNodeType *ntype = static_cast<blender::bke::bNodeType *>(
-      RNA_struct_blender_type_get(srna));
-  if (ntype && ntype->outputs) {
-    blender::bke::bNodeSocketTemplate *stemp = ntype->outputs;
-    int i = 0;
-    while (i < index && stemp->type >= 0) {
-      i++;
-      stemp++;
-    }
-    if (i == index && stemp->type >= 0) {
-      PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_NodeInternalSocketTemplate, stemp);
-      return ptr;
-    }
-  }
-  return PointerRNA_NULL;
-}
+    blender::bke::node_register_type(nt);
 
-static bool rna_NodeInternal_poll(StructRNA *srna, bNodeTree *ntree)
-{
-  blender::bke::bNodeType *ntype = static_cast<blender::bke::bNodeType *>(
-      RNA_struct_blender_type_get(srna));
-  const char *disabled_hint;
-  return ntype && (!ntype->poll || ntype->poll(ntype, ntree, &disabled_hint));
-}
+    /* update while blender is running */
+    WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
 
-static bool rna_NodeInternal_poll_instance(bNode *node, bNodeTree *ntree)
-{
-  blender::bke::bNodeType *ntype = node->typeinfo;
-  const char *disabled_hint;
-  if (ntype->poll_instance) {
-    return ntype->poll_instance(node, ntree, &disabled_hint);
-  }
-  else {
-    /* fall back to basic poll function */
-    return !ntype->poll || ntype->poll(ntype, ntree, &disabled_hint);
-  }
-}
-
-static void rna_NodeInternal_update(ID *id, bNode *node, Main *bmain)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-}
-
-static void rna_NodeInternal_draw_buttons(ID *id, bNode *node, bContext *C, uiLayout *layout)
-{
-  if (node->typeinfo->draw_buttons) {
-    PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
-    node->typeinfo->draw_buttons(layout, C, &ptr);
-  }
-}
-
-static void rna_NodeInternal_draw_buttons_ext(ID *id, bNode *node, bContext *C, uiLayout *layout)
-{
-  if (node->typeinfo->draw_buttons_ex) {
-    PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
-    node->typeinfo->draw_buttons_ex(layout, C, &ptr);
-  }
-  else if (node->typeinfo->draw_buttons) {
-    PointerRNA ptr = RNA_pointer_create(id, &RNA_Node, node);
-    node->typeinfo->draw_buttons(layout, C, &ptr);
-  }
-}
-
-static StructRNA *rna_NodeCustomGroup_register(Main *bmain,
-                                               ReportList *reports,
-                                               void *data,
-                                               const char *identifier,
-                                               StructValidateFunc validate,
-                                               StructCallbackFunc call,
-                                               StructFreeFunc free)
-{
-  blender::bke::bNodeType *nt = rna_Node_register_base(
-      bmain, reports, &RNA_NodeCustomGroup, data, identifier, validate, call, free);
-  if (!nt) {
-    return nullptr;
+    return nt->rna_ext.srna;
   }
 
-  blender::bke::node_register_type(nt);
-
-  /* update while blender is running */
-  WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
-
-  return nt->rna_ext.srna;
-}
-
-static StructRNA *rna_GeometryNodeCustomGroup_register(Main *bmain,
-                                                       ReportList *reports,
-                                                       void *data,
-                                                       const char *identifier,
-                                                       StructValidateFunc validate,
-                                                       StructCallbackFunc call,
-                                                       StructFreeFunc free)
-{
-  blender::bke::bNodeType *nt = rna_Node_register_base(
-      bmain, reports, &RNA_GeometryNodeCustomGroup, data, identifier, validate, call, free);
-
-  if (!nt) {
-    return nullptr;
-  }
-
-  nt->type = NODE_CUSTOM_GROUP;
-
-  register_node_type_geo_custom_group(nt);
-
-  blender::bke::node_register_type(nt);
-
-  WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
-
-  return nt->rna_ext.srna;
-}
-
-void register_node_type_geo_custom_group(blender::bke::bNodeType *ntype);
-
-static StructRNA *rna_ShaderNodeCustomGroup_register(Main *bmain,
-                                                     ReportList *reports,
-                                                     void *data,
-                                                     const char *identifier,
-                                                     StructValidateFunc validate,
-                                                     StructCallbackFunc call,
-                                                     StructFreeFunc free)
-{
-  blender::bke::bNodeType *nt = rna_Node_register_base(
-      bmain, reports, &RNA_ShaderNodeCustomGroup, data, identifier, validate, call, free);
-
-  if (!nt) {
-    return nullptr;
-  }
-
-  nt->type = NODE_CUSTOM_GROUP;
-
-  register_node_type_sh_custom_group(nt);
-
-  blender::bke::node_register_type(nt);
-
-  WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
-
-  return nt->rna_ext.srna;
-}
-
-static StructRNA *rna_CompositorNodeCustomGroup_register(Main *bmain,
-                                                         ReportList *reports,
+  static StructRNA *rna_GeometryNodeCustomGroup_register(Main * bmain,
+                                                         ReportList * reports,
                                                          void *data,
                                                          const char *identifier,
                                                          StructValidateFunc validate,
                                                          StructCallbackFunc call,
                                                          StructFreeFunc free)
-{
-  blender::bke::bNodeType *nt = rna_Node_register_base(
-      bmain, reports, &RNA_CompositorNodeCustomGroup, data, identifier, validate, call, free);
-  if (!nt) {
-    return nullptr;
-  }
+  {
+    blender::bke::bNodeType *nt = rna_Node_register_base(
+        bmain, reports, &RNA_GeometryNodeCustomGroup, data, identifier, validate, call, free);
 
-  nt->type = NODE_CUSTOM_GROUP;
-
-  register_node_type_cmp_custom_group(nt);
-
-  blender::bke::node_register_type(nt);
-
-  WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
-
-  return nt->rna_ext.srna;
-}
-
-static void rna_CompositorNode_tag_need_exec(bNode *node)
-{
-  ntreeCompositTagNeedExec(node);
-}
-
-static void rna_Node_tex_image_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_IMAGE, nullptr);
-}
-
-static void rna_NodeGroup_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  DEG_relations_tag_update(bmain);
-}
-
-static void rna_NodeGroup_node_tree_set(PointerRNA *ptr,
-                                        const PointerRNA value,
-                                        ReportList * /*reports*/)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-  bNodeTree *ngroup = static_cast<bNodeTree *>(value.data);
-
-  const char *disabled_hint = nullptr;
-  if (blender::bke::node_group_poll(ntree, ngroup, &disabled_hint)) {
-    if (node->id) {
-      id_us_min(node->id);
-    }
-    if (ngroup) {
-      id_us_plus(&ngroup->id);
+    if (!nt) {
+      return nullptr;
     }
 
-    node->id = &ngroup->id;
-  }
-}
+    nt->type = NODE_CUSTOM_GROUP;
 
-static bool rna_NodeGroup_node_tree_poll(PointerRNA *ptr, const PointerRNA value)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNodeTree *ngroup = static_cast<bNodeTree *>(value.data);
+    register_node_type_geo_custom_group(nt);
 
-  /* only allow node trees of the same type as the group node's tree */
-  if (ngroup->type != ntree->type) {
-    return false;
+    blender::bke::node_register_type(nt);
+
+    WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
+
+    return nt->rna_ext.srna;
   }
 
-  const char *disabled_hint = nullptr;
-  return blender::bke::node_group_poll(ntree, ngroup, &disabled_hint);
-}
+  void register_node_type_geo_custom_group(blender::bke::bNodeType * ntype);
 
-static void rna_distance_matte_t1_set(PointerRNA *ptr, float value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+  static StructRNA *rna_ShaderNodeCustomGroup_register(Main * bmain,
+                                                       ReportList * reports,
+                                                       void *data,
+                                                       const char *identifier,
+                                                       StructValidateFunc validate,
+                                                       StructCallbackFunc call,
+                                                       StructFreeFunc free)
+  {
+    blender::bke::bNodeType *nt = rna_Node_register_base(
+        bmain, reports, &RNA_ShaderNodeCustomGroup, data, identifier, validate, call, free);
 
-  chroma->t1 = value;
-}
+    if (!nt) {
+      return nullptr;
+    }
 
-static void rna_distance_matte_t2_set(PointerRNA *ptr, float value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+    nt->type = NODE_CUSTOM_GROUP;
 
-  chroma->t2 = value;
-}
+    register_node_type_sh_custom_group(nt);
 
-static void rna_difference_matte_t1_set(PointerRNA *ptr, float value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+    blender::bke::node_register_type(nt);
 
-  chroma->t1 = value;
-}
+    WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
 
-static void rna_difference_matte_t2_set(PointerRNA *ptr, float value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+    return nt->rna_ext.srna;
+  }
 
-  chroma->t2 = value;
-}
+  static StructRNA *rna_CompositorNodeCustomGroup_register(Main * bmain,
+                                                           ReportList * reports,
+                                                           void *data,
+                                                           const char *identifier,
+                                                           StructValidateFunc validate,
+                                                           StructCallbackFunc call,
+                                                           StructFreeFunc free)
+  {
+    blender::bke::bNodeType *nt = rna_Node_register_base(
+        bmain, reports, &RNA_CompositorNodeCustomGroup, data, identifier, validate, call, free);
+    if (!nt) {
+      return nullptr;
+    }
 
-/* Button Set Functions for Matte Nodes */
-static void rna_Matte_t1_set(PointerRNA *ptr, float value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+    nt->type = NODE_CUSTOM_GROUP;
 
-  chroma->t1 = value;
+    register_node_type_cmp_custom_group(nt);
 
-  if (value < chroma->t2) {
+    blender::bke::node_register_type(nt);
+
+    WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
+
+    return nt->rna_ext.srna;
+  }
+
+  static void rna_CompositorNode_tag_need_exec(bNode * node)
+  {
+    ntreeCompositTagNeedExec(node);
+  }
+
+  static void rna_Node_tex_image_update(Main * bmain, Scene * /*scene*/, PointerRNA * ptr)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_IMAGE, nullptr);
+  }
+
+  static void rna_NodeGroup_update(Main * bmain, Scene * /*scene*/, PointerRNA * ptr)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    DEG_relations_tag_update(bmain);
+  }
+
+  static void rna_NodeGroup_node_tree_set(
+      PointerRNA * ptr, const PointerRNA value, ReportList * /*reports*/)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+    bNodeTree *ngroup = static_cast<bNodeTree *>(value.data);
+
+    const char *disabled_hint = nullptr;
+    if (blender::bke::node_group_poll(ntree, ngroup, &disabled_hint)) {
+      if (node->id) {
+        id_us_min(node->id);
+      }
+      if (ngroup) {
+        id_us_plus(&ngroup->id);
+      }
+
+      node->id = &ngroup->id;
+    }
+  }
+
+  static bool rna_NodeGroup_node_tree_poll(PointerRNA * ptr, const PointerRNA value)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNodeTree *ngroup = static_cast<bNodeTree *>(value.data);
+
+    /* only allow node trees of the same type as the group node's tree */
+    if (ngroup->type != ntree->type) {
+      return false;
+    }
+
+    const char *disabled_hint = nullptr;
+    return blender::bke::node_group_poll(ntree, ngroup, &disabled_hint);
+  }
+
+  static void rna_distance_matte_t1_set(PointerRNA * ptr, float value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+
+    chroma->t1 = value;
+  }
+
+  static void rna_distance_matte_t2_set(PointerRNA * ptr, float value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+
     chroma->t2 = value;
   }
-}
 
-static void rna_Matte_t2_set(PointerRNA *ptr, float value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
+  static void rna_difference_matte_t1_set(PointerRNA * ptr, float value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
 
-  if (value > chroma->t1) {
-    value = chroma->t1;
+    chroma->t1 = value;
   }
 
-  chroma->t2 = value;
-}
+  static void rna_difference_matte_t2_set(PointerRNA * ptr, float value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
 
-static void rna_Node_scene_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  if (node->id) {
-    id_us_min(node->id);
-    node->id = nullptr;
+    chroma->t2 = value;
   }
 
-  node->id = static_cast<ID *>(value.data);
+  /* Button Set Functions for Matte Nodes */
+  static void rna_Matte_t1_set(PointerRNA * ptr, float value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
 
-  id_us_plus(node->id);
-}
+    chroma->t1 = value;
 
-static void rna_Node_image_layer_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  Image *ima = reinterpret_cast<Image *>(node->id);
-  ImageUser *iuser = static_cast<ImageUser *>(node->storage);
-
-  if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
-    return;
-  }
-
-  BKE_image_multilayer_index(ima->rr, iuser);
-  BKE_image_signal(bmain, ima, iuser, IMA_SIGNAL_SRC_CHANGE);
-
-  rna_Node_update(bmain, scene, ptr);
-
-  if (scene != nullptr && scene->nodetree != nullptr) {
-    ntreeCompositUpdateRLayers(scene->nodetree);
-  }
-}
-
-static const EnumPropertyItem *renderresult_layers_add_enum(RenderLayer *rl)
-{
-  EnumPropertyItem *item = nullptr;
-  EnumPropertyItem tmp = {0};
-  int i = 0, totitem = 0;
-
-  while (rl) {
-    tmp.identifier = rl->name;
-    /* Little trick: using space char instead empty string
-     * makes the item selectable in the drop-down. */
-    if (rl->name[0] == '\0') {
-      tmp.name = " ";
-    }
-    else {
-      tmp.name = rl->name;
-    }
-    tmp.value = i++;
-    RNA_enum_item_add(&item, &totitem, &tmp);
-    rl = rl->next;
-  }
-
-  RNA_enum_item_end(&item, &totitem);
-
-  return item;
-}
-
-static const EnumPropertyItem *rna_ShaderNodeMix_data_type_itemf(bContext * /*C*/,
-                                                                 PointerRNA *ptr,
-                                                                 PropertyRNA * /*prop*/,
-                                                                 bool *r_free)
-{
-  *r_free = true;
-
-  const auto rotation_supported_mix = [&](const EnumPropertyItem *item) -> bool {
-    const eNodeSocketDatatype data_type = eNodeSocketDatatype(item->value);
-    if (data_type == SOCK_ROTATION) {
-      const bNodeTree *tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
-      if (tree->type == NTREE_GEOMETRY) {
-        return true;
-      }
-    }
-    return ELEM(data_type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
-  };
-
-  return itemf_function_check(rna_enum_mix_data_type_items, rotation_supported_mix);
-}
-
-static const EnumPropertyItem *rna_Node_image_layer_itemf(bContext * /*C*/,
-                                                          PointerRNA *ptr,
-                                                          PropertyRNA * /*prop*/,
-                                                          bool *r_free)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  Image *ima = reinterpret_cast<Image *>(node->id);
-  const EnumPropertyItem *item = nullptr;
-  RenderLayer *rl;
-
-  if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
-    return rna_enum_dummy_NULL_items;
-  }
-
-  if (ima == nullptr || ima->rr == nullptr) {
-    *r_free = false;
-    return rna_enum_dummy_NULL_items;
-  }
-
-  rl = static_cast<RenderLayer *>(ima->rr->layers.first);
-  item = renderresult_layers_add_enum(rl);
-
-  *r_free = true;
-
-  return item;
-}
-
-static bool rna_Node_image_has_layers_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  Image *ima = reinterpret_cast<Image *>(node->id);
-
-  if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
-    return false;
-  }
-
-  if (!ima || !(ima->rr)) {
-    return false;
-  }
-
-  return RE_layers_have_name(ima->rr);
-}
-
-static bool rna_Node_image_has_views_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  Image *ima = reinterpret_cast<Image *>(node->id);
-
-  if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
-    return false;
-  }
-
-  if (!ima || !(ima->rr)) {
-    return false;
-  }
-
-  return BLI_listbase_count_at_most(&ima->rr->views, 2) > 1;
-}
-
-static const EnumPropertyItem *renderresult_views_add_enum(RenderView *rv)
-{
-  EnumPropertyItem *item = nullptr;
-  EnumPropertyItem tmp = {0, "ALL", 0, "All", ""};
-  int i = 1, totitem = 0;
-
-  /* option to use all views */
-  RNA_enum_item_add(&item, &totitem, &tmp);
-
-  while (rv) {
-    tmp.identifier = rv->name;
-    /* Little trick: using space char instead empty string
-     * makes the item selectable in the drop-down. */
-    if (rv->name[0] == '\0') {
-      tmp.name = " ";
-    }
-    else {
-      tmp.name = rv->name;
-    }
-    tmp.value = i++;
-    RNA_enum_item_add(&item, &totitem, &tmp);
-    rv = rv->next;
-  }
-
-  RNA_enum_item_end(&item, &totitem);
-
-  return item;
-}
-
-static const EnumPropertyItem *rna_Node_image_view_itemf(bContext * /*C*/,
-                                                         PointerRNA *ptr,
-                                                         PropertyRNA * /*prop*/,
-                                                         bool *r_free)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  Image *ima = reinterpret_cast<Image *>(node->id);
-  const EnumPropertyItem *item = nullptr;
-  RenderView *rv;
-
-  if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
-    return rna_enum_dummy_NULL_items;
-  }
-
-  if (ima == nullptr || ima->rr == nullptr) {
-    *r_free = false;
-    return rna_enum_dummy_NULL_items;
-  }
-
-  rv = static_cast<RenderView *>(ima->rr->views.first);
-  item = renderresult_views_add_enum(rv);
-
-  *r_free = true;
-
-  return item;
-}
-
-static const EnumPropertyItem *rna_Node_view_layer_itemf(bContext * /*C*/,
-                                                         PointerRNA *ptr,
-                                                         PropertyRNA * /*prop*/,
-                                                         bool *r_free)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  Scene *sce = reinterpret_cast<Scene *>(node->id);
-  const EnumPropertyItem *item = nullptr;
-  RenderLayer *rl;
-
-  if (sce == nullptr) {
-    *r_free = false;
-    return rna_enum_dummy_NULL_items;
-  }
-
-  rl = static_cast<RenderLayer *>(sce->view_layers.first);
-  item = renderresult_layers_add_enum(rl);
-
-  *r_free = true;
-
-  return item;
-}
-
-static void rna_Node_view_layer_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  rna_Node_update_relations(bmain, scene, ptr);
-  if (scene != nullptr && scene->nodetree != nullptr) {
-    ntreeCompositUpdateRLayers(scene->nodetree);
-  }
-}
-
-static const EnumPropertyItem *rna_Node_channel_itemf(bContext * /*C*/,
-                                                      PointerRNA *ptr,
-                                                      PropertyRNA * /*prop*/,
-                                                      bool *r_free)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  EnumPropertyItem *item = nullptr;
-  EnumPropertyItem tmp = {0};
-  int totitem = 0;
-
-  switch (node->custom1) {
-    case CMP_NODE_CHANNEL_MATTE_CS_RGB:
-      tmp.identifier = "R";
-      tmp.name = "R";
-      tmp.value = 1;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "G";
-      tmp.name = "G";
-      tmp.value = 2;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "B";
-      tmp.name = "B";
-      tmp.value = 3;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      break;
-    case CMP_NODE_CHANNEL_MATTE_CS_HSV:
-      tmp.identifier = "H";
-      tmp.name = "H";
-      tmp.value = 1;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "S";
-      tmp.name = "S";
-      tmp.value = 2;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "V";
-      tmp.name = "V";
-      tmp.value = 3;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      break;
-    case CMP_NODE_CHANNEL_MATTE_CS_YUV:
-      tmp.identifier = "Y";
-      tmp.name = "Y";
-      tmp.value = 1;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "G";
-      tmp.name = "U";
-      tmp.value = 2;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "V";
-      tmp.name = "V";
-      tmp.value = 3;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      break;
-    case CMP_NODE_CHANNEL_MATTE_CS_YCC:
-      tmp.identifier = "Y";
-      tmp.name = "Y";
-      tmp.value = 1;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "CB";
-      tmp.name = "Cr";
-      tmp.value = 2;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      tmp.identifier = "CR";
-      tmp.name = "Cb";
-      tmp.value = 3;
-      RNA_enum_item_add(&item, &totitem, &tmp);
-      break;
-    default:
-      return rna_enum_dummy_NULL_items;
-  }
-
-  RNA_enum_item_end(&item, &totitem);
-  *r_free = true;
-
-  return item;
-}
-
-static void rna_Image_Node_update_id(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  blender::bke::node_tag_update_id(node);
-  rna_Node_update_relations(bmain, scene, ptr);
-}
-
-static void rna_NodeOutputFile_slots_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  rna_iterator_listbase_begin(iter, &node->inputs, nullptr);
-}
-
-static PointerRNA rna_NodeOutputFile_slot_file_get(CollectionPropertyIterator *iter)
-{
-  bNodeSocket *sock = static_cast<bNodeSocket *>(rna_iterator_listbase_get(iter));
-  PointerRNA ptr = RNA_pointer_create(
-      iter->parent.owner_id, &RNA_NodeOutputFileSlotFile, sock->storage);
-  return ptr;
-}
-
-static void rna_NodeColorBalance_update_lgg(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  ntreeCompositColorBalanceSyncFromLGG(reinterpret_cast<bNodeTree *>(ptr->owner_id),
-                                       static_cast<bNode *>(ptr->data));
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static void rna_NodeColorBalance_update_cdl(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  ntreeCompositColorBalanceSyncFromCDL(reinterpret_cast<bNodeTree *>(ptr->owner_id),
-                                       static_cast<bNode *>(ptr->data));
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static void rna_NodeColorBalance_input_whitepoint_get(PointerRNA *ptr, float value[3])
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
-  IMB_colormanagement_get_whitepoint(n->input_temperature, n->input_tint, value);
-}
-
-static void rna_NodeColorBalance_input_whitepoint_set(PointerRNA *ptr, const float value[3])
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
-  IMB_colormanagement_set_whitepoint(value, n->input_temperature, n->input_tint);
-}
-
-static void rna_NodeColorBalance_output_whitepoint_get(PointerRNA *ptr, float value[3])
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
-  IMB_colormanagement_get_whitepoint(n->output_temperature, n->output_tint, value);
-}
-
-static void rna_NodeColorBalance_output_whitepoint_set(PointerRNA *ptr, const float value[3])
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
-  IMB_colormanagement_set_whitepoint(value, n->output_temperature, n->output_tint);
-}
-
-static void rna_NodeCryptomatte_source_set(PointerRNA *ptr, int value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  if (node->id && node->custom1 != value) {
-    id_us_min(node->id);
-    node->id = nullptr;
-  }
-  node->custom1 = value;
-}
-
-static int rna_NodeCryptomatte_layer_name_get(PointerRNA *ptr)
-{
-  int index = 0;
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeCryptomatte *storage = static_cast<NodeCryptomatte *>(node->storage);
-  LISTBASE_FOREACH_INDEX (CryptomatteLayer *, layer, &storage->runtime.layers, index) {
-    if (STREQLEN(storage->layer_name, layer->name, sizeof(storage->layer_name))) {
-      return index;
+    if (value < chroma->t2) {
+      chroma->t2 = value;
     }
   }
-  return 0;
-}
 
-static void rna_NodeCryptomatte_layer_name_set(PointerRNA *ptr, int new_value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeCryptomatte *storage = static_cast<NodeCryptomatte *>(node->storage);
+  static void rna_Matte_t2_set(PointerRNA * ptr, float value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeChroma *chroma = static_cast<NodeChroma *>(node->storage);
 
-  CryptomatteLayer *layer = static_cast<CryptomatteLayer *>(
-      BLI_findlink(&storage->runtime.layers, new_value));
-  if (layer) {
-    STRNCPY(storage->layer_name, layer->name);
-  }
-}
+    if (value > chroma->t1) {
+      value = chroma->t1;
+    }
 
-static const EnumPropertyItem *rna_NodeCryptomatte_layer_name_itemf(bContext * /*C*/,
-                                                                    PointerRNA *ptr,
-                                                                    PropertyRNA * /*prop*/,
-                                                                    bool *r_free)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeCryptomatte *storage = static_cast<NodeCryptomatte *>(node->storage);
-  EnumPropertyItem *item = nullptr;
-  EnumPropertyItem temp = {0, "", 0, "", ""};
-  int totitem = 0;
-
-  int layer_index;
-  LISTBASE_FOREACH_INDEX (CryptomatteLayer *, layer, &storage->runtime.layers, layer_index) {
-    temp.value = layer_index;
-    temp.identifier = layer->name;
-    temp.name = layer->name;
-    RNA_enum_item_add(&item, &totitem, &temp);
+    chroma->t2 = value;
   }
 
-  RNA_enum_item_end(&item, &totitem);
-  *r_free = true;
+  static void rna_Node_scene_set(PointerRNA * ptr, PointerRNA value, ReportList * /*reports*/)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
 
-  return item;
-}
-
-static PointerRNA rna_NodeCryptomatte_scene_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  Scene *scene = (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) ?
-                     reinterpret_cast<Scene *>(node->id) :
-                     nullptr;
-  return rna_pointer_inherit_refine(ptr, &RNA_Scene, scene);
-}
-
-static void rna_NodeCryptomatte_scene_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  if (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) {
-    rna_Node_scene_set(ptr, value, reports);
-  }
-}
-
-static PointerRNA rna_NodeCryptomatte_image_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  Image *image = (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) ?
-                     reinterpret_cast<Image *>(node->id) :
-                     nullptr;
-  return rna_pointer_inherit_refine(ptr, &RNA_Image, image);
-}
-
-static void rna_NodeCryptomatte_image_set(PointerRNA *ptr,
-                                          PointerRNA value,
-                                          ReportList * /*reports*/)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-
-  if (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
-    if (node->id)
+    if (node->id) {
       id_us_min(node->id);
-    if (value.data)
-      id_us_plus(static_cast<ID *>(value.data));
+      node->id = nullptr;
+    }
 
     node->id = static_cast<ID *>(value.data);
+
+    id_us_plus(node->id);
   }
-}
 
-static bool rna_NodeCryptomatte_image_poll(PointerRNA * /*ptr*/, PointerRNA value)
-{
-  Image *image = reinterpret_cast<Image *>(value.owner_id);
-  return image->type == IMA_TYPE_MULTILAYER;
-}
+  static void rna_Node_image_layer_update(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    Image *ima = reinterpret_cast<Image *>(node->id);
+    ImageUser *iuser = static_cast<ImageUser *>(node->storage);
 
-static void rna_NodeCryptomatte_matte_get(PointerRNA *ptr, char *value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
-  char *matte_id = BKE_cryptomatte_entries_to_matte_id(nc);
-  strcpy(value, matte_id);
-  MEM_freeN(matte_id);
-}
-
-static int rna_NodeCryptomatte_matte_length(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
-  char *matte_id = BKE_cryptomatte_entries_to_matte_id(nc);
-  int result = strlen(matte_id);
-  MEM_freeN(matte_id);
-  return result;
-}
-
-static void rna_NodeCryptomatte_matte_set(PointerRNA *ptr, const char *value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
-  BKE_cryptomatte_matte_id_to_entries(nc, value);
-}
-
-static void rna_NodeCryptomatte_update_add(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  ntreeCompositCryptomatteSyncFromAdd(static_cast<bNode *>(ptr->data));
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static void rna_NodeCryptomatte_update_remove(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  ntreeCompositCryptomatteSyncFromRemove(static_cast<bNode *>(ptr->data));
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static PointerRNA rna_Node_paired_output_get(PointerRNA *ptr)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-  const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(node->type);
-  bNode *output_node = zone_type.get_corresponding_output(*ntree, *node);
-  PointerRNA r_ptr = RNA_pointer_create(&ntree->id, &RNA_Node, output_node);
-  return r_ptr;
-}
-
-static bool rna_Node_pair_with_output(
-    ID *id, bNode *node, bContext *C, ReportList *reports, bNode *output_node)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(node->type);
-  if (output_node->type != zone_type.output_type) {
-    BKE_reportf(
-        reports,
-        RPT_ERROR,
-        "Can't pair zone input node %s with %s because it does not have the same zone type",
-        node->name,
-        output_node->name);
-    return false;
-  }
-  for (const bNode *other_input_node : ntree->nodes_by_type(zone_type.input_idname)) {
-    if (other_input_node != node) {
-      if (zone_type.get_corresponding_output(*ntree, *other_input_node) == output_node) {
-        BKE_reportf(reports,
-                    RPT_ERROR,
-                    "The output node %s is already paired with %s",
-                    output_node->name,
-                    other_input_node->name);
-        return false;
-      }
+    if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
+      return;
     }
-  }
-  int &output_node_id = zone_type.get_corresponding_output_id(*node);
-  output_node_id = output_node->identifier;
 
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  return true;
-}
+    BKE_image_multilayer_index(ima->rr, iuser);
+    BKE_image_signal(bmain, ima, iuser, IMA_SIGNAL_SRC_CHANGE);
 
-template<typename Accessor>
-static void rna_Node_ItemArray_remove(ID *id,
-                                      bNode *node,
-                                      Main *bmain,
-                                      ReportList *reports,
-                                      typename Accessor::ItemT *item_to_remove)
-{
-  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
-  if (item_to_remove < *ref.items || item_to_remove >= *ref.items + *ref.items_num) {
-    if constexpr (Accessor::has_name) {
-      char **name_ptr = Accessor::get_name(*item_to_remove);
-      if (name_ptr && *name_ptr) {
-        BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", *name_ptr);
-        return;
-      }
-    }
-    else {
-      BKE_report(reports, RPT_ERROR, "Unable to locate item in node");
-    }
-    return;
-  }
-  const int remove_index = item_to_remove - *ref.items;
-  blender::dna::array::remove_index(
-      ref.items, ref.items_num, ref.active_index, remove_index, Accessor::destruct_item);
+    rna_Node_update(bmain, scene, ptr);
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-template<typename Accessor> static void rna_Node_ItemArray_clear(ID *id, bNode *node, Main *bmain)
-{
-  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
-  blender::dna::array::clear(ref.items, ref.items_num, ref.active_index, Accessor::destruct_item);
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-template<typename Accessor>
-static void rna_Node_ItemArray_move(
-    ID *id, bNode *node, Main *bmain, const int from_index, const int to_index)
-{
-  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
-  const int items_num = *ref.items_num;
-  if (from_index < 0 || to_index < 0 || from_index >= items_num || to_index >= items_num) {
-    return;
-  }
-  blender::dna::array::move_index(*ref.items, items_num, from_index, to_index);
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-template<typename Accessor> static PointerRNA rna_Node_ItemArray_active_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
-  typename Accessor::ItemT *active_item = nullptr;
-  const int active_index = *ref.active_index;
-  const int items_num = *ref.items_num;
-  if (active_index >= 0 && active_index < items_num) {
-    active_item = &(*ref.items)[active_index];
-  }
-  return RNA_pointer_create(ptr->owner_id, Accessor::item_srna, active_item);
-}
-template<typename Accessor>
-static void rna_Node_ItemArray_active_set(PointerRNA *ptr,
-                                          PointerRNA value,
-                                          ReportList * /*reports*/)
-{
-  using ItemT = typename Accessor::ItemT;
-  bNode *node = static_cast<bNode *>(ptr->data);
-  ItemT *item = static_cast<ItemT *>(value.data);
-
-  blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
-  if (item >= *ref.items && item < *ref.items + *ref.items_num) {
-    *ref.active_index = item - *ref.items;
-  }
-}
-
-template<typename Accessor>
-static void rna_Node_ItemArray_item_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  using ItemT = typename Accessor::ItemT;
-  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  ItemT &item = *static_cast<ItemT *>(ptr->data);
-  bNode *node = blender::nodes::socket_items::find_node_by_item<Accessor>(ntree, item);
-  BLI_assert(node != nullptr);
-
-  BKE_ntree_update_tag_node_property(&ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, &ntree);
-}
-
-template<typename Accessor>
-static const EnumPropertyItem *rna_Node_ItemArray_socket_type_itemf(bContext * /*C*/,
-                                                                    PointerRNA * /*ptr*/,
-                                                                    PropertyRNA * /*prop*/,
-                                                                    bool *r_free)
-{
-  *r_free = true;
-  return itemf_function_check(
-      rna_enum_node_socket_data_type_items, [](const EnumPropertyItem *item) {
-        return Accessor::supports_socket_type(eNodeSocketDatatype(item->value));
-      });
-}
-
-template<typename Accessor>
-static void rna_Node_ItemArray_item_name_set(PointerRNA *ptr, const char *value)
-{
-  using ItemT = typename Accessor::ItemT;
-  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  ItemT &item = *static_cast<ItemT *>(ptr->data);
-  bNode *node = blender::nodes::socket_items::find_node_by_item<Accessor>(ntree, item);
-  BLI_assert(node != nullptr);
-  blender::nodes::socket_items::set_item_name_and_make_unique<Accessor>(*node, item, value);
-}
-
-template<typename Accessors>
-static void rna_Node_ItemArray_item_color_get(PointerRNA *ptr, float *values)
-{
-  using ItemT = typename Accessors::ItemT;
-  ItemT &item = *static_cast<ItemT *>(ptr->data);
-  const char *socket_type_idname = blender::bke::node_static_socket_type(
-      Accessors::get_socket_type(item), 0);
-  ED_node_type_draw_color(socket_type_idname, values);
-}
-
-template<typename Accessor>
-typename Accessor::ItemT *rna_Node_ItemArray_new_with_socket_and_name(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, int socket_type, const char *name)
-{
-  using ItemT = typename Accessor::ItemT;
-  if (!Accessor::supports_socket_type(eNodeSocketDatatype(socket_type))) {
-    BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
-    return nullptr;
-  }
-  ItemT *new_item = blender::nodes::socket_items::add_item_with_socket_type_and_name<Accessor>(
-      *node, eNodeSocketDatatype(socket_type), name);
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-
-  return new_item;
-}
-
-static IndexSwitchItem *rna_NodeIndexSwitchItems_new(ID *id, bNode *node, Main *bmain)
-{
-  IndexSwitchItem *new_item = blender::nodes::socket_items::add_item<IndexSwitchItemsAccessor>(
-      *node);
-
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-
-  return new_item;
-}
-
-static const EnumPropertyItem *rna_NodeGeometryCaptureAttributeItem_data_type_itemf(
-    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
-{
-  *r_free = true;
-  /* See #attribute_type_type_with_socket_fn. */
-  return itemf_function_check(rna_enum_attribute_type_items, [](const EnumPropertyItem *item) {
-    return ELEM(item->value,
-                CD_PROP_FLOAT,
-                CD_PROP_FLOAT3,
-                CD_PROP_COLOR,
-                CD_PROP_BOOL,
-                CD_PROP_INT32,
-                CD_PROP_QUATERNION,
-                CD_PROP_FLOAT4X4);
-  });
-}
-
-/* ******** Node Socket Types ******** */
-
-static PointerRNA rna_NodeOutputFile_slot_layer_get(CollectionPropertyIterator *iter)
-{
-  bNodeSocket *sock = static_cast<bNodeSocket *>(rna_iterator_listbase_get(iter));
-  PointerRNA ptr = RNA_pointer_create(
-      iter->parent.owner_id, &RNA_NodeOutputFileSlotLayer, sock->storage);
-  return ptr;
-}
-
-static int rna_NodeOutputFileSocket_find_node(bNodeTree *ntree,
-                                              NodeImageMultiFileSocket *data,
-                                              bNode **nodep,
-                                              bNodeSocket **sockp)
-{
-  bNode *node;
-  bNodeSocket *sock;
-
-  for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
-    for (sock = static_cast<bNodeSocket *>(node->inputs.first); sock; sock = sock->next) {
-      NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(sock->storage);
-      if (sockdata == data) {
-        *nodep = node;
-        *sockp = sock;
-        return 1;
-      }
+    if (scene != nullptr && scene->nodetree != nullptr) {
+      ntreeCompositUpdateRLayers(scene->nodetree);
     }
   }
 
-  *nodep = nullptr;
-  *sockp = nullptr;
-  return 0;
-}
+  static const EnumPropertyItem *renderresult_layers_add_enum(RenderLayer * rl)
+  {
+    EnumPropertyItem *item = nullptr;
+    EnumPropertyItem tmp = {0};
+    int i = 0, totitem = 0;
 
-static void rna_NodeOutputFileSlotFile_path_set(PointerRNA *ptr, const char *value)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(ptr->data);
-  bNode *node;
-  bNodeSocket *sock;
-
-  if (rna_NodeOutputFileSocket_find_node(ntree, sockdata, &node, &sock)) {
-    ntreeCompositOutputFileSetPath(node, sock, value);
-  }
-}
-
-static void rna_NodeOutputFileSlotLayer_name_set(PointerRNA *ptr, const char *value)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(ptr->data);
-  bNode *node;
-  bNodeSocket *sock;
-
-  if (rna_NodeOutputFileSocket_find_node(ntree, sockdata, &node, &sock)) {
-    ntreeCompositOutputFileSetLayer(node, sock, value);
-  }
-}
-
-static bNodeSocket *rna_NodeOutputFile_slots_new(
-    ID *id, bNode *node, bContext *C, ReportList * /*reports*/, const char *name)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  Scene *scene = CTX_data_scene(C);
-  ImageFormatData *im_format = nullptr;
-  bNodeSocket *sock;
-  if (scene) {
-    im_format = &scene->r.im_format;
-  }
-
-  sock = ntreeCompositOutputFileAddSocket(ntree, node, name, im_format);
-
-  ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-
-  return sock;
-}
-
-static void rna_FrameNode_label_size_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  BLF_cache_clear();
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static void rna_ShaderNodeTexIES_mode_set(PointerRNA *ptr, int value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeShaderTexIES *nss = static_cast<NodeShaderTexIES *>(node->storage);
-
-  if (nss->mode != value) {
-    nss->mode = value;
-    nss->filepath[0] = '\0';
-
-    /* replace text datablock by filepath */
-    if (node->id) {
-      Text *text = reinterpret_cast<Text *>(node->id);
-
-      if (value == NODE_IES_EXTERNAL && text->filepath) {
-        STRNCPY(nss->filepath, text->filepath);
-        BLI_path_rel(nss->filepath, BKE_main_blendfile_path_from_global());
+    while (rl) {
+      tmp.identifier = rl->name;
+      /* Little trick: using space char instead empty string
+       * makes the item selectable in the drop-down. */
+      if (rl->name[0] == '\0') {
+        tmp.name = " ";
       }
+      else {
+        tmp.name = rl->name;
+      }
+      tmp.value = i++;
+      RNA_enum_item_add(&item, &totitem, &tmp);
+      rl = rl->next;
+    }
 
+    RNA_enum_item_end(&item, &totitem);
+
+    return item;
+  }
+
+  static const EnumPropertyItem *rna_ShaderNodeMix_data_type_itemf(
+      bContext * /*C*/, PointerRNA * ptr, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    *r_free = true;
+
+    const auto rotation_supported_mix = [&](const EnumPropertyItem *item) -> bool {
+      const eNodeSocketDatatype data_type = eNodeSocketDatatype(item->value);
+      if (data_type == SOCK_ROTATION) {
+        const bNodeTree *tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
+        if (tree->type == NTREE_GEOMETRY) {
+          return true;
+        }
+      }
+      return ELEM(data_type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
+    };
+
+    return itemf_function_check(rna_enum_mix_data_type_items, rotation_supported_mix);
+  }
+
+  static const EnumPropertyItem *rna_Node_image_layer_itemf(
+      bContext * /*C*/, PointerRNA * ptr, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    Image *ima = reinterpret_cast<Image *>(node->id);
+    const EnumPropertyItem *item = nullptr;
+    RenderLayer *rl;
+
+    if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
+      return rna_enum_dummy_NULL_items;
+    }
+
+    if (ima == nullptr || ima->rr == nullptr) {
+      *r_free = false;
+      return rna_enum_dummy_NULL_items;
+    }
+
+    rl = static_cast<RenderLayer *>(ima->rr->layers.first);
+    item = renderresult_layers_add_enum(rl);
+
+    *r_free = true;
+
+    return item;
+  }
+
+  static bool rna_Node_image_has_layers_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    Image *ima = reinterpret_cast<Image *>(node->id);
+
+    if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
+      return false;
+    }
+
+    if (!ima || !(ima->rr)) {
+      return false;
+    }
+
+    return RE_layers_have_name(ima->rr);
+  }
+
+  static bool rna_Node_image_has_views_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    Image *ima = reinterpret_cast<Image *>(node->id);
+
+    if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
+      return false;
+    }
+
+    if (!ima || !(ima->rr)) {
+      return false;
+    }
+
+    return BLI_listbase_count_at_most(&ima->rr->views, 2) > 1;
+  }
+
+  static const EnumPropertyItem *renderresult_views_add_enum(RenderView * rv)
+  {
+    EnumPropertyItem *item = nullptr;
+    EnumPropertyItem tmp = {0, "ALL", 0, "All", ""};
+    int i = 1, totitem = 0;
+
+    /* option to use all views */
+    RNA_enum_item_add(&item, &totitem, &tmp);
+
+    while (rv) {
+      tmp.identifier = rv->name;
+      /* Little trick: using space char instead empty string
+       * makes the item selectable in the drop-down. */
+      if (rv->name[0] == '\0') {
+        tmp.name = " ";
+      }
+      else {
+        tmp.name = rv->name;
+      }
+      tmp.value = i++;
+      RNA_enum_item_add(&item, &totitem, &tmp);
+      rv = rv->next;
+    }
+
+    RNA_enum_item_end(&item, &totitem);
+
+    return item;
+  }
+
+  static const EnumPropertyItem *rna_Node_image_view_itemf(
+      bContext * /*C*/, PointerRNA * ptr, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    Image *ima = reinterpret_cast<Image *>(node->id);
+    const EnumPropertyItem *item = nullptr;
+    RenderView *rv;
+
+    if (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
+      return rna_enum_dummy_NULL_items;
+    }
+
+    if (ima == nullptr || ima->rr == nullptr) {
+      *r_free = false;
+      return rna_enum_dummy_NULL_items;
+    }
+
+    rv = static_cast<RenderView *>(ima->rr->views.first);
+    item = renderresult_views_add_enum(rv);
+
+    *r_free = true;
+
+    return item;
+  }
+
+  static const EnumPropertyItem *rna_Node_view_layer_itemf(
+      bContext * /*C*/, PointerRNA * ptr, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    Scene *sce = reinterpret_cast<Scene *>(node->id);
+    const EnumPropertyItem *item = nullptr;
+    RenderLayer *rl;
+
+    if (sce == nullptr) {
+      *r_free = false;
+      return rna_enum_dummy_NULL_items;
+    }
+
+    rl = static_cast<RenderLayer *>(sce->view_layers.first);
+    item = renderresult_layers_add_enum(rl);
+
+    *r_free = true;
+
+    return item;
+  }
+
+  static void rna_Node_view_layer_update(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    rna_Node_update_relations(bmain, scene, ptr);
+    if (scene != nullptr && scene->nodetree != nullptr) {
+      ntreeCompositUpdateRLayers(scene->nodetree);
+    }
+  }
+
+  static const EnumPropertyItem *rna_Node_channel_itemf(
+      bContext * /*C*/, PointerRNA * ptr, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    EnumPropertyItem *item = nullptr;
+    EnumPropertyItem tmp = {0};
+    int totitem = 0;
+
+    switch (node->custom1) {
+      case CMP_NODE_CHANNEL_MATTE_CS_RGB:
+        tmp.identifier = "R";
+        tmp.name = "R";
+        tmp.value = 1;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "G";
+        tmp.name = "G";
+        tmp.value = 2;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "B";
+        tmp.name = "B";
+        tmp.value = 3;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        break;
+      case CMP_NODE_CHANNEL_MATTE_CS_HSV:
+        tmp.identifier = "H";
+        tmp.name = "H";
+        tmp.value = 1;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "S";
+        tmp.name = "S";
+        tmp.value = 2;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "V";
+        tmp.name = "V";
+        tmp.value = 3;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        break;
+      case CMP_NODE_CHANNEL_MATTE_CS_YUV:
+        tmp.identifier = "Y";
+        tmp.name = "Y";
+        tmp.value = 1;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "G";
+        tmp.name = "U";
+        tmp.value = 2;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "V";
+        tmp.name = "V";
+        tmp.value = 3;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        break;
+      case CMP_NODE_CHANNEL_MATTE_CS_YCC:
+        tmp.identifier = "Y";
+        tmp.name = "Y";
+        tmp.value = 1;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "CB";
+        tmp.name = "Cr";
+        tmp.value = 2;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        tmp.identifier = "CR";
+        tmp.name = "Cb";
+        tmp.value = 3;
+        RNA_enum_item_add(&item, &totitem, &tmp);
+        break;
+      default:
+        return rna_enum_dummy_NULL_items;
+    }
+
+    RNA_enum_item_end(&item, &totitem);
+    *r_free = true;
+
+    return item;
+  }
+
+  static void rna_Image_Node_update_id(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+
+    blender::bke::node_tag_update_id(node);
+    rna_Node_update_relations(bmain, scene, ptr);
+  }
+
+  static void rna_NodeOutputFile_slots_begin(CollectionPropertyIterator * iter, PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    rna_iterator_listbase_begin(iter, &node->inputs, nullptr);
+  }
+
+  static PointerRNA rna_NodeOutputFile_slot_file_get(CollectionPropertyIterator * iter)
+  {
+    bNodeSocket *sock = static_cast<bNodeSocket *>(rna_iterator_listbase_get(iter));
+    PointerRNA ptr = RNA_pointer_create(
+        iter->parent.owner_id, &RNA_NodeOutputFileSlotFile, sock->storage);
+    return ptr;
+  }
+
+  static void rna_NodeColorBalance_update_lgg(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    ntreeCompositColorBalanceSyncFromLGG(reinterpret_cast<bNodeTree *>(ptr->owner_id),
+                                         static_cast<bNode *>(ptr->data));
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  static void rna_NodeColorBalance_update_cdl(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    ntreeCompositColorBalanceSyncFromCDL(reinterpret_cast<bNodeTree *>(ptr->owner_id),
+                                         static_cast<bNode *>(ptr->data));
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  static void rna_NodeColorBalance_input_whitepoint_get(PointerRNA * ptr, float value[3])
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+    IMB_colormanagement_get_whitepoint(n->input_temperature, n->input_tint, value);
+  }
+
+  static void rna_NodeColorBalance_input_whitepoint_set(PointerRNA * ptr, const float value[3])
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+    IMB_colormanagement_set_whitepoint(value, n->input_temperature, n->input_tint);
+  }
+
+  static void rna_NodeColorBalance_output_whitepoint_get(PointerRNA * ptr, float value[3])
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+    IMB_colormanagement_get_whitepoint(n->output_temperature, n->output_tint, value);
+  }
+
+  static void rna_NodeColorBalance_output_whitepoint_set(PointerRNA * ptr, const float value[3])
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+    IMB_colormanagement_set_whitepoint(value, n->output_temperature, n->output_tint);
+  }
+
+  static void rna_NodeCryptomatte_source_set(PointerRNA * ptr, int value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    if (node->id && node->custom1 != value) {
       id_us_min(node->id);
       node->id = nullptr;
     }
+    node->custom1 = value;
   }
-}
 
-static void rna_ShaderNodeScript_mode_set(PointerRNA *ptr, int value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-
-  if (nss->mode != value) {
-    nss->mode = value;
-    nss->filepath[0] = '\0';
-    nss->flag &= ~NODE_SCRIPT_AUTO_UPDATE;
-
-    /* replace text data-block by filepath */
-    if (node->id) {
-      Text *text = reinterpret_cast<Text *>(node->id);
-
-      if (value == NODE_SCRIPT_EXTERNAL && text->filepath) {
-        STRNCPY(nss->filepath, text->filepath);
-        BLI_path_rel(nss->filepath, BKE_main_blendfile_path_from_global());
+  static int rna_NodeCryptomatte_layer_name_get(PointerRNA * ptr)
+  {
+    int index = 0;
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeCryptomatte *storage = static_cast<NodeCryptomatte *>(node->storage);
+    LISTBASE_FOREACH_INDEX (CryptomatteLayer *, layer, &storage->runtime.layers, index) {
+      if (STREQLEN(storage->layer_name, layer->name, sizeof(storage->layer_name))) {
+        return index;
       }
+    }
+    return 0;
+  }
 
-      id_us_min(node->id);
-      node->id = nullptr;
+  static void rna_NodeCryptomatte_layer_name_set(PointerRNA * ptr, int new_value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeCryptomatte *storage = static_cast<NodeCryptomatte *>(node->storage);
+
+    CryptomatteLayer *layer = static_cast<CryptomatteLayer *>(
+        BLI_findlink(&storage->runtime.layers, new_value));
+    if (layer) {
+      STRNCPY(storage->layer_name, layer->name);
+    }
+  }
+
+  static const EnumPropertyItem *rna_NodeCryptomatte_layer_name_itemf(
+      bContext * /*C*/, PointerRNA * ptr, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeCryptomatte *storage = static_cast<NodeCryptomatte *>(node->storage);
+    EnumPropertyItem *item = nullptr;
+    EnumPropertyItem temp = {0, "", 0, "", ""};
+    int totitem = 0;
+
+    int layer_index;
+    LISTBASE_FOREACH_INDEX (CryptomatteLayer *, layer, &storage->runtime.layers, layer_index) {
+      temp.value = layer_index;
+      temp.identifier = layer->name;
+      temp.name = layer->name;
+      RNA_enum_item_add(&item, &totitem, &temp);
     }
 
-    /* remove any bytecode */
+    RNA_enum_item_end(&item, &totitem);
+    *r_free = true;
+
+    return item;
+  }
+
+  static PointerRNA rna_NodeCryptomatte_scene_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+
+    Scene *scene = (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) ?
+                       reinterpret_cast<Scene *>(node->id) :
+                       nullptr;
+    return rna_pointer_inherit_refine(ptr, &RNA_Scene, scene);
+  }
+
+  static void rna_NodeCryptomatte_scene_set(
+      PointerRNA * ptr, PointerRNA value, ReportList * reports)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+
+    if (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) {
+      rna_Node_scene_set(ptr, value, reports);
+    }
+  }
+
+  static PointerRNA rna_NodeCryptomatte_image_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+
+    Image *image = (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) ?
+                       reinterpret_cast<Image *>(node->id) :
+                       nullptr;
+    return rna_pointer_inherit_refine(ptr, &RNA_Image, image);
+  }
+
+  static void rna_NodeCryptomatte_image_set(
+      PointerRNA * ptr, PointerRNA value, ReportList * /*reports*/)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+
+    if (node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_IMAGE) {
+      if (node->id)
+        id_us_min(node->id);
+      if (value.data)
+        id_us_plus(static_cast<ID *>(value.data));
+
+      node->id = static_cast<ID *>(value.data);
+    }
+  }
+
+  static bool rna_NodeCryptomatte_image_poll(PointerRNA * /*ptr*/, PointerRNA value)
+  {
+    Image *image = reinterpret_cast<Image *>(value.owner_id);
+    return image->type == IMA_TYPE_MULTILAYER;
+  }
+
+  static void rna_NodeCryptomatte_matte_get(PointerRNA * ptr, char *value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
+    char *matte_id = BKE_cryptomatte_entries_to_matte_id(nc);
+    strcpy(value, matte_id);
+    MEM_freeN(matte_id);
+  }
+
+  static int rna_NodeCryptomatte_matte_length(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
+    char *matte_id = BKE_cryptomatte_entries_to_matte_id(nc);
+    int result = strlen(matte_id);
+    MEM_freeN(matte_id);
+    return result;
+  }
+
+  static void rna_NodeCryptomatte_matte_set(PointerRNA * ptr, const char *value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeCryptomatte *nc = static_cast<NodeCryptomatte *>(node->storage);
+    BKE_cryptomatte_matte_id_to_entries(nc, value);
+  }
+
+  static void rna_NodeCryptomatte_update_add(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    ntreeCompositCryptomatteSyncFromAdd(static_cast<bNode *>(ptr->data));
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  static void rna_NodeCryptomatte_update_remove(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    ntreeCompositCryptomatteSyncFromRemove(static_cast<bNode *>(ptr->data));
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  static PointerRNA rna_Node_paired_output_get(PointerRNA * ptr)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+    const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(
+        node->type);
+    bNode *output_node = zone_type.get_corresponding_output(*ntree, *node);
+    PointerRNA r_ptr = RNA_pointer_create(&ntree->id, &RNA_Node, output_node);
+    return r_ptr;
+  }
+
+  static bool rna_Node_pair_with_output(
+      ID * id, bNode * node, bContext * C, ReportList * reports, bNode * output_node)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    const blender::bke::bNodeZoneType &zone_type = *blender::bke::zone_type_by_node_type(
+        node->type);
+    if (output_node->type != zone_type.output_type) {
+      BKE_reportf(
+          reports,
+          RPT_ERROR,
+          "Can't pair zone input node %s with %s because it does not have the same zone type",
+          node->name,
+          output_node->name);
+      return false;
+    }
+    for (const bNode *other_input_node : ntree->nodes_by_type(zone_type.input_idname)) {
+      if (other_input_node != node) {
+        if (zone_type.get_corresponding_output(*ntree, *other_input_node) == output_node) {
+          BKE_reportf(reports,
+                      RPT_ERROR,
+                      "The output node %s is already paired with %s",
+                      output_node->name,
+                      other_input_node->name);
+          return false;
+        }
+      }
+    }
+    int &output_node_id = zone_type.get_corresponding_output_id(*node);
+    output_node_id = output_node->identifier;
+
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+    return true;
+  }
+
+  template<typename Accessor>
+  static void rna_Node_ItemArray_remove(ID * id,
+                                        bNode * node,
+                                        Main * bmain,
+                                        ReportList * reports,
+                                        typename Accessor::ItemT * item_to_remove)
+  {
+    blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
+    if (item_to_remove < *ref.items || item_to_remove >= *ref.items + *ref.items_num) {
+      if constexpr (Accessor::has_name) {
+        char **name_ptr = Accessor::get_name(*item_to_remove);
+        if (name_ptr && *name_ptr) {
+          BKE_reportf(reports, RPT_ERROR, "Unable to locate item '%s' in node", *name_ptr);
+          return;
+        }
+      }
+      else {
+        BKE_report(reports, RPT_ERROR, "Unable to locate item in node");
+      }
+      return;
+    }
+    const int remove_index = item_to_remove - *ref.items;
+    blender::dna::array::remove_index(
+        ref.items, ref.items_num, ref.active_index, remove_index, Accessor::destruct_item);
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  template<typename Accessor>
+  static void rna_Node_ItemArray_clear(ID * id, bNode * node, Main * bmain)
+  {
+    blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
+    blender::dna::array::clear(
+        ref.items, ref.items_num, ref.active_index, Accessor::destruct_item);
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  template<typename Accessor>
+  static void rna_Node_ItemArray_move(
+      ID * id, bNode * node, Main * bmain, const int from_index, const int to_index)
+  {
+    blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
+    const int items_num = *ref.items_num;
+    if (from_index < 0 || to_index < 0 || from_index >= items_num || to_index >= items_num) {
+      return;
+    }
+    blender::dna::array::move_index(*ref.items, items_num, from_index, to_index);
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  }
+
+  template<typename Accessor> static PointerRNA rna_Node_ItemArray_active_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
+    typename Accessor::ItemT *active_item = nullptr;
+    const int active_index = *ref.active_index;
+    const int items_num = *ref.items_num;
+    if (active_index >= 0 && active_index < items_num) {
+      active_item = &(*ref.items)[active_index];
+    }
+    return RNA_pointer_create(ptr->owner_id, Accessor::item_srna, active_item);
+  }
+  template<typename Accessor>
+  static void rna_Node_ItemArray_active_set(
+      PointerRNA * ptr, PointerRNA value, ReportList * /*reports*/)
+  {
+    using ItemT = typename Accessor::ItemT;
+    bNode *node = static_cast<bNode *>(ptr->data);
+    ItemT *item = static_cast<ItemT *>(value.data);
+
+    blender::nodes::socket_items::SocketItemsRef ref = Accessor::get_items_from_node(*node);
+    if (item >= *ref.items && item < *ref.items + *ref.items_num) {
+      *ref.active_index = item - *ref.items;
+    }
+  }
+
+  template<typename Accessor>
+  static void rna_Node_ItemArray_item_update(Main * bmain, Scene * /*scene*/, PointerRNA * ptr)
+  {
+    using ItemT = typename Accessor::ItemT;
+    bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    ItemT &item = *static_cast<ItemT *>(ptr->data);
+    bNode *node = blender::nodes::socket_items::find_node_by_item<Accessor>(ntree, item);
+    BLI_assert(node != nullptr);
+
+    BKE_ntree_update_tag_node_property(&ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, &ntree);
+  }
+
+  template<typename Accessor>
+  static const EnumPropertyItem *rna_Node_ItemArray_socket_type_itemf(
+      bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    *r_free = true;
+    return itemf_function_check(
+        rna_enum_node_socket_data_type_items, [](const EnumPropertyItem *item) {
+          return Accessor::supports_socket_type(eNodeSocketDatatype(item->value));
+        });
+  }
+
+  template<typename Accessor>
+  static void rna_Node_ItemArray_item_name_set(PointerRNA * ptr, const char *value)
+  {
+    using ItemT = typename Accessor::ItemT;
+    bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    ItemT &item = *static_cast<ItemT *>(ptr->data);
+    bNode *node = blender::nodes::socket_items::find_node_by_item<Accessor>(ntree, item);
+    BLI_assert(node != nullptr);
+    blender::nodes::socket_items::set_item_name_and_make_unique<Accessor>(*node, item, value);
+  }
+
+  template<typename Accessors>
+  static void rna_Node_ItemArray_item_color_get(PointerRNA * ptr, float *values)
+  {
+    using ItemT = typename Accessors::ItemT;
+    ItemT &item = *static_cast<ItemT *>(ptr->data);
+    const char *socket_type_idname = blender::bke::node_static_socket_type(
+        Accessors::get_socket_type(item), 0);
+    ED_node_type_draw_color(socket_type_idname, values);
+  }
+
+  template<typename Accessor>
+  typename Accessor::ItemT *rna_Node_ItemArray_new_with_socket_and_name(
+      ID * id, bNode * node, Main * bmain, ReportList * reports, int socket_type, const char *name)
+  {
+    using ItemT = typename Accessor::ItemT;
+    if (!Accessor::supports_socket_type(eNodeSocketDatatype(socket_type))) {
+      BKE_report(reports, RPT_ERROR, "Unable to create item with this socket type");
+      return nullptr;
+    }
+    ItemT *new_item = blender::nodes::socket_items::add_item_with_socket_type_and_name<Accessor>(
+        *node, eNodeSocketDatatype(socket_type), name);
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+    return new_item;
+  }
+
+  static IndexSwitchItem *rna_NodeIndexSwitchItems_new(ID * id, bNode * node, Main * bmain)
+  {
+    IndexSwitchItem *new_item = blender::nodes::socket_items::add_item<IndexSwitchItemsAccessor>(
+        *node);
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+    return new_item;
+  }
+
+  static const EnumPropertyItem *rna_NodeGeometryCaptureAttributeItem_data_type_itemf(
+      bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    *r_free = true;
+    /* See #attribute_type_type_with_socket_fn. */
+    return itemf_function_check(rna_enum_attribute_type_items, [](const EnumPropertyItem *item) {
+      return ELEM(item->value,
+                  CD_PROP_FLOAT,
+                  CD_PROP_FLOAT3,
+                  CD_PROP_COLOR,
+                  CD_PROP_BOOL,
+                  CD_PROP_INT32,
+                  CD_PROP_QUATERNION,
+                  CD_PROP_FLOAT4X4);
+    });
+  }
+
+  /* ******** Node Socket Types ******** */
+
+  static PointerRNA rna_NodeOutputFile_slot_layer_get(CollectionPropertyIterator * iter)
+  {
+    bNodeSocket *sock = static_cast<bNodeSocket *>(rna_iterator_listbase_get(iter));
+    PointerRNA ptr = RNA_pointer_create(
+        iter->parent.owner_id, &RNA_NodeOutputFileSlotLayer, sock->storage);
+    return ptr;
+  }
+
+  static int rna_NodeOutputFileSocket_find_node(
+      bNodeTree * ntree, NodeImageMultiFileSocket * data, bNode * *nodep, bNodeSocket * *sockp)
+  {
+    bNode *node;
+    bNodeSocket *sock;
+
+    for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
+      for (sock = static_cast<bNodeSocket *>(node->inputs.first); sock; sock = sock->next) {
+        NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(
+            sock->storage);
+        if (sockdata == data) {
+          *nodep = node;
+          *sockp = sock;
+          return 1;
+        }
+      }
+    }
+
+    *nodep = nullptr;
+    *sockp = nullptr;
+    return 0;
+  }
+
+  static void rna_NodeOutputFileSlotFile_path_set(PointerRNA * ptr, const char *value)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(ptr->data);
+    bNode *node;
+    bNodeSocket *sock;
+
+    if (rna_NodeOutputFileSocket_find_node(ntree, sockdata, &node, &sock)) {
+      ntreeCompositOutputFileSetPath(node, sock, value);
+    }
+  }
+
+  static void rna_NodeOutputFileSlotLayer_name_set(PointerRNA * ptr, const char *value)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    NodeImageMultiFileSocket *sockdata = static_cast<NodeImageMultiFileSocket *>(ptr->data);
+    bNode *node;
+    bNodeSocket *sock;
+
+    if (rna_NodeOutputFileSocket_find_node(ntree, sockdata, &node, &sock)) {
+      ntreeCompositOutputFileSetLayer(node, sock, value);
+    }
+  }
+
+  static bNodeSocket *rna_NodeOutputFile_slots_new(
+      ID * id, bNode * node, bContext * C, ReportList * /*reports*/, const char *name)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    Scene *scene = CTX_data_scene(C);
+    ImageFormatData *im_format = nullptr;
+    bNodeSocket *sock;
+    if (scene) {
+      im_format = &scene->r.im_format;
+    }
+
+    sock = ntreeCompositOutputFileAddSocket(ntree, node, name, im_format);
+
+    ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+    return sock;
+  }
+
+  static void rna_FrameNode_label_size_update(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    BLF_cache_clear();
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  static void rna_ShaderNodeTexIES_mode_set(PointerRNA * ptr, int value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeShaderTexIES *nss = static_cast<NodeShaderTexIES *>(node->storage);
+
+    if (nss->mode != value) {
+      nss->mode = value;
+      nss->filepath[0] = '\0';
+
+      /* replace text datablock by filepath */
+      if (node->id) {
+        Text *text = reinterpret_cast<Text *>(node->id);
+
+        if (value == NODE_IES_EXTERNAL && text->filepath) {
+          STRNCPY(nss->filepath, text->filepath);
+          BLI_path_rel(nss->filepath, BKE_main_blendfile_path_from_global());
+        }
+
+        id_us_min(node->id);
+        node->id = nullptr;
+      }
+    }
+  }
+
+  static void rna_ShaderNodeScript_mode_set(PointerRNA * ptr, int value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
+
+    if (nss->mode != value) {
+      nss->mode = value;
+      nss->filepath[0] = '\0';
+      nss->flag &= ~NODE_SCRIPT_AUTO_UPDATE;
+
+      /* replace text data-block by filepath */
+      if (node->id) {
+        Text *text = reinterpret_cast<Text *>(node->id);
+
+        if (value == NODE_SCRIPT_EXTERNAL && text->filepath) {
+          STRNCPY(nss->filepath, text->filepath);
+          BLI_path_rel(nss->filepath, BKE_main_blendfile_path_from_global());
+        }
+
+        id_us_min(node->id);
+        node->id = nullptr;
+      }
+
+      /* remove any bytecode */
+      if (nss->bytecode) {
+        MEM_freeN(nss->bytecode);
+        nss->bytecode = nullptr;
+      }
+
+      nss->bytecode_hash[0] = '\0';
+    }
+  }
+
+  static void rna_ShaderNodeScript_bytecode_get(PointerRNA * ptr, char *value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
+
+    strcpy(value, (nss->bytecode) ? nss->bytecode : "");
+  }
+
+  static int rna_ShaderNodeScript_bytecode_length(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
+
+    return (nss->bytecode) ? strlen(nss->bytecode) : 0;
+  }
+
+  static void rna_ShaderNodeScript_bytecode_set(PointerRNA * ptr, const char *value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
+
     if (nss->bytecode) {
       MEM_freeN(nss->bytecode);
+    }
+
+    if (value && value[0]) {
+      nss->bytecode = BLI_strdup(value);
+    }
+    else {
       nss->bytecode = nullptr;
     }
-
-    nss->bytecode_hash[0] = '\0';
-  }
-}
-
-static void rna_ShaderNodeScript_bytecode_get(PointerRNA *ptr, char *value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-
-  strcpy(value, (nss->bytecode) ? nss->bytecode : "");
-}
-
-static int rna_ShaderNodeScript_bytecode_length(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-
-  return (nss->bytecode) ? strlen(nss->bytecode) : 0;
-}
-
-static void rna_ShaderNodeScript_bytecode_set(PointerRNA *ptr, const char *value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeShaderScript *nss = static_cast<NodeShaderScript *>(node->storage);
-
-  if (nss->bytecode) {
-    MEM_freeN(nss->bytecode);
   }
 
-  if (value && value[0]) {
-    nss->bytecode = BLI_strdup(value);
-  }
-  else {
-    nss->bytecode = nullptr;
-  }
-}
+  static void rna_ShaderNodeScript_update(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+    RenderEngineType *engine_type = (scene != nullptr) ? RE_engines_find(scene->r.engine) :
+                                                         nullptr;
 
-static void rna_ShaderNodeScript_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-  RenderEngineType *engine_type = (scene != nullptr) ? RE_engines_find(scene->r.engine) : nullptr;
-
-  if (engine_type && engine_type->update_script_node) {
-    /* auto update node */
-    RenderEngine *engine = RE_engine_create(engine_type);
-    engine_type->update_script_node(engine, ntree, node);
-    RE_engine_free(engine);
-  }
-
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-}
-
-static void rna_ShaderNode_socket_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  rna_Node_update(bmain, scene, ptr);
-}
-
-void rna_Node_socket_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static void rna_CompositorNodeScale_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static void rna_ShaderNode_is_active_output_set(PointerRNA *ptr, bool value)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-  if (value) {
-    /* If this node becomes the active output, the others of the same type can't be the active
-     * output anymore. */
-    LISTBASE_FOREACH (bNode *, other_node, &ntree->nodes) {
-      if (other_node->type == node->type) {
-        other_node->flag &= ~NODE_DO_OUTPUT;
-      }
+    if (engine_type && engine_type->update_script_node) {
+      /* auto update node */
+      RenderEngine *engine = RE_engine_create(engine_type);
+      engine_type->update_script_node(engine, ntree, node);
+      RE_engine_free(engine);
     }
-    node->flag |= NODE_DO_OUTPUT;
-  }
-  else {
-    node->flag &= ~NODE_DO_OUTPUT;
-  }
-}
 
-static void rna_GroupOutput_is_active_output_set(PointerRNA *ptr, bool value)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  bNode *node = static_cast<bNode *>(ptr->data);
-  if (value) {
-    /* Make sure that no other group output is active at the same time. */
-    LISTBASE_FOREACH (bNode *, other_node, &ntree->nodes) {
-      if (other_node->type == NODE_GROUP_OUTPUT) {
-        other_node->flag &= ~NODE_DO_OUTPUT;
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  }
+
+  static void rna_ShaderNode_socket_update(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  void rna_Node_socket_update(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  static void rna_CompositorNodeScale_update(Main * bmain, Scene * scene, PointerRNA * ptr)
+  {
+    rna_Node_update(bmain, scene, ptr);
+  }
+
+  static void rna_ShaderNode_is_active_output_set(PointerRNA * ptr, bool value)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+    if (value) {
+      /* If this node becomes the active output, the others of the same type can't be the active
+       * output anymore. */
+      LISTBASE_FOREACH (bNode *, other_node, &ntree->nodes) {
+        if (other_node->type == node->type) {
+          other_node->flag &= ~NODE_DO_OUTPUT;
+        }
       }
+      node->flag |= NODE_DO_OUTPUT;
     }
-    node->flag |= NODE_DO_OUTPUT;
-  }
-  else {
-    node->flag &= ~NODE_DO_OUTPUT;
-  }
-}
-
-static PointerRNA rna_ShaderNodePointDensity_psys_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
-      node->storage);
-  Object *ob = reinterpret_cast<Object *>(node->id);
-  ParticleSystem *psys = nullptr;
-
-  if (ob && shader_point_density->particle_system) {
-    psys = static_cast<ParticleSystem *>(
-        BLI_findlink(&ob->particlesystem, shader_point_density->particle_system - 1));
+    else {
+      node->flag &= ~NODE_DO_OUTPUT;
+    }
   }
 
-  PointerRNA value = RNA_pointer_create(&ob->id, &RNA_ParticleSystem, psys);
-  return value;
-}
-
-static void rna_ShaderNodePointDensity_psys_set(PointerRNA *ptr,
-                                                PointerRNA value,
-                                                ReportList * /*reports*/)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
-      node->storage);
-  Object *ob = reinterpret_cast<Object *>(node->id);
-
-  if (ob && value.owner_id == &ob->id) {
-    shader_point_density->particle_system = BLI_findindex(&ob->particlesystem, value.data) + 1;
-  }
-  else {
-    shader_point_density->particle_system = 0;
-  }
-}
-
-static int point_density_particle_color_source_from_shader(
-    NodeShaderTexPointDensity *shader_point_density)
-{
-  switch (shader_point_density->color_source) {
-    case SHD_POINTDENSITY_COLOR_PARTAGE:
-      return TEX_PD_COLOR_PARTAGE;
-    case SHD_POINTDENSITY_COLOR_PARTSPEED:
-      return TEX_PD_COLOR_PARTSPEED;
-    case SHD_POINTDENSITY_COLOR_PARTVEL:
-      return TEX_PD_COLOR_PARTVEL;
-    default:
-      BLI_assert_msg(0, "Unknown color source");
-      return TEX_PD_COLOR_CONSTANT;
-  }
-}
-
-static int point_density_vertex_color_source_from_shader(
-    NodeShaderTexPointDensity *shader_point_density)
-{
-  switch (shader_point_density->ob_color_source) {
-    case SHD_POINTDENSITY_COLOR_VERTCOL:
-      return TEX_PD_COLOR_VERTCOL;
-    case SHD_POINTDENSITY_COLOR_VERTWEIGHT:
-      return TEX_PD_COLOR_VERTWEIGHT;
-    case SHD_POINTDENSITY_COLOR_VERTNOR:
-      return TEX_PD_COLOR_VERTNOR;
-    default:
-      BLI_assert_msg(0, "Unknown color source");
-      return TEX_PD_COLOR_CONSTANT;
-  }
-}
-
-void rna_ShaderNodePointDensity_density_cache(bNode *self, Depsgraph *depsgraph)
-{
-  NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
-      self->storage);
-  PointDensity *pd = &shader_point_density->pd;
-
-  if (depsgraph == nullptr) {
-    return;
+  static void rna_GroupOutput_is_active_output_set(PointerRNA * ptr, bool value)
+  {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    bNode *node = static_cast<bNode *>(ptr->data);
+    if (value) {
+      /* Make sure that no other group output is active at the same time. */
+      LISTBASE_FOREACH (bNode *, other_node, &ntree->nodes) {
+        if (other_node->type == NODE_GROUP_OUTPUT) {
+          other_node->flag &= ~NODE_DO_OUTPUT;
+        }
+      }
+      node->flag |= NODE_DO_OUTPUT;
+    }
+    else {
+      node->flag &= ~NODE_DO_OUTPUT;
+    }
   }
 
-  /* Make sure there's no cached data. */
-  BKE_texture_pointdensity_free_data(pd);
-  RE_point_density_free(pd);
+  static PointerRNA rna_ShaderNodePointDensity_psys_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
+        node->storage);
+    Object *ob = reinterpret_cast<Object *>(node->id);
+    ParticleSystem *psys = nullptr;
 
-  /* Create PointDensity structure from node for sampling. */
-  BKE_texture_pointdensity_init_data(pd);
-  pd->object = reinterpret_cast<Object *>(self->id);
-  pd->radius = shader_point_density->radius;
-  if (shader_point_density->point_source == SHD_POINTDENSITY_SOURCE_PSYS) {
-    pd->source = TEX_PD_PSYS;
-    pd->psys = shader_point_density->particle_system;
-    pd->psys_cache_space = TEX_PD_OBJECTSPACE;
-    pd->color_source = point_density_particle_color_source_from_shader(shader_point_density);
-  }
-  else {
-    BLI_assert(shader_point_density->point_source == SHD_POINTDENSITY_SOURCE_OBJECT);
-    pd->source = TEX_PD_OBJECT;
-    pd->ob_cache_space = TEX_PD_OBJECTSPACE;
-    pd->ob_color_source = point_density_vertex_color_source_from_shader(shader_point_density);
-    STRNCPY(pd->vertex_attribute_name, shader_point_density->vertex_attribute_name);
+    if (ob && shader_point_density->particle_system) {
+      psys = static_cast<ParticleSystem *>(
+          BLI_findlink(&ob->particlesystem, shader_point_density->particle_system - 1));
+    }
+
+    PointerRNA value = RNA_pointer_create(&ob->id, &RNA_ParticleSystem, psys);
+    return value;
   }
 
-  /* Store resolution, so it can be changed in the UI. */
-  shader_point_density->cached_resolution = shader_point_density->resolution;
+  static void rna_ShaderNodePointDensity_psys_set(
+      PointerRNA * ptr, PointerRNA value, ReportList * /*reports*/)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
+        node->storage);
+    Object *ob = reinterpret_cast<Object *>(node->id);
 
-  /* Single-threaded sampling of the voxel domain. */
-  RE_point_density_cache(depsgraph, pd);
-}
-
-void rna_ShaderNodePointDensity_density_calc(bNode *self,
-                                             Depsgraph *depsgraph,
-                                             float **values,
-                                             int *values_num)
-{
-  NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
-      self->storage);
-  PointDensity *pd = &shader_point_density->pd;
-  const int resolution = shader_point_density->cached_resolution;
-
-  if (depsgraph == nullptr) {
-    *values_num = 0;
-    return;
+    if (ob && value.owner_id == &ob->id) {
+      shader_point_density->particle_system = BLI_findindex(&ob->particlesystem, value.data) + 1;
+    }
+    else {
+      shader_point_density->particle_system = 0;
+    }
   }
 
-  /* TODO(sergey): Will likely overflow, but how to pass size_t via RNA? */
-  *values_num = 4 * resolution * resolution * resolution;
-
-  if (*values == nullptr) {
-    *values = static_cast<float *>(
-        MEM_mallocN(sizeof(float) * (*values_num), "point density dynamic array"));
+  static int point_density_particle_color_source_from_shader(NodeShaderTexPointDensity *
+                                                             shader_point_density)
+  {
+    switch (shader_point_density->color_source) {
+      case SHD_POINTDENSITY_COLOR_PARTAGE:
+        return TEX_PD_COLOR_PARTAGE;
+      case SHD_POINTDENSITY_COLOR_PARTSPEED:
+        return TEX_PD_COLOR_PARTSPEED;
+      case SHD_POINTDENSITY_COLOR_PARTVEL:
+        return TEX_PD_COLOR_PARTVEL;
+      default:
+        BLI_assert_msg(0, "Unknown color source");
+        return TEX_PD_COLOR_CONSTANT;
+    }
   }
 
-  /* Single-threaded sampling of the voxel domain. */
-  RE_point_density_sample(depsgraph, pd, resolution, *values);
-
-  /* We're done, time to clean up. */
-  BKE_texture_pointdensity_free_data(pd);
-  *pd = blender::dna::shallow_zero_initialize();
-
-  shader_point_density->cached_resolution = 0.0f;
-}
-
-void rna_ShaderNodePointDensity_density_minmax(bNode *self,
-                                               Depsgraph *depsgraph,
-                                               float r_min[3],
-                                               float r_max[3])
-{
-  NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
-      self->storage);
-  PointDensity *pd = &shader_point_density->pd;
-
-  if (depsgraph == nullptr) {
-    zero_v3(r_min);
-    zero_v3(r_max);
-    return;
+  static int point_density_vertex_color_source_from_shader(NodeShaderTexPointDensity *
+                                                           shader_point_density)
+  {
+    switch (shader_point_density->ob_color_source) {
+      case SHD_POINTDENSITY_COLOR_VERTCOL:
+        return TEX_PD_COLOR_VERTCOL;
+      case SHD_POINTDENSITY_COLOR_VERTWEIGHT:
+        return TEX_PD_COLOR_VERTWEIGHT;
+      case SHD_POINTDENSITY_COLOR_VERTNOR:
+        return TEX_PD_COLOR_VERTNOR;
+      default:
+        BLI_assert_msg(0, "Unknown color source");
+        return TEX_PD_COLOR_CONSTANT;
+    }
   }
 
-  RE_point_density_minmax(depsgraph, pd, r_min, r_max);
-}
+  void rna_ShaderNodePointDensity_density_cache(bNode * self, Depsgraph * depsgraph)
+  {
+    NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
+        self->storage);
+    PointDensity *pd = &shader_point_density->pd;
 
-static int rna_NodeConvertColorSpace_from_color_space_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
-  return IMB_colormanagement_colorspace_get_named_index(node_storage->from_color_space);
-}
+    if (depsgraph == nullptr) {
+      return;
+    }
 
-static void rna_NodeConvertColorSpace_from_color_space_set(PointerRNA *ptr, int value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
-  const char *name = IMB_colormanagement_colorspace_get_indexed_name(value);
+    /* Make sure there's no cached data. */
+    BKE_texture_pointdensity_free_data(pd);
+    RE_point_density_free(pd);
 
-  if (name && name[0]) {
-    STRNCPY(node_storage->from_color_space, name);
+    /* Create PointDensity structure from node for sampling. */
+    BKE_texture_pointdensity_init_data(pd);
+    pd->object = reinterpret_cast<Object *>(self->id);
+    pd->radius = shader_point_density->radius;
+    if (shader_point_density->point_source == SHD_POINTDENSITY_SOURCE_PSYS) {
+      pd->source = TEX_PD_PSYS;
+      pd->psys = shader_point_density->particle_system;
+      pd->psys_cache_space = TEX_PD_OBJECTSPACE;
+      pd->color_source = point_density_particle_color_source_from_shader(shader_point_density);
+    }
+    else {
+      BLI_assert(shader_point_density->point_source == SHD_POINTDENSITY_SOURCE_OBJECT);
+      pd->source = TEX_PD_OBJECT;
+      pd->ob_cache_space = TEX_PD_OBJECTSPACE;
+      pd->ob_color_source = point_density_vertex_color_source_from_shader(shader_point_density);
+      STRNCPY(pd->vertex_attribute_name, shader_point_density->vertex_attribute_name);
+    }
+
+    /* Store resolution, so it can be changed in the UI. */
+    shader_point_density->cached_resolution = shader_point_density->resolution;
+
+    /* Single-threaded sampling of the voxel domain. */
+    RE_point_density_cache(depsgraph, pd);
   }
-}
-static int rna_NodeConvertColorSpace_to_color_space_get(PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
-  return IMB_colormanagement_colorspace_get_named_index(node_storage->to_color_space);
-}
 
-static void rna_NodeConvertColorSpace_to_color_space_set(PointerRNA *ptr, int value)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
-  const char *name = IMB_colormanagement_colorspace_get_indexed_name(value);
+  void rna_ShaderNodePointDensity_density_calc(
+      bNode * self, Depsgraph * depsgraph, float **values, int *values_num)
+  {
+    NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
+        self->storage);
+    PointDensity *pd = &shader_point_density->pd;
+    const int resolution = shader_point_density->cached_resolution;
 
-  if (name && name[0]) {
-    STRNCPY(node_storage->to_color_space, name);
+    if (depsgraph == nullptr) {
+      *values_num = 0;
+      return;
+    }
+
+    /* TODO(sergey): Will likely overflow, but how to pass size_t via RNA? */
+    *values_num = 4 * resolution * resolution * resolution;
+
+    if (*values == nullptr) {
+      *values = static_cast<float *>(
+          MEM_mallocN(sizeof(float) * (*values_num), "point density dynamic array"));
+    }
+
+    /* Single-threaded sampling of the voxel domain. */
+    RE_point_density_sample(depsgraph, pd, resolution, *values);
+
+    /* We're done, time to clean up. */
+    BKE_texture_pointdensity_free_data(pd);
+    *pd = blender::dna::shallow_zero_initialize();
+
+    shader_point_density->cached_resolution = 0.0f;
   }
-}
 
-static void rna_reroute_node_socket_type_set(PointerRNA *ptr, const char *value)
-{
-  const bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  blender::bke::bNodeTreeType *ntree_type = ntree.typeinfo;
+  void rna_ShaderNodePointDensity_density_minmax(
+      bNode * self, Depsgraph * depsgraph, float r_min[3], float r_max[3])
+  {
+    NodeShaderTexPointDensity *shader_point_density = static_cast<NodeShaderTexPointDensity *>(
+        self->storage);
+    PointDensity *pd = &shader_point_density->pd;
 
-  bNode &node = *static_cast<bNode *>(ptr->data);
+    if (depsgraph == nullptr) {
+      zero_v3(r_min);
+      zero_v3(r_max);
+      return;
+    }
 
-  blender::bke::bNodeSocketType *socket_type = blender::bke::node_socket_type_find(value);
-  if (socket_type == nullptr) {
-    return;
+    RE_point_density_minmax(depsgraph, pd, r_min, r_max);
   }
-  if (socket_type->subtype != PROP_NONE) {
-    return;
+
+  static int rna_NodeConvertColorSpace_from_color_space_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
+    return IMB_colormanagement_colorspace_get_named_index(node_storage->from_color_space);
   }
-  if (ntree_type->valid_socket_type && !ntree_type->valid_socket_type(ntree_type, socket_type)) {
-    return;
+
+  static void rna_NodeConvertColorSpace_from_color_space_set(PointerRNA * ptr, int value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
+    const char *name = IMB_colormanagement_colorspace_get_indexed_name(value);
+
+    if (name && name[0]) {
+      STRNCPY(node_storage->from_color_space, name);
+    }
   }
-  NodeReroute *storage = static_cast<NodeReroute *>(node.storage);
-  STRNCPY(storage->type_idname, value);
-}
+  static int rna_NodeConvertColorSpace_to_color_space_get(PointerRNA * ptr)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
+    return IMB_colormanagement_colorspace_get_named_index(node_storage->to_color_space);
+  }
 
-static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bContext * /*C*/,
-                                                                           PointerRNA * /*ptr*/,
-                                                                           PropertyRNA * /*prop*/,
-                                                                           bool *r_free)
-{
-  EnumPropertyItem *items = nullptr;
-  int totitem = 0;
+  static void rna_NodeConvertColorSpace_to_color_space_set(PointerRNA * ptr, int value)
+  {
+    bNode *node = static_cast<bNode *>(ptr->data);
+    NodeConvertColorSpace *node_storage = static_cast<NodeConvertColorSpace *>(node->storage);
+    const char *name = IMB_colormanagement_colorspace_get_indexed_name(value);
 
-  IMB_colormanagement_colorspace_items_add(&items, &totitem);
-  RNA_enum_item_end(&items, &totitem);
+    if (name && name[0]) {
+      STRNCPY(node_storage->to_color_space, name);
+    }
+  }
 
-  *r_free = true;
+  static void rna_reroute_node_socket_type_set(PointerRNA * ptr, const char *value)
+  {
+    const bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+    blender::bke::bNodeTreeType *ntree_type = ntree.typeinfo;
 
-  return items;
-}
+    bNode &node = *static_cast<bNode *>(ptr->data);
 
-static NodeEnumItem *rna_NodeMenuSwitchItems_new(ID *id,
-                                                 bNode *node,
-                                                 Main *bmain,
-                                                 const char *name)
-{
-  NodeEnumItem *new_item =
-      blender::nodes::socket_items::add_item_with_name<MenuSwitchItemsAccessor>(*node, name);
+    blender::bke::bNodeSocketType *socket_type = blender::bke::node_socket_type_find(value);
+    if (socket_type == nullptr) {
+      return;
+    }
+    if (socket_type->subtype != PROP_NONE) {
+      return;
+    }
+    if (ntree_type->valid_socket_type && !ntree_type->valid_socket_type(ntree_type, socket_type)) {
+      return;
+    }
+    NodeReroute *storage = static_cast<NodeReroute *>(node.storage);
+    STRNCPY(storage->type_idname, value);
+  }
 
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  BKE_ntree_update_tag_node_property(ntree, node);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+  static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(
+      bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+  {
+    EnumPropertyItem *items = nullptr;
+    int totitem = 0;
 
-  return new_item;
-}
+    IMB_colormanagement_colorspace_items_add(&items, &totitem);
+    RNA_enum_item_end(&items, &totitem);
 
-static PointerRNA rna_NodeMenuSwitch_enum_definition_get(PointerRNA *ptr)
-{
-  /* Return node itself. The data is now directly available on the node and does not have to be
-   * accessed through "enum_definition". */
-  return *ptr;
-}
+    *r_free = true;
+
+    return items;
+  }
+
+  static NodeEnumItem *rna_NodeMenuSwitchItems_new(
+      ID * id, bNode * node, Main * bmain, const char *name)
+  {
+    NodeEnumItem *new_item =
+        blender::nodes::socket_items::add_item_with_name<MenuSwitchItemsAccessor>(*node, name);
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+    return new_item;
+  }
+
+  static PointerRNA rna_NodeMenuSwitch_enum_definition_get(PointerRNA * ptr)
+  {
+    /* Return node itself. The data is now directly available on the node and does not have to be
+     * accessed through "enum_definition". */
+    return *ptr;
+  }
 
 #else
 
@@ -7649,51 +7640,55 @@ static void def_cmp_crop(StructRNA *srna)
 
   prop = RNA_def_property(srna, "min_x", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "x1");
+  RNA_def_property_int_funcs(prop, nullptr, "rna_NodeCrop_min_x_set", nullptr);
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "X1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "max_x", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "x2");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "X2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "min_y", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "y1");
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "Y1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "max_y", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "y2");
+  RNA_def_property_int_funcs(prop, nullptr, "rna_NodeCrop_max_y_set", nullptr);
   RNA_def_property_range(prop, 0, 10000);
   RNA_def_property_ui_text(prop, "Y2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_min_x", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_x1");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NodeCrop_rel_min_x_set", nullptr);
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "X1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_max_x", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_x2");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "X2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_min_y", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_y1");
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "Y1", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "rel_max_y", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "fac_y2");
+  RNA_def_property_float_funcs(prop, nullptr, "rna_NodeCrop_rel_max_y_set", nullptr);
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(prop, "Y2", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_Crop_update");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_cmp_dblur(StructRNA *srna)
