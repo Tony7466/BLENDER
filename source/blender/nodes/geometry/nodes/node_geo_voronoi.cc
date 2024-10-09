@@ -194,7 +194,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     site_geometry.keep_only_during_modify({GeometryComponent::Type::Mesh});
   } else {
     params.error_message_add(NodeWarningType::Error,
-                           TIP_("Input should contain a mesh to compute Voronoi"));
+                           TIP_("Input should contain one of the following to compute the Voronoi: mesh, point cloud, curve"));
   }
 
   params.set_output("Voronoi", std::move(site_geometry));
