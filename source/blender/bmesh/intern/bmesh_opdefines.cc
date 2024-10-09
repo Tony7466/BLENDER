@@ -563,9 +563,9 @@ static BMOpDefine bmo_join_triangles_def = {
    {"angle_face_threshold", BMO_OP_SLOT_FLT},
    {"angle_shape_threshold", BMO_OP_SLOT_FLT},
    {"topology_influence", BMO_OP_SLOT_FLT},
-   {"select_leftover_triangles", BMO_OP_SLOT_BOOL},
+   {"deselect_joined", BMO_OP_SLOT_BOOL},
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
-   {"merge_cap", BMO_OP_SLOT_INT},
+   {"merge_limit", BMO_OP_SLOT_INT},
    {"neighbor_debug", BMO_OP_SLOT_INT},
 #endif
    {{'\0'}},

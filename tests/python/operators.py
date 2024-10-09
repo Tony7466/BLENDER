@@ -499,21 +499,21 @@ def main():
         SpecMeshTest(
             "TrisToQuads 10 deg no topo", "testPlanesTrisToQuad", "expectedPlanesTrisToQuad.10.notopo",
             [OperatorSpecEditMode("tris_convert_to_quads", {"face_threshold": 0.174533, "shape_threshold": 0.174533,
-                                                            "topology_influence": 0, "select_leftover_triangles": False,
+                                                            "topology_influence": 0, "deselect_joined": False,
                                                             "uvs": True, "vcols": True, "seam": True, "sharp": True, "materials": True}, "VERT", {i for i in range(42)})],
         ),
 
         SpecMeshTest(
             "TrisToQuads 180 deg no topo", "testPlanesTrisToQuad", "expectedPlanesTrisToQuad.180.notopo",
             [OperatorSpecEditMode("tris_convert_to_quads", {"face_threshold": 3.14159, "shape_threshold": 3.14159,
-                                                            "topology_influence": 0, "select_leftover_triangles": False,
+                                                            "topology_influence": 0, "deselect_joined": False,
                                                             "uvs": True, "vcols": True, "seam": True, "sharp": True, "materials": True}, "VERT", {i for i in range(42)})],
         ),
 
         SpecMeshTest(
             "TrisToQuads 180 deg topo", "testPlanesTrisToQuad", "expectedPlanesTrisToQuad.180.topo",
             [OperatorSpecEditMode("tris_convert_to_quads", {"face_threshold": 3.14159, "shape_threshold": 3.14159,
-                                                            "topology_influence": 100, "select_leftover_triangles": False,
+                                                            "topology_influence": 1, "deselect_joined": False,
                                                             "uvs": True, "vcols": True, "seam": True, "sharp": True, "materials": True}, "VERT", {i for i in range(42)})],
         ),
 

@@ -5268,12 +5268,12 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
   }
 
 #ifdef USE_JOIN_TRIANGLE_TESTING_API
-  int merge_cap = RNA_int_get(op->ptr, "merge_cap");
+  int merge_limit = RNA_int_get(op->ptr, "merge_limit");
   int neighbor_debug = RNA_int_get(op->ptr, "neighbor_debug");
 #endif
 
   float topology_influence = RNA_float_get(op->ptr, "topology_influence");
-  const bool select_leftover_triangles = RNA_boolean_get(op->ptr, "select_leftover_triangles");
+  const bool deselect_joined = RNA_boolean_get(op->ptr, "deselect_joined");
 
   for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -5284,10 +5284,10 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 
     BM_custom_loop_normals_to_vector_layer(em->bm);
 
-    bool extend_selection = (select_leftover_triangles == false);
+    bool extend_selection = (deselect_joined == false);
 
 #ifdef USE_JOIN_TRIANGLE_TESTING_API
-    if (merge_cap != -1) {
+    if (merge_limit != -1) {
       extend_selection = false;
     }
 #endif
@@ -5300,9 +5300,9 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
             "join_triangles faces=%hf angle_face_threshold=%f angle_shape_threshold=%f "
             "cmp_seam=%b cmp_sharp=%b cmp_uvs=%b cmp_vcols=%b cmp_materials=%b "
 #ifdef USE_JOIN_TRIANGLE_TESTING_API
-            "merge_cap=%i neighbor_debug=%i "
+            "merge_limit=%i neighbor_debug=%i "
 #endif
-            "topology_influence=%f select_leftover_triangles=%b",
+            "topology_influence=%f deselect_joined=%b",
             BM_ELEM_SELECT,
             angle_face_threshold,
             angle_shape_threshold,
@@ -5312,11 +5312,11 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
             do_vcols,
             do_materials,
 #ifdef USE_JOIN_TRIANGLE_TESTING_API
-            merge_cap + 1,
+            merge_limit + 1,
             neighbor_debug,
 #endif
             topology_influence,
-            select_leftover_triangles))
+            deselect_joined))
     {
       continue;
     }
@@ -5339,25 +5339,25 @@ static void join_triangle_props(wmOperatorType *ot)
 
 #ifdef USE_JOIN_TRIANGLE_TESTING_API
   prop = RNA_def_int(ot->srna,
-                     "merge_cap",
+                     "merge_limit",
                      0,
                      -1,
-                     2147483647,
-                     "Merge Cap",
+                     INT_MAX,
+                     "Merge Limit",
                      "Maximum number of merges",
                      -1,
-                     2147483647);
+                     INT_MAX);
   RNA_def_property_int_default(prop, -1);
 
   prop = RNA_def_int(ot->srna,
                      "neighbor_debug",
                      0,
                      0,
-                     2147483647,
+                     INT_MAX,
                      "Neighbor Debug",
                      "Neighbor to highlight",
                      0,
-                     2147483647);
+                     INT_MAX);
   RNA_def_property_int_default(prop, 0);
 #endif
 
@@ -5404,11 +5404,11 @@ static void join_triangle_props(wmOperatorType *ot)
 
   RNA_def_boolean(
       ot->srna,
-      "select_leftover_triangles",
+      "deselect_joined",
       false,
-      "Select Only Leftover Triangles",
+      "Deselect Joined",
       "If false, the selection will be preserved.\n"
-      "If true, the selection will be changed to highlight the remaining unmergable triangles ");
+      "If true, the selection will be changed to highlight only the remaining unmergable triangles ");
 }
 
 void MESH_OT_tris_convert_to_quads(wmOperatorType *ot)

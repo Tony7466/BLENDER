@@ -41,11 +41,11 @@
 /* USE_JOIN_TRIANGLE_INTERACTIVE_TESTING allows the developer to interrupt the operator midway
  * through to visualize and debug the actions being taken by the merge algorithm.
  *
- * this flag can be turned on on all debug builds, even when the merge_cap or neighbor_debug
+ * this flag can be turned on on all debug builds, even when the merge_limit or neighbor_debug
  * parameters might not be being passed.  For example, if the API interface is turned off in
  * editmesh_tools.cc, or if join_triangles is called from other operators such as convex_hull that
- * don't expose the testing API, the testing code still behaves. When merge_cap and neighbor_debug
- * are left unset, the default values pick the normal processing path.
+ * don't expose the testing API, the testing code still behaves. When merge_limit and
+ * neighbor_debug are left unset, the default values pick the normal processing path.
  *
  * Usage:
  *   merge cap selects how many merges are performed before stopping in the middle to visualize
@@ -63,7 +63,7 @@
  *   merge cap = 0 stops before the first merge.  neighbor_debug can be stepped to diagnose every
  *   neighbor improvement that occurs as a result of the pre-existing quads in the mesh (valid
  *   range for neighbor_debug = 0...8*(num of selected pre-existing quads)
- *   merge_cap = 1, 2, 3... stops after the specified number of merges.  neighbor_debug shows
+ *   merge_limit = 1, 2, 3... stops after the specified number of merges.  neighbor_debug shows
  *   the neighbor improvements for the last quad that merged.  (Valid range 0...8)
  *
  * To turn on interactive testing, the developer needs to:
@@ -111,7 +111,7 @@ struct JoinEdgesState {
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   /** This is a count of the number of merges to allow before stopping.
    * This is a UI parameter set by the user when debugging. */
-  int debug_merge_cap;
+  int debug_merge_limit;
 
   /** This is a count of how many merges have been processed so far. */
   int debug_merge_count;
@@ -888,10 +888,10 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
   /* Reprioritize each neighbor. */
   for (int n = 0; n < neighbor_count; n++) {
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
-    s.debug_this_step = (s.debug_merge_cap > 0 && s.debug_merge_count == s.debug_merge_cap &&
+    s.debug_this_step = (s.debug_merge_limit > 0 && s.debug_merge_count == s.debug_merge_limit &&
                          n + 1 == s.debug_neighbor) ||
                         (++s.debug_neighbor_global_count == s.debug_neighbor &&
-                         s.debug_merge_cap == 0);
+                         s.debug_merge_limit == 0);
 #endif
     reprioritize_join(s, merge_edges[n], shared_loops[n], quad_vecs, face_error, face->no);
   }
@@ -922,7 +922,7 @@ static BMFace *join_edge(JoinEdgesState &s, BMEdge *e)
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   /* Stop doing merges in the middle of processing if we reached a user limit.
    * This is allowed so a developer can check steps in the process of the algorithm. */
-  if (++s.debug_merge_count > s.debug_merge_cap && s.debug_merge_cap != -1) {
+  if (++s.debug_merge_count > s.debug_merge_limit && s.debug_merge_limit != -1) {
     return nullptr;
   }
 #endif
@@ -941,7 +941,7 @@ static BMFace *join_edge(JoinEdgesState &s, BMEdge *e)
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   /* If stopping partway through, clear the selection entirely, and instead
    * highlight the faces being considered in the step the user is checking.  */
-  if (s.debug_merge_cap != -1 && s.debug_merge_count == s.debug_merge_cap) {
+  if (s.debug_merge_limit != -1 && s.debug_merge_count == s.debug_merge_limit) {
     BMEdge *face;
     BMIter iter;
     BM_ITER_MESH (face, &iter, s.bm, BM_FACES_OF_MESH) {
@@ -972,10 +972,10 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   s.use_topo_influence = (s.topo_influnce != 0);
   s.heap = BLI_heap_new();
   s.index.clear_and_shrink();
-  s.select_tris_only = BMO_slot_bool_get(op->slots_in, "select_leftover_triangles");
+  s.select_tris_only = BMO_slot_bool_get(op->slots_in, "deselect_joined");
 
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
-  s.debug_merge_cap = BMO_slot_int_get(op->slots_in, "merge_cap") - 1;
+  s.debug_merge_limit = BMO_slot_int_get(op->slots_in, "merge_limit") - 1;
   s.debug_neighbor = BMO_slot_int_get(op->slots_in, "neighbor_debug");
   s.debug_merge_count = 0;
   s.debug_neighbor_global_count = 0;
@@ -1064,7 +1064,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
     /* If we're supposed to stop partway though, do that.
      * This allows a developer to inspect the mesh at intermediate stages of processing. */
-    if (s.debug_merge_cap != -1 && s.debug_merge_count >= s.debug_merge_cap) {
+    if (s.debug_merge_limit != -1 && s.debug_merge_count >= s.debug_merge_limit) {
       break;
     }
 #endif
@@ -1072,7 +1072,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 
 #ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
   /* Expect a full processing to have occurred, ONLY if we didn't stop partway through. */
-  if (!(s.debug_merge_cap != -1 && s.debug_merge_count >= s.debug_merge_cap)) {
+  if (!(s.debug_merge_limit != -1 && s.debug_merge_count >= s.debug_merge_limit)) {
     BLI_assert(BLI_heap_is_empty(s.heap));
     BLI_assert(s.index.is_empty());
   }
