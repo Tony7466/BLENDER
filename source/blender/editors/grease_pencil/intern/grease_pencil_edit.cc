@@ -1131,6 +1131,7 @@ static void GREASE_PENCIL_OT_stroke_switch_direction(wmOperatorType *ot)
 static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
                                            const IndexMask &mask)
 {
+  std::cout << "\n\n\n\n ##### begin set_start_point() call #####\n";
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
   Array<bool> start_set_points(curves.points_num());
@@ -1147,11 +1148,14 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
     int first_selected = curve_i_selected_points.first_index_try(true);
 
     if (first_selected == -1 || src_cyclic[curve_i] == false) {
+      std::cout << "\nnon-cyclic or none selected: ";
       for (const int src_point : points) {
+        std::cout << src_point << ", ";
         dst_to_src_point[curr_dst_point_id++] = src_point;
       }
       continue;
     }
+    std::cout << "\ncyclic: \n";
     std::cout << "\ndst_to_src_point.size(): " << dst_to_src_point.size();
     std::cout << "\npoints.size(): " << points.size();
     std::cout << "\nfirst_selected: " << first_selected;
@@ -1172,9 +1176,9 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
     }
   }
 
-  std::cout << "\ndst_to_src_point:\n";
+  std::cout << "\n\nfinal dst_to_src_point map:\n";
   for (int i : dst_to_src_point) {
-    std::cout << i << " ,";
+    std::cout << i << ", ";
   }
 
   std::cout << "\ndst_to_src_point[0]: " << dst_to_src_point[0] << "\n";
@@ -1184,6 +1188,17 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
   // maybe see the discussion about replacing instead of creating new
   bke::CurvesGeometry dst_curves(curves.points_num(), curves.curves_num());
   BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
+
+  // copy offsets
+  // ok interesting, not sure if there's a clear way to do a direct copy. Most use cases involve
+  // changing the offsets. is there an existing use-case where the offsets are copied but not
+  // changed, other than constructing a new CurvesGeometry?
+  // duh, maybe there is a clear way. why not just use the read accessor same as I use a write
+  // accessor?
+  MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
+  Span<int> src_offsets = curves.offsets();
+  array_utils::copy(src_offsets, dst_offsets);
+  // need the offset_indices::accumulate_counts_to_offsets()?
 
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
@@ -1232,6 +1247,30 @@ static int grease_pencil_set_start_point_exec(bContext *C, wmOperator *)
         // doesn't matter here, def have to call for each drawing, curves are below drawing.
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
         curves = set_start_point(curves, selection);
+
+        std::cout << "\n\nset_start_point() returned, now in exec wrapper debugging: \n\ncurves "
+                     ": ";
+
+        for (int curve_i : curves.curves_range()) {
+          std::cout << curve_i << ", ";
+        }
+
+        std::cout << "\n\noffsets: ";
+        const OffsetIndices<int> print_point_curves = curves.points_by_curve();
+        Span<int> offset_data = print_point_curves.data();
+        for (int i = 0; i < print_point_curves.size() + 1; i++)
+        {  // weird that it works like this but not i == print_point_curves.size
+          std::cout << offset_data[i] << ", ";
+        }
+
+        std::cout << "\n\npoints by curve:";
+        for (int curve_i : curves.curves_range()) {
+          std::cout << "\ncurve " << curve_i << ":\n";
+          IndexRange print_points = print_point_curves[curve_i];
+          for (int index : print_points) {
+            std::cout << index << ", ";
+          }
+        }
 
         info.drawing.tag_topology_changed();
         changed = true;
