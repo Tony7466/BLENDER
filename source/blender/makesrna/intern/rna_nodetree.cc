@@ -6764,11 +6764,11 @@ static void def_cmp_image(StructRNA *srna)
 
 #  if 0
   static const EnumPropertyItem type_items[] = {
-    {IMA_SRC_FILE, "IMAGE", 0, "Image", ""},
-    {IMA_SRC_MOVIE, "MOVIE", "Movie", ""},
-    {IMA_SRC_SEQUENCE, "SEQUENCE", "Sequence", ""},
-    {IMA_SRC_GENERATED, "GENERATED", "Generated", ""},
-    {0, nullptr, 0, nullptr, nullptr},
+      {IMA_SRC_FILE, "IMAGE", 0, "Image", ""},
+      {IMA_SRC_MOVIE, "MOVIE", "Movie", ""},
+      {IMA_SRC_SEQUENCE, "SEQUENCE", "Sequence", ""},
+      {IMA_SRC_GENERATED, "GENERATED", "Generated", ""},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 #  endif
 
@@ -8489,10 +8489,10 @@ static void def_cmp_bokehblur(StructRNA *srna)
   RNA_def_property_float_sdna(prop, nullptr, "custom3");
   RNA_def_property_range(prop, 0.0f, 128.0f);
   RNA_def_property_ui_text(
-                           prop,
-                           "F-Stop",
-                           "Amount of focal blur, 128 (infinity) is perfect focus, half the value doubles "
-                           "the blur radius");
+      prop,
+      "F-Stop",
+      "Amount of focal blur, 128 (infinity) is perfect focus, half the value doubles "
+      "the blur radius");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 #  endif
 
