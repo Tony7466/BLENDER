@@ -869,4 +869,6 @@ class PhysicsComponent : public GeometryComponent {
   static constexpr inline GeometryComponent::Type static_type = Type::Physics;
 };
 
+bool attribute_is_builtin_on_component_type(const GeometryComponent::Type type, StringRef name);
+
 }  // namespace blender::bke
