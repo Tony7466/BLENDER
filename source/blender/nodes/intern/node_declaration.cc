@@ -94,7 +94,9 @@ void NodeDeclarationBuilder::build_remaining_anonymous_attribute_relations()
 void NodeDeclarationBuilder::finalize()
 {
   this->build_remaining_anonymous_attribute_relations();
-  BLI_assert(declaration_.is_valid());
+#ifndef NDEBUG
+  declaration_.assert_valid();
+#endif
 }
 
 NodeDeclarationBuilder::NodeDeclarationBuilder(NodeDeclaration &declaration,
@@ -157,10 +159,47 @@ std::ostream &operator<<(std::ostream &stream, const RelationsInNode &relations)
 
 }  // namespace anonymous_attribute_lifetime
 
-bool NodeDeclaration::is_valid() const
+static void assert_valid_panels_recursive(const NodeDeclaration &node_decl,
+                                          const Span<const ItemDeclaration *> items,
+                                          Vector<const SocketDeclaration *> &r_flat_inputs,
+                                          Vector<const SocketDeclaration *> &r_flat_outputs)
 {
-  /* TODO: Rewrite check. */
-  return true;
+  /* Expected item order unless any order is allowed: outputs, inputs, panels. */
+  bool found_input = false;
+  bool found_panel = false;
+
+  for (const ItemDeclaration *item_decl : items) {
+    if (const auto *socket_decl = dynamic_cast<const SocketDeclaration *>(item_decl)) {
+      if (socket_decl->in_out == SOCK_IN) {
+        BLI_assert(node_decl.allow_any_socket_order || !found_panel);
+        found_input = true;
+        r_flat_inputs.append(socket_decl);
+      }
+      else {
+        BLI_assert(node_decl.allow_any_socket_order || (!found_input && !found_panel));
+        r_flat_outputs.append(socket_decl);
+      }
+    }
+    else if (const auto *panel_decl = dynamic_cast<const PanelDeclaration *>(item_decl)) {
+      found_panel = true;
+      assert_valid_panels_recursive(node_decl, panel_decl->items, r_flat_inputs, r_flat_outputs);
+    }
+  }
+}
+
+void NodeDeclaration::assert_valid() const
+{
+  if (!this->use_custom_socket_order) {
+    /* Skip validation for conventional socket layouts. Those are reordered in drawing code. */
+    return;
+  }
+
+  Vector<const SocketDeclaration *> flat_inputs;
+  Vector<const SocketDeclaration *> flat_outputs;
+  assert_valid_panels_recursive(*this, this->root_items, flat_inputs, flat_outputs);
+
+  BLI_assert(this->inputs.as_span() == flat_inputs);
+  BLI_assert(this->outputs.as_span() == flat_outputs);
 }
 
 bool NodeDeclaration::matches(const bNode &node) const
