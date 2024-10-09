@@ -950,8 +950,8 @@ static void update_collapsed_sockets_recursive_inner(
     if (const auto *socket_decl = dynamic_cast<const nodes::SocketDeclaration *>(item_decl)) {
       bNodeSocket &socket = node.socket_by_decl(*socket_decl);
       const int socket_x = socket.in_out == SOCK_IN ? node_left_x : node_left_x + NODE_WIDTH(node);
-      socket.runtime->location = float2(round(socket_x),
-                                        round(*visible_panel_runtime.header_center_y));
+      socket.runtime->location = math::round(
+          float2(socket_x, *visible_panel_runtime.header_center_y));
       socket.flag |= SOCK_PANEL_COLLAPSED;
     }
     else if (const auto *sub_panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl))
