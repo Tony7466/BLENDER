@@ -2369,16 +2369,11 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
         }
         return base_filter.get().filter(name);
       };
+  RealizeInstancesOptions local_options = options;
+  local_options.attribute_filter = filter;
 
-  Map<StringRef, AttributeKind> attributes_to_propagate;
-  gather_attributes_for_propagation(in_geometry_set,
-                                    src_component_types,
-                                    bke::GeometryComponent::Type::Physics,
-                                    varied_depth_options.depths,
-                                    varied_depth_options.selection,
-                                    filter,
-                                    attributes_to_propagate);
-  // r_create_id = attributes_to_propagate.pop_try("id").has_value();
+  Map<StringRef, AttributeKind> attributes_to_propagate = gather_attributes_to_propagate(
+      in_geometry_set, bke::GeometryComponent::Type::Physics, local_options, varied_depth_options);
 
   OrderedAttributes ordered_attributes;
   for (auto &&item : attributes_to_propagate.items()) {
@@ -2405,7 +2400,6 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
                                          const RealizeInstancesOptions &options,
                                          const VariedDepthOptions &varied_depth_option)
 {
-  UNUSED_VARS(varied_depth_option);
   AllPhysicsInfo info;
 
   gather_physics_to_realize(geometry_set, info.order);

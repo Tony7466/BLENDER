@@ -722,6 +722,10 @@ bool attribute_is_builtin_on_component_type(const GeometryComponent::Type type,
       return grease_pencil_component->attributes()->is_builtin(name) ||
              curves_component->attributes()->is_builtin(name);
     }
+    case GeometryComponent::Type::Physics: {
+      static auto component = GeometryComponent::create(type);
+      return component->attributes()->is_builtin(name);
+    }
     case GeometryComponent::Type::Volume:
     case GeometryComponent::Type::Edit: {
       return false;
