@@ -422,6 +422,11 @@ class SeparatorDeclaration : public ItemDeclaration {};
 class LayoutDeclaration : public ItemDeclaration {
  public:
   std::function<DrawNodeLayoutFn> draw;
+  /**
+   * Sometimes the default layout has special handling (e.g. choose between #draw_buttons and
+   * #draw_buttons_ex).
+   */
+  bool is_default = false;
 };
 
 /**
@@ -434,7 +439,6 @@ class PanelDeclaration : public ItemDeclaration {
   std::string description;
   std::string translation_context;
   bool default_collapsed = false;
-  std::function<DrawNodeLayoutFn> draw_buttons;
   Vector<ItemDeclaration *> items;
   /** Index in the list of panels on the node. */
   int index = -1;
@@ -516,7 +520,6 @@ class PanelDeclarationBuilder : public DeclarationListBuilder {
 
   Self &description(std::string value = "");
   Self &default_closed(bool closed);
-  Self &draw_buttons(std::function<DrawNodeLayoutFn> fn);
 };
 
 using PanelDeclarationPtr = std::unique_ptr<PanelDeclaration>;

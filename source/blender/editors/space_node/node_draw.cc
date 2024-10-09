@@ -566,6 +566,7 @@ struct Socket {
   static constexpr Type type = Type::Socket;
   bNodeSocket *input = nullptr;
   bNodeSocket *output = nullptr;
+  const nodes::PanelDeclaration *panel_decl = nullptr;
 };
 struct Separator {
   static constexpr Type type = Type::Separator;
@@ -697,6 +698,7 @@ static void add_serial_items_for_layout(const bNode &node,
 
 static void add_serial_items_for_socket(bNode &node,
                                         const nodes::SocketDeclaration &socket_decl,
+                                        const nodes::PanelDeclaration *panel_decl,
                                         Vector<SerialNodeItem> &r_items)
 {
   bNodeSocket &socket = node.socket_by_decl(socket_decl);
@@ -712,6 +714,7 @@ static void add_serial_items_for_socket(bNode &node,
     BLI_assert(!item.output);
     item.output = &socket;
   }
+  item.panel_decl = panel_decl;
 }
 
 static void add_serial_items_for_panel(bNode &node,
@@ -730,7 +733,7 @@ static void add_serial_items_for_panel(bNode &node,
   r_items.append({serial_item::PanelContentBegin{&panel_decl}});
   for (const nodes::ItemDeclaration *item_decl : panel_decl.items) {
     if (const auto *socket_decl = dynamic_cast<const nodes::SocketDeclaration *>(item_decl)) {
-      add_serial_items_for_socket(node, *socket_decl, r_items);
+      add_serial_items_for_socket(node, *socket_decl, &panel_decl, r_items);
     }
     else if (const auto *sub_panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl))
     {
@@ -758,7 +761,7 @@ static Vector<SerialNodeItem> make_serial_node_items(bNode &node)
   Vector<SerialNodeItem> items;
   for (const nodes::ItemDeclaration *item_decl : node.declaration()->root_items) {
     if (const auto *socket_decl = dynamic_cast<const nodes::SocketDeclaration *>(item_decl)) {
-      add_serial_items_for_socket(node, *socket_decl, items);
+      add_serial_items_for_socket(node, *socket_decl, nullptr, items);
     }
     else if (const auto *panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl)) {
       add_serial_items_for_panel(node, *panel_decl, panel_visibility, items);
@@ -784,13 +787,13 @@ static float get_margin_from_top(const Span<SerialNodeItem> items)
   const serial_item::Type first_item_type = first_item.type();
   switch (first_item_type) {
     case serial_item::Type::Socket:
-      return NODE_DYS / 2;
+      return 2 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::Separator:
       return NODE_ITEM_SPACING_Y / 2;
     case serial_item::Type::Layout:
-      return 0;
+      return 3 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::PanelHeader:
-      return NODE_DYS / 2;
+      return 4 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::PanelContentBegin:
     case serial_item::Type::PanelContentEnd:
       break;
@@ -811,7 +814,7 @@ static float get_margin_to_bottom(const Span<SerialNodeItem> items)
     case serial_item::Type::Layout:
       return 5 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::PanelHeader:
-      return 5 * NODE_ITEM_SPACING_Y;
+      return 4 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::PanelContentBegin:
       break;
     case serial_item::Type::PanelContentEnd:
@@ -838,37 +841,37 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
         case Type::Separator:
           return 0;
         case Type::Layout:
-          return NODE_ITEM_SPACING_Y;
+          return 2 * NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
           return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
-          return NODE_ITEM_SPACING_Y;
+          break;
         case Type::PanelContentEnd:
-          return NODE_ITEM_SPACING_Y;
+          return 2 * NODE_ITEM_SPACING_Y;
       }
       break;
     }
     case Type::Layout: {
       switch (next_type) {
         case Type::Socket:
-          return NODE_ITEM_SPACING_Y;
+          return 2 * NODE_ITEM_SPACING_Y;
         case Type::Separator:
           return 0;
         case Type::Layout:
           return NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
-          return NODE_ITEM_SPACING_Y;
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
-          return NODE_ITEM_SPACING_Y;
+          break;
         case Type::PanelContentEnd:
-          return NODE_ITEM_SPACING_Y;
+          return 2 * NODE_ITEM_SPACING_Y;
       }
       break;
     }
     case Type::Separator: {
       switch (next_type) {
         case Type::Socket:
-          return NODE_ITEM_SPACING_Y;
+          return 2 * NODE_ITEM_SPACING_Y;
         case Type::Separator:
           return NODE_ITEM_SPACING_Y;
         case Type::Layout:
@@ -876,7 +879,7 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
         case Type::PanelHeader:
           return NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
-          return NODE_ITEM_SPACING_Y;
+          break;
         case Type::PanelContentEnd:
           return NODE_ITEM_SPACING_Y;
       }
@@ -902,13 +905,13 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
     case Type::PanelContentBegin: {
       switch (next_type) {
         case Type::Socket:
-          return NODE_ITEM_SPACING_Y;
+          return 2 * NODE_ITEM_SPACING_Y;
         case Type::Separator:
           return NODE_ITEM_SPACING_Y;
         case Type::Layout:
-          return NODE_ITEM_SPACING_Y;
+          return 2 * NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
-          return NODE_ITEM_SPACING_Y;
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
           break;
         case Type::PanelContentEnd:
@@ -1049,8 +1052,8 @@ static void node_update_basis_from_declaration(
           if constexpr (std::is_same_v<ItemT, serial_item::Socket>) {
             bNodeSocket *input_socket = item.input;
             bNodeSocket *output_socket = item.output;
-            /* TODO: Parent label. */
-            const char *parent_label = "";
+            const nodes::PanelDeclaration *panel_decl = item.panel_decl;
+            const char *parent_label = panel_decl ? panel_decl->name.c_str() : "";
             node_update_basis_socket(
                 C, ntree, node, parent_label, input_socket, output_socket, block, locx, locy);
           }
@@ -2616,7 +2619,7 @@ static void node_draw_panels_background(const bNode &node)
   BLI_assert(is_node_panels_supported(node));
 
   float panel_color[4];
-  UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, panel_color);
+  UI_GetThemeColorShade4fv(TH_NODE, -15, panel_color);
   const rctf &totr = node.runtime->totr;
 
   const nodes::PanelDeclaration *final_panel_decl = nullptr;

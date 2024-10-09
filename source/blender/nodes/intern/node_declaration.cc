@@ -426,6 +426,7 @@ void DeclarationListBuilder::add_default_layout()
     const bNode &node = *static_cast<bNode *>(ptr->data);
     node.typeinfo->draw_buttons(layout, C, ptr);
   });
+  static_cast<LayoutDeclaration &>(*this->items.last()).is_default = true;
 }
 
 void DeclarationListBuilder::add_layout(
@@ -814,12 +815,6 @@ PanelDeclarationBuilder &PanelDeclarationBuilder::description(std::string value)
 PanelDeclarationBuilder &PanelDeclarationBuilder::default_closed(bool closed)
 {
   decl_->default_collapsed = closed;
-  return *this;
-}
-
-PanelDeclarationBuilder &PanelDeclarationBuilder::draw_buttons(std::function<DrawNodeLayoutFn> fn)
-{
-  decl_->draw_buttons = std::move(fn);
   return *this;
 }
 
