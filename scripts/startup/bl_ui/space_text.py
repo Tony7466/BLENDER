@@ -414,6 +414,10 @@ class TEXT_MT_edit(Menu):
 
         layout.separator()
 
+        prefs = _context.preferences
+        edit = prefs.edit
+        layout.prop(edit, "use_text_edit_auto_close")
+
         layout.operator("text.autocomplete")
 
         layout.separator()
