@@ -1131,7 +1131,6 @@ static void GREASE_PENCIL_OT_stroke_switch_direction(wmOperatorType *ot)
 static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
                                            const IndexMask &mask)
 {
-  std::cout << "\n\n\n\n ##### begin set_start_point() call #####\n";
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> src_cyclic = curves.cyclic();
   Array<bool> start_set_points(curves.points_num());
@@ -1140,29 +1139,17 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
   int curr_dst_point_id = 0;
   Array<int> dst_to_src_point(curves.points_num());
 
-  // I'm pretty sure there's a wildly more efficient way to do this but I'll start with what I know
-  // works then iterate
+  // map 1:1 for stuff that isn't changing
   for (const int curve_i : curves.curves_range()) {
     const IndexRange points = points_by_curve[curve_i];
     const Span<bool> curve_i_selected_points = start_set_points.as_span().slice(points);
     int first_selected = curve_i_selected_points.first_index_try(true);
 
     if (first_selected == -1 || src_cyclic[curve_i] == false) {
-      std::cout << "\nnon-cyclic or none selected: ";
       for (const int src_point : points) {
-        std::cout << src_point << ", ";
         dst_to_src_point[curr_dst_point_id++] = src_point;
       }
       continue;
-    }
-    std::cout << "\ncyclic: \n";
-    std::cout << "\ndst_to_src_point.size(): " << dst_to_src_point.size();
-    std::cout << "\npoints.size(): " << points.size();
-    std::cout << "\nfirst_selected: " << first_selected;
-    std::cout << "\npoints.size() - first_selected: " << points.size() - first_selected;
-    std::cout << "\ncurve points:\n";
-    for (int i : points) {
-      std::cout << i << " ,";
     }
 
     // shift logic
@@ -1170,44 +1157,29 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
       dst_to_src_point[curr_dst_point_id++] = src_point;
     }
 
-    std::cout << "\ncurr_dst_point_id: " << curr_dst_point_id;
     for (const int src_point : points.take_front(first_selected)) {
       dst_to_src_point[curr_dst_point_id++] = src_point;
     }
   }
 
-  std::cout << "\n\nfinal dst_to_src_point map:\n";
-  for (int i : dst_to_src_point) {
-    std::cout << i << ", ";
-  }
-
-  std::cout << "\ndst_to_src_point[0]: " << dst_to_src_point[0] << "\n";
-
   // Do I really need a new curves geometry or is there a way to just copy the attributes, shift
   // and copy back?
-  // maybe see the discussion about replacing instead of creating new
   bke::CurvesGeometry dst_curves(curves.points_num(), curves.curves_num());
   BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
 
   // copy offsets
-  // ok interesting, not sure if there's a clear way to do a direct copy. Most use cases involve
-  // changing the offsets. is there an existing use-case where the offsets are copied but not
-  // changed, other than constructing a new CurvesGeometry?
-  // duh, maybe there is a clear way. why not just use the read accessor same as I use a write
-  // accessor?
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   Span<int> src_offsets = curves.offsets();
   array_utils::copy(src_offsets, dst_offsets);
-  // need the offset_indices::accumulate_counts_to_offsets()?
 
+  // copying attributes
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
+
   // copy curve attrs
   bke::copy_attributes(
       src_attributes, bke::AttrDomain::Curve, bke::AttrDomain::Curve, {}, dst_attributes);
-  array_utils::copy(
-      src_cyclic,
-      dst_curves.cyclic_for_write());  // is this not an attribute? do I need this line?
+  array_utils::copy(src_cyclic, dst_curves.cyclic_for_write());
 
   // copy point attrs
   gather_attributes(src_attributes,
@@ -1230,51 +1202,20 @@ static int grease_pencil_set_start_point_exec(bContext *C, wmOperator *)
 
   bool changed = false;
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
-  threading::parallel_for_each(
-      drawings, [&](const MutableDrawingInfo &info) {  // Do I need this? check other operators.
-                                                       // see Set Active Material and Cyclical Set
-                                                       // operators for counter examples
-        IndexMaskMemory memory;
-        const IndexMask selection = retrieve_editable_and_selected_points(
-            *object, info.drawing, info.layer_index, memory);
-        if (selection.is_empty()) {
-          return;
-        }
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask selection = retrieve_editable_and_selected_points(
+        *object, info.drawing, info.layer_index, memory);
+    if (selection.is_empty()) {
+      return;
+    }
 
-        // think about the below. Do I really need to pass in curves or should I pass points? Maybe
-        // both? a boolmask of points was enough last time. do curves have a cyclic identifier?
-        // don't bother calling function if not cyclic?
-        // doesn't matter here, def have to call for each drawing, curves are below drawing.
-        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        curves = set_start_point(curves, selection);
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    curves = set_start_point(curves, selection);
 
-        std::cout << "\n\nset_start_point() returned, now in exec wrapper debugging: \n\ncurves "
-                     ": ";
-
-        for (int curve_i : curves.curves_range()) {
-          std::cout << curve_i << ", ";
-        }
-
-        std::cout << "\n\noffsets: ";
-        const OffsetIndices<int> print_point_curves = curves.points_by_curve();
-        Span<int> offset_data = print_point_curves.data();
-        for (int i = 0; i < print_point_curves.size() + 1; i++)
-        {  // weird that it works like this but not i == print_point_curves.size
-          std::cout << offset_data[i] << ", ";
-        }
-
-        std::cout << "\n\npoints by curve:";
-        for (int curve_i : curves.curves_range()) {
-          std::cout << "\ncurve " << curve_i << ":\n";
-          IndexRange print_points = print_point_curves[curve_i];
-          for (int index : print_points) {
-            std::cout << index << ", ";
-          }
-        }
-
-        info.drawing.tag_topology_changed();
-        changed = true;
-      });
+    info.drawing.tag_topology_changed();
+    changed = true;
+  });
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
