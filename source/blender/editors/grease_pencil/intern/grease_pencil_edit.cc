@@ -73,6 +73,8 @@
 #include "UI_resources.hh"
 #include <limits>
 
+#include <iostream>
+
 namespace blender::ed::greasepencil {
 
 /* -------------------------------------------------------------------- */
@@ -1124,11 +1126,122 @@ static void GREASE_PENCIL_OT_stroke_switch_direction(wmOperatorType *ot)
 
 /** \} */
 /* -------------------------------------------------------------------- */
-/** \name Switch Direction Operator
+/** \name Set Start Point Operator
  * \{ */
+static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
+                                           const IndexMask &mask)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const VArray<bool> src_cyclic = curves.cyclic();
+  Array<bool> start_set_points(curves.points_num());
+  mask.to_bools(start_set_points.as_mutable_span());
+
+  int curr_dst_point_id = 0;
+  Array<int> dst_to_src_point(curves.points_num());
+
+  // I'm pretty sure there's a wildly more efficient way to do this but I'll start with what I know
+  // works then iterate
+  for (const int curve_i : curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    const Span<bool> curve_i_selected_points = start_set_points.as_span().slice(points);
+    int first_selected = curve_i_selected_points.first_index_try(true);
+
+    if (first_selected == -1 || src_cyclic[curve_i] == false) {
+      for (const int src_point : points) {
+        dst_to_src_point[curr_dst_point_id++] = src_point;
+      }
+      continue;
+    }
+    std::cout << "\ndst_to_src_point.size(): " << dst_to_src_point.size();
+    std::cout << "\npoints.size(): " << points.size();
+    std::cout << "\nfirst_selected: " << first_selected;
+    std::cout << "\npoints.size() - first_selected: " << points.size() - first_selected;
+    std::cout << "\ncurve points:\n";
+    for (int i : points) {
+      std::cout << i << " ,";
+    }
+
+    // shift logic
+    for (const int src_point : points.drop_front(first_selected)) {
+      dst_to_src_point[curr_dst_point_id++] = src_point;
+    }
+
+    std::cout << "\ncurr_dst_point_id: " << curr_dst_point_id;
+    for (const int src_point : points.take_front(first_selected)) {
+      dst_to_src_point[curr_dst_point_id++] = src_point;
+    }
+  }
+
+  std::cout << "\ndst_to_src_point:\n";
+  for (int i : dst_to_src_point) {
+    std::cout << i << " ,";
+  }
+
+  std::cout << "\ndst_to_src_point[0]: " << dst_to_src_point[0] << "\n";
+
+  // Do I really need a new curves geometry or is there a way to just copy the attributes, shift
+  // and copy back?
+  // maybe see the discussion about replacing instead of creating new
+  bke::CurvesGeometry dst_curves(curves.points_num(), curves.curves_num());
+  BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
+
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
+  // copy curve attrs
+  bke::copy_attributes(
+      src_attributes, bke::AttrDomain::Curve, bke::AttrDomain::Curve, {}, dst_attributes);
+  array_utils::copy(
+      src_cyclic,
+      dst_curves.cyclic_for_write());  // is this not an attribute? do I need this line?
+
+  // copy point attrs
+  gather_attributes(src_attributes,
+                    bke::AttrDomain::Point,
+                    bke::AttrDomain::Point,
+                    {},
+                    dst_to_src_point,
+                    dst_attributes);
+
+  dst_curves.update_curve_types();  // nothing changed so do I need this?
+  return dst_curves;
+}
+
 static int grease_pencil_set_start_point_exec(bContext *C, wmOperator *)
 {
-  // execution goes here
+  using namespace bke::greasepencil;  // do I actually need this?
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  bool changed = false;
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(
+      drawings, [&](const MutableDrawingInfo &info) {  // Do I need this? check other operators.
+                                                       // see Set Active Material and Cyclical Set
+                                                       // operators for counter examples
+        IndexMaskMemory memory;
+        const IndexMask selection = retrieve_editable_and_selected_points(
+            *object, info.drawing, info.layer_index, memory);
+        if (selection.is_empty()) {
+          return;
+        }
+
+        // think about the below. Do I really need to pass in curves or should I pass points? Maybe
+        // both? a boolmask of points was enough last time. do curves have a cyclic identifier?
+        // don't bother calling function if not cyclic?
+        // doesn't matter here, def have to call for each drawing, curves are below drawing.
+        bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+        curves = set_start_point(curves, selection);
+
+        info.drawing.tag_topology_changed();
+        changed = true;
+      });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+  return OPERATOR_FINISHED;
 }
 static void GREASE_PENCIL_OT_set_start_point(wmOperatorType *ot)
 {
@@ -1140,6 +1253,8 @@ static void GREASE_PENCIL_OT_set_start_point(wmOperatorType *ot)
   /* callbacks */
   ot->exec = grease_pencil_set_start_point_exec;
   ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 /** \} */
 
