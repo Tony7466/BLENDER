@@ -3520,7 +3520,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(
       prop,
-      "Absolute Grid Snap",
+      "Absolute Increment Snap",
       "Absolute grid alignment while translating (based on the pivot center)");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
