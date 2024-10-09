@@ -938,7 +938,7 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
   return 0.0f;
 }
 
-static void update_collapsed_socket_locations_recursive_inner(
+static void update_collapsed_sockets_recursive_inner(
     bNode &node,
     const int node_left_x,
     const nodes::PanelDeclaration &visible_panel_decl,
@@ -948,43 +948,44 @@ static void update_collapsed_socket_locations_recursive_inner(
       node.runtime->panels[visible_panel_decl.index];
   for (const nodes::ItemDeclaration *item_decl : panel_decl.items) {
     if (const auto *socket_decl = dynamic_cast<const nodes::SocketDeclaration *>(item_decl)) {
-      const bNodeSocket &socket = node.socket_by_decl(*socket_decl);
+      bNodeSocket &socket = node.socket_by_decl(*socket_decl);
       const int socket_x = socket.in_out == SOCK_IN ? node_left_x : node_left_x + NODE_WIDTH(node);
       socket.runtime->location = float2(round(socket_x),
                                         round(*visible_panel_runtime.header_center_y));
+      socket.flag |= SOCK_PANEL_COLLAPSED;
     }
     else if (const auto *sub_panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl))
     {
-      update_collapsed_socket_locations_recursive_inner(
+      update_collapsed_sockets_recursive_inner(
           node, node_left_x, visible_panel_decl, *sub_panel_decl);
     }
   }
 }
 
-static void update_collapsed_socket_locations_recursive(bNode &node,
-                                                        const int node_left_x,
-                                                        const nodes::PanelDeclaration &panel_decl)
+static void update_collapsed_sockets_recursive(bNode &node,
+                                               const int node_left_x,
+                                               const nodes::PanelDeclaration &panel_decl)
 {
   const bNodePanelState &panel_state = node.panel_states_array[panel_decl.index];
   const bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[panel_decl.index];
   const bool is_open = panel_runtime.header_center_y.has_value() && !panel_state.is_collapsed();
   if (!is_open) {
-    update_collapsed_socket_locations_recursive_inner(node, node_left_x, panel_decl, panel_decl);
+    update_collapsed_sockets_recursive_inner(node, node_left_x, panel_decl, panel_decl);
     return;
   }
   for (const nodes::ItemDeclaration *item_decl : panel_decl.items) {
     if (const auto *sub_panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl)) {
-      update_collapsed_socket_locations_recursive(node, node_left_x, *sub_panel_decl);
+      update_collapsed_sockets_recursive(node, node_left_x, *sub_panel_decl);
     }
   }
 }
 
-static void update_collapsed_socket_locations(bNode &node, const int node_left_x)
+static void update_collapsed_sockets(bNode &node, const int node_left_x)
 {
   const nodes::NodeDeclaration &node_decl = *node.declaration();
   for (const nodes::ItemDeclaration *item_decl : node.declaration()->root_items) {
     if (const auto *panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl)) {
-      update_collapsed_socket_locations_recursive(node, node_left_x, *panel_decl);
+      update_collapsed_sockets_recursive(node, node_left_x, *panel_decl);
     }
   }
 }
@@ -999,6 +1000,12 @@ static void node_update_basis_from_declaration(
   for (bke::bNodePanelRuntime &panel_runtime : node.runtime->panels) {
     panel_runtime.header_center_y.reset();
     panel_runtime.content_extend.reset();
+  }
+  for (bNodeSocket *socket : node.input_sockets()) {
+    socket->flag &= ~SOCK_PANEL_COLLAPSED;
+  }
+  for (bNodeSocket *socket : node.output_sockets()) {
+    socket->flag &= ~SOCK_PANEL_COLLAPSED;
   }
 
   const Vector<SerialNodeItem> serial_items = make_serial_node_items(node);
@@ -1061,7 +1068,7 @@ static void node_update_basis_from_declaration(
   const float bottom_margin = get_margin_to_bottom(serial_items);
   locy -= bottom_margin;
 
-  update_collapsed_socket_locations(node, locx);
+  update_collapsed_sockets(node, locx);
 }
 
 /* Conventional drawing in outputs/buttons/inputs order. */
