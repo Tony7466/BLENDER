@@ -40,6 +40,27 @@ struct LocalData {
   Vector<float3> translations;
 };
 
+BLI_NOINLINE static void apply_z_axis_falloff(const Span<float3> vert_positions,
+                                              const Span<int> verts,
+                                              const float4x4 &mat,
+                                              const MutableSpan<float> factors)
+{
+  for (const int i : factors.index_range()) {
+    const float3 local = math::abs(math::transform_point(mat, vert_positions[verts[i]]));
+    factors[i] *= 1 - local.z;
+  }
+}
+
+BLI_NOINLINE static void apply_z_axis_falloff(const Span<float3> positions,
+                                              const float4x4 &mat,
+                                              const MutableSpan<float> factors)
+{
+  for (const int i : factors.index_range()) {
+    const float3 local = math::abs(math::transform_point(mat, positions[i]));
+    factors[i] *= 1 - local.z;
+  }
+}
+
 static void calc_faces(const Depsgraph &depsgraph,
                        const Sculpt &sd,
                        const Brush &brush,
@@ -70,6 +91,7 @@ static void calc_faces(const Depsgraph &depsgraph,
   tls.distances.resize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_brush_cube_distances(brush, mat, position_data.eval, verts, distances, factors);
+  apply_z_axis_falloff(position_data.eval, verts, mat, factors);
   filter_distances_with_radius(1.0f, distances, factors);
   apply_hardness_to_distances(1.0f, cache.hardness, distances);
   BKE_brush_calc_curve_factors(
@@ -127,6 +149,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   tls.distances.resize(positions.size());
   const MutableSpan<float> distances = tls.distances;
   calc_brush_cube_distances(brush, mat, positions, distances, factors);
+  apply_z_axis_falloff(positions, mat, factors);
   filter_distances_with_radius(1.0f, distances, factors);
   apply_hardness_to_distances(1.0f, cache.hardness, distances);
   BKE_brush_calc_curve_factors(
@@ -183,6 +206,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   tls.distances.resize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_brush_cube_distances(brush, mat, positions, distances, factors);
+  apply_z_axis_falloff(positions, mat, factors);
   filter_distances_with_radius(1.0f, distances, factors);
   apply_hardness_to_distances(1.0f, cache.hardness, distances);
   BKE_brush_calc_curve_factors(
@@ -252,13 +276,12 @@ void do_clay_strips_brush(const Depsgraph &depsgraph,
    * deform more vertices that may be below it. */
   /* The 0.7 and 1.25 factors are arbitrary and don't have any relation between them, they were set
    * by doing multiple tests using the default "Clay Strips" brush preset. */
-  const float3 area_position_displaced = area_position + area_normal * -radius * 0.7f;
 
   float4x4 mat = float4x4::identity();
   mat.x_axis() = math::cross(area_normal, ss.cache->grab_delta_symm);
   mat.y_axis() = math::cross(area_normal, float3(mat[0]));
   mat.z_axis() = area_normal;
-  mat.location() = area_position_displaced;
+  mat.location() = area_position;
   mat = math::normalize(mat);
 
   /* Scale brush local space matrix. */
@@ -266,11 +289,6 @@ void do_clay_strips_brush(const Depsgraph &depsgraph,
   float4x4 tmat = mat * scale;
 
   tmat.y_axis() *= brush.tip_scale_x;
-
-  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
-   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
-   * during big deformation while keeping the surface as uniform as possible. */
-  tmat.z_axis() *= 1.25f;
 
   mat = math::invert(tmat);
 
