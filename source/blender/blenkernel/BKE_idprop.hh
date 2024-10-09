@@ -97,7 +97,7 @@ IDProperty *IDP_NewString(const char *st,
  * When zero, this is the equivalent of passing in `strlen(st) + 1`
  */
 void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, size_t st_maxncpy) ATTR_NONNULL();
-void IDP_AssignString(IDProperty *prop, blender::StringRef st) ATTR_NONNULL();
+void IDP_AssignString(IDProperty *prop, const char *st) ATTR_NONNULL();
 void IDP_FreeString(IDProperty *prop) ATTR_NONNULL();
 
 /*-------- Enum Type -------*/

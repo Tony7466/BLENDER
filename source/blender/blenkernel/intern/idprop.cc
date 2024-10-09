@@ -430,9 +430,9 @@ void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, const size_t st_m
 }
 
 /* FIXME: Should never be called for `byte` subtype, needs an assert. */
-void IDP_AssignString(IDProperty *prop, const blender::StringRef st)
+void IDP_AssignString(IDProperty *prop, const char *st)
 {
-  IDP_AssignStringMaxSize(prop, st.data(), size_t(st.size()));
+  IDP_AssignStringMaxSize(prop, st, 0);
 }
 
 void IDP_FreeString(IDProperty *prop)
