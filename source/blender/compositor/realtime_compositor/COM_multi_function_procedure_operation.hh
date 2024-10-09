@@ -6,7 +6,6 @@
 
 #include <memory>
 
-#include "BLI_array.hh"
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -77,7 +76,7 @@ class MultiFunctionProcedureOperation : public PixelOperation {
    * that were returned by a previous call to a multi-function, those that were generated as
    * constants for unlinked inputs, or those that were added as inputs to the operation/procedure
    * itself. */
-  Array<mf::Variable *> get_input_variables(DNode node);
+  Vector<mf::Variable *> get_input_variables(DNode node);
 
   /* Returns a constant variable that was created by calling a constant function carrying the value
    * of the given input socket. */

@@ -5,7 +5,6 @@
 #include <memory>
 #include <string>
 
-#include "BLI_array.hh"
 #include "BLI_assert.h"
 #include "BLI_cpp_type.hh"
 #include "BLI_generic_span.hh"
@@ -136,7 +135,7 @@ void MultiFunctionProcedureOperation::build_procedure()
 
     /* Get the variables of the inputs of the node, creating inputs to the operation/procedure if
      * needed. */
-    Array<mf::Variable *> input_variables = this->get_input_variables(node);
+    Vector<mf::Variable *> input_variables = this->get_input_variables(node);
 
     /* Call the node multi-function, getting the variables for its outputs. */
     Vector<mf::Variable *> output_variables = procedure_builder_.add_call(multi_function,
@@ -163,34 +162,39 @@ void MultiFunctionProcedureOperation::build_procedure()
   BLI_assert(procedure_.validate());
 }
 
-Array<mf::Variable *> MultiFunctionProcedureOperation::get_input_variables(DNode node)
+Vector<mf::Variable *> MultiFunctionProcedureOperation::get_input_variables(DNode node)
 {
-  Array<mf::Variable *> input_variables(node->input_sockets().size());
+  Vector<mf::Variable *> input_variables;
   for (int i = 0; i < node->input_sockets().size(); i++) {
     const DInputSocket input{node.context(), node->input_sockets()[i]};
+
+    if (!input->is_available()) {
+      continue;
+    }
 
     /* Get the output linked to the input. If it is null, that means the input is unlinked and we
      * generate a constant variable for it. */
     const DOutputSocket output = get_output_linked_to_input(input);
     if (!output) {
-      input_variables[i] = this->get_constant_input_variable(input);
+      input_variables.append(this->get_constant_input_variable(input));
       continue;
     }
 
     /* If the origin node is part of the multi-function procedure operation, then the output has an
      * existing variable for it. */
     if (compile_unit_.contains(output.node())) {
-      input_variables[i] = output_to_variable_map_.lookup(output);
+      input_variables.append(output_to_variable_map_.lookup(output));
     }
     else {
       /* Otherwise, the origin node is not part of the multi-function procedure operation, and a
        * variable that represents an input to the multi-function procedure operation is used. */
-      input_variables[i] = this->get_multi_function_input_variable(input, output);
+      input_variables.append(this->get_multi_function_input_variable(input, output));
     }
 
     /* Implicitly convert the variable type if needed by adding a call to an implicit conversion
      * function. */
-    input_variables[i] = this->do_variable_implicit_conversion(input, output, input_variables[i]);
+    input_variables.last() = this->do_variable_implicit_conversion(
+        input, output, input_variables.last());
   }
 
   return input_variables;
