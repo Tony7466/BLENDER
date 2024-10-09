@@ -1136,6 +1136,7 @@ enum class MarginElement {
   Socket,
   Layout,
   Separator,
+  PanelHeader,
 };
 
 static float get_margin_between_elements(const MarginElement &prev, const MarginElement &next)
@@ -1153,6 +1154,8 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
           return 0;
         case MarginElement::Separator:
           return NODE_ITEM_SPACING_Y / 2;
+        case MarginElement::PanelHeader:
+          return NODE_DYS / 2;
       }
       break;
     }
@@ -1171,6 +1174,8 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
           return 0;
         case MarginElement::Separator:
           return 0;
+        case MarginElement::PanelHeader:
+          return NODE_ITEM_SPACING_Y;
       }
       break;
     }
@@ -1186,6 +1191,8 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
           return NODE_ITEM_SPACING_Y;
         case MarginElement::Separator:
           return 0;
+        case MarginElement::PanelHeader:
+          return NODE_ITEM_SPACING_Y;
       }
       break;
     }
@@ -1200,6 +1207,25 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
         case MarginElement::Layout:
           return 0;
         case MarginElement::Separator:
+          return NODE_ITEM_SPACING_Y;
+        case MarginElement::PanelHeader:
+          return NODE_ITEM_SPACING_Y;
+      }
+      break;
+    }
+    case MarginElement::PanelHeader: {
+      switch (next) {
+        case MarginElement::Top:
+          break;
+        case MarginElement::Bottom:
+          return 0;
+        case MarginElement::Socket:
+          return NODE_ITEM_SPACING_Y;
+        case MarginElement::Layout:
+          return 0;
+        case MarginElement::Separator:
+          return NODE_ITEM_SPACING_Y;
+        case MarginElement::PanelHeader:
           return NODE_ITEM_SPACING_Y;
       }
       break;
@@ -1258,6 +1284,13 @@ static void node_update_basis_from_declaration(
                                                UI_style_get_dpi());
             uiItemS_ex(layout, 1.0, LayoutSeparatorType::Line);
             UI_block_layout_resolve(&block, nullptr, nullptr);
+          }
+          else if constexpr (std::is_same_v<ItemT, serial_item::PanelHeader>) {
+            apply_margin(MarginElement::PanelHeader);
+            const nodes::PanelDeclaration &node_decl = *item.decl;
+            bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
+            panel_runtime.location_y = locy;
+            locy -= NODE_DYS;
           }
         },
         item_variant.item);
