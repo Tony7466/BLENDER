@@ -32,9 +32,9 @@ void CropBaseOperation::update_area()
   else {
     /* Make sure the bounds don't go over the input image size. */
     xmin_ = min_ii(node_two_xys.left, input_size.x);
-    ymin_ = min_ii(node_two_xys.down, input_size.y);
+    ymin_ = min_ii(node_two_xys.up, input_size.y);
     xmax_ = min_ii(node_two_xys.right, input_size.x);
-    ymax_ = min_ii(node_two_xys.up, input_size.y);
+    ymax_ = min_ii(node_two_xys.down, input_size.y);
   }
 
   /* Make sure upper bound is actually higher than the lower bound. */

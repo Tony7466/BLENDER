@@ -195,9 +195,9 @@ class CropOperation : public NodeOperation {
       /* The cropping bounds are relative to the image size. The factors are in the [0, 1] range,
        * so it is guaranteed that they won't go over the input image size. */
       lower_bound.x = input_size.x * node_two_xys.fac_left;
-      lower_bound.y = input_size.y * node_two_xys.fac_up;
+      lower_bound.y = input_size.y * node_two_xys.fac_down;
       upper_bound.x = input_size.x * node_two_xys.fac_right;
-      upper_bound.y = input_size.y * node_two_xys.fac_down;
+      upper_bound.y = input_size.y * node_two_xys.fac_up;
     }
     else {
       /* Make sure the bounds don't go over the input image size. */

@@ -215,8 +215,8 @@ static void two_xy_to_rect(
   if (is_relative) {
     r_rect->xmin = nxy->fac_left + (offset.x / dims.x);
     r_rect->xmax = nxy->fac_right + (offset.x / dims.x);
-    r_rect->ymin = nxy->fac_up + (offset.y / dims.y);
-    r_rect->ymax = nxy->fac_down + (offset.y / dims.y);
+    r_rect->ymin = nxy->fac_down + (offset.y / dims.y);
+    r_rect->ymax = nxy->fac_up + (offset.y / dims.y);
   }
   else {
     r_rect->xmin = (nxy->left + offset.x) / dims.x;
@@ -232,8 +232,8 @@ static void two_xy_from_rect(
   if (is_relative) {
     nxy->fac_left = rect->xmin - (offset.x / dims.x);
     nxy->fac_right = rect->xmax - (offset.x / dims.x);
-    nxy->fac_up = rect->ymin - (offset.y / dims.y);
-    nxy->fac_down = rect->ymax - (offset.y / dims.y);
+    nxy->fac_down = rect->ymin - (offset.y / dims.y);
+    nxy->fac_right = rect->ymax - (offset.y / dims.y);
   }
   else {
     nxy->left = rect->xmin * dims.x - offset.x;
