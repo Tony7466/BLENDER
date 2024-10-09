@@ -56,9 +56,10 @@ BLI_NOINLINE static void apply_z_axis_falloff(const Span<float3> vert_positions,
                                               const float4x4 &mat,
                                               const MutableSpan<float> factors)
 {
+  BLI_assert(factors.size() == verts.size());
   for (const int i : factors.index_range()) {
-    const float3 local = math::abs(math::transform_point(mat, vert_positions[verts[i]]));
-    factors[i] *= 1 - local.z;
+    const float local_z_distance = math::abs(math::transform_point(mat, vert_positions[verts[i]]).z);
+    factors[i] *= 1 - local_z_distance;
   }
 }
 
@@ -66,9 +67,10 @@ BLI_NOINLINE static void apply_z_axis_falloff(const Span<float3> positions,
                                               const float4x4 &mat,
                                               const MutableSpan<float> factors)
 {
+  BLI_assert(factors.size() == positions.size());
   for (const int i : factors.index_range()) {
-    const float3 local = math::abs(math::transform_point(mat, positions[i]));
-    factors[i] *= 1 - local.z;
+    const float local_z_distance = math::abs(math::transform_point(mat, positions[i]).z);
+    factors[i] *= 1 - local_z_distance;
   }
 }
 
