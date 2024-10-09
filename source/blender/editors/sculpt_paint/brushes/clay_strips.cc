@@ -268,15 +268,6 @@ void do_clay_strips_brush(const Depsgraph &depsgraph,
     area_normal = plane_normal;
   }
 
-  /* Clay Strips uses a cube test with falloff in the XY axis (not in Z) and a plane to deform the
-   * vertices. When in Add mode, vertices that are below the plane and inside the cube are moved
-   * towards the plane. In this situation, there may be cases where a vertex is outside the cube
-   * but below the plane, so won't be deformed, causing artifacts. In order to prevent these
-   * artifacts, this displaces the test cube space in relation to the plane in order to
-   * deform more vertices that may be below it. */
-  /* The 0.7 and 1.25 factors are arbitrary and don't have any relation between them, they were set
-   * by doing multiple tests using the default "Clay Strips" brush preset. */
-
   float4x4 mat = float4x4::identity();
   mat.x_axis() = math::cross(area_normal, ss.cache->grab_delta_symm);
   mat.y_axis() = math::cross(area_normal, float3(mat[0]));
