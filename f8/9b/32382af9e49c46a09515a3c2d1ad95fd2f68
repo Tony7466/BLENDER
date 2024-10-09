@@ -1,3 +1,4 @@
 Referenced by commit 267d449a506577526b59412a05a71e545940a938, Spreadsheet: Support selection filter for point cloud objects
 Referenced by issue #75717, New pointcloud object type
 Referenced by pull request #128794, Fix: curves editmode operators available in pointcloud editmode
+Referenced by commit ee3fdf40992d9f4913533df891216dff12eaaa22, Fix: curves editmode operators available in pointcloud editmode
