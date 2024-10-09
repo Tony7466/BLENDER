@@ -164,10 +164,9 @@ GPU_SHADER_CREATE_END()
 #define image_array_out(slot, qualifier, format, name) \
   image(slot, format, qualifier, ImageType::FLOAT_2D_ARRAY, name, Frequency::PASS)
 
-GPU_SHADER_CREATE_INFO(eevee_render_pass_in)
+GPU_SHADER_CREATE_INFO(eevee_render_pass_inout)
 DEFINE("MAT_RENDER_PASS_SUPPORT")
 ADDITIONAL_INFO(eevee_global_ubo)
-/* TODO(NPR): Read-only. */
 IMAGE_FREQ(RBUFS_COLOR_SLOT, GPU_RGBA16F, READ_WRITE, FLOAT_2D_ARRAY, rp_color_img, PASS)
 IMAGE_FREQ(RBUFS_VALUE_SLOT, GPU_R16F, READ_WRITE, FLOAT_2D_ARRAY, rp_value_img, PASS)
 GPU_SHADER_CREATE_END()
