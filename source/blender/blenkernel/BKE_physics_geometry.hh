@@ -265,6 +265,17 @@ class PhysicsWorldState : public ImplicitSharingMixin {
   static const CustomDataAccessInfo &constraint_custom_data_access_info();
   static const CustomDataAccessInfo &shape_custom_data_access_info();
 
+  /* Debug utility functions, should be removed eventually. */
+#ifndef NDEBUG
+  void debug_print_status(StringRef name) const;
+  void debug_print_enter(StringRef name) const;
+  void debug_print_exit(StringRef name) const;
+#else
+  void debug_print_status(StringRef /*name*/) const {}
+  void debug_print_enter(StringRef /*name*/) const {}
+  void debug_print_exit(StringRef /*name*/) const {}
+#endif
+
  private:
   void ensure_read_cache_no_lock() const;
   void ensure_bodies_no_lock();

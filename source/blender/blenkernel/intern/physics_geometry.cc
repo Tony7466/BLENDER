@@ -32,6 +32,10 @@
 #include "physics_geometry_world_bullet.hh"
 #include "physics_geometry_world_jolt.hh"
 
+#ifndef NDEBUG
+#  include <iostream>
+#endif
+
 namespace blender::bke {
 
 #ifdef WITH_BULLET
@@ -1165,6 +1169,56 @@ const CustomDataAccessInfo &PhysicsWorldState::shape_custom_data_access_info()
       }};
   return shape_custom_data_access;
 }
+
+#  ifndef NDEBUG
+void PhysicsWorldState::debug_print_status(const StringRef name) const
+{
+  std::cout << name << "(" << (void *)this << ") | " << this->strong_users() << " users | "
+            << (this->has_world_data() ? "WORLD " : "cached") << " | "
+            << (this->read_cache_valid_ ? "valid  " : "INVALID") << std::endl;
+}
+
+void PhysicsWorldState::debug_print_enter(const StringRef name) const
+{
+  std::cout << ">>   ";
+  debug_print_status(name);
+}
+
+void PhysicsWorldState::debug_print_exit(const StringRef name) const
+{
+  constexpr int max_elements = 3;
+
+  std::cout << "<<<< ";
+  debug_print_status(name);
+
+  if (world_data_) {
+    const VArray<float3> positions = physics_attribute_lookup_or_default<float3>(
+        this->world_data_attributes(), PhysicsBodyAttribute::position);
+    std::cout << "  world data positions [" << positions.size() << "]:" << std::endl;
+    for (const int i : IndexRange(std::min(max_elements, int(positions.size())))) {
+      std::cout << "    " << positions[i] << std::endl;
+    }
+    if (positions.size() > max_elements) {
+      std::cout << "    ..." << std::endl;
+    }
+  }
+
+  {
+    const Span<float3> positions = body_data_
+                                       .lookup_default(PhysicsBodyAttribute::position,
+                                                       GArray<>(CPPType::get<float3>()))
+                                       .as_span()
+                                       .typed<float3>();
+    std::cout << "  read cache positions [" << positions.size() << "]:" << std::endl;
+    for (const int i : IndexRange(std::min(max_elements, int(positions.size())))) {
+      std::cout << "    " << positions[i] << std::endl;
+    }
+    if (positions.size() > max_elements) {
+      std::cout << "    ..." << std::endl;
+    }
+  }
+}
+#  endif
 
 template<typename T>
 VArray<T> PhysicsGeometry::lookup_attribute(const PhysicsBodyAttribute attribute) const
