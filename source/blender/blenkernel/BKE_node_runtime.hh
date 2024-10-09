@@ -263,9 +263,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
 };
 
 struct bNodePanelExtend {
-  /* Vertical start location of the panel content. */
   float min_y;
-  /* Vertical end location of the panel content. */
   float max_y;
 };
 

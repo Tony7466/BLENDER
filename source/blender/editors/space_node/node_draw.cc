@@ -805,17 +805,17 @@ static float get_margin_to_bottom(const Span<SerialNodeItem> items)
   const serial_item::Type last_item_type = last_item.type();
   switch (last_item_type) {
     case serial_item::Type::Socket:
-      return NODE_DYS / 2;
+      return 2 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::Separator:
       return NODE_ITEM_SPACING_Y / 2;
     case serial_item::Type::Layout:
       return 0;
     case serial_item::Type::PanelHeader:
-      return NODE_DYS / 2;
+      return 3 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::PanelContentBegin:
       break;
     case serial_item::Type::PanelContentEnd:
-      return NODE_ITEM_SPACING_Y / 2;
+      return NODE_ITEM_SPACING_Y;
   }
   BLI_assert_unreachable();
   return 0;
@@ -838,9 +838,9 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
         case Type::Separator:
           return 0;
         case Type::Layout:
-          return 0;
-        case Type::PanelHeader:
           return NODE_ITEM_SPACING_Y;
+        case Type::PanelHeader:
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
           return NODE_ITEM_SPACING_Y;
         case Type::PanelContentEnd:
@@ -872,7 +872,7 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
         case Type::Separator:
           return NODE_ITEM_SPACING_Y;
         case Type::Layout:
-          return 0;
+          return NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
           return NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
@@ -885,15 +885,15 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
     case Type::PanelHeader: {
       switch (next_type) {
         case Type::Socket:
-          return NODE_ITEM_SPACING_Y;
+          return 4 * NODE_ITEM_SPACING_Y;
         case Type::Separator:
-          return NODE_ITEM_SPACING_Y;
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::Layout:
-          return 0;
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
-          return NODE_ITEM_SPACING_Y;
+          return 6 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
-          return 0;
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentEnd:
           break;
       }
@@ -906,7 +906,7 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
         case Type::Separator:
           return NODE_ITEM_SPACING_Y;
         case Type::Layout:
-          return 0;
+          return NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
           return NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
@@ -923,13 +923,13 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
         case Type::Separator:
           return NODE_ITEM_SPACING_Y;
         case Type::Layout:
-          return 0;
+          return NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
-          return 0;
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
           break;
         case Type::PanelContentEnd:
-          return 0;
+          return NODE_ITEM_SPACING_Y;
       }
       break;
     }
@@ -1038,7 +1038,28 @@ static void node_update_basis_from_declaration(
                 C, ntree, node, parent_label, input_socket, output_socket, block, locx, locy);
           }
           else if constexpr (std::is_same_v<ItemT, serial_item::Layout>) {
-            node_update_basis_buttons(C, ntree, node, item.decl->draw, block, locy);
+            const nodes::LayoutDeclaration &decl = *item.decl;
+            /* Round the node origin because text contents are always pixel-aligned. */
+            const float2 loc = math::round(node_to_view(node, float2(0)));
+            uiLayout *layout = UI_block_layout(&block,
+                                               UI_LAYOUT_VERTICAL,
+                                               UI_LAYOUT_PANEL,
+                                               loc.x + NODE_DYS,
+                                               locy,
+                                               NODE_WIDTH(node) - NODE_DY,
+                                               0,
+                                               0,
+                                               UI_style_get_dpi());
+            if (node.flag & NODE_MUTED) {
+              uiLayoutSetActive(layout, false);
+            }
+            PointerRNA node_ptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
+            uiLayoutSetContextPointer(layout, "node", &node_ptr);
+            decl.draw(layout, const_cast<bContext *>(&C), &node_ptr);
+            UI_block_align_end(&block);
+            int buty;
+            UI_block_layout_resolve(&block, nullptr, &buty);
+            locy = buty;
           }
           else if constexpr (std::is_same_v<ItemT, serial_item::Separator>) {
             uiLayout *layout = UI_block_layout(&block,
@@ -1060,6 +1081,17 @@ static void node_update_basis_from_declaration(
             locy -= panel_header_height / 2;
             panel_runtime.header_center_y = locy;
             locy -= panel_header_height / 2;
+          }
+          else if constexpr (std::is_same_v<ItemT, serial_item::PanelContentBegin>) {
+            const nodes::PanelDeclaration &node_decl = *item.decl;
+            bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
+            panel_runtime.content_extend.emplace();
+            panel_runtime.content_extend->max_y = locy;
+          }
+          else if constexpr (std::is_same_v<ItemT, serial_item::PanelContentEnd>) {
+            const nodes::PanelDeclaration &node_decl = *item.decl;
+            bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
+            panel_runtime.content_extend->min_y = locy;
           }
         },
         item_variant.item);
@@ -2563,14 +2595,32 @@ static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, voi
 /* Draw panel backgrounds first, so other node elements can be rendered on top. */
 static void node_draw_panels_background(const bNode &node, uiBlock &block)
 {
-  namespace nodes = blender::nodes;
+  BLI_assert(is_node_panels_supported(node));
 
-  /* TODO */
+  float panel_color[4];
+  UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, panel_color);
+  const rctf &totr = node.runtime->totr;
+
+  const nodes::NodeDeclaration &node_decl = *node.declaration();
+  for (const int panel_i : node_decl.panels.index_range()) {
+    const nodes::PanelDeclaration &panel_decl = *node_decl.panels[panel_i];
+    const bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[panel_i];
+    const bNodePanelState &panel_state = node.panel_states_array[panel_i];
+    if (!panel_runtime.content_extend.has_value()) {
+      continue;
+    }
+
+    const rctf content_rect = {totr.xmin,
+                               totr.xmax,
+                               panel_runtime.content_extend->min_y,
+                               panel_runtime.content_extend->max_y};
+    UI_draw_roundbox_corner_set(UI_CNR_NONE);
+    UI_draw_roundbox_4fv(&content_rect, true, BASIS_RAD, panel_color);
+  }
 }
 
 static void node_draw_panels(bNodeTree &ntree, const bNode &node, uiBlock &block)
 {
-  namespace nodes = blender::nodes;
   BLI_assert(is_node_panels_supported(node));
   const rctf &totr = node.runtime->totr;
 
