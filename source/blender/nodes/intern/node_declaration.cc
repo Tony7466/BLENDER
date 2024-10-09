@@ -454,9 +454,9 @@ PanelDeclarationBuilder &DeclarationListBuilder::add_panel(const StringRef name,
     panel_decl.identifier = this->node_decl_builder.declaration_.all_items.size();
   }
   panel_decl.name = name;
+  panel_decl.index = this->node_decl_builder.declaration_.panels.append_and_get_index(&panel_decl);
   this->node_decl_builder.declaration_.all_items.append(std::move(panel_decl_ptr));
-  panel_decl.index = this->node_decl_builder.panel_builders_.append_and_get_index(
-      std::move(panel_decl_builder_ptr));
+  this->node_decl_builder.panel_builders_.append_and_get_index(std::move(panel_decl_builder_ptr));
   this->items.append(&panel_decl);
   return panel_decl_builder;
 }

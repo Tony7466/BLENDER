@@ -525,6 +525,7 @@ class NodeDeclaration {
   /* All input and output socket declarations. */
   Vector<SocketDeclaration *> inputs;
   Vector<SocketDeclaration *> outputs;
+  Vector<PanelDeclaration *> panels;
   std::unique_ptr<aal::RelationsInNode> anonymous_attribute_relations_;
 
   /** Leave the sockets in place, even if they don't match the declaration. Used for dynamic

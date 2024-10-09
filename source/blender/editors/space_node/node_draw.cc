@@ -947,6 +947,11 @@ static void node_update_basis_from_declaration(
   BLI_assert(is_node_panels_supported(node));
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
 
+  for (bke::bNodePanelRuntime &panel_runtime : node.runtime->panels) {
+    panel_runtime.header_center_y.reset();
+    panel_runtime.content_extend.reset();
+  }
+
   const Vector<SerialNodeItem> serial_items = make_serial_node_items(node);
   if (serial_items.is_empty()) {
     const float margin = get_margin_empty();
@@ -995,8 +1000,10 @@ static void node_update_basis_from_declaration(
           else if constexpr (std::is_same_v<ItemT, serial_item::PanelHeader>) {
             const nodes::PanelDeclaration &node_decl = *item.decl;
             bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
-            panel_runtime.location_y = locy;
-            locy -= NODE_DYS;
+            const float panel_header_height = NODE_DYS;
+            locy -= panel_header_height / 2;
+            panel_runtime.header_center_y = locy;
+            locy -= panel_header_height / 2;
           }
         },
         item_variant.item);
@@ -2506,8 +2513,80 @@ static void node_draw_panels_background(const bNode &node, uiBlock &block)
 static void node_draw_panels(bNodeTree &ntree, const bNode &node, uiBlock &block)
 {
   namespace nodes = blender::nodes;
+  BLI_assert(is_node_panels_supported(node));
+  const rctf &totr = node.runtime->totr;
 
-  /* TODO */
+  const nodes::NodeDeclaration &node_decl = *node.declaration();
+  for (const int panel_i : node_decl.panels.index_range()) {
+    const nodes::PanelDeclaration &panel_decl = *node_decl.panels[panel_i];
+    const bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[panel_i];
+    const bNodePanelState &panel_state = node.panel_states_array[panel_i];
+    if (!panel_runtime.header_center_y.has_value()) {
+      continue;
+    }
+
+    const rctf header_rect = {totr.xmin,
+                              totr.xmax,
+                              *panel_runtime.header_center_y - NODE_DYS,
+                              *panel_runtime.header_center_y + NODE_DYS};
+    UI_block_emboss_set(&block, UI_EMBOSS_NONE);
+
+    /* Collapse/expand icon. */
+    const int but_size = U.widget_unit * 0.8f;
+    uiDefIconBut(&block,
+                 UI_BTYPE_BUT_TOGGLE,
+                 0,
+                 panel_state.is_collapsed() ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
+                 totr.xmin + (NODE_MARGIN_X / 3),
+                 *panel_runtime.header_center_y - but_size / 2,
+                 but_size,
+                 but_size,
+                 nullptr,
+                 0.0f,
+                 0.0f,
+                 "");
+
+    /* Panel label. */
+    uiBut *label_but = uiDefBut(&block,
+                                UI_BTYPE_LABEL,
+                                0,
+                                IFACE_(panel_decl.name.c_str()),
+                                int(totr.xmin + NODE_MARGIN_X + 0.4f),
+                                int(*panel_runtime.header_center_y - NODE_DYS),
+                                short(totr.xmax - totr.xmin - (30.0f * UI_SCALE_FAC)),
+                                short(NODE_DY),
+                                nullptr,
+                                0,
+                                0,
+                                "");
+    if (node.flag & NODE_MUTED) {
+      UI_but_flag_enable(label_but, UI_BUT_INACTIVE);
+    }
+
+    /* Invisible button covering the entire header for collapsing/expanding. */
+    const int header_but_margin = NODE_MARGIN_X / 3;
+    uiBut *toggle_action_but = uiDefIconBut(
+        &block,
+        UI_BTYPE_BUT_TOGGLE,
+        0,
+        ICON_NONE,
+        header_rect.xmin + header_but_margin,
+        header_rect.ymin,
+        std::max(int(header_rect.xmax - header_rect.xmin - 2 * header_but_margin), 0),
+        header_rect.ymax - header_rect.ymin,
+        nullptr,
+        0.0f,
+        0.0f,
+        panel_decl.description.c_str());
+    UI_but_func_pushed_state_set(
+        toggle_action_but, [&panel_state](const uiBut &) { return panel_state.is_collapsed(); });
+    UI_but_func_set(toggle_action_but,
+                    node_panel_toggle_button_cb,
+                    const_cast<bNodePanelState *>(&panel_state),
+                    &ntree);
+
+    UI_block_emboss_set(&block, UI_EMBOSS);
+  }
 }
 
 static geo_log::NodeWarningType node_error_highest_priority(Span<geo_log::NodeWarning> warnings)
