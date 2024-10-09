@@ -1139,12 +1139,12 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
   int curr_dst_point_id = 0;
   Array<int> dst_to_src_point(curves.points_num());
 
-  // map 1:1 for stuff that isn't changing
   for (const int curve_i : curves.curves_range()) {
     const IndexRange points = points_by_curve[curve_i];
     const Span<bool> curve_i_selected_points = start_set_points.as_span().slice(points);
     int first_selected = curve_i_selected_points.first_index_try(true);
 
+    // map 1:1 for data that isn't changing
     if (first_selected == -1 || src_cyclic[curve_i] == false) {
       for (const int src_point : points) {
         dst_to_src_point[curr_dst_point_id++] = src_point;
@@ -1167,21 +1167,21 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
   bke::CurvesGeometry dst_curves(curves.points_num(), curves.curves_num());
   BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
 
-  // copy offsets
+  // Copy offsets
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   Span<int> src_offsets = curves.offsets();
   array_utils::copy(src_offsets, dst_offsets);
 
-  // copying attributes
+  // Attribute accessors for copying
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
-  // copy curve attrs
+  // Copy curve attrs
   bke::copy_attributes(
       src_attributes, bke::AttrDomain::Curve, bke::AttrDomain::Curve, {}, dst_attributes);
   array_utils::copy(src_cyclic, dst_curves.cyclic_for_write());
 
-  // copy point attrs
+  // Copy point attrs
   gather_attributes(src_attributes,
                     bke::AttrDomain::Point,
                     bke::AttrDomain::Point,
@@ -1189,13 +1189,13 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
                     dst_to_src_point,
                     dst_attributes);
 
-  dst_curves.update_curve_types();  // nothing changed so do I need this?
+  dst_curves.update_curve_types();  // do I need this?
   return dst_curves;
 }
 
 static int grease_pencil_set_start_point_exec(bContext *C, wmOperator *)
 {
-  using namespace bke::greasepencil;  // do I actually need this?
+  using namespace bke::greasepencil;
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
