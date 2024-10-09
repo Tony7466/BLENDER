@@ -1135,6 +1135,7 @@ enum class MarginElement {
   Bottom,
   Socket,
   Layout,
+  Separator,
 };
 
 static float get_margin_between_elements(const MarginElement &prev, const MarginElement &next)
@@ -1149,7 +1150,9 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
         case MarginElement::Socket:
           return NODE_DYS / 2;
         case MarginElement::Layout:
-          return NODE_DYS / 2;
+          return 0;
+        case MarginElement::Separator:
+          return NODE_ITEM_SPACING_Y / 2;
       }
       break;
     }
@@ -1166,6 +1169,8 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
           return NODE_ITEM_SPACING_Y;
         case MarginElement::Layout:
           return 0;
+        case MarginElement::Separator:
+          return 0;
       }
       break;
     }
@@ -1178,6 +1183,23 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
         case MarginElement::Socket:
           return NODE_ITEM_SPACING_Y;
         case MarginElement::Layout:
+          return NODE_ITEM_SPACING_Y;
+        case MarginElement::Separator:
+          return 0;
+      }
+      break;
+    }
+    case MarginElement::Separator: {
+      switch (next) {
+        case MarginElement::Top:
+          break;
+        case MarginElement::Bottom:
+          return NODE_DYS / 2;
+        case MarginElement::Socket:
+          return NODE_ITEM_SPACING_Y;
+        case MarginElement::Layout:
+          return 0;
+        case MarginElement::Separator:
           return NODE_ITEM_SPACING_Y;
       }
       break;
@@ -1222,6 +1244,20 @@ static void node_update_basis_from_declaration(
           else if constexpr (std::is_same_v<ItemT, serial_item::Layout>) {
             apply_margin(MarginElement::Layout);
             node_update_basis_buttons(C, ntree, node, item.decl->draw, block, locy);
+          }
+          else if constexpr (std::is_same_v<ItemT, serial_item::Separator>) {
+            apply_margin(MarginElement::Separator);
+            uiLayout *layout = UI_block_layout(&block,
+                                               UI_LAYOUT_VERTICAL,
+                                               UI_LAYOUT_PANEL,
+                                               locx + NODE_DYS,
+                                               locy,
+                                               NODE_WIDTH(node) - NODE_DY,
+                                               NODE_DY,
+                                               0,
+                                               UI_style_get_dpi());
+            uiItemS_ex(layout, 1.0, LayoutSeparatorType::Line);
+            UI_block_layout_resolve(&block, nullptr, nullptr);
           }
         },
         item_variant.item);
