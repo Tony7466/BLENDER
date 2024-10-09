@@ -553,21 +553,37 @@ static bool node_update_basis_socket(const bContext &C,
 
 namespace serial_item {
 
+enum class Type {
+  Socket,
+  Separator,
+  Layout,
+  PanelHeader,
+  PanelContentBegin,
+  PanelContentEnd,
+};
+
 struct Socket {
+  static constexpr Type type = Type::Socket;
   bNodeSocket *input = nullptr;
   bNodeSocket *output = nullptr;
 };
-struct Separator {};
+struct Separator {
+  static constexpr Type type = Type::Separator;
+};
 struct PanelHeader {
+  static constexpr Type type = Type::PanelHeader;
   const nodes::PanelDeclaration *decl;
 };
 struct PanelContentBegin {
+  static constexpr Type type = Type::PanelContentBegin;
   const nodes::PanelDeclaration *decl;
 };
 struct PanelContentEnd {
+  static constexpr Type type = Type::PanelContentEnd;
   const nodes::PanelDeclaration *decl;
 };
 struct Layout {
+  static constexpr Type type = Type::Layout;
   const nodes::LayoutDeclaration *decl;
 };
 
@@ -581,6 +597,11 @@ struct SerialNodeItem {
                serial_item::PanelContentEnd,
                serial_item::Layout>
       item;
+
+  serial_item::Type type() const
+  {
+    return std::visit([](auto &&item) { return item.type; }, this->item);
+  }
 };
 
 static void determine_potentially_visible_panels_recursive(
@@ -752,103 +773,163 @@ static Vector<SerialNodeItem> make_serial_node_items(bNode &node)
   return items;
 }
 
-enum class MarginElement {
-  Top,
-  Bottom,
-  Socket,
-  Layout,
-  Separator,
-  PanelHeader,
-};
-
-static float get_margin_between_elements(const MarginElement &prev, const MarginElement &next)
+static float get_margin_empty()
 {
-  switch (prev) {
-    case MarginElement::Top: {
-      switch (next) {
-        case MarginElement::Top:
-          break;
-        case MarginElement::Bottom:
-          return NODE_DYS;
-        case MarginElement::Socket:
-          return NODE_DYS / 2;
-        case MarginElement::Layout:
+  return NODE_DYS;
+}
+
+static float get_margin_from_top(const Span<SerialNodeItem> items)
+{
+  const SerialNodeItem &first_item = items[0];
+  const serial_item::Type first_item_type = first_item.type();
+  switch (first_item_type) {
+    case serial_item::Type::Socket:
+      return NODE_DYS / 2;
+    case serial_item::Type::Separator:
+      return NODE_ITEM_SPACING_Y / 2;
+    case serial_item::Type::Layout:
+      return 0;
+    case serial_item::Type::PanelHeader:
+      return NODE_DYS / 2;
+    case serial_item::Type::PanelContentBegin:
+    case serial_item::Type::PanelContentEnd:
+      break;
+  }
+  BLI_assert_unreachable();
+  return 0;
+}
+
+static float get_margin_to_bottom(const Span<SerialNodeItem> items)
+{
+  const SerialNodeItem &last_item = items.last();
+  const serial_item::Type last_item_type = last_item.type();
+  switch (last_item_type) {
+    case serial_item::Type::Socket:
+      return NODE_DYS / 2;
+    case serial_item::Type::Separator:
+      return NODE_ITEM_SPACING_Y / 2;
+    case serial_item::Type::Layout:
+      return 0;
+    case serial_item::Type::PanelHeader:
+      return NODE_DYS / 2;
+    case serial_item::Type::PanelContentBegin:
+      break;
+    case serial_item::Type::PanelContentEnd:
+      return NODE_ITEM_SPACING_Y / 2;
+  }
+  BLI_assert_unreachable();
+  return 0;
+}
+
+static float get_margin_between_elements(const Span<SerialNodeItem> items, const int next_index)
+{
+  BLI_assert(next_index >= 1);
+  const SerialNodeItem &prev = items[next_index - 1];
+  const SerialNodeItem &next = items[next_index];
+  using serial_item::Type;
+  const Type prev_type = prev.type();
+  const Type next_type = next.type();
+
+  switch (prev_type) {
+    case Type::Socket: {
+      switch (next_type) {
+        case Type::Socket:
+          return NODE_ITEM_SPACING_Y;
+        case Type::Separator:
           return 0;
-        case MarginElement::Separator:
-          return NODE_ITEM_SPACING_Y / 2;
-        case MarginElement::PanelHeader:
-          return NODE_DYS / 2;
+        case Type::Layout:
+          return 0;
+        case Type::PanelHeader:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelContentBegin:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelContentEnd:
+          return NODE_ITEM_SPACING_Y;
       }
       break;
     }
-    case MarginElement::Bottom: {
-      break;
-    }
-    case MarginElement::Socket: {
-      switch (next) {
-        case MarginElement::Top:
-          break;
-        case MarginElement::Bottom:
-          return NODE_DYS / 2;
-        case MarginElement::Socket:
+    case Type::Layout: {
+      switch (next_type) {
+        case Type::Socket:
           return NODE_ITEM_SPACING_Y;
-        case MarginElement::Layout:
+        case Type::Separator:
           return 0;
-        case MarginElement::Separator:
-          return 0;
-        case MarginElement::PanelHeader:
+        case Type::Layout:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelHeader:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelContentBegin:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelContentEnd:
           return NODE_ITEM_SPACING_Y;
       }
       break;
     }
-    case MarginElement::Layout: {
-      switch (next) {
-        case MarginElement::Top:
-          break;
-        case MarginElement::Bottom:
-          return NODE_DYS / 2;
-        case MarginElement::Socket:
+    case Type::Separator: {
+      switch (next_type) {
+        case Type::Socket:
           return NODE_ITEM_SPACING_Y;
-        case MarginElement::Layout:
+        case Type::Separator:
           return NODE_ITEM_SPACING_Y;
-        case MarginElement::Separator:
+        case Type::Layout:
           return 0;
-        case MarginElement::PanelHeader:
+        case Type::PanelHeader:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelContentBegin:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelContentEnd:
           return NODE_ITEM_SPACING_Y;
       }
       break;
     }
-    case MarginElement::Separator: {
-      switch (next) {
-        case MarginElement::Top:
-          break;
-        case MarginElement::Bottom:
-          return NODE_DYS / 2;
-        case MarginElement::Socket:
+    case Type::PanelHeader: {
+      switch (next_type) {
+        case Type::Socket:
           return NODE_ITEM_SPACING_Y;
-        case MarginElement::Layout:
+        case Type::Separator:
+          return NODE_ITEM_SPACING_Y;
+        case Type::Layout:
           return 0;
-        case MarginElement::Separator:
+        case Type::PanelHeader:
           return NODE_ITEM_SPACING_Y;
-        case MarginElement::PanelHeader:
+        case Type::PanelContentBegin:
+          return 0;
+        case Type::PanelContentEnd:
+          break;
+      }
+      break;
+    }
+    case Type::PanelContentBegin: {
+      switch (next_type) {
+        case Type::Socket:
+          return NODE_ITEM_SPACING_Y;
+        case Type::Separator:
+          return NODE_ITEM_SPACING_Y;
+        case Type::Layout:
+          return 0;
+        case Type::PanelHeader:
+          return NODE_ITEM_SPACING_Y;
+        case Type::PanelContentBegin:
+          break;
+        case Type::PanelContentEnd:
           return NODE_ITEM_SPACING_Y;
       }
       break;
     }
-    case MarginElement::PanelHeader: {
-      switch (next) {
-        case MarginElement::Top:
+    case Type::PanelContentEnd: {
+      switch (next_type) {
+        case Type::Socket:
+          return NODE_ITEM_SPACING_Y;
+        case Type::Separator:
+          return NODE_ITEM_SPACING_Y;
+        case Type::Layout:
+          return 0;
+        case Type::PanelHeader:
+          return 0;
+        case Type::PanelContentBegin:
           break;
-        case MarginElement::Bottom:
+        case Type::PanelContentEnd:
           return 0;
-        case MarginElement::Socket:
-          return NODE_ITEM_SPACING_Y;
-        case MarginElement::Layout:
-          return 0;
-        case MarginElement::Separator:
-          return NODE_ITEM_SPACING_Y;
-        case MarginElement::PanelHeader:
-          return NODE_ITEM_SPACING_Y;
       }
       break;
     }
@@ -867,21 +948,27 @@ static void node_update_basis_from_declaration(
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
 
   const Vector<SerialNodeItem> serial_items = make_serial_node_items(node);
-
-  MarginElement prev_margin_elem = MarginElement::Top;
-
-  auto apply_margin = [&](const MarginElement next_elem) {
-    const float margin = get_margin_between_elements(prev_margin_elem, next_elem);
+  if (serial_items.is_empty()) {
+    const float margin = get_margin_empty();
     locy -= margin;
-    prev_margin_elem = next_elem;
-  };
+    return;
+  }
 
-  for (const SerialNodeItem &item_variant : serial_items) {
+  for (const int item_i : serial_items.index_range()) {
+    if (item_i == 0) {
+      const float margin = get_margin_from_top(serial_items);
+      locy -= margin;
+    }
+    else {
+      const float margin = get_margin_between_elements(serial_items, item_i);
+      locy -= margin;
+    }
+
+    const SerialNodeItem &item_variant = serial_items[item_i];
     std::visit(
         [&](const auto &item) {
           using ItemT = std::decay_t<decltype(item)>;
           if constexpr (std::is_same_v<ItemT, serial_item::Socket>) {
-            apply_margin(MarginElement::Socket);
             bNodeSocket *input_socket = item.input;
             bNodeSocket *output_socket = item.output;
             /* TODO: Parent label. */
@@ -890,11 +977,9 @@ static void node_update_basis_from_declaration(
                 C, ntree, node, parent_label, input_socket, output_socket, block, locx, locy);
           }
           else if constexpr (std::is_same_v<ItemT, serial_item::Layout>) {
-            apply_margin(MarginElement::Layout);
             node_update_basis_buttons(C, ntree, node, item.decl->draw, block, locy);
           }
           else if constexpr (std::is_same_v<ItemT, serial_item::Separator>) {
-            apply_margin(MarginElement::Separator);
             uiLayout *layout = UI_block_layout(&block,
                                                UI_LAYOUT_VERTICAL,
                                                UI_LAYOUT_PANEL,
@@ -908,7 +993,6 @@ static void node_update_basis_from_declaration(
             UI_block_layout_resolve(&block, nullptr, nullptr);
           }
           else if constexpr (std::is_same_v<ItemT, serial_item::PanelHeader>) {
-            apply_margin(MarginElement::PanelHeader);
             const nodes::PanelDeclaration &node_decl = *item.decl;
             bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
             panel_runtime.location_y = locy;
@@ -918,7 +1002,8 @@ static void node_update_basis_from_declaration(
         item_variant.item);
   }
 
-  apply_margin(MarginElement::Bottom);
+  const float bottom_margin = get_margin_to_bottom(serial_items);
+  locy -= bottom_margin;
 }
 
 /* Conventional drawing in outputs/buttons/inputs order. */
