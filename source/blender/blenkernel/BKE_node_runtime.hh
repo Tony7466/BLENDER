@@ -265,6 +265,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
 struct bNodePanelExtend {
   float min_y;
   float max_y;
+  bool fill_node_end = false;
 };
 
 class bNodePanelRuntime : NonCopyable, NonMovable {

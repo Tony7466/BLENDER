@@ -438,6 +438,7 @@ class PanelDeclaration : public ItemDeclaration {
   Vector<ItemDeclaration *> items;
   /** Index in the list of panels on the node. */
   int index = -1;
+  PanelDeclaration *parent_panel = nullptr;
 
  private:
   friend NodeDeclarationBuilder;
@@ -449,6 +450,8 @@ class PanelDeclaration : public ItemDeclaration {
   void build(bNodePanelState &panel) const;
   bool matches(const bNodePanelState &panel) const;
   void update_or_build(const bNodePanelState &old_panel, bNodePanelState &new_panel) const;
+
+  int depth() const;
 };
 
 /**
@@ -459,6 +462,7 @@ class DeclarationListBuilder {
  public:
   NodeDeclarationBuilder &node_decl_builder;
   Vector<ItemDeclaration *> &items;
+  PanelDeclaration *parent_panel_decl = nullptr;
 
   DeclarationListBuilder(NodeDeclarationBuilder &node_decl_builder,
                          Vector<ItemDeclaration *> &items)
@@ -507,6 +511,7 @@ class PanelDeclarationBuilder : public DeclarationListBuilder {
   PanelDeclarationBuilder(NodeDeclarationBuilder &node_builder, PanelDeclaration &decl)
       : DeclarationListBuilder(node_builder, decl.items), decl_(&decl)
   {
+    this->parent_panel_decl = &decl;
   }
 
   Self &description(std::string value = "");

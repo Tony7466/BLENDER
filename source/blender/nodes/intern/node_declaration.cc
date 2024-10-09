@@ -454,6 +454,7 @@ PanelDeclarationBuilder &DeclarationListBuilder::add_panel(const StringRef name,
     panel_decl.identifier = this->node_decl_builder.declaration_.all_items.size();
   }
   panel_decl.name = name;
+  panel_decl.parent_panel = this->parent_panel_decl;
   panel_decl.index = this->node_decl_builder.declaration_.panels.append_and_get_index(&panel_decl);
   this->node_decl_builder.declaration_.all_items.append(std::move(panel_decl_ptr));
   this->node_decl_builder.panel_builders_.append_and_get_index(std::move(panel_decl_builder_ptr));
@@ -479,6 +480,16 @@ void PanelDeclaration::update_or_build(const bNodePanelState &old_panel,
   build(new_panel);
   /* Copy existing state to the new panel */
   SET_FLAG_FROM_TEST(new_panel.flag, old_panel.is_collapsed(), NODE_PANEL_COLLAPSED);
+}
+
+int PanelDeclaration::depth() const
+{
+  int count = 0;
+  for (const PanelDeclaration *parent = this->parent_panel; parent; parent = parent->parent_panel)
+  {
+    count++;
+  }
+  return count;
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::supports_field()

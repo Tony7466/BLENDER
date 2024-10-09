@@ -805,17 +805,17 @@ static float get_margin_to_bottom(const Span<SerialNodeItem> items)
   const serial_item::Type last_item_type = last_item.type();
   switch (last_item_type) {
     case serial_item::Type::Socket:
-      return 2 * NODE_ITEM_SPACING_Y;
+      return 5 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::Separator:
-      return NODE_ITEM_SPACING_Y / 2;
+      return NODE_ITEM_SPACING_Y;
     case serial_item::Type::Layout:
-      return 0;
+      return 5 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::PanelHeader:
-      return 3 * NODE_ITEM_SPACING_Y;
+      return 5 * NODE_ITEM_SPACING_Y;
     case serial_item::Type::PanelContentBegin:
       break;
     case serial_item::Type::PanelContentEnd:
-      return NODE_ITEM_SPACING_Y;
+      return 3 * NODE_ITEM_SPACING_Y;
   }
   BLI_assert_unreachable();
   return 0;
@@ -982,11 +982,28 @@ static void update_collapsed_sockets_recursive(bNode &node,
 
 static void update_collapsed_sockets(bNode &node, const int node_left_x)
 {
-  const nodes::NodeDeclaration &node_decl = *node.declaration();
   for (const nodes::ItemDeclaration *item_decl : node.declaration()->root_items) {
     if (const auto *panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl)) {
       update_collapsed_sockets_recursive(node, node_left_x, *panel_decl);
     }
+  }
+}
+
+static void tag_final_panel(bNode &node, const Span<SerialNodeItem> items)
+{
+  const serial_item::PanelContentEnd *final_panel = nullptr;
+  for (int item_i = items.size() - 1; item_i >= 0; item_i--) {
+    const SerialNodeItem &item = items[item_i];
+    if (const auto *panel_item = std::get_if<serial_item::PanelContentEnd>(&item.item)) {
+      final_panel = panel_item;
+    }
+    else {
+      break;
+    }
+  }
+  if (final_panel) {
+    bke::bNodePanelRuntime &final_panel_runtime = node.runtime->panels[final_panel->decl->index];
+    final_panel_runtime.content_extend->fill_node_end = true;
   }
 }
 
@@ -1101,6 +1118,7 @@ static void node_update_basis_from_declaration(
   locy -= bottom_margin;
 
   update_collapsed_sockets(node, locx);
+  tag_final_panel(node, serial_items);
 }
 
 /* Conventional drawing in outputs/buttons/inputs order. */
@@ -2593,7 +2611,7 @@ static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, voi
 }
 
 /* Draw panel backgrounds first, so other node elements can be rendered on top. */
-static void node_draw_panels_background(const bNode &node, uiBlock &block)
+static void node_draw_panels_background(const bNode &node)
 {
   BLI_assert(is_node_panels_supported(node));
 
@@ -2601,21 +2619,35 @@ static void node_draw_panels_background(const bNode &node, uiBlock &block)
   UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, panel_color);
   const rctf &totr = node.runtime->totr;
 
+  const nodes::PanelDeclaration *final_panel_decl = nullptr;
+
   const nodes::NodeDeclaration &node_decl = *node.declaration();
   for (const int panel_i : node_decl.panels.index_range()) {
     const nodes::PanelDeclaration &panel_decl = *node_decl.panels[panel_i];
     const bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[panel_i];
-    const bNodePanelState &panel_state = node.panel_states_array[panel_i];
     if (!panel_runtime.content_extend.has_value()) {
       continue;
     }
-
     const rctf content_rect = {totr.xmin,
                                totr.xmax,
                                panel_runtime.content_extend->min_y,
                                panel_runtime.content_extend->max_y};
     UI_draw_roundbox_corner_set(UI_CNR_NONE);
     UI_draw_roundbox_4fv(&content_rect, true, BASIS_RAD, panel_color);
+    if (panel_runtime.content_extend->fill_node_end) {
+      final_panel_decl = &panel_decl;
+    }
+  }
+  if (final_panel_decl) {
+    const bke::bNodePanelRuntime &final_panel_runtime =
+        node.runtime->panels[final_panel_decl->index];
+    const rctf content_rect = {
+        totr.xmin, totr.xmax, totr.ymin, final_panel_runtime.content_extend->min_y};
+    UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
+    const int repeats = final_panel_decl->depth() + 1;
+    for ([[maybe_unused]] const int i : IndexRange(repeats)) {
+      UI_draw_roundbox_4fv(&content_rect, true, BASIS_RAD, panel_color);
+    }
   }
 }
 
@@ -3704,7 +3736,7 @@ static void node_draw_basis(const bContext &C,
     UI_draw_roundbox_4fv(&rect, true, corner_radius, color);
 
     if (is_node_panels_supported(node)) {
-      node_draw_panels_background(node, block);
+      node_draw_panels_background(node);
     }
   }
 
