@@ -551,8 +551,8 @@ void set_current_brush_texture(Brush *br, Tex *newtex)
   if (newtex) {
     br->mtex.tex = newtex;
     id_us_plus(&newtex->id);
-    BKE_brush_tag_unsaved_changes(br);
   }
+  BKE_brush_tag_unsaved_changes(br);
 }
 
 Tex *give_current_particle_texture(ParticleSettings *part)
