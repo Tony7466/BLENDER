@@ -3,3 +3,4 @@ Referenced by issue #101778, Node Tools Overview
 Referenced by pull request #114092, Fix #114082: Disabling Geometry Nodes is_tool also disables is_modifier
 Referenced by commit dcdafaa9f5f68b0fa5ea6a11b503c76ddec8d43f, Fix #114082: Disabling Geometry Nodes is_tool also disables is_modifier
 Referenced by pull request #128794, Fix: curves editmode operators available in pointcloud editmode
+Referenced by commit ee3fdf40992d9f4913533df891216dff12eaaa22, Fix: curves editmode operators available in pointcloud editmode
