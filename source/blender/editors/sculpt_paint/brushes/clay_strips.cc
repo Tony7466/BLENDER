@@ -40,6 +40,17 @@ struct LocalData {
   Vector<float3> translations;
 };
 
+/**
+ * Applies a linear falloff based on the z distance in brush local space to the factor.
+ *
+ * Note: We may want to provide users the ability to change this falloff in the future, the
+ * important detail is that we reduce the influence of the brush on vertices that are potentially
+ * "deep" inside the cube test area (i.e. on a nearby plane).
+ *
+ * TODO: Depending on if other brushes begin to use the calc_brush_cube_distances, we may want
+ * to consider either inlining this falloff in that method, or making this a commonly accessible
+ * function.
+ */
 BLI_NOINLINE static void apply_z_axis_falloff(const Span<float3> vert_positions,
                                               const Span<int> verts,
                                               const float4x4 &mat,
