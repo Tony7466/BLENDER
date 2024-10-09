@@ -15,22 +15,22 @@ namespace blender::dna::parser {
 
 namespace ast {
 
-/** Constant int defined value. */
-struct DefineInt {
+/** Constant int named values, like `#define FILE_MAX 1024`. */
+struct IntDeclaration {
   StringRef name;
-  int32_t value = 0;
+  int64_t value = 0;
 };
 
 /**
  * Variable declaration, can hold multiple inline declarations, like:
  * `float *value1,value2[256][256];`
  */
-struct Variable {
+struct VariableDeclaration {
   struct Item {
     std::optional<std::string> ptr;
     StringRef name;
     /** Item array size definition, empty for not arrays items. */
-    Vector<std::variant<StringRef, int32_t>> array_size;
+    Vector<std::variant<StringRef, int64_t>> array_size;
   };
   bool const_tag = false;
   StringRef type;
@@ -38,37 +38,46 @@ struct Variable {
 };
 
 /** Function pointer declaration. */
-struct FunctionPtr {
+struct FunctionPtrDeclaration {
   bool const_tag = false;
   StringRef type;
   StringRef name;
 };
 
 /** Pointer to array declaration. */
-struct PointerToArray {
+struct ArrayPtrDeclaration {
   StringRef type;
   StringRef name;
-  int32_t size;
+  int64_t size;
 };
 
 /** Struct declaration. */
-struct Struct {
+struct StructDeclaration {
   StringRef name;
   /** Recursive struct keep inline buffer capacity to `0`. */
-  Vector<std::variant<Variable, FunctionPtr, PointerToArray, Struct>, 0> items;
+  Vector<std::variant<VariableDeclaration,
+                      FunctionPtrDeclaration,
+                      ArrayPtrDeclaration,
+                      StructDeclaration>,
+         0>
+      items;
   /** Name set if struct is declared as member variable. */
   StringRef member_name;
 };
 
 /** Enum declaration. */
-struct Enum {
+struct EnumDeclaration {
   /** Enum name, unset for unnamed enums. */
   std::optional<StringRef> name;
   /** Fixed type specification. */
   std::optional<StringRef> type;
 };
 
-using CppType = std::variant<DefineInt, Enum, Struct, FunctionPtr, Variable>;
+using CppType = std::variant<IntDeclaration,
+                             EnumDeclaration,
+                             StructDeclaration,
+                             FunctionPtrDeclaration,
+                             VariableDeclaration>;
 
 }  // namespace ast
 

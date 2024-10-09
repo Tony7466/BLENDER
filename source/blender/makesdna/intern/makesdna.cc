@@ -539,40 +539,40 @@ struct StrucMemberRegister {
     return true;
   }
 
-  bool operator()(const FunctionPtr &fn_ptr)
+  bool operator()(const FunctionPtrDeclaration &fn_ptr_decl)
   {
-    std::optional<int> type = add_member_type(fn_ptr.type);
+    std::optional<int> type = add_member_type(fn_ptr_decl.type);
     if (!type.has_value()) {
       return false;
     }
-    const std::string name = fmt::format("(*{})()", fn_ptr.name);
+    const std::string name = fmt::format("(*{})()", fn_ptr_decl.name);
     return add_member_name(type.value(), name);
   }
 
-  bool operator()(const PointerToArray &array_ptr)
+  bool operator()(const ArrayPtrDeclaration &array_ptr_decl)
   {
-    std::optional<int> type = add_member_type(array_ptr.type);
+    std::optional<int> type = add_member_type(array_ptr_decl.type);
     if (!type.has_value()) {
       return false;
     }
-    const std::string name = fmt::format("(*{})[{}]", array_ptr.name, array_ptr.size);
+    const std::string name = fmt::format("(*{})[{}]", array_ptr_decl.name, array_ptr_decl.size);
     return add_member_name(type.value(), name);
   }
 
-  bool operator()(const Struct & /*struct*/)
+  bool operator()(const StructDeclaration & /*struct*/)
   {
     /* Unexpected child struct declaration. */
     BLI_assert_unreachable();
     return false;
   }
 
-  bool operator()(const Variable &var)
+  bool operator()(const VariableDeclaration &var_decl)
   {
-    std::optional<int> type = add_member_type(var.type);
+    std::optional<int> type = add_member_type(var_decl.type);
     if (!type.has_value()) {
       return false;
     }
-    for (auto &var_item : var.items) {
+    for (auto &var_item : var_decl.items) {
       std::string name_str = fmt::format("{}{}", var_item.ptr.value_or(""), var_item.name);
       for (auto &size : var_item.array_size) {
         if (std::holds_alternative<StringRef>(size)) {
@@ -581,7 +581,7 @@ struct StrucMemberRegister {
           return false;
         }
         else {
-          name_str += fmt::format("[{}]", std::get<int32_t>(size));
+          name_str += fmt::format("[{}]", std::get<int64_t>(size));
         }
       }
       if (!add_member_name(type.value(), name_str)) {
@@ -602,11 +602,11 @@ static int convert_include(const char *filepath)
 
   /* Generate DNA. */
   for (auto &cpp_def : cpp_file.value().cpp_defs) {
-    if (!std::holds_alternative<Struct>(cpp_def)) {
+    if (!std::holds_alternative<StructDeclaration>(cpp_def)) {
       continue;
     }
-    const Struct &struct_def = std::get<Struct>(cpp_def);
-    const std::string struct_name = fmt::format("{}", struct_def.name);
+    const StructDeclaration &struct_decl = std::get<StructDeclaration>(cpp_def);
+    const std::string struct_name = fmt::format("{}", struct_decl.name);
     const int strct = add_type(struct_name.c_str(), 0);
     if (strct == -1) {
       fprintf(stderr,
@@ -618,7 +618,7 @@ static int convert_include(const char *filepath)
     short *structpoin = add_struct(strct);
     StrucMemberRegister member_register{strct, structpoin, structpoin + 2, filepath};
     /* Register struct members. */
-    for (auto &item : struct_def.items) {
+    for (auto &item : struct_decl.items) {
       if (!std::visit(member_register, item)) {
         return 1;
       }

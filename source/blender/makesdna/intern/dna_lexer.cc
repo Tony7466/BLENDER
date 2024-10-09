@@ -83,7 +83,7 @@ void TokenIterator::eval_identifier(const char *&itr, const char *end)
       {"ENUM_OPERATORS", KeywordType::EnumOperators},
   };
   StringRef str = StringRef(start, itr);
-  auto test_keyword_fn = [str](const KeywordItem &val) -> bool { return val.word == str; };
+  auto test_keyword_fn = [str](const KeywordItem &keyword) -> bool { return keyword.word == str; };
   const KeywordItem *keyword_itr = std::find_if(
       std::begin(keywords), std::end(keywords), test_keyword_fn);
   if (keyword_itr != std::end(keywords)) {
@@ -115,9 +115,9 @@ void TokenIterator::eval_int_literal(const char *&itr, const char *end)
   if (itr == start) {
     return;
   }
-  int val = 0;
-  std::from_chars(start, itr, val);
-  this->append(IntLiteralToken{StringRef(start, itr), val});
+  int64_t value = 0;
+  std::from_chars(start, itr, value);
+  this->append(IntLiteralToken{StringRef(start, itr), value});
 }
 
 void TokenIterator::eval_multiline_comment(const char *&itr, const char *end)

@@ -95,7 +95,7 @@ struct IdentifierToken : public Token {};
 struct StringLiteralToken : public Token {};
 
 struct IntLiteralToken : public Token {
-  int32_t val;
+  int64_t value;
 };
 
 struct SymbolToken : public Token {

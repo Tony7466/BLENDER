@@ -13,56 +13,68 @@
 
 namespace blender::dna::parser {
 
-static void to_string(std::stringstream &ss, const ast::Variable &var, size_t /*padding*/)
+static void to_string(std::stringstream &ss,
+                      const ast::VariableDeclaration &var_decl,
+                      size_t /*padding*/)
 {
-  ss << fmt::format("{}{} ", var.const_tag ? "const " : "", var.type);
+  ss << fmt::format("{}{} ", var_decl.const_tag ? "const " : "", var_decl.type);
   bool first = true;
-  for (auto &item : var.items) {
+  for (auto &item : var_decl.items) {
     if (!first) {
       ss << ',';
     }
     first = false;
     ss << fmt::format("{}{}", item.ptr.value_or(""), item.name);
     for (auto &size : item.array_size) {
-      std::visit([&ss](auto &&val) { ss << fmt::format("[{}]", val); }, size);
+      std::visit([&ss](auto &&size) { ss << fmt::format("[{}]", size); }, size);
     }
   }
 }
 
-static void to_string(std::stringstream &ss, const ast::FunctionPtr &fn, size_t /*padding*/)
+static void to_string(std::stringstream &ss,
+                      const ast::FunctionPtrDeclaration &fn_ptr_decl,
+                      size_t /*padding*/)
 {
-  const std::string const_tag = fn.const_tag ? "const " : "";
-  ss << fmt::format("{}{} (*{})(...)", const_tag, fn.type, fn.name);
+  const std::string const_tag = fn_ptr_decl.const_tag ? "const " : "";
+  ss << fmt::format("{}{} (*{})(...)", const_tag, fn_ptr_decl.type, fn_ptr_decl.name);
 }
 
-static void to_string(std::stringstream &ss, const ast::PointerToArray &ptr, size_t /*padding*/)
+static void to_string(std::stringstream &ss,
+                      const ast::ArrayPtrDeclaration &array_ptr_decl,
+                      size_t /*padding*/)
 {
-  ss << fmt::format("{} (*{})[{}]", ptr.type, ptr.name, ptr.size);
+  ss << fmt::format("{} (*{})[{}]", array_ptr_decl.type, array_ptr_decl.name, array_ptr_decl.size);
 }
 
-static void to_string(std::stringstream &ss, const ast::DefineInt &val, size_t /*padding*/)
+static void to_string(std::stringstream &ss,
+                      const ast::IntDeclaration &int_decl,
+                      size_t /*padding*/)
 {
-  ss << fmt::format("#define {} {}", val.name, val.value);
+  ss << fmt::format("#define {} {}", int_decl.name, int_decl.value);
 }
 
-static void to_string(std::stringstream &ss, const ast::Enum &val, size_t /*padding*/)
+static void to_string(std::stringstream &ss,
+                      const ast::EnumDeclaration &enum_decl,
+                      size_t /*padding*/)
 {
-  ss << fmt::format("enum {}", val.name.value_or("unnamed"));
-  if (val.type) {
-    ss << fmt::format(": {}", val.type.value());
+  ss << fmt::format("enum {}", enum_decl.name.value_or("unnamed"));
+  if (enum_decl.type) {
+    ss << fmt::format(": {}", enum_decl.type.value());
   }
   ss << " {...}";
 }
 
-static void to_string(std::stringstream &ss, const ast::Struct &val, size_t padding)
+static void to_string(std::stringstream &ss,
+                      const ast::StructDeclaration &struct_decl,
+                      size_t padding)
 {
   const auto add_padding = [&ss](size_t padding) {
     ss << fmt::format("{: >{}}", "", padding * 4);
   };
-  ss << fmt::format("struct {} {{\n", val.name);
-  for (auto &item : val.items) {
+  ss << fmt::format("struct {} {{\n", struct_decl.name);
+  for (auto &item : struct_decl.items) {
     add_padding(padding + 1);
-    std::visit([&ss, padding](auto &&val) { to_string(ss, val, padding + 1); }, item);
+    std::visit([&ss, padding](auto &&item) { to_string(ss, item, padding + 1); }, item);
     ss << ";\n";
   }
   add_padding(padding);
@@ -347,13 +359,13 @@ template<> struct Parser<StringLiteral> {
 
 /** Parses a int literal. */
 struct IntLiteral {
-  int value;
+  int64_t value;
 };
 template<> struct Parser<IntLiteral> {
   static ParseResult<IntLiteral> parse(TokenIterator &token_iterator)
   {
     if (IntLiteralToken *value = token_iterator.next<IntLiteralToken>(); value) {
-      return IntLiteral{value->val};
+      return IntLiteral{value->value};
     }
     return parse_failed;
   }
@@ -416,16 +428,20 @@ template<> struct Parser<Define> {
   }
 };
 
-/** Parses const int defines, like `#define FILE_MAX 1024`. */
-template<> struct Parser<DefineInt> {
-  static ParseResult<DefineInt> parse(TokenIterator &token_iterator)
+/**
+ * Parses constant int named values, currently only defines like `#define FILE_MAX 1024`.
+ * Eventually could also parse `constexpr` values.
+ */
+template<> struct Parser<IntDeclaration> {
+  static ParseResult<IntDeclaration> parse(TokenIterator &token_iterator)
   {
     using DefineConstIntSeq = Sequence<HashSymbol, DefineKeyword, Identifier, IntLiteral>;
-    ParseResult<DefineConstIntSeq> val = parse_t<DefineConstIntSeq>(token_iterator);
-    if (!val.success() || !token_iterator.next<BreakLineToken>()) {
+    ParseResult<DefineConstIntSeq> def_int_seq = parse_t<DefineConstIntSeq>(token_iterator);
+    if (!def_int_seq.success() || !token_iterator.next<BreakLineToken>()) {
       return parse_failed;
     }
-    return DefineInt{std::move(std::get<2>(val.value()).str), std::get<3>(val.value()).value};
+    return IntDeclaration{std::move(std::get<2>(def_int_seq.value()).str),
+                          std::get<3>(def_int_seq.value()).value};
   }
 };
 
@@ -503,10 +519,10 @@ template<> struct Parser<Type> {
  * Parses variable array size declarations: in `int num[3][4][FILE_MAX];`
  * parses `[3][4][FILE_MAX]`.
  * */
-static Vector<std::variant<StringRef, int32_t>> variable_array_size_parse(
+static Vector<std::variant<StringRef, int64_t>> variable_array_size_parse(
     TokenIterator &token_iterator)
 {
-  Vector<std::variant<StringRef, int32_t>> result;
+  Vector<std::variant<StringRef, int64_t>> result;
   /* Dynamic array. */
   if (parse_t<Sequence<LBracketSymbol, RBracketSymbol>>(token_iterator).success()) {
     result.append("");
@@ -534,16 +550,16 @@ static Vector<std::variant<StringRef, int32_t>> variable_array_size_parse(
  * `const int value[256][DEFINE_VALUE];`
  * `float *value1,value2[256][256];`
  */
-template<> struct Parser<Variable> {
-  static ParseResult<Variable> parse(TokenIterator &token_iterator)
+template<> struct Parser<VariableDeclaration> {
+  static ParseResult<VariableDeclaration> parse(TokenIterator &token_iterator)
   {
     ParseResult<Type> type = parse_t<Type>(token_iterator);
     if (!type.success()) {
       return parse_failed;
     }
-    Variable variable{};
-    variable.const_tag = type.value().const_tag;
-    variable.type = type.value().str;
+    VariableDeclaration var_decl{};
+    var_decl.const_tag = type.value().const_tag;
+    var_decl.type = type.value().str;
 
     while (true) {
       std::string star;
@@ -554,11 +570,11 @@ template<> struct Parser<Variable> {
       if (!name.success()) {
         return parse_failed;
       }
-      Variable::Item item{};
+      VariableDeclaration::Item item{};
       item.ptr = !star.empty() ? std::optional{star} : std::nullopt;
       item.name = name.value().str;
       item.array_size = variable_array_size_parse(token_iterator);
-      variable.items.append(std::move(item));
+      var_decl.items.append(std::move(item));
       parse_t<DNADeprecatedKeyword>(token_iterator);
       if (parse_t<SemicolonSymbol>(token_iterator).success()) {
         break;
@@ -567,7 +583,7 @@ template<> struct Parser<Variable> {
         return parse_failed;
       }
     }
-    return variable;
+    return var_decl;
   }
 };
 
@@ -595,8 +611,8 @@ static void skip_until_match_paired_symbols(SymbolType left,
 /**
  * Parses function pointer variables, like `bool (*poll)(struct bContext *);`
  */
-template<> struct Parser<FunctionPtr> {
-  static ParseResult<FunctionPtr> parse(TokenIterator &token_iterator)
+template<> struct Parser<FunctionPtrDeclaration> {
+  static ParseResult<FunctionPtrDeclaration> parse(TokenIterator &token_iterator)
   {
     using FunctionPtrBegin = Sequence<Type,
                                       Optional<StarSymbol>,
@@ -605,14 +621,14 @@ template<> struct Parser<FunctionPtr> {
                                       Identifier,
                                       RParenSymbol,
                                       LParenSymbol>;
-    const ParseResult<FunctionPtrBegin> fn = parse_t<FunctionPtrBegin>(token_iterator);
-    if (!fn.success()) {
+    const ParseResult<FunctionPtrBegin> fn_ptr_seq = parse_t<FunctionPtrBegin>(token_iterator);
+    if (!fn_ptr_seq.success()) {
       return parse_failed;
     }
-    FunctionPtr fn_ptr{};
-    fn_ptr.const_tag = std::get<0>(fn.value()).const_tag;
-    fn_ptr.type = std::get<0>(fn.value()).str;
-    fn_ptr.name = std::get<4>(fn.value()).str;
+    FunctionPtrDeclaration fn_ptr_decl{};
+    fn_ptr_decl.const_tag = std::get<0>(fn_ptr_seq.value()).const_tag;
+    fn_ptr_decl.type = std::get<0>(fn_ptr_seq.value()).str;
+    fn_ptr_decl.name = std::get<4>(fn_ptr_seq.value()).str;
     /* Skip Function params. */
     skip_until_match_paired_symbols(SymbolType::LParen, SymbolType::RParen, token_iterator);
 
@@ -620,15 +636,15 @@ template<> struct Parser<FunctionPtr> {
     if (!parse_t<SemicolonSymbol>(token_iterator).success()) {
       return parse_failed;
     }
-    return fn_ptr;
+    return fn_ptr_decl;
   }
 };
 
 /**
  * Parses array pointer variables, like `float (*vert_coords_prev)[3];`
  */
-template<> struct Parser<PointerToArray> {
-  static ParseResult<PointerToArray> parse(TokenIterator &token_iterator)
+template<> struct Parser<ArrayPtrDeclaration> {
+  static ParseResult<ArrayPtrDeclaration> parse(TokenIterator &token_iterator)
   {
     using PointerToArraySequence = Sequence<Type,
                                             LParenSymbol,
@@ -639,15 +655,16 @@ template<> struct Parser<PointerToArray> {
                                             IntLiteral,
                                             RBracketSymbol,
                                             SemicolonSymbol>;
-    ParseResult<PointerToArraySequence> val = parse_t<PointerToArraySequence>(token_iterator);
-    if (!val.success()) {
+    ParseResult<PointerToArraySequence> array_ptr_seq = parse_t<PointerToArraySequence>(
+        token_iterator);
+    if (!array_ptr_seq.success()) {
       return parse_failed;
     }
-    PointerToArray ptr{};
-    ptr.type = std::get<0>(val.value()).str;
-    ptr.name = std::get<3>(val.value()).str;
-    ptr.size = std::get<6>(val.value()).value;
-    return ptr;
+    ArrayPtrDeclaration array_ptr_decl{};
+    array_ptr_decl.type = std::get<0>(array_ptr_seq.value()).str;
+    array_ptr_decl.name = std::get<3>(array_ptr_seq.value()).str;
+    array_ptr_decl.size = std::get<6>(array_ptr_seq.value()).value;
+    return array_ptr_decl;
   }
 };
 
@@ -666,8 +683,8 @@ template<> struct Parser<IfDef> {
   {
     using IfDefBeginSequence =
         Sequence<HashSymbol, Variant<IfDefKeyword, IfKeyword, IfnDefKeyword>>;
-    const ParseResult<IfDefBeginSequence> val = parse_t<IfDefBeginSequence>(token_iterator);
-    if (!val.success()) {
+    const ParseResult<IfDefBeginSequence> ifdef_seq = parse_t<IfDefBeginSequence>(token_iterator);
+    if (!ifdef_seq.success()) {
       return parse_failed;
     };
     int ifdef_deep = 1;
@@ -699,8 +716,8 @@ template<> struct Parser<IfDef> {
 /**
  * Parses struct declarations.
  */
-template<> struct Parser<Struct> {
-  static ParseResult<Struct> parse(TokenIterator &token_iterator)
+template<> struct Parser<StructDeclaration> {
+  static ParseResult<StructDeclaration> parse(TokenIterator &token_iterator)
   {
     using StructBeginSequence =
         Sequence<Optional<TypedefKeyword>, StructKeyword, Optional<Identifier>, LBraceSymbol>;
@@ -708,18 +725,20 @@ template<> struct Parser<Struct> {
     if (!struct_seq.success()) {
       return parse_failed;
     }
-    Struct result{};
+    StructDeclaration struct_decl{};
     if (std::get<2>(struct_seq.value()).has_value()) {
-      result.name = std::get<2>(struct_seq.value()).value().str;
+      struct_decl.name = std::get<2>(struct_seq.value()).value().str;
     }
     while (true) {
       using DNA_DEF_CCX_Macro = MacroCall<lex::KeywordType::DNADefineCxxMethods>;
 
-      if (auto member = parse_t<Variant<Variable, FunctionPtr, PointerToArray, Struct>>(
-              token_iterator);
+      if (auto member = parse_t<Variant<VariableDeclaration,
+                                        FunctionPtrDeclaration,
+                                        ArrayPtrDeclaration,
+                                        StructDeclaration>>(token_iterator);
           member.success())
       {
-        result.items.append(std::move(member.value()));
+        struct_decl.items.append(std::move(member.value()));
       }
       else if (parse_t<Variant<DNA_DEF_CCX_Macro, IfDef>>(token_iterator).success()) {
       }
@@ -733,51 +752,51 @@ template<> struct Parser<Struct> {
       return parse_failed;
     }
     if (std::get<1>(struct_end.value()).has_value()) {
-      result.member_name = std::get<1>(struct_end.value()).value().str;
+      struct_decl.member_name = std::get<1>(struct_end.value()).value().str;
     }
-    if (result.member_name == result.name && result.name.is_empty()) {
+    if (struct_decl.member_name == struct_decl.name && struct_decl.name.is_empty()) {
       return parse_failed;
     }
-    return result;
+    return struct_decl;
   }
 };
 
-/** Parses skipped declarations by makesdna. */
-struct Skip {};
-template<> struct Parser<Skip> {
-  static ParseResult<Skip> parse(TokenIterator &token_iterator)
+/** Parses unused declarations by makesdna. */
+struct UnusedDeclaration {};
+template<> struct Parser<UnusedDeclaration> {
+  static ParseResult<UnusedDeclaration> parse(TokenIterator &token_iterator)
   {
     using UnusedDeclarations =
         Variant<Define,
                 Include,
                 IfDef,
                 Sequence<HashSymbol, PragmaKeyword, OnceKeyword>,
-                Sequence<HashSymbol, HashSymbol, Struct>,
-                Sequence<ExternKeyword, Variable>,
+                Sequence<HashSymbol, HashSymbol, StructDeclaration>,
+                Sequence<ExternKeyword, VariableDeclaration>,
                 MacroCall<lex::KeywordType::BLIStaticAssertAlign>,
                 MacroCall<lex::KeywordType::EnumOperators>,
                 Sequence<TypedefKeyword, StructKeyword, Identifier, Identifier, SemicolonSymbol>>;
     if (parse_t<UnusedDeclarations>(token_iterator).success()) {
-      return Skip{};
+      return UnusedDeclaration{};
     }
     /* Forward declarations. */
     if (parse_t<Sequence<StructKeyword, Identifier>>(token_iterator).success()) {
       for (; parse_t<Sequence<CommaSymbol, Identifier>>(token_iterator).success();) {
       }
       if (parse_t<SemicolonSymbol>(token_iterator).success()) {
-        return Skip{};
+        return UnusedDeclaration{};
       }
     }
     else if (token_iterator.next<BreakLineToken>()) {
-      return Skip{};
+      return UnusedDeclaration{};
     }
     return parse_failed;
   }
 };
 
 /** Parse enums, with a name or not and with a fixed type or not. */
-template<> struct Parser<Enum> {
-  static ParseResult<Enum> parse(TokenIterator &token_iterator)
+template<> struct Parser<EnumDeclaration> {
+  static ParseResult<EnumDeclaration> parse(TokenIterator &token_iterator)
   {
     using EnumBeginSequence = Sequence<Optional<TypedefKeyword>,
                                        EnumKeyword,
@@ -789,12 +808,12 @@ template<> struct Parser<Enum> {
     if (!enum_begin.success()) {
       return parse_failed;
     }
-    Enum enum_def;
+    EnumDeclaration enum_decl;
     if (std::get<3>(enum_begin.value()).has_value()) {
-      enum_def.name = std::get<3>(enum_begin.value()).value().str;
+      enum_decl.name = std::get<3>(enum_begin.value()).value().str;
     }
     if (std::get<4>(enum_begin.value()).has_value()) {
-      enum_def.type = std::get<1>(std::get<4>(enum_begin.value()).value()).str;
+      enum_decl.type = std::get<1>(std::get<4>(enum_begin.value()).value()).str;
     }
     /* Skip enum body. */
     skip_until_match_paired_symbols(SymbolType::LBrace, SymbolType::RBrace, token_iterator);
@@ -806,7 +825,7 @@ template<> struct Parser<Enum> {
     {
       return parse_failed;
     }
-    return enum_def;
+    return enum_decl;
   }
 };
 
@@ -858,41 +877,41 @@ std::optional<CppFile> parse_file(StringRef filepath)
   using EndIfSeq = Sequence<HashSymbol, EndIfKeyword>;
 
   while (!token_iterator.has_finish()) {
-    using CPPTypeVariant = Variant<Struct,
-                                   Enum,
-                                   Sequence<Optional<TypedefKeyword>, FunctionPtr>,
-                                   Variable,
-                                   DefineInt,
+    using CPPTypeVariant = Variant<StructDeclaration,
+                                   EnumDeclaration,
+                                   Sequence<Optional<TypedefKeyword>, FunctionPtrDeclaration>,
+                                   VariableDeclaration,
+                                   IntDeclaration,
                                    DNADeprecatedAllowSeq,
                                    EndIfSeq,
-                                   Skip>;
-    ParseResult<CPPTypeVariant> val = parse_t<CPPTypeVariant>(token_iterator);
-    if (!val.success()) {
+                                   UnusedDeclaration>;
+    ParseResult<CPPTypeVariant> cpp_variant = parse_t<CPPTypeVariant>(token_iterator);
+    if (!cpp_variant.success()) {
       print_unhandled_token_error(filepath, cpp_file.text, token_iterator.last_unmatched);
       return std::nullopt;
     }
-    if (std::holds_alternative<Struct>(val.value())) {
-      cpp_file.cpp_defs.append(std::move(std::get<Struct>(val.value())));
+    if (std::holds_alternative<StructDeclaration>(cpp_variant.value())) {
+      cpp_file.cpp_defs.append(std::move(std::get<StructDeclaration>(cpp_variant.value())));
     }
-    else if (std::holds_alternative<DefineInt>(val.value())) {
-      cpp_file.cpp_defs.append(std::move(std::get<DefineInt>(val.value())));
+    else if (std::holds_alternative<IntDeclaration>(cpp_variant.value())) {
+      cpp_file.cpp_defs.append(std::move(std::get<IntDeclaration>(cpp_variant.value())));
     }
-    else if (std::holds_alternative<Variable>(val.value())) {
+    else if (std::holds_alternative<VariableDeclaration>(cpp_variant.value())) {
       continue;
-      cpp_file.cpp_defs.append(std::move(std::get<Variable>(val.value())));
+      cpp_file.cpp_defs.append(std::move(std::get<VariableDeclaration>(cpp_variant.value())));
     }
-    else if (std::holds_alternative<Enum>(val.value())) {
-      Enum &enum_def = std::get<Enum>(val.value());
+    else if (std::holds_alternative<EnumDeclaration>(cpp_variant.value())) {
+      EnumDeclaration &enum_decl = std::get<EnumDeclaration>(cpp_variant.value());
       /* Keep only named enums with fixed type. */
-      if (!enum_def.name.has_value() || !enum_def.type.has_value()) {
+      if (!enum_decl.name.has_value() || !enum_decl.type.has_value()) {
         continue;
       }
-      cpp_file.cpp_defs.append(std::move(std::get<Enum>(val.value())));
+      cpp_file.cpp_defs.append(std::move(std::get<EnumDeclaration>(cpp_variant.value())));
     }
-    else if (std::holds_alternative<DNADeprecatedAllowSeq>(val.value())) {
+    else if (std::holds_alternative<DNADeprecatedAllowSeq>(cpp_variant.value())) {
       dna_deprecated_allow_count++;
     }
-    else if (std::holds_alternative<EndIfSeq>(val.value())) {
+    else if (std::holds_alternative<EndIfSeq>(cpp_variant.value())) {
       dna_deprecated_allow_count--;
       BLI_assert(dna_deprecated_allow_count >= 0);
     }
