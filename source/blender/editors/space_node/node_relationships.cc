@@ -2297,7 +2297,11 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
     return;
   }
   Vector<bNodeSocket *> already_linked_sockets;
+  bool multi_input_node = false;
   for (bNodeSocket *socket : node_to_insert->input_sockets()) {
+    if (socket->is_multi_input()) {
+      multi_input_node = true;
+    }
     already_linked_sockets.extend(socket->directly_linked_sockets());
   }
   for (bNodeSocket *socket : node_to_insert->output_sockets()) {
@@ -2328,7 +2332,7 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
           break;
         }
       }
-      if (!is_linked_to_linked) {
+      if (!is_linked_to_linked && !multi_input_node ) {
         continue;
       }
     }
@@ -2439,6 +2443,21 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
     if (!best_input_is_linked) {
       /* Add a new link that connects the node on the left to the newly inserted node. */
       bke::node_add_link(&ntree, from_node, from_socket, node_to_insert, best_input);
+    }
+    else if (best_input->is_multi_input()) {
+      bool samesocket = false;
+      Vector<bNodeSocket *> already_linked_sockets;
+      already_linked_sockets.extend(best_input->directly_linked_sockets());
+      for (const bNodeSocket *socket : already_linked_sockets) {
+        if (ELEM(socket, from_socket, old_link->tosock)) {
+          samesocket = true;
+          break;
+        }
+      }
+      if (!samesocket) {
+        /* Add a new link if the socket is multi-input and not linked to the same socket. */
+        bke::node_add_link(&ntree, from_node, from_socket, node_to_insert, best_input);
+      }
     }
   }
 
