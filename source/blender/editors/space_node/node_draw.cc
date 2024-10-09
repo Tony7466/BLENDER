@@ -1165,7 +1165,7 @@ static float get_margin_between_elements(const MarginElement &prev, const Margin
         case MarginElement::Socket:
           return NODE_ITEM_SPACING_Y;
         case MarginElement::Layout:
-          return NODE_ITEM_SPACING_Y;
+          return 0;
       }
       break;
     }
