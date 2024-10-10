@@ -136,7 +136,7 @@ template<typename Ret, typename... Params> class FunctionRef<Ret(Params...)> {
         callback_ = nullptr;
         callable_ = 0;
       }
-#if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
+#if COMPILER_CLANG || COMPILER_GCC
 #  pragma GCC diagnostic pop
 #endif
     }
