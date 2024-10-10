@@ -28,17 +28,7 @@ void VolumeProbeModule::init()
 {
   display_grids_enabled_ = DRW_state_draw_support();
 
-  int irradiance_pool_size = inst_.scene->eevee.gi_irradiance_pool_size;
-  int atlas_col_count = 256;
-  /* Ref #128407: Intel ARC/OpenGL reports max dimension of 2048. This would not allow a pool size
-   * of 1024, and for a pool size of 512 we need to tweak the atlas_col_count so the x/y dimension
-   * still fits. */
-  if (GPU_max_texture_3d_size() == 2048) {
-    atlas_col_count = 512;
-    irradiance_pool_size = min_ii(irradiance_pool_size, 512);
-  }
-
-  int atlas_byte_size = 1024 * 1024 * irradiance_pool_size;
+  int atlas_byte_size = 1024 * 1024 * inst_.scene->eevee.gi_irradiance_pool_size;
   /* This might become an option in the future. */
   bool use_l2_band = false;
   int sh_coef_len = use_l2_band ? 9 : 4;
@@ -48,6 +38,7 @@ void VolumeProbeModule::init()
   /* Add space for validity bits. */
   atlas_extent.z += IRRADIANCE_GRID_BRICK_SIZE / 4;
 
+  int atlas_col_count = 256;
   atlas_extent.x *= atlas_col_count;
   /* Determine the row count depending on the scene settings. */
   int row_byte_size = atlas_extent.x * atlas_extent.y * atlas_extent.z * texel_byte_size;
