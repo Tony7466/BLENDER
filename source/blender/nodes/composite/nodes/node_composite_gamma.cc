@@ -60,9 +60,11 @@ static ShaderNode *get_compositor_shader_node(DNode node)
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
   static auto gamma_function = mf::build::SI2_SO<float4, float, float4>(
-      "Gamma", [](float4 input, float gamma) {
-        return float4(math::safe_pow(input.xyz(), gamma), input.w);
-      });
+      "Gamma",
+      [](const float4 &color, const float gamma) -> float4 {
+        return float4(math::safe_pow(color.xyz(), gamma), color.w);
+      },
+      mf::build::exec_presets::SomeSpanOrSingle<0>());
   builder.set_matching_fn(gamma_function);
 }
 

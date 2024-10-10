@@ -287,7 +287,7 @@ static mf::MultiFunction *get_conversion_function(const ResultType variable_type
   if (variable_type == ResultType::Float && expected_type == ResultType::Vector) {
     static auto float_to_vector_function = mf::build::SI1_SO<float, float4>(
         "Float To Vector",
-        [](const float &input) { return float4(float3(input), 1.0f); },
+        [](const float &input) -> float4 { return float4(float3(input), 1.0f); },
         mf::build::exec_presets::AllSpanOrSingle());
     return &float_to_vector_function;
   }
@@ -295,7 +295,7 @@ static mf::MultiFunction *get_conversion_function(const ResultType variable_type
   if (variable_type == ResultType::Float && expected_type == ResultType::Color) {
     static auto float_to_color_function = mf::build::SI1_SO<float, float4>(
         "Float To Color",
-        [](const float &input) { return float4(float3(input), 1.0f); },
+        [](const float &input) -> float4 { return float4(float3(input), 1.0f); },
         mf::build::exec_presets::AllSpanOrSingle());
     return &float_to_color_function;
   }
@@ -303,7 +303,7 @@ static mf::MultiFunction *get_conversion_function(const ResultType variable_type
   if (variable_type == ResultType::Vector && expected_type == ResultType::Float) {
     static auto vector_to_float_function = mf::build::SI1_SO<float4, float>(
         "Vector To Float",
-        [](const float4 &input) { return (input.x + input.y + input.z) / 3.0f; },
+        [](const float4 &input) -> float { return (input.x + input.y + input.z) / 3.0f; },
         mf::build::exec_presets::AllSpanOrSingle());
     return &vector_to_float_function;
   }
@@ -311,7 +311,7 @@ static mf::MultiFunction *get_conversion_function(const ResultType variable_type
   if (variable_type == ResultType::Vector && expected_type == ResultType::Color) {
     static auto vector_to_color_function = mf::build::SI1_SO<float4, float4>(
         "Vector To Color",
-        [](const float4 &input) { return float4(input.xyz(), 1.0f); },
+        [](const float4 &input) -> float4 { return float4(input.xyz(), 1.0f); },
         mf::build::exec_presets::AllSpanOrSingle());
     return &vector_to_color_function;
   }
@@ -319,7 +319,7 @@ static mf::MultiFunction *get_conversion_function(const ResultType variable_type
   if (variable_type == ResultType::Color && expected_type == ResultType::Float) {
     static auto color_to_float_function = mf::build::SI1_SO<float4, float>(
         "Color To Float",
-        [](const float4 &input) { return (input.x + input.y + input.z) / 3.0f; },
+        [](const float4 &input) -> float { return (input.x + input.y + input.z) / 3.0f; },
         mf::build::exec_presets::AllSpanOrSingle());
     return &color_to_float_function;
   }
