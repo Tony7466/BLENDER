@@ -923,30 +923,7 @@ static BMFace *join_edge(JoinEdgesState &s, BMEdge *e)
 #endif
 
   /* Join the edge and identify the face */
-  BMFace *face_new = BM_faces_join_pair(s.bm, l_a, l_b, true);
-
-  if (face_new) {
-
-    /* Tag the face so the selection can be extended to include the new face. */
-    if (s.select_tris_only == false) {
-      BMO_face_flag_enable(s.bm, face_new, FACE_OUT);
-    }
-  }
-
-#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
-  /* If stopping partway through, clear the selection entirely, and instead
-   * highlight the faces being considered in the step the user is checking.  */
-  if (s.debug_merge_limit != -1 && s.debug_merge_count == s.debug_merge_limit) {
-    BMEdge *face;
-    BMIter iter;
-    BM_ITER_MESH (face, &iter, s.bm, BM_FACES_OF_MESH) {
-      BMO_face_flag_disable(s.bm, face, FACE_OUT);
-    }
-    BMO_face_flag_enable(s.bm, face_new, FACE_OUT);
-  }
-#endif
-
-  return face_new;
+  return BM_faces_join_pair(s.bm, l_a, l_b, true);
 }
 
 /** Given a mesh, convert triangles to quads. */
@@ -1050,6 +1027,27 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
 
     /* Attempt the merge. */
     BMFace *new_face = join_edge(s, edge);
+
+    if (new_face) {
+
+      /* Tag the face so the selection can be extended to include the new face. */
+      if (s.select_tris_only == false) {
+        BMO_face_flag_enable(s.bm, new_face, FACE_OUT);
+      }
+    }
+
+#ifdef USE_JOIN_TRIANGLE_INTERACTIVE_TESTING
+    /* If stopping partway through, clear the selection entirely, and instead
+     * highlight the faces being considered in the step the user is checking.  */
+    if (s.debug_merge_limit != -1 && s.debug_merge_count == s.debug_merge_limit) {
+      BMEdge *face;
+      BMIter iter;
+      BM_ITER_MESH (face, &iter, s.bm, BM_FACES_OF_MESH) {
+        BMO_face_flag_disable(s.bm, face, FACE_OUT);
+      }
+      BMO_face_flag_enable(s.bm, new_face, FACE_OUT);
+    }
+#endif
 
     /* If the merge succeeded, improve the neighbors */
     if (new_face && s.use_topo_influence) {
