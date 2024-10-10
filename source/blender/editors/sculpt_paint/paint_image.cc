@@ -725,6 +725,7 @@ static int sample_color_modal(bContext *C, wmOperator *op, const wmEvent *event)
     if (data->sample_palette) {
       BKE_brush_color_set(scene, brush, data->initcolor);
       RNA_boolean_set(op->ptr, "palette", true);
+      WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, brush);
     }
     WM_cursor_modal_restore(CTX_wm_window(C));
     MEM_delete(data);
@@ -754,6 +755,7 @@ static int sample_color_modal(bContext *C, wmOperator *op, const wmEvent *event)
         if (!data->sample_palette) {
           data->sample_palette = true;
           sample_color_update_header(data, C);
+          WM_report(RPT_INFO,"Sampling color for pallette");
         }
         WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, brush);
       }
