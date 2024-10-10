@@ -551,7 +551,7 @@ static bool node_update_basis_socket(const bContext &C,
   return true;
 }
 
-namespace serial_item {
+namespace flat_item {
 
 enum class Type {
   Socket,
@@ -588,18 +588,18 @@ struct Layout {
   const nodes::LayoutDeclaration *decl;
 };
 
-}  // namespace serial_item
+}  // namespace flat_item
 
-struct SerialNodeItem {
-  std::variant<serial_item::Socket,
-               serial_item::Separator,
-               serial_item::PanelHeader,
-               serial_item::PanelContentBegin,
-               serial_item::PanelContentEnd,
-               serial_item::Layout>
+struct FlatNodeItem {
+  std::variant<flat_item::Socket,
+               flat_item::Separator,
+               flat_item::PanelHeader,
+               flat_item::PanelContentBegin,
+               flat_item::PanelContentEnd,
+               flat_item::Layout>
       item;
 
-  serial_item::Type type() const
+  flat_item::Type type() const
   {
     return std::visit([](auto &&item) { return item.type; }, this->item);
   }
@@ -682,16 +682,16 @@ static void determine_visible_panels(const bNode &node, MutableSpan<bool> r_visi
   determine_visible_panels_impl(node, potentially_visible_states, r_visibility_states);
 }
 
-static void add_serial_items_for_socket(bNode &node,
-                                        const nodes::SocketDeclaration &socket_decl,
-                                        const nodes::PanelDeclaration *panel_decl,
-                                        Vector<SerialNodeItem> &r_items)
+static void add_flat_items_for_socket(bNode &node,
+                                      const nodes::SocketDeclaration &socket_decl,
+                                      const nodes::PanelDeclaration *panel_decl,
+                                      Vector<FlatNodeItem> &r_items)
 {
   bNodeSocket &socket = node.socket_by_decl(socket_decl);
   if (!socket_decl.align_with_previous_socket) {
-    r_items.append({serial_item::Socket()});
+    r_items.append({flat_item::Socket()});
   }
-  serial_item::Socket &item = std::get<serial_item::Socket>(r_items.last().item);
+  flat_item::Socket &item = std::get<flat_item::Socket>(r_items.last().item);
   if (socket_decl.in_out == SOCK_IN) {
     BLI_assert(!item.input);
     item.input = &socket;
@@ -703,57 +703,57 @@ static void add_serial_items_for_socket(bNode &node,
   item.panel_decl = panel_decl;
 }
 
-static void add_serial_items_for_separator(Vector<SerialNodeItem> &r_items)
+static void add_flat_items_for_separator(Vector<FlatNodeItem> &r_items)
 {
-  r_items.append({serial_item::Separator()});
+  r_items.append({flat_item::Separator()});
 }
 
-static void add_serial_items_for_layout(const bNode &node,
-                                        const nodes::LayoutDeclaration &layout_decl,
-                                        Vector<SerialNodeItem> &r_items)
+static void add_flat_items_for_layout(const bNode &node,
+                                      const nodes::LayoutDeclaration &layout_decl,
+                                      Vector<FlatNodeItem> &r_items)
 {
   if (!(node.flag & NODE_OPTIONS)) {
     return;
   }
-  r_items.append({serial_item::Layout{&layout_decl}});
+  r_items.append({flat_item::Layout{&layout_decl}});
 }
 
-static void add_serial_items_for_panel(bNode &node,
-                                       const nodes::PanelDeclaration &panel_decl,
-                                       const Span<bool> panel_visibility,
-                                       Vector<SerialNodeItem> &r_items)
+static void add_flat_items_for_panel(bNode &node,
+                                     const nodes::PanelDeclaration &panel_decl,
+                                     const Span<bool> panel_visibility,
+                                     Vector<FlatNodeItem> &r_items)
 {
   if (!panel_visibility[panel_decl.index]) {
     return;
   }
-  r_items.append({serial_item::PanelHeader{&panel_decl}});
+  r_items.append({flat_item::PanelHeader{&panel_decl}});
   const bNodePanelState &panel_state = node.panel_states_array[panel_decl.index];
   if (panel_state.is_collapsed()) {
     return;
   }
-  r_items.append({serial_item::PanelContentBegin{&panel_decl}});
+  r_items.append({flat_item::PanelContentBegin{&panel_decl}});
   for (const nodes::ItemDeclaration *item_decl : panel_decl.items) {
     if (const auto *socket_decl = dynamic_cast<const nodes::SocketDeclaration *>(item_decl)) {
-      add_serial_items_for_socket(node, *socket_decl, &panel_decl, r_items);
+      add_flat_items_for_socket(node, *socket_decl, &panel_decl, r_items);
     }
     else if (const auto *sub_panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl))
     {
-      add_serial_items_for_panel(node, *sub_panel_decl, panel_visibility, r_items);
+      add_flat_items_for_panel(node, *sub_panel_decl, panel_visibility, r_items);
     }
     else if (dynamic_cast<const nodes::SeparatorDeclaration *>(item_decl)) {
-      add_serial_items_for_separator(r_items);
+      add_flat_items_for_separator(r_items);
     }
     else if (const auto *layout_decl = dynamic_cast<const nodes::LayoutDeclaration *>(item_decl)) {
-      add_serial_items_for_layout(node, *layout_decl, r_items);
+      add_flat_items_for_layout(node, *layout_decl, r_items);
     }
   }
-  r_items.append({serial_item::PanelContentEnd{&panel_decl}});
+  r_items.append({flat_item::PanelContentEnd{&panel_decl}});
 }
 
 /**
  * Flattens the visible panels, sockets etc. of the node into a list that is then used to draw it.
  */
-static Vector<SerialNodeItem> make_serial_node_items(bNode &node)
+static Vector<FlatNodeItem> make_flat_node_items(bNode &node)
 {
   BLI_assert(is_node_panels_supported(node));
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
@@ -762,19 +762,19 @@ static Vector<SerialNodeItem> make_serial_node_items(bNode &node)
   Array<bool> panel_visibility(panels_num, false);
   determine_visible_panels(node, panel_visibility);
 
-  Vector<SerialNodeItem> items;
+  Vector<FlatNodeItem> items;
   for (const nodes::ItemDeclaration *item_decl : node.declaration()->root_items) {
     if (const auto *socket_decl = dynamic_cast<const nodes::SocketDeclaration *>(item_decl)) {
-      add_serial_items_for_socket(node, *socket_decl, nullptr, items);
+      add_flat_items_for_socket(node, *socket_decl, nullptr, items);
     }
     else if (const auto *panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl)) {
-      add_serial_items_for_panel(node, *panel_decl, panel_visibility, items);
+      add_flat_items_for_panel(node, *panel_decl, panel_visibility, items);
     }
     else if (dynamic_cast<const nodes::SeparatorDeclaration *>(item_decl)) {
-      add_serial_items_for_separator(items);
+      add_flat_items_for_separator(items);
     }
     else if (const auto *layout_decl = dynamic_cast<const nodes::LayoutDeclaration *>(item_decl)) {
-      add_serial_items_for_layout(node, *layout_decl, items);
+      add_flat_items_for_layout(node, *layout_decl, items);
     }
   }
   return items;
@@ -787,21 +787,21 @@ static float get_margin_empty()
 }
 
 /** Get the margin between the node header and the first item. */
-static float get_margin_from_top(const Span<SerialNodeItem> items)
+static float get_margin_from_top(const Span<FlatNodeItem> items)
 {
-  const SerialNodeItem &first_item = items[0];
-  const serial_item::Type first_item_type = first_item.type();
+  const FlatNodeItem &first_item = items[0];
+  const flat_item::Type first_item_type = first_item.type();
   switch (first_item_type) {
-    case serial_item::Type::Socket:
+    case flat_item::Type::Socket:
       return 2 * NODE_ITEM_SPACING_Y;
-    case serial_item::Type::Separator:
+    case flat_item::Type::Separator:
       return NODE_ITEM_SPACING_Y / 2;
-    case serial_item::Type::Layout:
+    case flat_item::Type::Layout:
       return 3 * NODE_ITEM_SPACING_Y;
-    case serial_item::Type::PanelHeader:
+    case flat_item::Type::PanelHeader:
       return 4 * NODE_ITEM_SPACING_Y;
-    case serial_item::Type::PanelContentBegin:
-    case serial_item::Type::PanelContentEnd:
+    case flat_item::Type::PanelContentBegin:
+    case flat_item::Type::PanelContentEnd:
       break;
   }
   BLI_assert_unreachable();
@@ -809,22 +809,22 @@ static float get_margin_from_top(const Span<SerialNodeItem> items)
 }
 
 /** Get the margin between the last item and the node bottom. */
-static float get_margin_to_bottom(const Span<SerialNodeItem> items)
+static float get_margin_to_bottom(const Span<FlatNodeItem> items)
 {
-  const SerialNodeItem &last_item = items.last();
-  const serial_item::Type last_item_type = last_item.type();
+  const FlatNodeItem &last_item = items.last();
+  const flat_item::Type last_item_type = last_item.type();
   switch (last_item_type) {
-    case serial_item::Type::Socket:
+    case flat_item::Type::Socket:
       return 5 * NODE_ITEM_SPACING_Y;
-    case serial_item::Type::Separator:
+    case flat_item::Type::Separator:
       return NODE_ITEM_SPACING_Y;
-    case serial_item::Type::Layout:
+    case flat_item::Type::Layout:
       return 5 * NODE_ITEM_SPACING_Y;
-    case serial_item::Type::PanelHeader:
+    case flat_item::Type::PanelHeader:
       return 4 * NODE_ITEM_SPACING_Y;
-    case serial_item::Type::PanelContentBegin:
+    case flat_item::Type::PanelContentBegin:
       break;
-    case serial_item::Type::PanelContentEnd:
+    case flat_item::Type::PanelContentEnd:
       return 3 * NODE_ITEM_SPACING_Y;
   }
   BLI_assert_unreachable();
@@ -832,12 +832,12 @@ static float get_margin_to_bottom(const Span<SerialNodeItem> items)
 }
 
 /** Get the margin between two consecutive items. */
-static float get_margin_between_elements(const Span<SerialNodeItem> items, const int next_index)
+static float get_margin_between_elements(const Span<FlatNodeItem> items, const int next_index)
 {
   BLI_assert(next_index >= 1);
-  const SerialNodeItem &prev = items[next_index - 1];
-  const SerialNodeItem &next = items[next_index];
-  using serial_item::Type;
+  const FlatNodeItem &prev = items[next_index - 1];
+  const FlatNodeItem &next = items[next_index];
+  using flat_item::Type;
   const Type prev_type = prev.type();
   const Type next_type = next.type();
 
@@ -1011,12 +1011,12 @@ static void update_collapsed_sockets(bNode &node, const int node_left_x)
  * Tag the innermost panel that goes to the very end of the node. The background color of that
  * panel is extended to fill the entire rest of the node.
  */
-static void tag_final_panel(bNode &node, const Span<SerialNodeItem> items)
+static void tag_final_panel(bNode &node, const Span<FlatNodeItem> items)
 {
-  const serial_item::PanelContentEnd *final_panel = nullptr;
+  const flat_item::PanelContentEnd *final_panel = nullptr;
   for (int item_i = items.size() - 1; item_i >= 0; item_i--) {
-    const SerialNodeItem &item = items[item_i];
-    if (const auto *panel_item = std::get_if<serial_item::PanelContentEnd>(&item.item)) {
+    const FlatNodeItem &item = items[item_i];
+    if (const auto *panel_item = std::get_if<flat_item::PanelContentEnd>(&item.item)) {
       final_panel = panel_item;
     }
     else {
@@ -1049,30 +1049,30 @@ static void node_update_basis_from_declaration(
   }
 
   /* Gather flattened list of items in the node.*/
-  const Vector<SerialNodeItem> serial_items = make_serial_node_items(node);
-  if (serial_items.is_empty()) {
+  const Vector<FlatNodeItem> flat_items = make_flat_node_items(node);
+  if (flat_items.is_empty()) {
     const float margin = get_margin_empty();
     locy -= margin;
     return;
   }
 
-  for (const int item_i : serial_items.index_range()) {
+  for (const int item_i : flat_items.index_range()) {
     /* Apply margins. This should be the only place that applies margins between elements so that
      * it is easy change later on.*/
     if (item_i == 0) {
-      const float margin = get_margin_from_top(serial_items);
+      const float margin = get_margin_from_top(flat_items);
       locy -= margin;
     }
     else {
-      const float margin = get_margin_between_elements(serial_items, item_i);
+      const float margin = get_margin_between_elements(flat_items, item_i);
       locy -= margin;
     }
 
-    const SerialNodeItem &item_variant = serial_items[item_i];
+    const FlatNodeItem &item_variant = flat_items[item_i];
     std::visit(
         [&](const auto &item) {
           using ItemT = std::decay_t<decltype(item)>;
-          if constexpr (std::is_same_v<ItemT, serial_item::Socket>) {
+          if constexpr (std::is_same_v<ItemT, flat_item::Socket>) {
             bNodeSocket *input_socket = item.input;
             bNodeSocket *output_socket = item.output;
             const nodes::PanelDeclaration *panel_decl = item.panel_decl;
@@ -1080,7 +1080,7 @@ static void node_update_basis_from_declaration(
             node_update_basis_socket(
                 C, ntree, node, parent_label, input_socket, output_socket, block, locx, locy);
           }
-          else if constexpr (std::is_same_v<ItemT, serial_item::Layout>) {
+          else if constexpr (std::is_same_v<ItemT, flat_item::Layout>) {
             const nodes::LayoutDeclaration &decl = *item.decl;
             /* Round the node origin because text contents are always pixel-aligned. */
             const float2 loc = math::round(node_to_view(node, float2(0)));
@@ -1104,7 +1104,7 @@ static void node_update_basis_from_declaration(
             UI_block_layout_resolve(&block, nullptr, &buty);
             locy = buty;
           }
-          else if constexpr (std::is_same_v<ItemT, serial_item::Separator>) {
+          else if constexpr (std::is_same_v<ItemT, flat_item::Separator>) {
             uiLayout *layout = UI_block_layout(&block,
                                                UI_LAYOUT_VERTICAL,
                                                UI_LAYOUT_PANEL,
@@ -1117,7 +1117,7 @@ static void node_update_basis_from_declaration(
             uiItemS_ex(layout, 1.0, LayoutSeparatorType::Line);
             UI_block_layout_resolve(&block, nullptr, nullptr);
           }
-          else if constexpr (std::is_same_v<ItemT, serial_item::PanelHeader>) {
+          else if constexpr (std::is_same_v<ItemT, flat_item::PanelHeader>) {
             const nodes::PanelDeclaration &node_decl = *item.decl;
             bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
             const float panel_header_height = NODE_DYS;
@@ -1125,13 +1125,13 @@ static void node_update_basis_from_declaration(
             panel_runtime.header_center_y = locy;
             locy -= panel_header_height / 2;
           }
-          else if constexpr (std::is_same_v<ItemT, serial_item::PanelContentBegin>) {
+          else if constexpr (std::is_same_v<ItemT, flat_item::PanelContentBegin>) {
             const nodes::PanelDeclaration &node_decl = *item.decl;
             bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
             panel_runtime.content_extend.emplace();
             panel_runtime.content_extend->max_y = locy;
           }
-          else if constexpr (std::is_same_v<ItemT, serial_item::PanelContentEnd>) {
+          else if constexpr (std::is_same_v<ItemT, flat_item::PanelContentEnd>) {
             const nodes::PanelDeclaration &node_decl = *item.decl;
             bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
             panel_runtime.content_extend->min_y = locy;
@@ -1140,11 +1140,11 @@ static void node_update_basis_from_declaration(
         item_variant.item);
   }
 
-  const float bottom_margin = get_margin_to_bottom(serial_items);
+  const float bottom_margin = get_margin_to_bottom(flat_items);
   locy -= bottom_margin;
 
   update_collapsed_sockets(node, locx);
-  tag_final_panel(node, serial_items);
+  tag_final_panel(node, flat_items);
 }
 
 /* Conventional drawing in outputs/buttons/inputs order. */
