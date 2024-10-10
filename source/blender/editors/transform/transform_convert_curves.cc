@@ -230,7 +230,7 @@ static void align_handles(const TransCustomData &custom_data,
   if (ed::curves::get_curves_selection_attribute_names(curves).size() == 1) {
     return;
   }
-  const CurvesTransformData &transform_data = *static_cast<CurvesTransformData *>(
+  const CurvesTransformData &transform_data = *static_cast<const CurvesTransformData *>(
       custom_data.data);
 
   IndexMaskMemory memory;
