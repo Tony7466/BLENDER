@@ -75,9 +75,6 @@ const char *BLT_translate_do_new_dataname(const char *msgctxt, const char *msgid
 /* Default context for operator names/labels. */
 #define BLT_I18NCONTEXT_OPERATOR_DEFAULT "Operator"
 
-/* Context for editor tool names. */
-#define BLT_I18NCONTEXT_TOOL "Tool"
-
 /* Context for events/keymaps (necessary, since those often use one or two letters,
  * easy to get collisions with other areas...). */
 #define BLT_I18NCONTEXT_UI_EVENTS "UI_Events_KeyMaps"
@@ -162,7 +159,6 @@ struct BLT_i18n_contexts_descriptor {
     BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_DEFAULT, "default_real"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_DEFAULT_BPYRNA, "default"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "operator_default"), \
-        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_TOOL, "tool"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_UI_EVENTS, "ui_events_keymaps"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_PLURAL, "plural"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_ACTION, "id_action"), \

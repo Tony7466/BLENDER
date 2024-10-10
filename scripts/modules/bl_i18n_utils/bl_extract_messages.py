@@ -311,7 +311,7 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
         from bl_ui.space_toolsystem_common import ToolDef
 
         bl_rna = cls.bl_rna
-        tool_translation_context = bpy.app.translations.contexts.tool
+        op_default_context = bpy.app.translations.contexts.operator_default
 
         def process_tooldef(tool_context, tool):
             if not isinstance(tool, ToolDef):
@@ -321,7 +321,7 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
                 return
             msgsrc = "bpy.types.{} Tools: '{}', '{}'".format(bl_rna.identifier, tool_context, tool.idname)
             if tool.label:
-                process_msg(msgs, tool_translation_context, tool.label, msgsrc, reports, check_ctxt_rna, settings)
+                process_msg(msgs, op_default_context, tool.label, msgsrc, reports, check_ctxt_rna, settings)
             # Callable (function) descriptions must handle their translations themselves.
             if tool.description and not callable(tool.description):
                 process_msg(msgs, default_context, tool.description, msgsrc, reports, check_ctxt_rna_tip, settings)
