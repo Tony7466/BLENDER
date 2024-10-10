@@ -961,7 +961,7 @@ void bmo_join_triangles_exec(BMesh *bm, BMOperator *op)
   DelimitData delimit_data = bm_edge_delmimit_data_from_op(bm, op);
 
   /* initial setup of state */
-  JoinEdgesState s;
+  JoinEdgesState s = {0};
   s.bm = bm;
   s.topo_influnce = BMO_slot_float_get(op->slots_in, "topology_influence");
   s.use_topo_influence = (s.topo_influnce != 0);
