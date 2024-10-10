@@ -73,8 +73,6 @@
 #include "UI_resources.hh"
 #include <limits>
 
-#include <iostream>
-
 namespace blender::ed::greasepencil {
 
 /* -------------------------------------------------------------------- */
