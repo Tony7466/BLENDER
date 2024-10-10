@@ -223,7 +223,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
   }
 }
 
-static void align_handles(const TransCustomData &custom_data,
+static void calculate_aligned_handles(const TransCustomData &custom_data,
                           const int layer,
                           bke::CurvesGeometry &curves)
 {
@@ -244,13 +244,13 @@ static void align_handles(const TransCustomData &custom_data,
           return left_types[i] == BEZIER_HANDLE_ALIGN && right_types[i] == BEZIER_HANDLE_ALIGN;
         });
       };
-  bke::curves::bezier::align_handles(both_aligned_from_selection(selected_left_handles,
+  bke::curves::bezier::calculate_aligned_handles(both_aligned_from_selection(selected_left_handles,
                                                                  curves.handle_types_left(),
                                                                  curves.handle_types_right()),
                                      curves.positions(),
                                      curves.handle_positions_left(),
                                      curves.handle_positions_right_for_write());
-  bke::curves::bezier::align_handles(both_aligned_from_selection(selected_right_handles,
+  bke::curves::bezier::calculate_aligned_handles(both_aligned_from_selection(selected_right_handles,
                                                                  curves.handle_types_left(),
                                                                  curves.handle_types_right()),
                                      curves.positions(),
@@ -283,7 +283,7 @@ static void recalcData_curves(TransInfo *t)
       }
       curves.tag_positions_changed();
       curves.calculate_bezier_auto_handles();
-      align_handles(tc.custom.type, 0, curves);
+      calculate_aligned_handles(tc.custom.type, 0, curves);
     }
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
   }

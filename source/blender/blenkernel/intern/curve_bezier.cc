@@ -181,12 +181,12 @@ void set_handle_position(const float3 &position,
   }
 }
 
-void align_handles(const IndexMask points_to_align,
-                   const Span<float3> positions,
-                   const Span<float3> align_with,
-                   MutableSpan<float3> align_handles)
+void calculate_aligned_handles(const IndexMask selection,
+                               const Span<float3> positions,
+                               const Span<float3> align_with,
+                               MutableSpan<float3> align_handles)
 {
-  points_to_align.foreach_index_optimized<int>(GrainSize(4096), [&](const int point_i) {
+  selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int point_i) {
     align_handles[point_i] = calculate_aligned_handle(
         positions[point_i], align_with[point_i], align_handles[point_i]);
   });

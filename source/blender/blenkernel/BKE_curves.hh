@@ -660,10 +660,10 @@ void calculate_auto_handles(bool cyclic,
                             MutableSpan<float3> positions_left,
                             MutableSpan<float3> positions_right);
 
-void align_handles(const IndexMask points_to_align,
-                   const Span<float3> positions,
-                   const Span<float3> align_by,
-                   MutableSpan<float3> align);
+void calculate_aligned_handles(const IndexMask selection,
+                               const Span<float3> positions,
+                               const Span<float3> align_by,
+                               MutableSpan<float3> align);
 
 /**
  * Change the handles of a single control point, aligning any aligned (#BEZIER_HANDLE_ALIGN)
