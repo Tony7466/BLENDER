@@ -59,6 +59,7 @@ VKCommandBufferWrapper::~VKCommandBufferWrapper()
 
 void VKCommandBufferWrapper::begin_recording()
 {
+  std::cout << __func__ << "\n";
   VK_ALLOCATION_CALLBACKS;
   VKDevice &device = VKBackend::get().device;
   if (vk_command_pool_ == VK_NULL_HANDLE) {
@@ -87,11 +88,13 @@ void VKCommandBufferWrapper::begin_recording()
 
 void VKCommandBufferWrapper::end_recording()
 {
+  std::cout << __func__ << "\n";
   vkEndCommandBuffer(vk_command_buffer_);
 }
 
 void VKCommandBufferWrapper::submit_with_cpu_synchronization(VkFence vk_fence)
 {
+  std::cout << __func__ << "\n";
   if (vk_fence == VK_NULL_HANDLE) {
     vk_fence = vk_fence_;
   }
@@ -102,6 +105,7 @@ void VKCommandBufferWrapper::submit_with_cpu_synchronization(VkFence vk_fence)
 
 void VKCommandBufferWrapper::wait_for_cpu_synchronization(VkFence vk_fence)
 {
+  std::cout << __func__ << "\n";
   if (vk_fence == VK_NULL_HANDLE) {
     vk_fence = vk_fence_;
   }

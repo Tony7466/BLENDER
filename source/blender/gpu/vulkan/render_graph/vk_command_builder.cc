@@ -49,6 +49,11 @@ void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
                                    VKCommandBufferInterface &command_buffer,
                                    Span<NodeHandle> nodes)
 {
+#if 0
+  if (nodes.is_empty()) {
+    return;
+  }
+#endif
   /* Swap chain images layouts needs to be reset as the image layouts are changed externally.  */
   render_graph.resources_.reset_image_layouts();
 
