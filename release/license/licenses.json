@@ -1,0 +1,62 @@
+{
+  "Arev-Fonts": {
+    "name": "Arev",
+    "url": ""
+  },
+  "ICS": {
+    "name": "WC Width License",
+    "url": "https://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c"
+  },
+  "SPDX:Apache-2.0": {
+    "name": "Apache License 2.0",
+    "url": "https://spdx.org/licenses/Apache-2.0.html"
+  },
+  "SPDX:Bitstream-Vera": {
+    "name": "Bistream Vera Font License",
+    "url": "https://spdx.org/licenses/Bitstream-Vera.html"
+  },
+  "SPDX:BSL-1.0": {
+    "name": "Boost Software License 1.0",
+    "url": "https://spdx.org/licenses/BSL-1.0.html"
+  },
+  "SPDX:BSD-2-Clause": {
+    "name": "BSD 2-Clause \"Simplified\" License",
+    "url": "https://spdx.org/licenses/BSD-2-Clause.html"
+  },
+  "SPDX:BSD-3-Clause": {
+    "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+    "url": "https://spdx.org/licenses/BSD-3-Clause.html"
+  },
+  "SPDX:FTL": {
+    "name": "Freetype Project License",
+    "url": "https://spdx.org/licenses/FTL.html"
+  },  
+  "SPDX:GPL-2.0-or-later": {
+    "name": "GNU General Public License v2.0 or later",
+    "url": "https://spdx.org/licenses/GPL-2.0-or-later.html"
+  },
+  "SPDX:GPL-3.0-or-later": {
+    "name": "GNU General Public License v3.0 or later",
+    "url": "https://spdx.org/licenses/GPL-3.0-or-later.html"
+  },
+  "SPDX:libtiff": {
+    "name": "libtiff License",
+    "url": "https://spdx.org/licenses/libtiff.html"
+  },
+  "SPDX:MIT": {
+    "name": "MIT",
+    "url": "https://spdx.org/licenses/MIT.html"
+  },
+  "SPDX:MPL-2.0": {
+    "name": "Mozilla Public License 2.0",
+    "url": "https://spdx.org/licenses/MPL-2.0.html"
+  },
+  "SPDX:Python-2.0": {
+    "name": "Python License 2.0",
+    "url": "https://spdx.org/licenses/Python-2.0.html"
+  },
+  "SPDX:Zlib": {
+    "name": "Zlib License",
+    "url": "https://spdx.org/licenses/Zlib.html"
+  }
+}

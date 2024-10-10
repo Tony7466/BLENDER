@@ -1,6 +1,6 @@
 Project: {fmt}
 URL: https://github.com/fmtlib/fmt
-License: MIT
+License: SPDX:MIT
 Upstream version: 10.1.1 (f5e5435, 2023 Aug 28)
 Local modifications:
 
