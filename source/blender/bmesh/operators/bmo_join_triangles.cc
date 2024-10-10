@@ -75,9 +75,6 @@
 #define FACE_OUT (1 << 0)
 #define FACE_INPUT (1 << 2)
 
-/** Improvement ranges from 0..1.  Always impove just a a litle. */
-constexpr float minimum_improvement = 0.01f;
-
 /** Improvement ranges from 0..1.  Never improve fully. */
 constexpr float maximum_improvement = 0.99f;
 
@@ -691,9 +688,10 @@ static float compute_alignment(JoinEdgesState &s,
    * angles. */
   float alignment = 1 - (best_error / (M_PI / 4));
 
-  /* even if alignment is TRULY awful, still make at least a tiny improvement. */
-  if (alignment < minimum_improvement)
-    alignment = minimum_improvement;
+  /* if alignment is TRULY awful, then do nothing.  Don't make a join worse. */
+  if (alignment < 0) {
+    alignment = 0;
+  }
 
   ASSERT_VALID_ERROR_METRIC(alignment);
 
