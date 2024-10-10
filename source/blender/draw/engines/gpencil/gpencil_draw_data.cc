@@ -149,7 +149,8 @@ static MaterialGPencilStyle *gpencil_viewport_material_overrides(
       gp_style->stroke_style = GP_MATERIAL_STROKE_STYLE_SOLID;
       gp_style->fill_style = GP_MATERIAL_FILL_STYLE_SOLID;
       copy_v4_fl(gp_style->fill_rgba, 1.0f);
-      copy_v4_fl(gp_style->stroke_rgba, 1.0f);
+      copy_v4_fl(gp_style->stroke_rgba, 0.0f);
+      gp_style->stroke_rgba[3] = 1.0f;
       break;
     default:
       break;
