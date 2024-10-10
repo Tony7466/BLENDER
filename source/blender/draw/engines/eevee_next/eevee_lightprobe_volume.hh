@@ -212,6 +212,8 @@ class VolumeProbeModule {
    * Last used pool size to identify if we can reuse previous irradiance atlas texture. Ref
    * SceneEEVEE.gi_irradiance_pool_size */
   uint irradiance_pool_size_ = 0;
+  /** Actual pool size allocated on device. Can be different due to limits. */
+  uint irradiance_pool_size_alloc_ = 0;
 
   /** Display debug data. */
   PassSimple debug_ps_ = {"VolumeProbeModule.Debug"};
