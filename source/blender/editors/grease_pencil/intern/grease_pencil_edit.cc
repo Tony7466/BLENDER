@@ -1144,7 +1144,7 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
     const Span<bool> curve_i_selected_points = start_set_points.as_span().slice(points);
     int first_selected = curve_i_selected_points.first_index_try(true);
 
-    // map 1:1 for data that isn't changing
+    /* map 1:1 for points that aren't changing */
     if (first_selected == -1 || src_cyclic[curve_i] == false) {
       for (const int src_point : points) {
         dst_to_src_point[curr_dst_point_id++] = src_point;
@@ -1152,7 +1152,7 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
       continue;
     }
 
-    // shift logic
+    /* Point shift logic */
     for (const int src_point : points.drop_front(first_selected)) {
       dst_to_src_point[curr_dst_point_id++] = src_point;
     }
@@ -1162,26 +1162,25 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
     }
   }
 
-  // Do I really need a new curves geometry or is there a way to just copy the attributes, shift
-  // and copy back?
+  /* New CurvesGeometry to copy to*/
   bke::CurvesGeometry dst_curves(curves.points_num(), curves.curves_num());
   BKE_defgroup_copy_list(&dst_curves.vertex_group_names, &curves.vertex_group_names);
 
-  // Copy offsets
+  /* Copy offsets */
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   Span<int> src_offsets = curves.offsets();
   array_utils::copy(src_offsets, dst_offsets);
 
-  // Attribute accessors for copying
+  /* Attribute accessors for copying */
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   const bke::AttributeAccessor src_attributes = curves.attributes();
 
-  // Copy curve attrs
+  /* Copy curve attrs */
   bke::copy_attributes(
       src_attributes, bke::AttrDomain::Curve, bke::AttrDomain::Curve, {}, dst_attributes);
   array_utils::copy(src_cyclic, dst_curves.cyclic_for_write());
 
-  // Copy point attrs
+  /* Copy point attrs */
   gather_attributes(src_attributes,
                     bke::AttrDomain::Point,
                     bke::AttrDomain::Point,
@@ -1189,7 +1188,7 @@ static bke::CurvesGeometry set_start_point(const bke::CurvesGeometry &curves,
                     dst_to_src_point,
                     dst_attributes);
 
-  dst_curves.update_curve_types();  // do I need this?
+  dst_curves.update_curve_types();
   return dst_curves;
 }
 
@@ -1225,12 +1224,12 @@ static int grease_pencil_set_start_point_exec(bContext *C, wmOperator *)
 }
 static void GREASE_PENCIL_OT_set_start_point(wmOperatorType *ot)
 {
-  /* identifiers */
+  /* Identifiers */
   ot->name = "Set Start Point";
   ot->idname = "GREASE_PENCIL_OT_set_start_point";
   ot->description = "Select which point is the beginning of the curve";
 
-  /* callbacks */
+  /* Callbacks */
   ot->exec = grease_pencil_set_start_point_exec;
   ot->poll = editable_grease_pencil_poll;
 
