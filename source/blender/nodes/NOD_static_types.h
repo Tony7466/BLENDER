@@ -89,6 +89,8 @@ DefNode(ShaderNode,     SH_NODE_NPR_IMAGE_SAMPLE,   def_sh_image_sample,    "NPR
 DefNode(ShaderNode,     SH_NODE_NPR_INPUT,          0,                      "NPR_INPUT",          NPR_Input,        "NPR Input",         "NPR Input")
 DefNode(ShaderNode,     SH_NODE_NPR_OUTPUT,         0,                      "NPR_OUTPUT",         NPR_Output,       "NPR Output",        "NPR Output")
 DefNode(ShaderNode,     SH_NODE_NPR_REFRACTION,     0,                      "NPR_REFRACTION",     NPR_Refraction,   "NPR Refraction",    "NPR Refraction")
+DefNode(ShaderNode,     SH_NODE_REPEAT_INPUT,       def_sh_repeat_input,    "REPEAT_INPUT",       RepeatInput,      "RepeatInput",       "Repeat Zone Input")
+DefNode(ShaderNode,     SH_NODE_REPEAT_OUTPUT,      def_sh_repeat_output,   "REPEAT_OUTPUT",      RepeatOutput,     "RepeatOutput",      "Repeat Zone Output")
 DefNode(ShaderNode,     SH_NODE_OBJECT_INFO,        0,                      "OBJECT_INFO",        ObjectInfo,       "Object Info",       "Retrieve information about the object instance")
 DefNode(ShaderNode,     SH_NODE_OUTPUT_AOV,         def_sh_output_aov,      "OUTPUT_AOV",         OutputAOV,        "AOV Output",        "Arbitrary Output Variables.\nProvide custom render passes for arbitrary shader node outputs")
 DefNode(ShaderNode,     SH_NODE_OUTPUT_LIGHT,       def_sh_output,          "OUTPUT_LIGHT",       OutputLight,      "Light Output",      "Output light information to a light object")
