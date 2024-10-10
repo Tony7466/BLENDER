@@ -457,7 +457,7 @@ static size_t add_without_duplicates(BMEdge *merge_edges[8],
   BLI_assert(count < 8);
 
   /* Don't add null pointers.  Another 'can't happen' safeguard. */
-  BLI_assert(merge_edge == nullptr);
+  BLI_assert(merge_edge != nullptr);
 
   /* Don't add duplicates */
   for (size_t index = 0; index < count; index++) {
