@@ -80,7 +80,7 @@ static float4x4 get_constraint_frame2(const JPH::Constraint &constraint)
 
 static void set_constraint_frame2(JPH::Constraint & /*constraint*/, float4x4 /*value*/) {}
 
-static Array<JPH::BodyID> get_body_ids(const Span<JPH::Body *> bodies, const IndexMask &selection)
+static Array<JPH::BodyID> get_valid_body_ids(const Span<JPH::Body *> bodies, const IndexMask &selection)
 {
   IndexMaskMemory memory;
   IndexMask selection_valid = IndexMask::from_predicate(
@@ -95,9 +95,28 @@ static Array<JPH::BodyID> get_body_ids(const Span<JPH::Body *> bodies, const Ind
   return body_ids;
 }
 
-static Array<JPH::BodyID> get_body_ids(const Span<JPH::Body *> bodies)
+static Array<JPH::BodyID> get_valid_body_ids(const Span<JPH::Body *> bodies)
 {
-  return get_body_ids(bodies, bodies.index_range());
+  return get_valid_body_ids(bodies, bodies.index_range());
+}
+
+static Array<JPH::Constraint *> get_valid_constraints(const Span<JPH::Constraint *> constraints, const IndexMask &selection)
+{
+  IndexMaskMemory memory;
+  IndexMask selection_valid = IndexMask::from_predicate(
+      selection, GrainSize(4096), memory, [&](const int index) {
+        return constraints[index] != nullptr;
+      });
+
+  Array<JPH::Constraint *> valid_constraints(selection_valid.size());
+  selection_valid.foreach_index(GrainSize(4096), [&](const int src_i, const int dst_i) {
+    valid_constraints[dst_i] = constraints[src_i];
+  });
+  return valid_constraints;
+}
+
+static Array<JPH::Constraint *> get_valid_constraints(const Span<JPH::Constraint *> constraints){
+  return get_valid_constraints(constraints, constraints.index_range());
 }
 
 static void create_default_bodies(JPH::BodyInterface &body_interface,
@@ -117,7 +136,7 @@ static void create_default_bodies(JPH::BodyInterface &body_interface,
     bodies[index] = body_interface.CreateBody(settings);
   });
 
-  Array<JPH::BodyID> body_ids = get_body_ids(bodies, mask);
+  Array<JPH::BodyID> body_ids = get_valid_body_ids(bodies, mask);
   JPH::BodyInterface::AddState add_state = body_interface.AddBodiesPrepare(body_ids.data(),
                                                                            body_ids.size());
   body_interface.AddBodiesFinalize(body_ids.data(), body_ids.size(), add_state, activation);
@@ -584,7 +603,7 @@ JoltPhysicsWorldData::~JoltPhysicsWorldData()
   this->shutdown();
 
   JPH::BodyInterface &body_interface = physics_system_.GetBodyInterface();
-  const Array<JPH::BodyID> body_ids = get_body_ids(bodies_);
+  const Array<JPH::BodyID> body_ids = get_valid_body_ids(bodies_);
   body_interface.DestroyBodies(body_ids.data(), body_ids.size());
 
   for (const int i : constraints_.index_range()) {
@@ -635,7 +654,7 @@ void JoltPhysicsWorldData::resize(const int body_num,
       bodies_[src_i] = nullptr;
     });
     /* Delete unused. */
-    Array<JPH::BodyID> body_ids = get_body_ids(bodies_);
+    Array<JPH::BodyID> body_ids = get_valid_body_ids(bodies_);
     body_interface.RemoveBodies(body_ids.data(), body_ids.size());
     body_interface.DestroyBodies(body_ids.data(), body_ids.size());
 
@@ -659,7 +678,8 @@ void JoltPhysicsWorldData::resize(const int body_num,
       constraints_[src_i] = nullptr;
     });
     /* Delete unused. */
-    physics_system_.RemoveConstraints(constraints_.data(), constraints_.size());
+    Array<JPH::Constraint *> valid_constraints = get_valid_constraints(constraints_);
+    physics_system_.RemoveConstraints(valid_constraints.data(), valid_constraints.size());
     constraints_ = std::move(new_constraints);
 
     /* Initialize new constraints. */
@@ -731,7 +751,7 @@ void JoltPhysicsWorldData::ensure_bodies_and_constraints_in_world()
           return !bodies_[index]->IsInBroadPhase();
         });
     if (!body_ids_to_add.is_empty()) {
-      Array<JPH::BodyID> body_ids = get_body_ids(bodies_, body_ids_to_add);
+      Array<JPH::BodyID> body_ids = get_valid_body_ids(bodies_, body_ids_to_add);
       JPH::BodyInterface::AddState add_state = body_interface.AddBodiesPrepare(body_ids.data(),
                                                                                body_ids.size());
       body_interface.AddBodiesFinalize(body_ids.data(), body_ids.size(), add_state, activation);
@@ -1015,7 +1035,7 @@ void JoltPhysicsWorldData::shutdown()
 {
   JPH::BodyInterface &body_interface = physics_system_.GetBodyInterface();
   if (!bodies_.is_empty()) {
-    Array<JPH::BodyID> body_ids = get_body_ids(bodies_);
+    Array<JPH::BodyID> body_ids = get_valid_body_ids(bodies_);
     body_interface.RemoveBodies(body_ids.data(), body_ids.size());
   }
   // XXX This requires that all constraints have been added to the world, which is not necessarily
