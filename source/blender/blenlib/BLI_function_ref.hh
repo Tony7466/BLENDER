@@ -120,8 +120,9 @@ template<typename Ret, typename... Params> class FunctionRef<Ret(Params...)> {
       : callback_(callback_fn<typename std::remove_reference_t<Callable>>),
         callable_(intptr_t(&callable))
   {
-    if constexpr (std::is_convertible_v<Callable, bool>) {
-      /* For some types, the compiler can be sure that the callable is always truthy. Good! Then
+    if constexpr (std::is_constructible_v<bool, Callable>) {
+      /* For some types, the compiler can be sure that the callable is always truthy. Good!
+      Then
        * the entire check can be optimized away. */
 #if COMPILER_CLANG || COMPILER_GCC
 #  pragma GCC diagnostic push
@@ -135,7 +136,7 @@ template<typename Ret, typename... Params> class FunctionRef<Ret(Params...)> {
         callback_ = nullptr;
         callable_ = 0;
       }
-#if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
+#if COMPILER_CLANG || COMPILER_GCC
 #  pragma GCC diagnostic pop
 #endif
     }
