@@ -660,9 +660,9 @@ void calculate_auto_handles(bool cyclic,
                             MutableSpan<float3> positions_left,
                             MutableSpan<float3> positions_right);
 
-void calculate_aligned_handles(const IndexMask selection,
-                               const Span<float3> positions,
-                               const Span<float3> align_by,
+void calculate_aligned_handles(const IndexMask &selection,
+                               Span<float3> positions,
+                               Span<float3> align_by,
                                MutableSpan<float3> align);
 
 /**
