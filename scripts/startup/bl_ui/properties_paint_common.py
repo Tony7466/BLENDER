@@ -306,6 +306,22 @@ class BrushPanel(UnifiedPaintPanel):
 class BrushSelectPanel(BrushPanel):
     bl_label = "Brush Asset"
 
+    # Use header preset function to right align the layout.
+    def draw_header_preset(self, context):
+        layout = self.layout
+
+        settings = self.paint_settings(context)
+        if settings is None:
+            return
+
+        brush = settings.brush
+        if brush is None:
+            return
+
+        if brush.has_unsaved_changes and bpy.ops.brush.asset_update.poll():
+            layout.operator("brush.asset_update", text="Save Changes")
+        layout.separator()
+
     def draw(self, context):
         layout = self.layout
         settings = self.paint_settings(context)
@@ -320,8 +336,6 @@ class BrushSelectPanel(BrushPanel):
         BrushAssetShelf.draw_popup_selector(col, context, brush, show_name=False)
         if brush:
             col.prop(brush, "name", text="")
-            if brush.has_unsaved_changes:
-                col.label(text="* Unsaved Changes")
 
         if brush is None:
             return
