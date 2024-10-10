@@ -123,12 +123,6 @@ static void create_default_bodies(JPH::BodyInterface &body_interface,
   body_interface.AddBodiesFinalize(body_ids.data(), body_ids.size(), add_state, activation);
 }
 
-static void create_default_bodies(JPH::BodyInterface &body_interface,
-                                  MutableSpan<JPH::Body *> bodies)
-{
-  return create_default_bodies(body_interface, bodies, bodies.index_range());
-}
-
 static void create_default_constraints(const IndexMask &selection,
                                        MutableSpan<JPH::Constraint *> constraints)
 {
@@ -633,20 +627,24 @@ void JoltPhysicsWorldData::resize(const int body_num,
   JPH::BodyInterface &body_interface = physics_system_.GetBodyInterface();
 
   if (bodies_changed) {
-    Array<JPH::Body *> new_rigid_bodies(body_num);
+    Array<JPH::Body *> new_rigid_bodies(body_num, nullptr);
     src_body_mask.foreach_index([&](const int src_i, const int i) {
       const int dst_i = dst_body_range[i];
       new_rigid_bodies[dst_i] = bodies_[src_i];
       /* Clear to avoid deleting. */
-      bodies_[src_i] = {};
+      bodies_[src_i] = nullptr;
     });
     /* Delete unused. */
     Array<JPH::BodyID> body_ids = get_body_ids(bodies_);
     body_interface.RemoveBodies(body_ids.data(), body_ids.size());
     body_interface.DestroyBodies(body_ids.data(), body_ids.size());
-    /* Create new bodies if growing. */
-    create_default_bodies(body_interface,
-                          new_rigid_bodies.as_mutable_span().drop_front(bodies_.size()));
+
+    /* Create new default bodies in empty places. */
+    const IndexRange full_range = new_rigid_bodies.index_range();
+    const IndexRange empty_head = dst_body_range.is_empty() ? full_range : full_range.take_front(dst_body_range.first());
+    const IndexRange empty_tail = dst_body_range.is_empty() ? IndexRange{} : full_range.drop_front(dst_body_range.last());
+    create_default_bodies(body_interface, new_rigid_bodies, empty_head);
+    create_default_bodies(body_interface, new_rigid_bodies, empty_tail);
     bodies_ = std::move(new_rigid_bodies);
 
     body_index_cache_.tag_dirty();
