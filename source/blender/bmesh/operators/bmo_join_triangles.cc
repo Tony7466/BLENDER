@@ -455,8 +455,9 @@ static size_t add_without_duplicates(BMEdge *merge_edges[8],
 
   /* Don't add duplicates */
   for (size_t index = 0; index < count; index++) {
-    if (merge_edges[index] == merge_edge)
+    if (merge_edges[index] == merge_edge) {
       return count;
+    }
   }
 
   /* Add the edge and increase the count by 1 */
@@ -489,8 +490,9 @@ static size_t add_neighbors(BMEdge *merge_edges[8],
   BMLoop *loop_in_neighbor = loop_in_quad->radial_next;
 
   /* If the neighboring face is not a triangle, don't process it. */
-  if (loop_in_neighbor->f->len != 3)
+  if (loop_in_neighbor->f->len != 3) {
     return count; /* No new edges added. */
+  }
 
   /* Get the other two loops of the neighboring triangle */
   BMLoop *l_a = loop_in_neighbor->next;
@@ -498,13 +500,15 @@ static size_t add_neighbors(BMEdge *merge_edges[8],
 
   /* If l_a is manifold, and the adjacent face is also a triangle, mark it for potential
    * improvement */
-  if (BM_edge_is_manifold(l_a->e) && l_a->radial_next->f->len == 3)
+  if (BM_edge_is_manifold(l_a->e) && l_a->radial_next->f->len == 3) {
     count = add_without_duplicates(merge_edges, shared_loops, count, l_a->e, loop_in_neighbor);
+  }
 
   /* If l_b is manifold, and the adjacent face is also a triangle, mark it for potential
    * improvement */
-  if (BM_edge_is_manifold(l_b->e) && l_b->radial_next->f->len == 3)
+  if (BM_edge_is_manifold(l_b->e) && l_b->radial_next->f->len == 3) {
     count = add_without_duplicates(merge_edges, shared_loops, count, l_b->e, loop_in_neighbor);
+  }
 
   return count; /* added either 0, 1, or 2 edges. */
 }
