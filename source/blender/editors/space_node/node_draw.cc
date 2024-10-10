@@ -635,10 +635,10 @@ static void determine_potentially_visible_panels(const bNode &node, MutableSpan<
   }
 }
 
-static void determine_visible_panels_recursive(const bNode &node,
-                                               const nodes::PanelDeclaration &panel_decl,
-                                               const Span<bool> potentially_visible_states,
-                                               MutableSpan<bool> r_result)
+static void determine_visible_panels_impl_recursive(const bNode &node,
+                                                    const nodes::PanelDeclaration &panel_decl,
+                                                    const Span<bool> potentially_visible_states,
+                                                    MutableSpan<bool> r_result)
 {
   if (!potentially_visible_states[panel_decl.index]) {
     /* This panel does not contain any visible sockets.*/
@@ -652,19 +652,20 @@ static void determine_visible_panels_recursive(const bNode &node,
   }
   for (const nodes::ItemDeclaration *item_decl : panel_decl.items) {
     if (const auto *sub_panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl)) {
-      determine_visible_panels_recursive(
+      determine_visible_panels_impl_recursive(
           node, *sub_panel_decl, potentially_visible_states, r_result);
     }
   }
 }
 
-static void determine_visible_panels(const bNode &node,
-                                     const Span<bool> potentially_visible_states,
-                                     MutableSpan<bool> r_result)
+static void determine_visible_panels_impl(const bNode &node,
+                                          const Span<bool> potentially_visible_states,
+                                          MutableSpan<bool> r_result)
 {
   for (const nodes::ItemDeclaration *item_decl : node.declaration()->root_items) {
     if (const auto *panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl)) {
-      determine_visible_panels_recursive(node, *panel_decl, potentially_visible_states, r_result);
+      determine_visible_panels_impl_recursive(
+          node, *panel_decl, potentially_visible_states, r_result);
     }
   }
 }
@@ -678,22 +679,7 @@ static void determine_visible_panels(const bNode &node, MutableSpan<bool> r_visi
 {
   Array<bool> potentially_visible_states(r_visibility_states.size(), false);
   determine_potentially_visible_panels(node, potentially_visible_states);
-  determine_visible_panels(node, potentially_visible_states, r_visibility_states);
-}
-
-static void add_serial_items_for_separator(Vector<SerialNodeItem> &r_items)
-{
-  r_items.append({serial_item::Separator()});
-}
-
-static void add_serial_items_for_layout(const bNode &node,
-                                        const nodes::LayoutDeclaration &layout_decl,
-                                        Vector<SerialNodeItem> &r_items)
-{
-  if (!(node.flag & NODE_OPTIONS)) {
-    return;
-  }
-  r_items.append({serial_item::Layout{&layout_decl}});
+  determine_visible_panels_impl(node, potentially_visible_states, r_visibility_states);
 }
 
 static void add_serial_items_for_socket(bNode &node,
@@ -715,6 +701,21 @@ static void add_serial_items_for_socket(bNode &node,
     item.output = &socket;
   }
   item.panel_decl = panel_decl;
+}
+
+static void add_serial_items_for_separator(Vector<SerialNodeItem> &r_items)
+{
+  r_items.append({serial_item::Separator()});
+}
+
+static void add_serial_items_for_layout(const bNode &node,
+                                        const nodes::LayoutDeclaration &layout_decl,
+                                        Vector<SerialNodeItem> &r_items)
+{
+  if (!(node.flag & NODE_OPTIONS)) {
+    return;
+  }
+  r_items.append({serial_item::Layout{&layout_decl}});
 }
 
 static void add_serial_items_for_panel(bNode &node,
@@ -749,6 +750,9 @@ static void add_serial_items_for_panel(bNode &node,
   r_items.append({serial_item::PanelContentEnd{&panel_decl}});
 }
 
+/**
+ * Flattens the visible panels, sockets etc. of the node into a list that is then used to draw it.
+ */
 static Vector<SerialNodeItem> make_serial_node_items(bNode &node)
 {
   BLI_assert(is_node_panels_supported(node));
@@ -776,11 +780,13 @@ static Vector<SerialNodeItem> make_serial_node_items(bNode &node)
   return items;
 }
 
+/** Get the height of an empty node body. */
 static float get_margin_empty()
 {
   return NODE_DYS;
 }
 
+/** Get the margin between the node header and the first item. */
 static float get_margin_from_top(const Span<SerialNodeItem> items)
 {
   const SerialNodeItem &first_item = items[0];
@@ -802,6 +808,7 @@ static float get_margin_from_top(const Span<SerialNodeItem> items)
   return 0;
 }
 
+/** Get the margin between the last item and the node bottom. */
 static float get_margin_to_bottom(const Span<SerialNodeItem> items)
 {
   const SerialNodeItem &last_item = items.last();
@@ -824,6 +831,7 @@ static float get_margin_to_bottom(const Span<SerialNodeItem> items)
   return 0;
 }
 
+/** Get the margin between two consecutive items. */
 static float get_margin_between_elements(const Span<SerialNodeItem> items, const int next_index)
 {
   BLI_assert(next_index >= 1);
@@ -833,6 +841,8 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
   const Type prev_type = prev.type();
   const Type next_type = next.type();
 
+  /* Handle all cases explicitly. This simplifies modifying the margins for specific cases
+   * without breaking other cases significantly. */
   switch (prev_type) {
     case Type::Socket: {
       switch (next_type) {
@@ -941,6 +951,7 @@ static float get_margin_between_elements(const Span<SerialNodeItem> items, const
   return 0.0f;
 }
 
+/** Tags all the sockets in the panel as collapsed and updates their positions. */
 static void update_collapsed_sockets_recursive_inner(
     bNode &node,
     const int node_left_x,
@@ -983,6 +994,10 @@ static void update_collapsed_sockets_recursive(bNode &node,
   }
 }
 
+/**
+ * Finds all collapsed sockets and updates them based on the visible parent panel that contains
+ * them.
+ */
 static void update_collapsed_sockets(bNode &node, const int node_left_x)
 {
   for (const nodes::ItemDeclaration *item_decl : node.declaration()->root_items) {
@@ -992,6 +1007,10 @@ static void update_collapsed_sockets(bNode &node, const int node_left_x)
   }
 }
 
+/**
+ * Tag the innermost panel that goes to the very end of the node. The background color of that
+ * panel is extended to fill the entire rest of the node.
+ */
 static void tag_final_panel(bNode &node, const Span<SerialNodeItem> items)
 {
   const serial_item::PanelContentEnd *final_panel = nullptr;
@@ -1017,6 +1036,7 @@ static void node_update_basis_from_declaration(
   BLI_assert(is_node_panels_supported(node));
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
 
+  /* Reset states. */
   for (bke::bNodePanelRuntime &panel_runtime : node.runtime->panels) {
     panel_runtime.header_center_y.reset();
     panel_runtime.content_extend.reset();
@@ -1028,6 +1048,7 @@ static void node_update_basis_from_declaration(
     socket->flag &= ~SOCK_PANEL_COLLAPSED;
   }
 
+  /* Gather flattened list of items in the node.*/
   const Vector<SerialNodeItem> serial_items = make_serial_node_items(node);
   if (serial_items.is_empty()) {
     const float margin = get_margin_empty();
@@ -1036,6 +1057,8 @@ static void node_update_basis_from_declaration(
   }
 
   for (const int item_i : serial_items.index_range()) {
+    /* Apply margins. This should be the only place that applies margins between elements so that
+     * it is easy change later on.*/
     if (item_i == 0) {
       const float margin = get_margin_from_top(serial_items);
       locy -= margin;
