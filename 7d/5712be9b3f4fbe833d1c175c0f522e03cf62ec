@@ -1,1 +1,2 @@
 Referenced by issue #124452, Blender LTS: Maintenance Task 4.2
+Referenced by commit b78354152ea1b1501999cf7e9066d456ae727370, Revert "Fix #128407: EEVEE: Cannot allocate volume pool on Intel ARC/OpenGL"
