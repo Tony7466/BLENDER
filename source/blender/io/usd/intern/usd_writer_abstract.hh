@@ -80,14 +80,6 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
                         const pxr::UsdGeomImageable &usd_geometry);
 
   /**
-   * Turn `prim` into an instance referencing `context.original_export_path`.
-   * Return true when the instancing was successful, false otherwise.
-   *
-   * Reference the original data instead of writing a copy.
-   */
-  virtual bool mark_as_instance(const HierarchyContext &context, const pxr::UsdPrim &prim);
-
-  /**
    * Compute the bounds for a boundable prim, and author the result as the `extent` attribute.
    *
    * Although this method works for any boundable prim, it is preferred to use Blender's own

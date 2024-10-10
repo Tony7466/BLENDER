@@ -325,6 +325,13 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
   const pxr::SdfPath &usd_path = usd_export_context_.usd_path;
 
+  if (usd_export_context_.export_params.use_instancing && context.is_instance()) {
+    /* If the mesh is instanced, we should not create a prim here or author
+     * any data.  Instead, a reference to a xform over the original prototype
+     * will be created in USDTransformWriter::do_write(). */
+    return;
+  }
+
   pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path);
   write_visibility(context, timecode, usd_mesh);
 
@@ -333,20 +340,8 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
   BKE_mesh_wrapper_ensure_mdata(mesh);
   get_geometry_data(mesh, usd_mesh_data);
 
-  if (usd_export_context_.export_params.use_instancing && context.is_instance()) {
-    if (!mark_as_instance(context, usd_mesh.GetPrim())) {
-      return;
-    }
-
-    /* The material path will be of the form </_materials/{material name}>, which is outside the
-     * sub-tree pointed to by ref_path. As a result, the referenced data is not allowed to point
-     * out of its own sub-tree. It does work when we override the material with exactly the same
-     * path, though. */
-    if (usd_export_context_.export_params.export_materials) {
-      assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
-    }
-
-    return;
+  if (usd_export_context_.export_params.export_materials) {
+    assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
   }
 
   pxr::UsdAttribute attr_points = usd_mesh.CreatePointsAttr(pxr::VtValue(), true);

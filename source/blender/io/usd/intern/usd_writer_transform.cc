@@ -107,6 +107,35 @@ void USDTransformWriter::do_write(HierarchyContext &context)
     auto prim = xform.GetPrim();
     write_id_properties(prim, context.object->id, get_export_time_code());
   }
+
+  /* If the xform hierarchy is being instanced, then we want to create a new
+   * xform prim that will reference the prototype's xform. */
+  if (context.is_instance()) {
+    std::string ref_path_str(usd_export_context_.export_params.root_prim_path);
+    ref_path_str += context.original_export_path;
+    pxr::SdfPath ref_path(ref_path_str);
+
+    std::string inst_path_str(xform.GetPrim().GetPath().GetString());
+    inst_path_str += context.original_export_path;
+    pxr::SdfPath inst_path(inst_path_str);
+
+    /* To avoid USD errors, make sure the referenced path exists. */
+    auto new_prim = usd_export_context_.stage->DefinePrim(inst_path);
+
+    /* Mark this new prim as instanceable, which is a hint to renderers
+     * that allows them to avoid duplicating resources in memory. */
+    new_prim.SetInstanceable(true);
+
+    if (!new_prim.GetReferences().AddInternalReference(ref_path)) {
+      /* See this URL for a description for why referencing may fail"
+       * https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
+       */
+      CLOG_WARN(&LOG,
+                "Unable to add reference from %s to %s, not instancing object for export",
+                inst_path_str.c_str(),
+                ref_path_str.c_str());
+    }
+  }
 }
 
 bool USDTransformWriter::check_is_animated(const HierarchyContext &context) const

@@ -249,46 +249,6 @@ void USDAbstractWriter::write_visibility(const HierarchyContext &context,
   usd_value_writer_.SetAttribute(attr_visibility, pxr::VtValue(visibility), timecode);
 }
 
-bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const pxr::UsdPrim &prim)
-{
-  BLI_assert(context.is_instance());
-
-  if (context.export_path == context.original_export_path) {
-    CLOG_ERROR(&LOG,
-               "Reference error: export path matches reference path: %s",
-               context.export_path.c_str());
-    BLI_assert_msg(0, "USD reference error");
-    return false;
-  }
-
-  BLI_assert(!context.original_export_path.empty());
-  BLI_assert(context.original_export_path.front() == '/');
-
-  std::string ref_path_str(usd_export_context_.export_params.root_prim_path);
-  ref_path_str += context.original_export_path;
-
-  pxr::SdfPath ref_path(ref_path_str);
-  pxr::SdfPath ref_parent_path = ref_path.GetParentPath();
-
-  /* To avoid USD errors, make sure the referenced path exists. */
-  usd_export_context_.stage->DefinePrim(ref_parent_path);
-
-  prim.SetInstanceable(true);
-
-  if (!prim.GetReferences().AddInternalReference(ref_parent_path)) {
-    /* See this URL for a description for why referencing may fail"
-     * https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
-     */
-    CLOG_WARN(&LOG,
-              "Unable to add reference from %s to %s, not instancing object for export",
-              context.export_path.c_str(),
-              context.original_export_path.c_str());
-    return false;
-  }
-
-  return true;
-}
-
 void USDAbstractWriter::write_id_properties(const pxr::UsdPrim &prim,
                                             const ID &id,
                                             pxr::UsdTimeCode timecode) const
