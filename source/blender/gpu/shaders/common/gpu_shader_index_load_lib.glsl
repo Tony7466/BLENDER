@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Library to read the index buffer of a `gpu::Batch` using a SSBO rather than using `gl_VertexID`.
  * This is required for primitive expansion without geometry shader.
@@ -9,9 +11,10 @@
  * buffer.
  */
 
-#ifndef GPU_INDEX_LOAD
-#  error Missing gpu_index_load create info dependency
-#endif
+#ifndef WORKAROUND_INDEX_LOAD_INCLUDE
+#  ifndef GPU_INDEX_LOAD
+#    error Missing gpu_index_load create info dependency
+#  endif
 
 /**
  * Returns the resolved index after index buffer (a.k.a. element buffer) indirection.
@@ -30,3 +33,5 @@ uint gpu_index_load(uint element_index)
 
   return raw_index + uint(gpu_index_base_index);
 }
+
+#endif

@@ -21,6 +21,7 @@ set(INC_SYS
 
 set(SRC
   intern/action.cc
+  intern/action_iterators.cc
   intern/action_legacy.cc
   intern/action_runtime.cc
   intern/action_selection.cc
@@ -33,9 +34,12 @@ set(SRC
   intern/fcurve.cc
   intern/keyframing.cc
   intern/keyframing_auto.cc
+  intern/nla.cc
+  intern/pose.cc
   intern/visualkey.cc
 
   ANIM_action.hh
+  ANIM_action_iterators.hh
   ANIM_action_legacy.hh
   ANIM_animdata.hh
   ANIM_armature_iter.hh
@@ -46,6 +50,8 @@ set(SRC
   ANIM_fcurve.hh
   ANIM_keyframing.hh
   ANIM_keyingsets.hh
+  ANIM_nla.hh
+  ANIM_pose.hh
   ANIM_rna.hh
   ANIM_visualkey.hh
   intern/action_runtime.hh
@@ -75,10 +81,13 @@ if(WITH_GTESTS)
   set(TEST_INC
   )
   set(TEST_SRC
+    intern/action_iterators_test.cc
+    intern/action_legacy_test.cc
     intern/action_test.cc
     intern/bone_collections_test.cc
     intern/evaluation_test.cc
     intern/keyframing_test.cc
+    intern/nla_test.cc
   )
   set(TEST_LIB
     PRIVATE bf::animrig

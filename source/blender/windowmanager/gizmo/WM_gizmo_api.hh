@@ -219,10 +219,10 @@ void WM_gizmoconfig_update(Main *bmain);
 
 void WM_gizmoconfig_update_tag_group_remove(wmGizmoMap *gzmap);
 
+void WM_gizmoconfig_update_tag_reinit_all();
+
 /* `wm_gizmo_target_props.cc`. */
 
-wmGizmoProperty *WM_gizmo_target_property_array(wmGizmo *gz);
-wmGizmoProperty *WM_gizmo_target_property_at_index(wmGizmo *gz, int index);
 wmGizmoProperty *WM_gizmo_target_property_find(wmGizmo *gz, const char *idname);
 
 void WM_gizmo_target_property_def_rna_ptr(wmGizmo *gz,

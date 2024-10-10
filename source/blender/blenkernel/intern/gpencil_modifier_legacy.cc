@@ -109,7 +109,7 @@ static bool gpencil_modifier_type_valid(const int type)
  * Free internal modifier data variables, this function should
  * not free the md variable itself.
  */
-static void gpencil_modifier_free_data(struct GpencilModifierData *md)
+static void gpencil_modifier_free_data(GpencilModifierData *md)
 {
   switch (GpencilModifierType(md->type)) {
     case eGpencilModifierType_Noise: {
@@ -230,8 +230,8 @@ static void gpencil_modifier_free_data(struct GpencilModifierData *md)
  * stores. This is used for linking on file load and for
  * unlinking data-blocks or forwarding data-block references.
  */
-static void gpencil_modifier_foreach_ID_link(struct GpencilModifierData *md,
-                                             struct Object *ob,
+static void gpencil_modifier_foreach_ID_link(GpencilModifierData *md,
+                                             Object *ob,
                                              GreasePencilIDWalkFunc walk,
                                              void *user_data)
 {
@@ -418,29 +418,6 @@ static void gpencil_modifier_foreach_ID_link(struct GpencilModifierData *md,
 
 /* *************************************************** */
 /* Modifier Methods - Evaluation Loops, etc. */
-
-void BKE_gpencil_frame_active_set(Depsgraph *depsgraph, bGPdata *gpd)
-{
-  DEG_debug_print_eval(depsgraph, __func__, gpd->id.name, gpd);
-  int ctime = int(DEG_get_ctime(depsgraph));
-
-  /* update active frame */
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
-  }
-
-  if (DEG_is_active(depsgraph)) {
-    bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
-
-    /* sync "actframe" changes back to main-db too,
-     * so that editing tools work with copy-on-evaluation
-     * when the current frame changes
-     */
-    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
-      gpl->actframe = BKE_gpencil_layer_frame_get(gpl, ctime, GP_GETFRAME_USE_PREV);
-    }
-  }
-}
 
 static void modifier_free_data_id_us_cb(void * /*user_data*/,
                                         Object * /*ob*/,

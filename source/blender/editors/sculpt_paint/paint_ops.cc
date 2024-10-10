@@ -44,7 +44,9 @@
 #include "RNA_define.hh"
 
 #include "curves_sculpt_intern.hh"
+#include "paint_hide.hh"
 #include "paint_intern.hh"
+#include "paint_mask.hh"
 #include "sculpt_intern.hh"
 
 static int brush_scale_size_exec(bContext *C, wmOperator *op)
@@ -56,7 +58,7 @@ static int brush_scale_size_exec(bContext *C, wmOperator *op)
 
   /* Grease Pencil brushes in Paint mode do not use unified size. */
   const bool use_unified_size = !(brush && brush->gpencil_settings &&
-                                  brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY);
+                                  brush->ob_mode == OB_MODE_PAINT_GREASE_PENCIL);
 
   if (brush) {
     /* Pixel radius. */

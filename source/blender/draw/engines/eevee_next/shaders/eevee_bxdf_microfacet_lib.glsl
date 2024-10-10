@@ -2,11 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
+#pragma once
+
+#include "eevee_bxdf_lib.glsl"
+#include "eevee_thickness_lib.glsl"
+#include "gpu_shader_codegen_lib.glsl"
+#include "gpu_shader_math_matrix_lib.glsl"
+#include "gpu_shader_math_vector_lib.glsl"
 
 /* -------------------------------------------------------------------- */
 /** \name Microfacet GGX distribution
@@ -236,7 +238,7 @@ BsdfEval bxdf_ggx_eval(vec3 N, vec3 L, vec3 V, float alpha, float eta, const boo
     vec3 Vh = normalize(vec3(alpha * Vt.xy, Vt.z));
     float G1_V = 2.0 * Vh.z / (1.0 + Vh.z);
 
-    float Ht2 = square(eta * LH + VH);
+    float Ht2 = square(-eta * LH + VH);
 
     eval.pdf = (D * G1_V * abs(VH * LH) * square(eta)) / (NV * Ht2);
 

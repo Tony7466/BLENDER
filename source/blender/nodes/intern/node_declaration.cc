@@ -37,15 +37,19 @@ void build_node_declaration(const bke::bNodeType &typeinfo,
 
 void NodeDeclarationBuilder::build_remaining_anonymous_attribute_relations()
 {
+  auto is_data_socket_decl = [](const SocketDeclaration *socket_decl) {
+    return dynamic_cast<const decl::Geometry *>(socket_decl);
+  };
+
   Vector<int> geometry_inputs;
   for (const int i : declaration_.inputs.index_range()) {
-    if (dynamic_cast<decl::Geometry *>(declaration_.inputs[i])) {
+    if (is_data_socket_decl(declaration_.inputs[i])) {
       geometry_inputs.append(i);
     }
   }
   Vector<int> geometry_outputs;
   for (const int i : declaration_.outputs.index_range()) {
-    if (dynamic_cast<decl::Geometry *>(declaration_.outputs[i])) {
+    if (is_data_socket_decl(declaration_.outputs[i])) {
       geometry_outputs.append(i);
     }
   }
@@ -90,13 +94,18 @@ void NodeDeclarationBuilder::build_remaining_anonymous_attribute_relations()
 void NodeDeclarationBuilder::finalize()
 {
   this->build_remaining_anonymous_attribute_relations();
-  BLI_assert(declaration_.is_valid());
+#ifndef NDEBUG
+  declaration_.assert_valid();
+#endif
 }
 
 NodeDeclarationBuilder::NodeDeclarationBuilder(NodeDeclaration &declaration,
                                                const bNodeTree *ntree,
                                                const bNode *node)
-    : declaration_(declaration), ntree_(ntree), node_(node)
+    : DeclarationListBuilder(*this, declaration.root_items),
+      declaration_(declaration),
+      ntree_(ntree),
+      node_(node)
 {
 }
 
@@ -117,20 +126,6 @@ Span<SocketDeclaration *> NodeDeclaration::sockets(eNodeSocketInOut in_out) cons
     return inputs;
   }
   return outputs;
-}
-
-void NodeDeclarationBuilder::set_active_panel_builder(const PanelDeclarationBuilder *panel_builder)
-{
-  if (panel_builders_.is_empty()) {
-    BLI_assert(panel_builder == nullptr);
-    return;
-  }
-
-  BLI_assert(!panel_builder || !panel_builder->is_complete_);
-  PanelDeclarationBuilder *last_panel_builder = panel_builders_.last().get();
-  if (last_panel_builder != panel_builder) {
-    last_panel_builder->is_complete_ = true;
-  }
 }
 
 namespace anonymous_attribute_lifetime {
@@ -164,87 +159,48 @@ std::ostream &operator<<(std::ostream &stream, const RelationsInNode &relations)
 
 }  // namespace anonymous_attribute_lifetime
 
-bool NodeDeclaration::is_valid() const
+static void assert_valid_panels_recursive(const NodeDeclaration &node_decl,
+                                          const Span<const ItemDeclaration *> items,
+                                          Vector<const SocketDeclaration *> &r_flat_inputs,
+                                          Vector<const SocketDeclaration *> &r_flat_outputs)
+{
+  /* Expected item order unless any order is allowed: outputs, inputs, panels. */
+  bool found_input = false;
+  bool found_panel = false;
+
+  for (const ItemDeclaration *item_decl : items) {
+    if (const auto *socket_decl = dynamic_cast<const SocketDeclaration *>(item_decl)) {
+      if (socket_decl->in_out == SOCK_IN) {
+        BLI_assert(node_decl.allow_any_socket_order || !found_panel);
+        found_input = true;
+        r_flat_inputs.append(socket_decl);
+      }
+      else {
+        BLI_assert(node_decl.allow_any_socket_order || (!found_input && !found_panel));
+        r_flat_outputs.append(socket_decl);
+      }
+    }
+    else if (const auto *panel_decl = dynamic_cast<const PanelDeclaration *>(item_decl)) {
+      found_panel = true;
+      assert_valid_panels_recursive(node_decl, panel_decl->items, r_flat_inputs, r_flat_outputs);
+    }
+  }
+  UNUSED_VARS(found_input, found_panel);
+}
+
+void NodeDeclaration::assert_valid() const
 {
   if (!this->use_custom_socket_order) {
-    /* Skip validation for conventional socket layouts. */
-    return true;
+    /* Skip validation for conventional socket layouts. Those are reordered in drawing code. */
+    return;
   }
 
-  /* Validation state for the interface root items as well as any panel content. */
-  struct ValidationState {
-    /* Remaining number of items expected in a panel */
-    int remaining_items = 0;
-    /* Sockets first, followed by panels. */
-    NodeTreeInterfaceItemType item_type = NODE_INTERFACE_SOCKET;
-    /* Output sockets first, followed by input sockets. */
-    eNodeSocketInOut socket_in_out = SOCK_OUT;
-  };
+  Vector<const SocketDeclaration *> flat_inputs;
+  Vector<const SocketDeclaration *> flat_outputs;
+  assert_valid_panels_recursive(*this, this->root_items, flat_inputs, flat_outputs);
 
-  Stack<ValidationState> panel_states;
-  panel_states.push({});
-
-  for (const ItemDeclarationPtr &item_decl : items) {
-    BLI_assert(panel_states.size() >= 1);
-    ValidationState &state = panel_states.peek();
-
-    if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
-            item_decl.get()))
-    {
-      if (state.item_type != NODE_INTERFACE_SOCKET && !this->allow_any_socket_order) {
-        std::cout << "Socket added after panel" << std::endl;
-        return false;
-      }
-
-      /* Check for consistent outputs.., inputs.. blocks. */
-      if (state.socket_in_out == SOCK_OUT && socket_decl->in_out == SOCK_IN) {
-        /* Start of input sockets. */
-        state.socket_in_out = SOCK_IN;
-      }
-      if (socket_decl->in_out != state.socket_in_out && !this->allow_any_socket_order) {
-        std::cout << "Output socket added after input socket" << std::endl;
-        return false;
-      }
-
-      /* Item counting for the panels, but ignore for root items. */
-      if (panel_states.size() > 1) {
-        if (state.remaining_items <= 0) {
-          std::cout << "More sockets than expected in panel" << std::endl;
-          return false;
-        }
-        --state.remaining_items;
-        /* Panel closed after last item is added. */
-        if (state.remaining_items == 0) {
-          panel_states.pop();
-        }
-      }
-    }
-    else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
-                 item_decl.get()))
-    {
-      if (state.item_type == NODE_INTERFACE_SOCKET) {
-        /* Start of panels section */
-        state.item_type = NODE_INTERFACE_PANEL;
-      }
-      BLI_assert(state.item_type == NODE_INTERFACE_PANEL);
-
-      if (panel_decl->num_child_decls > 0) {
-        /* New panel started. */
-        panel_states.push({panel_decl->num_child_decls});
-      }
-    }
-    else {
-      BLI_assert_unreachable();
-      return false;
-    }
-  }
-
-  /* All panels complete? */
-  if (panel_states.size() != 1) {
-    std::cout << "Incomplete last panel" << std::endl;
-    return false;
-  }
-  return true;
+  BLI_assert(this->inputs.as_span() == flat_inputs);
+  BLI_assert(this->outputs.as_span() == flat_outputs);
 }
 
 bool NodeDeclaration::matches(const bNode &node) const
@@ -252,7 +208,7 @@ bool NodeDeclaration::matches(const bNode &node) const
   const bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
   const bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
   const bNodePanelState *current_panel = node.panel_states_array;
-  for (const ItemDeclarationPtr &item_decl : items) {
+  for (const ItemDeclarationPtr &item_decl : this->all_items) {
     if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
             item_decl.get()))
     {
@@ -280,14 +236,17 @@ bool NodeDeclaration::matches(const bNode &node) const
       }
       ++current_panel;
     }
+    else if (dynamic_cast<const SeparatorDeclaration *>(item_decl.get())) {
+      /* Separators are ignored here because they don't have corresponding data in DNA. */
+    }
     else {
       /* Unknown item type. */
       BLI_assert_unreachable();
     }
   }
   /* If items are left over, some were removed from the declaration. */
-  if (current_input == nullptr || current_output == nullptr ||
-      !node.panel_states().contains_ptr(current_panel))
+  if (current_input != nullptr || current_output != nullptr ||
+      node.panel_states().contains_ptr(current_panel))
   {
     return false;
   }
@@ -311,7 +270,7 @@ void SocketDeclaration::set_common_flags(bNodeSocket &socket) const
   SET_FLAG_FROM_TEST(socket.flag, hide_label, SOCK_HIDE_LABEL);
   SET_FLAG_FROM_TEST(socket.flag, is_multi_input, SOCK_MULTI_INPUT);
   SET_FLAG_FROM_TEST(socket.flag, no_mute_links, SOCK_NO_INTERNAL_LINK);
-  SET_FLAG_FROM_TEST(socket.flag, is_unavailable, SOCK_UNAVAIL);
+  SET_FLAG_FROM_TEST(socket.flag, !is_available, SOCK_UNAVAIL);
 }
 
 bool SocketDeclaration::matches_common_data(const bNodeSocket &socket) const
@@ -337,35 +296,146 @@ bool SocketDeclaration::matches_common_data(const bNodeSocket &socket) const
   if (((socket.flag & SOCK_NO_INTERNAL_LINK) != 0) != this->no_mute_links) {
     return false;
   }
-  if (((socket.flag & SOCK_UNAVAIL) != 0) != this->is_unavailable) {
+  if (((socket.flag & SOCK_UNAVAIL) != 0) != !this->is_available) {
     return false;
   }
   return true;
 }
 
-PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name, int identifier)
+template<typename Fn>
+static bool socket_type_to_static_decl_type(const eNodeSocketDatatype socket_type, Fn &&fn)
 {
-  std::unique_ptr<PanelDeclaration> panel_decl = std::make_unique<PanelDeclaration>();
-  std::unique_ptr<PanelDeclarationBuilder> panel_decl_builder =
-      std::make_unique<PanelDeclarationBuilder>();
-  panel_decl_builder->decl_ = &*panel_decl;
+  switch (socket_type) {
+    case SOCK_FLOAT:
+      fn(TypeTag<decl::Float>());
+      return true;
+    case SOCK_VECTOR:
+      fn(TypeTag<decl::Vector>());
+      return true;
+    case SOCK_RGBA:
+      fn(TypeTag<decl::Color>());
+      return true;
+    case SOCK_BOOLEAN:
+      fn(TypeTag<decl::Bool>());
+      return true;
+    case SOCK_ROTATION:
+      fn(TypeTag<decl::Rotation>());
+      return true;
+    case SOCK_MATRIX:
+      fn(TypeTag<decl::Matrix>());
+      return true;
+    case SOCK_INT:
+      fn(TypeTag<decl::Int>());
+      return true;
+    case SOCK_STRING:
+      fn(TypeTag<decl::String>());
+      return true;
+    case SOCK_GEOMETRY:
+      fn(TypeTag<decl::Geometry>());
+      return true;
+    case SOCK_OBJECT:
+      fn(TypeTag<decl::Object>());
+      return true;
+    case SOCK_IMAGE:
+      fn(TypeTag<decl::Image>());
+      return true;
+    case SOCK_COLLECTION:
+      fn(TypeTag<decl::Collection>());
+      return true;
+    case SOCK_MATERIAL:
+      fn(TypeTag<decl::Material>());
+      return true;
+    case SOCK_MENU:
+      fn(TypeTag<decl::Menu>());
+      return true;
+    default:
+      return false;
+  }
+}
 
-  panel_decl_builder->node_decl_builder_ = this;
+std::unique_ptr<SocketDeclaration> make_declaration_for_socket_type(
+    const eNodeSocketDatatype socket_type)
+{
+  std::unique_ptr<SocketDeclaration> decl;
+  socket_type_to_static_decl_type(socket_type, [&](auto type_tag) {
+    using DeclT = typename decltype(type_tag)::type;
+    decl = std::make_unique<DeclT>();
+  });
+  return decl;
+}
+
+BaseSocketDeclarationBuilder &DeclarationListBuilder::add_input(
+    const eNodeSocketDatatype socket_type, const StringRef name, const StringRef identifier)
+{
+  BaseSocketDeclarationBuilder *decl = nullptr;
+  socket_type_to_static_decl_type(socket_type, [&](auto type_tag) {
+    using DeclT = typename decltype(type_tag)::type;
+    decl = &this->add_input<DeclT>(name, identifier);
+  });
+  if (!decl) {
+    BLI_assert_unreachable();
+    decl = &this->add_input<decl::Float>("", "");
+  }
+  return *decl;
+}
+
+BaseSocketDeclarationBuilder &DeclarationListBuilder::add_input(const eCustomDataType data_type,
+                                                                const StringRef name,
+                                                                const StringRef identifier)
+{
+  return this->add_input(*bke::custom_data_type_to_socket_type(data_type), name, identifier);
+}
+
+BaseSocketDeclarationBuilder &DeclarationListBuilder::add_output(
+    const eNodeSocketDatatype socket_type, const StringRef name, const StringRef identifier)
+{
+  BaseSocketDeclarationBuilder *decl = nullptr;
+  socket_type_to_static_decl_type(socket_type, [&](auto type_tag) {
+    using DeclT = typename decltype(type_tag)::type;
+    decl = &this->add_output<DeclT>(name, identifier);
+  });
+  if (!decl) {
+    BLI_assert_unreachable();
+    decl = &this->add_output<decl::Float>("", "");
+  }
+  return *decl;
+}
+
+BaseSocketDeclarationBuilder &DeclarationListBuilder::add_output(const eCustomDataType data_type,
+                                                                 const StringRef name,
+                                                                 const StringRef identifier)
+{
+  return this->add_output(*bke::custom_data_type_to_socket_type(data_type), name, identifier);
+}
+
+void DeclarationListBuilder::add_separator()
+{
+  auto decl_ptr = std::make_unique<SeparatorDeclaration>();
+  SeparatorDeclaration &decl = *decl_ptr;
+  this->node_decl_builder.declaration_.all_items.append(std::move(decl_ptr));
+  this->items.append(&decl);
+}
+
+PanelDeclarationBuilder &DeclarationListBuilder::add_panel(const StringRef name, int identifier)
+{
+  auto panel_decl_ptr = std::make_unique<PanelDeclaration>();
+  PanelDeclaration &panel_decl = *panel_decl_ptr;
+  auto panel_decl_builder_ptr = std::make_unique<PanelDeclarationBuilder>(this->node_decl_builder,
+                                                                          panel_decl);
+  PanelDeclarationBuilder &panel_decl_builder = *panel_decl_builder_ptr;
+
   if (identifier >= 0) {
-    panel_decl->identifier = identifier;
+    panel_decl.identifier = identifier;
   }
   else {
     /* Use index as identifier. */
-    panel_decl->identifier = declaration_.items.size();
+    panel_decl.identifier = this->node_decl_builder.declaration_.all_items.size();
   }
-  panel_decl->name = name;
-  declaration_.items.append(std::move(panel_decl));
-
-  PanelDeclarationBuilder &builder_ref = *panel_decl_builder;
-  panel_builders_.append(std::move(panel_decl_builder));
-  set_active_panel_builder(&builder_ref);
-
-  return builder_ref;
+  panel_decl.name = name;
+  this->node_decl_builder.declaration_.all_items.append(std::move(panel_decl_ptr));
+  this->node_decl_builder.panel_builders_.append(std::move(panel_decl_builder_ptr));
+  this->items.append(&panel_decl);
+  return panel_decl_builder;
 }
 
 void PanelDeclaration::build(bNodePanelState &panel) const
@@ -386,133 +456,6 @@ void PanelDeclaration::update_or_build(const bNodePanelState &old_panel,
   build(new_panel);
   /* Copy existing state to the new panel */
   SET_FLAG_FROM_TEST(new_panel.flag, old_panel.is_collapsed(), NODE_PANEL_COLLAPSED);
-}
-
-std::unique_ptr<SocketDeclaration> make_declaration_for_socket_type(
-    const eNodeSocketDatatype socket_type)
-{
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      return std::make_unique<decl::Float>();
-    case SOCK_VECTOR:
-      return std::make_unique<decl::Vector>();
-    case SOCK_RGBA:
-      return std::make_unique<decl::Color>();
-    case SOCK_BOOLEAN:
-      return std::make_unique<decl::Bool>();
-    case SOCK_ROTATION:
-      return std::make_unique<decl::Rotation>();
-    case SOCK_MATRIX:
-      return std::make_unique<decl::Matrix>();
-    case SOCK_INT:
-      return std::make_unique<decl::Int>();
-    case SOCK_STRING:
-      return std::make_unique<decl::String>();
-    case SOCK_GEOMETRY:
-      return std::make_unique<decl::Geometry>();
-    case SOCK_OBJECT:
-      return std::make_unique<decl::Object>();
-    case SOCK_IMAGE:
-      return std::make_unique<decl::Image>();
-    case SOCK_COLLECTION:
-      return std::make_unique<decl::Collection>();
-    case SOCK_MATERIAL:
-      return std::make_unique<decl::Material>();
-    case SOCK_MENU:
-      return std::make_unique<decl::Menu>();
-    default:
-      return {};
-  }
-}
-
-BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(
-    const eNodeSocketDatatype socket_type, const StringRef name, const StringRef identifier)
-{
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      return this->add_input<decl::Float>(name, identifier);
-    case SOCK_VECTOR:
-      return this->add_input<decl::Vector>(name, identifier);
-    case SOCK_RGBA:
-      return this->add_input<decl::Color>(name, identifier);
-    case SOCK_BOOLEAN:
-      return this->add_input<decl::Bool>(name, identifier);
-    case SOCK_ROTATION:
-      return this->add_input<decl::Rotation>(name, identifier);
-    case SOCK_MATRIX:
-      return this->add_input<decl::Matrix>(name, identifier);
-    case SOCK_INT:
-      return this->add_input<decl::Int>(name, identifier);
-    case SOCK_STRING:
-      return this->add_input<decl::String>(name, identifier);
-    case SOCK_GEOMETRY:
-      return this->add_input<decl::Geometry>(name, identifier);
-    case SOCK_OBJECT:
-      return this->add_input<decl::Object>(name, identifier);
-    case SOCK_IMAGE:
-      return this->add_input<decl::Image>(name, identifier);
-    case SOCK_COLLECTION:
-      return this->add_input<decl::Collection>(name, identifier);
-    case SOCK_MATERIAL:
-      return this->add_input<decl::Material>(name, identifier);
-    case SOCK_MENU:
-      return this->add_input<decl::Menu>(name, identifier);
-    default:
-      BLI_assert_unreachable();
-      return this->add_input<decl::Float>("", "");
-  }
-}
-
-BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(const eCustomDataType data_type,
-                                                                const StringRef name,
-                                                                const StringRef identifier)
-{
-  return this->add_input(*bke::custom_data_type_to_socket_type(data_type), name, identifier);
-}
-
-BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
-    const eNodeSocketDatatype socket_type, const StringRef name, const StringRef identifier)
-{
-  switch (socket_type) {
-    case SOCK_FLOAT:
-      return this->add_output<decl::Float>(name, identifier);
-    case SOCK_VECTOR:
-      return this->add_output<decl::Vector>(name, identifier);
-    case SOCK_RGBA:
-      return this->add_output<decl::Color>(name, identifier);
-    case SOCK_BOOLEAN:
-      return this->add_output<decl::Bool>(name, identifier);
-    case SOCK_ROTATION:
-      return this->add_output<decl::Rotation>(name, identifier);
-    case SOCK_MATRIX:
-      return this->add_output<decl::Matrix>(name, identifier);
-    case SOCK_INT:
-      return this->add_output<decl::Int>(name, identifier);
-    case SOCK_STRING:
-      return this->add_output<decl::String>(name, identifier);
-    case SOCK_GEOMETRY:
-      return this->add_output<decl::Geometry>(name, identifier);
-    case SOCK_OBJECT:
-      return this->add_output<decl::Object>(name, identifier);
-    case SOCK_IMAGE:
-      return this->add_output<decl::Image>(name, identifier);
-    case SOCK_COLLECTION:
-      return this->add_output<decl::Collection>(name, identifier);
-    case SOCK_MATERIAL:
-      return this->add_output<decl::Material>(name, identifier);
-    case SOCK_MENU:
-      return this->add_output<decl::Menu>(name, identifier);
-    default:
-      BLI_assert_unreachable();
-      return this->add_output<decl::Float>("", "");
-  }
-}
-
-BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(const eCustomDataType data_type,
-                                                                 const StringRef name,
-                                                                 const StringRef identifier)
-{
-  return this->add_output(*bke::custom_data_type_to_socket_type(data_type), name, identifier);
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::supports_field()
@@ -548,6 +491,12 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::multi_input(bool val
 {
   BLI_assert(this->is_input());
   decl_base_->is_multi_input = value;
+  return *this;
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::compact(bool value)
+{
+  decl_base_->compact = value;
   return *this;
 }
 
@@ -613,9 +562,9 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::no_muted_links(bool 
   return *this;
 }
 
-BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::unavailable(bool value)
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::available(bool value)
 {
-  decl_base_->is_unavailable = value;
+  decl_base_->is_available = value;
   return *this;
 }
 

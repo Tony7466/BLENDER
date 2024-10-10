@@ -776,9 +776,6 @@ inline void PassBase<T>::draw(gpu::Batch *batch,
                                  vertex_first,
                                  handle,
                                  custom_id,
-#ifdef WITH_METAL_BACKEND
-                                 GPU_shader_uses_ssbo_vertex_fetch(shader_) ? shader_ : nullptr,
-#endif
                                  GPU_PRIM_NONE,
                                  0);
 }
@@ -811,9 +808,6 @@ inline void PassBase<T>::draw_expand(gpu::Batch *batch,
                                  vertex_first,
                                  handle,
                                  custom_id,
-#ifdef WITH_METAL_BACKEND
-                                 GPU_shader_uses_ssbo_vertex_fetch(shader_) ? shader_ : nullptr,
-#endif
                                  primitive_type,
                                  primitive_len);
 }
@@ -957,6 +951,8 @@ template<class T> inline void PassBase<T>::state_set(DRWState state, int clip_pl
   if (clip_plane_count > 0) {
     state |= DRW_STATE_CLIP_PLANES;
   }
+  /* Assumed to always be enabled. */
+  state |= DRW_STATE_PROGRAM_POINT_SIZE;
   create_command(Type::StateSet).state_set = {state, clip_plane_count};
 }
 
