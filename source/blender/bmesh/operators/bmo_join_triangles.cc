@@ -75,7 +75,13 @@
 #define FACE_OUT (1 << 0)
 #define FACE_INPUT (1 << 2)
 
-/** Improvement ranges from 0..1.  Never improve fully. */
+/**
+ * Improvement ranges from 0..1.  Never improve fully, cap at 99% improvement.
+ *
+ * If you allow 100% improvement around an existing quad, then all the quad's neighbors end up
+ * improved to the with the exact same value.  When this occurs, the relative quality of the edges
+ * is lost.  Keeping 1% of the original error is enough to maintain relative sorting .
+ */
 constexpr float maximum_improvement = 0.99f;
 
 /* -------------------------------------------------------------------- */
@@ -224,7 +230,8 @@ static float quad_calc_error(const float v1[3],
   return error;
 }
 
-/** Get the corners of the quad that would result after an edge merge.
+/**
+ * Get the corners of the quad that would result after an edge merge.
  *
  * \param e: An edge to be merged. It must be manifold and have triangles on either side.
  * \param r_v_quad: An array of vertices to return the corners.
@@ -427,9 +434,12 @@ static bool bm_edge_is_delimit(const BMEdge *e, const DelimitData *delimit_data)
 
 /** \} */
 
-/** Given a array of edges and an array of shared loops...
- *  add the new edge and shared loop to each the array...
- *  IF the edge is not already present.
+/**
+ * Adds edges and loops to an array of neigbhors, but won't add duplicates a second time.
+ *
+ * This function is necessary becuase otherwise the 3rd edge attached to a 3-pole at the corner
+ * of a freshly merged quad might be seen as a neighbor of _both_ the quad edges it touches,
+ * (depending on the triangulation), and might get double the improvement it deserves.
  *
  * \param merge_edges: the array to add the merge edges to
  * \param shared_loops: the array to add the shared loops to
@@ -466,10 +476,8 @@ static size_t add_without_duplicates(BMEdge *merge_edges[8],
   return count + 1;
 }
 
-/** Given a loop inside a quad...
- *  if there is a triangle adjacent to it...
- *  add the other two edges of that triangle...
- *  if they are in turn adjacent to another triangle.
+/**
+ * Add the neighboring edges of a given loop to the `merge_edges` and `shared_loops` arrays.
  *
  * \param merge_edges: the array of mergable edges to add to
  * \param shared_loops: the array to shared loops to add to
@@ -513,11 +521,9 @@ static size_t add_neighbors(BMEdge *merge_edges[8],
   return count; /* added either 0, 1, or 2 edges. */
 }
 
-/** Given a quad defined by quad_verts and an existing plane defined by its normal vector...
- *  rotate the quad around the shared_loop edge...
- *  such that the quad's normal is as aligned as possible to the plane normal.
- *  (in other words, alter the vertices to as flat a combination as possible)
- *  return the new coordinates of that flattened-out quad.
+/**
+ * Compute the coordinates of a quad that would result from an edge join, if that quad was
+ * rotated into the same plane as the existing quad next to it.
  *
  * \param s: State information about the join_triangles process
  * \param quad_verts: Four vertices of a quad, which has shared_loop as one of its edges
@@ -571,7 +577,8 @@ static void rotate_to_plane(JoinEdgesState &s,
   }
 }
 
-/** Given a pair of quads, compute how well aligned they are.
+/**
+ * Given a pair of quads, compute how well aligned they are.
  *
  * Computes a float, indicating alignment.
  * - regular grids of squares have pairs with alignments near 1.
@@ -702,7 +709,8 @@ static float compute_alignment(JoinEdgesState &s,
   return alignment;
 }
 
-/** Lowers the error of an edge becuase of its proximity to a known good quad.
+/**
+ * Lowers the error of an edge becuase of its proximity to a known good quad.
  *
  * This function is the core of the entire topology_influence algorithm.
  *
@@ -835,7 +843,8 @@ static void reprioritize_join(JoinEdgesState &s,
   BLI_heap_node_value_update(s.heap, node, new_join_error);
 }
 
-/** Given a face, find merge_edges which are being considered for merge and improve them
+/**
+ * Given a face, find merge_edges which are being considered for merge and improve them
  *
  * \param s: State information about the join_triangles process
  * \param face       A quad
@@ -895,7 +904,8 @@ static void reprioritize_face_neighbors(JoinEdgesState &s, BMFace *face, float f
     reprioritize_join(s, merge_edges[n], shared_loops[n], quad_vecs, face_error, face->no);
   }
 }
-/** Given a manifold edge, join the triangles on either side to form a quad.
+/**
+ * Given a manifold edge, join the triangles on either side to form a quad.
  *
  * \param s: State information about the join_triangles process
  * \param e: the edge to merge.  It must be manifold.
