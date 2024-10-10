@@ -23,10 +23,15 @@ namespace blender::gpu {
 
 static uint64_t s_number = 0;
 
-#define LOG std::cout << __func__ << "[" << number << "]: main=" << BLI_thread_is_main() << "\n";
+#define LOG \
+  std::cout << "VKContext::" << __func__ << ": context=" << number \
+            << ", thread=" << pthread_self() << ", main=" << BLI_thread_is_main() << "\n";
 
-VKContext::VKContext(void *ghost_window, void *ghost_context, VKThreadData &thread_data)
-    : thread_data_(thread_data), render_graph(thread_data_.render_graph)
+VKContext::VKContext(void *ghost_window,
+                     void *ghost_context,
+                     render_graph::VKResourceStateTracker &resources)
+    : render_graph(std::make_unique<render_graph::VKCommandBufferWrapper>(), resources)
+
 {
   ghost_window_ = ghost_window;
   ghost_context_ = ghost_context;
@@ -44,8 +49,8 @@ VKContext::VKContext(void *ghost_window, void *ghost_context, VKThreadData &thre
 
 VKContext::~VKContext()
 {
-  LOG
-  if (surface_texture_) {
+  LOG if (surface_texture_)
+  {
     back_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
     front_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
     GPU_texture_free(surface_texture_);
@@ -60,12 +65,14 @@ VKContext::~VKContext()
 void VKContext::sync_backbuffer()
 {
   VKDevice &device = VKBackend::get().device;
+
   if (ghost_window_) {
     GHOST_VulkanSwapChainData swap_chain_data = {};
     GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &swap_chain_data);
-    if (assign_if_different(thread_data_.resource_pool_index, swap_chain_data.swap_chain_index)) {
-      thread_data_.resource_pool_index = swap_chain_data.swap_chain_index;
-      VKResourcePool &resource_pool = thread_data_.resource_pool_get();
+    VKThreadData &thread_data = thread_data_.value().get();
+    if (assign_if_different(thread_data.resource_pool_index, swap_chain_data.swap_chain_index)) {
+      thread_data.resource_pool_index = swap_chain_data.swap_chain_index;
+      VKResourcePool &resource_pool = thread_data.resource_pool_get();
       imm = &resource_pool.immediate;
       resource_pool.discard_pool.destroy_discarded_resources(device);
       resource_pool.reset();
@@ -112,8 +119,15 @@ void VKContext::sync_backbuffer()
 void VKContext::activate()
 {
   LOG
-  /* Make sure no other context is already bound to this thread. */
-  BLI_assert(is_active_ == false);
+
+      /* Make sure no other context is already bound to this thread. */
+      BLI_assert(is_active_ == false);
+
+  VKDevice &device = VKBackend::get().device;
+  VKThreadData &thread_data = device.current_thread_data();
+  thread_data_ = std::reference_wrapper<VKThreadData>(thread_data);
+
+  imm = &thread_data.resource_pool_get().immediate;
 
   is_active_ = true;
 
@@ -124,9 +138,10 @@ void VKContext::activate()
 
 void VKContext::deactivate()
 {
-  LOG
-  rendering_end();
+  LOG flush_render_graph();
   immDeactivate();
+  imm = nullptr;
+  thread_data_.reset();
   is_active_ = false;
 }
 
@@ -173,12 +188,12 @@ void VKContext::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb)
 
 VKDescriptorPools &VKContext::descriptor_pools_get()
 {
-  return thread_data_.resource_pool_get().descriptor_pools;
+  return thread_data_.value().get().resource_pool_get().descriptor_pools;
 }
 
 VKDescriptorSetTracker &VKContext::descriptor_set_get()
 {
-  return thread_data_.resource_pool_get().descriptor_set;
+  return thread_data_.value().get().resource_pool_get().descriptor_set;
 }
 
 VKStateManager &VKContext::state_manager_get() const

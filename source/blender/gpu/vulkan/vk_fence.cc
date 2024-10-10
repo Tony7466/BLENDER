@@ -35,11 +35,16 @@ void VKFence::signal()
     vkCreateFence(device.vk_handle(), &vk_fence_create_info, vk_allocation_callbacks, &vk_fence_);
   }
   VKContext &context = *VKContext::get();
+  context.rendering_end();
+  context.descriptor_set_get().upload_descriptor_sets();
   context.render_graph.submit_synchronization_event(vk_fence_);
 }
 
 void VKFence::wait()
 {
+  if (vk_fence_ == VK_NULL_HANDLE) {
+    return;
+  }
   VKContext &context = *VKContext::get();
   context.render_graph.wait_synchronization_event(vk_fence_);
 }
