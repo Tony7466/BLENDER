@@ -199,25 +199,22 @@ static bool drop_import_file_poll(bContext *C, wmDrag *drag, const wmEvent * /*e
     return false;
   }
   const auto paths = WM_drag_get_paths(drag);
-  const auto file_handlers = drop_import_file_poll_file_handlers(C, paths, true);
-  /* Get tooltip now, `drop_import_file_tooltip` may run in a different context. */
-  if (file_handlers.size() == 1) {
-    wmOperatorType *ot = WM_operatortype_find(file_handlers[0]->import_operator, false);
-    drag->tooltip = TIP_(ot->name);
-  }
-  else {
-    drag->tooltip = TIP_("Multiple file handlers can be used, drop to pick which to use");
-  }
-
-  return !file_handlers.is_empty();
+  return !drop_import_file_poll_file_handlers(C, paths, true).is_empty();
 }
 
-static std::string drop_import_file_tooltip(bContext * /*C*/,
+static std::string drop_import_file_tooltip(bContext *C,
                                             wmDrag *drag,
                                             const int /*xy*/[2],
                                             wmDropBox * /*drop*/)
 {
-  return drag->tooltip;
+  const auto paths = WM_drag_get_paths(drag);
+  const auto file_handlers = drop_import_file_poll_file_handlers(C, paths, true);
+  if (file_handlers.size() == 1) {
+    wmOperatorType *ot = WM_operatortype_find(file_handlers[0]->import_operator, false);
+    return TIP_(ot->name);
+  }
+
+  return TIP_("Multiple file handlers can be used, drop to pick which to use");
 }
 
 void ED_dropbox_drop_import_file()

@@ -1271,6 +1271,8 @@ struct wmDragActiveDropState {
    */
   const char *disabled_info;
   bool free_disabled_info;
+
+  std::string tooltip;
 };
 
 struct wmDrag {
@@ -1292,9 +1294,6 @@ struct wmDrag {
   ListBase ids;
   /** List of `wmDragAssetListItem`s. */
   ListBase asset_items;
-  /** Drag tooltip that depends on `wmDropBox::poll` context, `wmDropBox::tooltip` may run in a
-   * different draw context. */
-  std::string tooltip;
 };
 
 /**
