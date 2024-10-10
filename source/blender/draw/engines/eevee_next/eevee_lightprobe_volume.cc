@@ -40,13 +40,14 @@ void VolumeProbeModule::init()
                           (uint)inst_.scene->eevee.gi_irradiance_pool_size) ||
       !irradiance_atlas_tx_.is_valid())
   {
-    /* Reshape texture to improve grid occupancy within device limits. */
     irradiance_atlas_tx_.free();
+    /* Find highest pool size within device limits. */
     for (uint irradiance_pool_size = irradiance_pool_size_;
          irradiance_pool_size >= 16 && !irradiance_atlas_tx_.is_valid();
          irradiance_pool_size >>= 1)
     {
       int atlas_byte_size = 1024 * 1024 * irradiance_pool_size;
+      /* Reshape texture to improve grid occupancy within device limits. */
       for (atlas_col_count = 128; atlas_col_count <= 16348 && !irradiance_atlas_tx_.is_valid();
            atlas_col_count <<= 1)
       {
@@ -57,7 +58,7 @@ void VolumeProbeModule::init()
         atlas_extent.x *= atlas_col_count;
 
         /* Determine the row count depending on the scene settings. */
-        int row_byte_size = atlas_extent.x * atlas_extent.y * atlas_extent.z * texel_byte_size;
+        int row_byte_size = math::reduce_mul(atlas_extent) * texel_byte_size;
         atlas_row_count = divide_ceil_u(atlas_byte_size, row_byte_size);
         atlas_extent.y *= atlas_row_count;
 
