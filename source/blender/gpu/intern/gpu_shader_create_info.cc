@@ -11,6 +11,7 @@
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_threads.h"
 
 #include "BKE_global.hh"
 
@@ -30,9 +31,11 @@
 namespace blender::gpu::shader {
 
 using CreateInfoDictionnary = Map<StringRef, ShaderCreateInfo *>;
+using CreateInfoValueDictionnary = Map<StringRef, ShaderCreateInfo>;
 using InterfaceDictionnary = Map<StringRef, StageInterfaceInfo *>;
 
 static CreateInfoDictionnary *g_create_infos = nullptr;
+static CreateInfoValueDictionnary *g_create_infos_unfinalized = nullptr;
 static InterfaceDictionnary *g_interfaces = nullptr;
 
 /* -------------------------------------------------------------------- */
@@ -93,7 +96,7 @@ bool ShaderCreateInfo::is_vulkan_compatible() const
 
 /** \} */
 
-void ShaderCreateInfo::finalize()
+void ShaderCreateInfo::finalize(const bool recursive)
 {
   if (finalized_) {
     return;
@@ -110,8 +113,12 @@ void ShaderCreateInfo::finalize()
     const ShaderCreateInfo &info = *reinterpret_cast<const ShaderCreateInfo *>(
         gpu_shader_create_info_get(info_name.c_str()));
 
-    /* Recursive. */
-    const_cast<ShaderCreateInfo &>(info).finalize();
+    if (recursive) {
+      const_cast<ShaderCreateInfo &>(info).finalize(recursive);
+    }
+    else {
+      BLI_assert(info.finalized_);
+    }
 
     interface_names_size_ += info.interface_names_size_;
 
@@ -444,6 +451,7 @@ using namespace blender::gpu::shader;
 void gpu_shader_create_info_init()
 {
   g_create_infos = new CreateInfoDictionnary();
+  g_create_infos_unfinalized = new CreateInfoValueDictionnary();
   g_interfaces = new InterfaceDictionnary();
 
 #define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) \
@@ -501,8 +509,12 @@ void gpu_shader_create_info_init()
     overlay_edit_mesh_edge_flat = overlay_edit_mesh_edge_flat_no_geom;
     overlay_edit_mesh_edge_clipped = overlay_edit_mesh_edge_clipped_no_geom;
     overlay_edit_mesh_edge_flat_clipped = overlay_edit_mesh_edge_flat_clipped_no_geom;
+    /* Overlay Edit Curve. */
     overlay_edit_curve_handle = overlay_edit_curve_handle_no_geom;
     overlay_edit_curve_handle_clipped = overlay_edit_curve_handle_clipped_no_geom;
+    /* Overlay Edit Curves. */
+    overlay_edit_curves_handle = overlay_edit_curves_handle_no_geom;
+    overlay_edit_curves_handle_clipped = overlay_edit_curves_handle_clipped_no_geom;
 
     /* Overlay Armature Shape outline. */
     overlay_armature_shape_outline = overlay_armature_shape_outline_no_geom;
@@ -568,6 +580,14 @@ void gpu_shader_create_info_init()
 #endif
   }
 
+  for (auto [key, info] : g_create_infos->items()) {
+    g_create_infos_unfinalized->add_new(key, *info);
+  }
+
+  for (ShaderCreateInfo *info : g_create_infos->values()) {
+    info->finalize(true);
+  }
+
   /* TEST */
   // gpu_shader_create_info_compile(nullptr);
 }
@@ -581,6 +601,8 @@ void gpu_shader_create_info_exit()
     delete value;
   }
   delete g_create_infos;
+
+  delete g_create_infos_unfinalized;
 
   for (auto *value : g_interfaces->values()) {
     delete value;
@@ -683,4 +705,19 @@ const GPUShaderCreateInfo *gpu_shader_create_info_get(const char *info_name)
   }
   ShaderCreateInfo *info = g_create_infos->lookup(info_name);
   return reinterpret_cast<const GPUShaderCreateInfo *>(info);
+}
+
+void gpu_shader_create_info_get_unfinalized_copy(const char *info_name,
+                                                 GPUShaderCreateInfo &r_info)
+{
+  if (g_create_infos_unfinalized->contains(info_name) == false) {
+    std::string msg = std::string("Error: Cannot find shader create info named \"") + info_name +
+                      "\"\n";
+    BLI_assert_msg(0, msg.c_str());
+  }
+  else {
+    ShaderCreateInfo &info = reinterpret_cast<ShaderCreateInfo &>(r_info);
+    info = g_create_infos_unfinalized->lookup(info_name);
+    BLI_assert(!info.finalized_);
+  }
 }

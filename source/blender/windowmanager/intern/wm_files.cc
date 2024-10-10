@@ -125,8 +125,8 @@
 #include "RE_engine.h"
 
 #ifdef WITH_PYTHON
-#  include "BPY_extern_python.h"
-#  include "BPY_extern_run.h"
+#  include "BPY_extern_python.hh"
+#  include "BPY_extern_run.hh"
 #endif
 
 #include "DEG_depsgraph.hh"
@@ -386,9 +386,6 @@ static void wm_file_read_setup_wm_use_new(bContext *C,
   wm->init_flag = 0;
   wm->winactive = nullptr;
 
-  /* Clearing drawable of old WM before deleting any context to avoid clearing the wrong wm. */
-  wm_window_clear_drawable(old_wm);
-
   bool has_match = false;
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     LISTBASE_FOREACH (wmWindow *, old_win, &old_wm->windows) {
@@ -406,6 +403,9 @@ static void wm_file_read_setup_wm_use_new(bContext *C,
                                                 static_cast<wmWindow *>(old_wm->windows.first),
                                                 static_cast<wmWindow *>(wm->windows.first));
   }
+
+  /* Clearing drawable of old WM before deleting any context to avoid clearing the wrong wm. */
+  wm_window_clear_drawable(old_wm);
 
   wm_setup_data->old_wm = nullptr;
   wm_close_and_free(C, old_wm);
@@ -1151,17 +1151,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   else {
     BKE_reportf(reports, RPT_ERROR, "Unknown error loading \"%s\"", filepath);
     BLI_assert_msg(0, "invalid 'retval'");
-  }
-
-  if (success == false) {
-    /* Remove from recent files list. */
-    if (do_history_file_update) {
-      RecentFile *recent = wm_file_history_find(filepath);
-      if (recent) {
-        wm_history_file_free(recent);
-        wm_history_file_write();
-      }
-    }
   }
 
   WM_cursor_wait(false);

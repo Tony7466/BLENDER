@@ -2246,9 +2246,9 @@ static const GWL_Cursor_ShapeInfo ghost_wl_cursors = []() -> GWL_Cursor_ShapeInf
     CASE_CURSOR(GHOST_kStandardCursorZoomIn, "zoom-in");
     CASE_CURSOR(GHOST_kStandardCursorZoomOut, "zoom-out");
     CASE_CURSOR(GHOST_kStandardCursorMove, "move");
-    CASE_CURSOR(GHOST_kStandardCursorHandOpen, "move");
-    CASE_CURSOR(GHOST_kStandardCursorHandClosed, "move");
-    CASE_CURSOR(GHOST_kStandardCursorHandPoint, "move");
+    CASE_CURSOR(GHOST_kStandardCursorHandOpen, "hand1");
+    CASE_CURSOR(GHOST_kStandardCursorHandClosed, "grabbing");
+    CASE_CURSOR(GHOST_kStandardCursorHandPoint, "hand2");
     CASE_CURSOR(GHOST_kStandardCursorNSEWScroll, "all-scroll");
     CASE_CURSOR(GHOST_kStandardCursorNSScroll, "size_ver");
     CASE_CURSOR(GHOST_kStandardCursorEWScroll, "size_hor");
@@ -3507,6 +3507,10 @@ static void data_device_handle_drop(void *data, wl_data_device * /*wl_data_devic
    * because the data-offer has not been accepted (actions set... etc). */
   GWL_DataOffer *data_offer = seat->data_offer_dnd;
 
+  /* Take ownership of `data_offer` to prevent a double-free, see: #128766.
+   * The thread this function spawns is responsible for freeing it. */
+  seat->data_offer_dnd = nullptr;
+
   /* Use a blank string for  `mime_receive` to prevent crashes, although could also be `nullptr`.
    * Failure to set this to a known type just means the file won't have any special handling.
    * GHOST still generates a dropped file event.
@@ -3540,9 +3544,6 @@ static void data_device_handle_drop(void *data, wl_data_device * /*wl_data_devic
     wl_data_offer_finish(data_offer->wl.id);
     wl_data_offer_destroy(data_offer->wl.id);
 
-    if (seat->data_offer_dnd == data_offer) {
-      seat->data_offer_dnd = nullptr;
-    }
     delete data_offer;
     data_offer = nullptr;
 

@@ -1888,6 +1888,11 @@ typedef struct NodeGeometryDuplicateElements {
   int8_t domain;
 } NodeGeometryDuplicateElements;
 
+typedef struct NodeGeometryMergeLayers {
+  /** #MergeLayerMode. */
+  int8_t mode;
+} NodeGeometryMergeLayers;
+
 typedef struct NodeGeometrySeparateGeometry {
   /** #AttrDomain. */
   int8_t domain;
@@ -2033,8 +2038,9 @@ typedef struct NodeForeachGeometryElementGenerationItems {
 
 typedef struct NodeGeometryForeachGeometryElementOutput {
   /**
-   * The foreach zone has three sets of dynamic sockets.One on the input node and two on the
-   * output node. All settings are stored centrally in the output node storage though.
+   * The `foreach` zone has three sets of dynamic sockets.
+   * One on the input node and two on the output node.
+   * All settings are stored centrally in the output node storage though.
    */
   NodeForeachGeometryElementInputItems input_items;
   NodeForeachGeometryElementMainItems main_items;
@@ -2841,6 +2847,15 @@ enum {
   SHD_POINTDENSITY_COLOR_VERTCOL = 0,
   SHD_POINTDENSITY_COLOR_VERTWEIGHT = 1,
   SHD_POINTDENSITY_COLOR_VERTNOR = 2,
+};
+
+/* Scattering phase functions */
+enum {
+  SHD_PHASE_HENYEY_GREENSTEIN = 0,
+  SHD_PHASE_FOURNIER_FORAND = 1,
+  SHD_PHASE_DRAINE = 2,
+  SHD_PHASE_RAYLEIGH = 3,
+  SHD_PHASE_MIE = 4,
 };
 
 /* Output shader node */
