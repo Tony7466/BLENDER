@@ -1,2 +1,3 @@
 Referenced by issue #127955, Blender 3.6 / 4.1 crashes executing bpy commands via exec() in Python
 Referenced by issue #128200, Crash when duplicating essential brush asset
+Referenced by issue #128859, Sculpting on a mesh with subdivision surface & shape keys enabled can't be undone
