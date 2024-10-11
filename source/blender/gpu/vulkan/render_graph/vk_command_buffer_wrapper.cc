@@ -96,7 +96,10 @@ void VKCommandBufferWrapper::submit_with_cpu_synchronization(VkFence vk_fence)
   }
   VKDevice &device = VKBackend::get().device;
   vkResetFences(device.vk_handle(), 1, &vk_fence);
-  vkQueueSubmit(device.queue_get(), 1, &vk_submit_info_, vk_fence);
+  {
+    std::scoped_lock lock(device.queue_mutex_get());
+    vkQueueSubmit(device.queue_get(), 1, &vk_submit_info_, vk_fence);
+  }
   vk_command_buffer_ = VK_NULL_HANDLE;
 }
 
