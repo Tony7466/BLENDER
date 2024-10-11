@@ -319,6 +319,7 @@ if(WITH_PYTHON_MODULE)
 
   if(APPLE)
     set_target_properties(blender PROPERTIES MACOSX_BUNDLE TRUE)
+    set_target_properties(blender-thumbnailer PROPERTIES MACOSX_BUNDLE TRUE)
   endif()
 
   if(WIN32)
@@ -1575,6 +1576,16 @@ elseif(APPLE)
     MACOSX_BUNDLE_LONG_VERSION_STRING "${BLENDER_VERSION}.${BLENDER_VERSION_PATCH} ${BLENDER_DATE}"
   )
 
+  if(WITH_BLENDER_THUMBNAILER)
+    set(OSX_THUMBNAILER_SOURCEDIR ${OSX_APP_SOURCEDIR}/Contents/PlugIns/blender-thumbnailer.appex)
+    set_target_properties(blender-thumbnailer PROPERTIES
+      BUNDLE_EXTENSION appex
+      MACOSX_BUNDLE_INFO_PLIST ${OSX_THUMBNAILER_SOURCEDIR}/Contents/Info.plist
+      MACOSX_BUNDLE_SHORT_VERSION_STRING "${BLENDER_VERSION}.${BLENDER_VERSION_PATCH}"
+      MACOSX_BUNDLE_LONG_VERSION_STRING "${BLENDER_VERSION}.${BLENDER_VERSION_PATCH} ${BLENDER_DATE}"
+    )
+  endif()
+
   # Gather the date in finder-style.
   execute_process(
     COMMAND date "+%m/%d/%Y/%H:%M"
@@ -1609,9 +1620,11 @@ elseif(APPLE)
   )
 
   if(WITH_BLENDER_THUMBNAILER)
+    # Install TARGET breaks the signature so copy it instead. It's ad-hoc codesigned by the build step.
     install(
-      TARGETS blender-thumbnailer
-      DESTINATION "./Blender.app/Contents/MacOS"
+      FILES $<TARGET_BUNDLE_DIR:blender-thumbnailer>
+      DESTINATION "./Blender.app/Contents/PlugIns"
+      PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
     )
   endif()
 
