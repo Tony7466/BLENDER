@@ -853,7 +853,7 @@ static float get_margin_between_elements(const Span<FlatNodeItem> items, const i
         case Type::Layout:
           return 2 * NODE_ITEM_SPACING_Y;
         case Type::PanelHeader:
-          return 2 * NODE_ITEM_SPACING_Y;
+          return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentBegin:
           break;
         case Type::PanelContentEnd:
