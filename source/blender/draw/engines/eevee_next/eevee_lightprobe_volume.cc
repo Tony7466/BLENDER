@@ -48,25 +48,17 @@ void VolumeProbeModule::init()
     {
       int atlas_byte_size = 1024 * 1024 * irradiance_pool_size;
       /* Reshape texture to improve grid occupancy within device limits. */
-      /* TODO(jbakker): Fix reshaping render errors. */
-
-#if 0
       constexpr uint atlas_col_count_min = 16;
       constexpr uint atlas_col_count_max = 16384;
-#else
-      constexpr uint atlas_col_count_min = 256;
-      constexpr uint atlas_col_count_max = 256;
-#endif
-
-      for (atlas_col_count = atlas_col_count_min;
-           atlas_col_count <= atlas_col_count_max && !irradiance_atlas_tx_.is_valid();
-           atlas_col_count <<= 1)
+      for (uint atlas_col_count_try = atlas_col_count_min;
+           atlas_col_count_try <= atlas_col_count_max && !irradiance_atlas_tx_.is_valid();
+           atlas_col_count_try <<= 1)
       {
         int3 atlas_extent(IRRADIANCE_GRID_BRICK_SIZE);
         atlas_extent.z *= sh_coef_len;
         /* Add space for validity bits. */
         atlas_extent.z += IRRADIANCE_GRID_BRICK_SIZE / 4;
-        atlas_extent.x *= atlas_col_count;
+        atlas_extent.x *= atlas_col_count_try;
 
         /* Determine the row count depending on the scene settings. */
         int row_byte_size = math::reduce_mul(atlas_extent) * texel_byte_size;
@@ -80,6 +72,7 @@ void VolumeProbeModule::init()
         if (irradiance_atlas_tx_.is_valid()) {
           do_full_update_ = true;
           irradiance_pool_size_alloc_ = irradiance_pool_size;
+          atlas_col_count = atlas_col_count_try;
         }
       }
     }
