@@ -234,7 +234,6 @@ static void external_cache_finish(void * /*vedata*/) {}
 
 static void external_draw_scene_do_v3d(void *vedata)
 {
-  GPU_debug_capture_begin(__func__);
   const DRWContextState *draw_ctx = DRW_context_state_get();
   RegionView3D *rv3d = draw_ctx->rv3d;
   ARegion *region = draw_ctx->region;
@@ -251,7 +250,6 @@ static void external_draw_scene_do_v3d(void *vedata)
     RenderEngineType *engine_type = draw_ctx->engine_type;
 
     if (!(engine_type->view_update && engine_type->view_draw)) {
-      GPU_debug_capture_end();
       return;
     }
 
@@ -285,7 +283,6 @@ static void external_draw_scene_do_v3d(void *vedata)
   else {
     data->info[0] = '\0';
   }
-  GPU_debug_capture_end();
 }
 
 /* Configure current matrix stack so that the external engine can use the same drawing code for
