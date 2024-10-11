@@ -13,16 +13,6 @@ import sys
 import unittest
 
 
-def enable_experimental_animation_baklava():
-    bpy.context.preferences.view.show_developer_ui = True
-    bpy.context.preferences.experimental.use_animation_baklava = True
-
-
-def disable_experimental_animation_baklava():
-    bpy.context.preferences.view.show_developer_ui = False
-    bpy.context.preferences.experimental.use_animation_baklava = False
-
-
 class AbstractNlaStripTest(unittest.TestCase):
     """ Sets up a series of strips in one NLA track. """
 
