@@ -191,7 +191,7 @@ std::optional<std::string> USDVolumeWriter::construct_vdb_file_path(const Volume
   BLI_strncat(vdb_directory_path, vdb_directory_name, sizeof(vdb_directory_path));
   BLI_dir_create_recursive(vdb_directory_path);
 
-  Scene *scene = DEG_get_input_scene(usd_export_context_.depsgraph);
+  const Scene *scene = DEG_get_input_scene(usd_export_context_.depsgraph);
   const int max_frame_digits = std::max(2, integer_digits_i(abs(scene->r.efra)));
 
   char vdb_file_name[FILE_MAXFILE];
