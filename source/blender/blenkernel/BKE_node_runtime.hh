@@ -262,7 +262,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
   int index_in_inout_sockets = -1;
 };
 
-struct bNodePanelExtend {
+struct bNodePanelExtent {
   float min_y;
   float max_y;
   bool fill_node_end = false;
@@ -274,7 +274,7 @@ class bNodePanelRuntime : NonCopyable, NonMovable {
    * if the node tree hasn't been drawn yet. In the node tree's "world space" (the same as
    * #bNode::runtime::totr). */
   std::optional<float> header_center_y;
-  std::optional<bNodePanelExtend> content_extend;
+  std::optional<bNodePanelExtent> content_extent;
 };
 
 /**

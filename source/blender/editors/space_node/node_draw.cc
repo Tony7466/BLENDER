@@ -952,11 +952,10 @@ static float get_margin_between_elements(const Span<FlatNodeItem> items, const i
 }
 
 /** Tags all the sockets in the panel as collapsed and updates their positions. */
-static void update_collapsed_sockets_recursive_inner(
-    bNode &node,
-    const int node_left_x,
-    const nodes::PanelDeclaration &visible_panel_decl,
-    const nodes::PanelDeclaration &panel_decl)
+static void mark_sockets_collapsed_recursive(bNode &node,
+                                             const int node_left_x,
+                                             const nodes::PanelDeclaration &visible_panel_decl,
+                                             const nodes::PanelDeclaration &panel_decl)
 {
   const bke::bNodePanelRuntime &visible_panel_runtime =
       node.runtime->panels[visible_panel_decl.index];
@@ -970,8 +969,7 @@ static void update_collapsed_sockets_recursive_inner(
     }
     else if (const auto *sub_panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(item_decl))
     {
-      update_collapsed_sockets_recursive_inner(
-          node, node_left_x, visible_panel_decl, *sub_panel_decl);
+      mark_sockets_collapsed_recursive(node, node_left_x, visible_panel_decl, *sub_panel_decl);
     }
   }
 }
@@ -984,7 +982,7 @@ static void update_collapsed_sockets_recursive(bNode &node,
   const bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[panel_decl.index];
   const bool is_open = panel_runtime.header_center_y.has_value() && !panel_state.is_collapsed();
   if (!is_open) {
-    update_collapsed_sockets_recursive_inner(node, node_left_x, panel_decl, panel_decl);
+    mark_sockets_collapsed_recursive(node, node_left_x, panel_decl, panel_decl);
     return;
   }
   for (const nodes::ItemDeclaration *item_decl : panel_decl.items) {
@@ -1025,7 +1023,7 @@ static void tag_final_panel(bNode &node, const Span<FlatNodeItem> items)
   }
   if (final_panel) {
     bke::bNodePanelRuntime &final_panel_runtime = node.runtime->panels[final_panel->decl->index];
-    final_panel_runtime.content_extend->fill_node_end = true;
+    final_panel_runtime.content_extent->fill_node_end = true;
   }
 }
 
@@ -1039,7 +1037,7 @@ static void node_update_basis_from_declaration(
   /* Reset states. */
   for (bke::bNodePanelRuntime &panel_runtime : node.runtime->panels) {
     panel_runtime.header_center_y.reset();
-    panel_runtime.content_extend.reset();
+    panel_runtime.content_extent.reset();
   }
   for (bNodeSocket *socket : node.input_sockets()) {
     socket->flag &= ~SOCK_PANEL_COLLAPSED;
@@ -1128,13 +1126,13 @@ static void node_update_basis_from_declaration(
           else if constexpr (std::is_same_v<ItemT, flat_item::PanelContentBegin>) {
             const nodes::PanelDeclaration &node_decl = *item.decl;
             bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
-            panel_runtime.content_extend.emplace();
-            panel_runtime.content_extend->max_y = locy;
+            panel_runtime.content_extent.emplace();
+            panel_runtime.content_extent->max_y = locy;
           }
           else if constexpr (std::is_same_v<ItemT, flat_item::PanelContentEnd>) {
             const nodes::PanelDeclaration &node_decl = *item.decl;
             bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[node_decl.index];
-            panel_runtime.content_extend->min_y = locy;
+            panel_runtime.content_extent->min_y = locy;
           }
         },
         item_variant.item);
@@ -2651,16 +2649,16 @@ static void node_draw_panels_background(const bNode &node)
   for (const int panel_i : node_decl.panels.index_range()) {
     const nodes::PanelDeclaration &panel_decl = *node_decl.panels[panel_i];
     const bke::bNodePanelRuntime &panel_runtime = node.runtime->panels[panel_i];
-    if (!panel_runtime.content_extend.has_value()) {
+    if (!panel_runtime.content_extent.has_value()) {
       continue;
     }
     const rctf content_rect = {totr.xmin,
                                totr.xmax,
-                               panel_runtime.content_extend->min_y,
-                               panel_runtime.content_extend->max_y};
+                               panel_runtime.content_extent->min_y,
+                               panel_runtime.content_extent->max_y};
     UI_draw_roundbox_corner_set(UI_CNR_NONE);
     UI_draw_roundbox_4fv(&content_rect, true, BASIS_RAD, panel_color);
-    if (panel_runtime.content_extend->fill_node_end) {
+    if (panel_runtime.content_extent->fill_node_end) {
       final_panel_decl = &panel_decl;
     }
   }
@@ -2668,7 +2666,7 @@ static void node_draw_panels_background(const bNode &node)
     const bke::bNodePanelRuntime &final_panel_runtime =
         node.runtime->panels[final_panel_decl->index];
     const rctf content_rect = {
-        totr.xmin, totr.xmax, totr.ymin, final_panel_runtime.content_extend->min_y};
+        totr.xmin, totr.xmax, totr.ymin, final_panel_runtime.content_extent->min_y};
     UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
     const int repeats = final_panel_decl->depth() + 1;
     for ([[maybe_unused]] const int i : IndexRange(repeats)) {
