@@ -42,6 +42,7 @@ __all__ = (
     "smpte_from_seconds",
     "units",
     "unregister_class",
+    "unregister_startup_scripts",
     "unregister_tool",
     "user_resource",
     "execfile",
@@ -198,6 +199,31 @@ _global_loaded_modules = []  # store loaded module names for reloading.
 import bpy_types as _bpy_types  # keep for comparisons, never ever reload this.
 
 
+def _register_module_call(mod):
+    register = getattr(mod, "register", None)
+    if register:
+        try:
+            register()
+        except:
+            import traceback
+            traceback.print_exc()
+    else:
+        print(
+            "\nWarning! {!r} has no register function, "
+            "this is now a requirement for registerable scripts".format(mod.__file__)
+        )
+
+
+def _unregister_module_call(mod):
+    unregister = getattr(mod, "unregister", None)
+    if unregister:
+        try:
+            unregister()
+        except:
+            import traceback
+            traceback.print_exc()
+
+
 def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True):
     """
     Load scripts and run each modules register function.
@@ -231,29 +257,6 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True
         for addon_module_name in [ext.module for ext in _preferences.addons]:
             _addon_utils.disable(addon_module_name)
 
-    def register_module_call(mod):
-        register = getattr(mod, "register", None)
-        if register:
-            try:
-                register()
-            except Exception:
-                import traceback
-                traceback.print_exc()
-        else:
-            print(
-                "\nWarning! {!r} has no register function, "
-                "this is now a requirement for registerable scripts".format(mod.__file__)
-            )
-
-    def unregister_module_call(mod):
-        unregister = getattr(mod, "unregister", None)
-        if unregister:
-            try:
-                unregister()
-            except Exception:
-                import traceback
-                traceback.print_exc()
-
     def test_reload(mod):
         import importlib
         # reloading this causes internal errors
@@ -278,7 +281,7 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True
             mod = test_reload(mod)
 
         if mod:
-            register_module_call(mod)
+            _register_module_call(mod)
             _global_loaded_modules.append(mod.__name__)
 
     if reload_scripts:
@@ -290,7 +293,7 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True
         # loop over and unload all scripts
         _global_loaded_modules.reverse()
         for mod in _global_loaded_modules:
-            unregister_module_call(mod)
+            _unregister_module_call(mod)
 
         for mod in _global_loaded_modules:
             test_reload(mod)
@@ -341,6 +344,29 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True
                 for subcls in cls.__subclasses__():
                     if not subcls.is_registered:
                         print("Warning, unregistered class: {:s}({:s})".format(subcls.__name__, cls.__name__))
+
+
+def unregister_startup_scripts():
+    """
+    Call `unregister` function on internal startup module. Should only be used as part of Blender 'exit' process.
+    """
+    from bpy_restrict_state import RestrictBlend
+    print("Calling `unregister_startup_scripts`")
+
+    use_user = not _is_factory_startup
+    loaded_modules = set()
+
+    with RestrictBlend():
+        for base_path in script_paths(use_user=use_user):
+            for path_subdir in _script_module_dirs:
+                # Only process 'startup', 'modules' are not expected to require unregistering currently.
+                if path_subdir != "startup":
+                    continue
+                path = _os.path.join(base_path, path_subdir)
+                if _os.path.isdir(path):
+                    for mod in modules_from_path(path, loaded_modules):
+                        print("Attempting to unregister", mod)
+                        _unregister_module_call(mod)
 
 
 def load_scripts_extensions(*, reload_scripts=False):

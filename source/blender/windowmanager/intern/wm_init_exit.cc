@@ -421,6 +421,17 @@ static void wm_init_scripts_extensions_once(bContext *C)
 #endif
 }
 
+/** Unregister startup-registered modules on exit. */
+static void wm_exit_scripts_startup(bContext *C)
+{
+#ifdef WITH_PYTHON
+  const char *imports[] = {"bpy", nullptr};
+  BPY_run_string_eval(C, imports, "bpy.utils.unregister_startup_scripts()");
+#else
+  UNUSED_VARS(C);
+#endif
+}
+
 /* Free strings of open recent files. */
 static void free_openrecent()
 {
@@ -535,6 +546,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   if (C && CTX_py_init_get(C)) {
     const char *imports[2] = {"addon_utils", nullptr};
     BPY_run_string_eval(C, imports, "addon_utils.disable_all()");
+    wm_exit_scripts_startup(C);
   }
 #endif
 
