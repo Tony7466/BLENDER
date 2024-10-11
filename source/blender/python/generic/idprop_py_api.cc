@@ -14,8 +14,8 @@
 
 #include "BLI_utildefines.h"
 
-#include "idprop_py_api.h"
-#include "idprop_py_ui_api.h"
+#include "idprop_py_api.hh"
+#include "idprop_py_ui_api.hh"
 
 #include "BKE_idprop.hh"
 
@@ -24,14 +24,14 @@
 #define USE_STRING_COERCE
 
 #ifdef USE_STRING_COERCE
-#  include "py_capi_utils.h"
+#  include "py_capi_utils.hh"
 #endif
 
-#include "python_utildefines.h"
+#include "python_utildefines.hh"
 
-extern "C" bool pyrna_id_FromPyObject(PyObject *obj, ID **id);
-extern "C" PyObject *pyrna_id_CreatePyObject(ID *id);
-extern "C" bool pyrna_id_CheckPyObject(PyObject *obj);
+extern bool pyrna_id_FromPyObject(PyObject *obj, ID **id);
+extern PyObject *pyrna_id_CreatePyObject(ID *id);
+extern bool pyrna_id_CheckPyObject(PyObject *obj);
 
 /* Currently there is no need to expose this publicly. */
 static PyObject *BPy_IDGroup_IterKeys_CreatePyObject(BPy_IDProperty *group, const bool reversed);
@@ -980,6 +980,12 @@ static IDProperty *idp_from_DatablockPointer(IDProperty *prop_exist,
   IDProperty *prop = nullptr;
   ID *value = nullptr;
   pyrna_id_FromPyObject(ob, &value);
+
+  if (value && (value->flag & ID_FLAG_EMBEDDED_DATA) != 0) {
+    PyErr_SetString(PyExc_ValueError, "Cannot assign an embedded ID pointer to an id-property");
+    return nullptr;
+  }
+
   if (prop_exist) {
     if (prop_exist->type == IDP_ID) {
       IDP_AssignID(prop_exist, value, 0);

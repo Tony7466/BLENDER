@@ -68,23 +68,23 @@ const EnumPropertyItem rna_enum_object_mode_items[] = {
      ICON_EDITMODE_HLT,
      "Edit Mode",
      "Edit Grease Pencil Strokes"},
-    {OB_MODE_SCULPT_GPENCIL_LEGACY,
-     "SCULPT_GPENCIL",
+    {OB_MODE_SCULPT_GREASE_PENCIL,
+     "SCULPT_GREASE_PENCIL",
      ICON_SCULPTMODE_HLT,
      "Sculpt Mode",
      "Sculpt Grease Pencil Strokes"},
-    {OB_MODE_PAINT_GPENCIL_LEGACY,
-     "PAINT_GPENCIL",
+    {OB_MODE_PAINT_GREASE_PENCIL,
+     "PAINT_GREASE_PENCIL",
      ICON_GREASEPENCIL,
      "Draw Mode",
      "Paint Grease Pencil Strokes"},
-    {OB_MODE_WEIGHT_GPENCIL_LEGACY,
-     "WEIGHT_GPENCIL",
+    {OB_MODE_WEIGHT_GREASE_PENCIL,
+     "WEIGHT_GREASE_PENCIL",
      ICON_WPAINT_HLT,
      "Weight Paint",
      "Grease Pencil Weight Paint Strokes"},
-    {OB_MODE_VERTEX_GPENCIL_LEGACY,
-     "VERTEX_GPENCIL",
+    {OB_MODE_VERTEX_GREASE_PENCIL,
+     "VERTEX_GREASE_PENCIL",
      ICON_VPAINT_HLT,
      "Vertex Paint",
      "Grease Pencil Vertex Paint Strokes"},
@@ -106,23 +106,23 @@ const EnumPropertyItem rna_enum_workspace_object_mode_items[] = {
      ICON_EDITMODE_HLT,
      "Grease Pencil Edit Mode",
      "Edit Grease Pencil Strokes"},
-    {OB_MODE_SCULPT_GPENCIL_LEGACY,
-     "SCULPT_GPENCIL",
+    {OB_MODE_SCULPT_GREASE_PENCIL,
+     "SCULPT_GREASE_PENCIL",
      ICON_SCULPTMODE_HLT,
      "Grease Pencil Sculpt Mode",
      "Sculpt Grease Pencil Strokes"},
-    {OB_MODE_PAINT_GPENCIL_LEGACY,
-     "PAINT_GPENCIL",
+    {OB_MODE_PAINT_GREASE_PENCIL,
+     "PAINT_GREASE_PENCIL",
      ICON_GREASEPENCIL,
      "Grease Pencil Draw",
      "Paint Grease Pencil Strokes"},
-    {OB_MODE_VERTEX_GPENCIL_LEGACY,
-     "VERTEX_GPENCIL",
+    {OB_MODE_VERTEX_GREASE_PENCIL,
+     "VERTEX_GREASE_PENCIL",
      ICON_VPAINT_HLT,
      "Grease Pencil Vertex Paint",
      "Grease Pencil Vertex Paint Strokes"},
-    {OB_MODE_WEIGHT_GPENCIL_LEGACY,
-     "WEIGHT_GPENCIL",
+    {OB_MODE_WEIGHT_GREASE_PENCIL,
+     "WEIGHT_GREASE_PENCIL",
      ICON_WPAINT_HLT,
      "Grease Pencil Weight Paint",
      "Grease Pencil Weight Paint Strokes"},
@@ -543,7 +543,7 @@ static void rna_Object_data_set(PointerRNA *ptr, PointerRNA value, ReportList *r
     return;
   }
 
-  if (id && ((id->tag & LIB_TAG_NO_MAIN) != (ob->id.tag & LIB_TAG_NO_MAIN))) {
+  if (id && ((id->tag & ID_TAG_NO_MAIN) != (ob->id.tag & ID_TAG_NO_MAIN))) {
     BKE_report(reports,
                RPT_ERROR,
                "Can only assign evaluated data to evaluated object, or original data to "
@@ -2337,8 +2337,8 @@ static void rna_def_material_slot(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem link_items[] = {
-      {1, "OBJECT", 0, "Object", ""},
-      {0, "DATA", 0, "Data", ""},
+      {1, "OBJECT", ICON_OBJECT_DATAMODE, "Object", ""},
+      {0, "DATA", ICON_MESH_DATA, "Data", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -2881,7 +2881,7 @@ static void rna_def_object_visibility(StructRNA *srna)
       "Shadow Catcher",
       "Only render shadows and reflections on this object, for compositing renders into real "
       "footage. Objects with this setting are considered to already exist in the footage, "
-      "objects without it are synthetic objects being composited into it");
+      "objects without it are synthetic objects being composited into it.");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 }
 

@@ -37,16 +37,25 @@ enum eUSDMtlNameCollisionMode {
   USD_MTL_NAME_COLLISION_REFERENCE_EXISTING = 1,
 };
 
+/* Enums specifying the USD material purpose,
+ * corresponding to #pxr::UsdShadeTokens 'allPurpose',
+ * 'preview', and 'render', respectively. */
+enum eUSDMtlPurpose {
+  USD_MTL_PURPOSE_ALL = 0,
+  USD_MTL_PURPOSE_PREVIEW = 1,
+  USD_MTL_PURPOSE_FULL = 2
+};
+
 /**
  *  Behavior for importing of custom
  *  attributes / properties outside
  *  a prim's regular schema.
  */
-typedef enum eUSDAttrImportMode {
+enum eUSDAttrImportMode {
   USD_ATTR_IMPORT_NONE = 0,
   USD_ATTR_IMPORT_USER = 1,
   USD_ATTR_IMPORT_ALL = 2,
-} eUSDAttrImportMode;
+};
 
 /**
  *  Behavior when importing textures from a package
@@ -79,13 +88,13 @@ enum eSubdivExportMode {
   USD_SUBDIV_BEST_MATCH = 2,
 };
 
-typedef enum eUSDXformOpMode {
+enum eUSDXformOpMode {
   USD_XFORM_OP_TRS = 0,
   USD_XFORM_OP_TOS = 1,
   USD_XFORM_OP_MAT = 2,
-} eUSDXformOpMode;
+};
 
-typedef enum eUSDZTextureDownscaleSize {
+enum eUSDZTextureDownscaleSize {
   USD_TEXTURE_SIZE_CUSTOM = -1,
   USD_TEXTURE_SIZE_KEEP = 0,
   USD_TEXTURE_SIZE_256 = 256,
@@ -93,7 +102,7 @@ typedef enum eUSDZTextureDownscaleSize {
   USD_TEXTURE_SIZE_1024 = 1024,
   USD_TEXTURE_SIZE_2048 = 2048,
   USD_TEXTURE_SIZE_4096 = 4096
-} eUSDZTextureDownscaleSize;
+};
 
 /**
  *  Behavior when exporting textures.
@@ -113,6 +122,7 @@ struct USDExportParams {
   bool export_lights = true;
   bool export_cameras = true;
   bool export_curves = true;
+  bool export_points = true;
   bool export_volumes = true;
   bool export_hair = true;
   bool export_uvmaps = true;
@@ -203,6 +213,7 @@ struct USDImportParams {
 
   bool validate_meshes;
 
+  eUSDMtlPurpose mtl_purpose;
   eUSDMtlNameCollisionMode mtl_name_collision_mode;
   eUSDTexImportMode import_textures_mode;
 
@@ -237,13 +248,13 @@ USDMeshReadParams create_mesh_read_params(double motion_sample_time, int read_fl
  * When `as_background_job=false`, performs the export synchronously, and returns
  * true when the export was ok, and false if there were any errors.
  */
-bool USD_export(bContext *C,
+bool USD_export(const bContext *C,
                 const char *filepath,
                 const USDExportParams *params,
                 bool as_background_job,
                 ReportList *reports);
 
-bool USD_import(bContext *C,
+bool USD_import(const bContext *C,
                 const char *filepath,
                 const USDImportParams *params,
                 bool as_background_job,
@@ -267,23 +278,22 @@ void USD_get_transform(CacheReader *reader, float r_mat[4][4], float time, float
 
 /** Either modifies current_mesh in-place or constructs a new mesh. */
 void USD_read_geometry(CacheReader *reader,
-                       Object *ob,
+                       const Object *ob,
                        blender::bke::GeometrySet &geometry_set,
                        USDMeshReadParams params,
-                       const char **err_str);
+                       const char **r_err_str);
 
 bool USD_mesh_topology_changed(CacheReader *reader,
                                const Object *ob,
                                const Mesh *existing_mesh,
                                double time,
-                               const char **err_str);
+                               const char **r_err_str);
 
 CacheReader *CacheReader_open_usd_object(CacheArchiveHandle *handle,
                                          CacheReader *reader,
                                          Object *object,
                                          const char *object_path);
 
-void USD_CacheReader_incref(CacheReader *reader);
 void USD_CacheReader_free(CacheReader *reader);
 
 /** Data for registering USD IO hooks. */
