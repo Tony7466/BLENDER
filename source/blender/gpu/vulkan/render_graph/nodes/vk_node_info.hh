@@ -125,14 +125,18 @@ BLI_INLINE std::ostream &operator<<(std::ostream &os, const VKNodeType node_type
   return os;
 }
 
-BLI_INLINE bool node_type_is_within_rendering(VKNodeType node_type)
+BLI_INLINE bool node_type_is_draw(VKNodeType node_type)
 {
   return ELEM(node_type,
-              VKNodeType::CLEAR_ATTACHMENTS,
               VKNodeType::DRAW,
               VKNodeType::DRAW_INDEXED,
               VKNodeType::DRAW_INDEXED_INDIRECT,
               VKNodeType::DRAW_INDIRECT);
+}
+
+BLI_INLINE bool node_type_is_within_rendering(VKNodeType node_type)
+{
+  return ELEM(node_type, VKNodeType::CLEAR_ATTACHMENTS) || node_type_is_draw(node_type);
 }
 
 BLI_INLINE bool node_type_is_rendering(VKNodeType node_type)

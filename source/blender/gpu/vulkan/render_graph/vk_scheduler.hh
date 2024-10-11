@@ -102,11 +102,6 @@ class VKScheduler {
   void move_transfer_and_dispatch_outside_rendering_scope(const VKRenderGraph &render_graph);
 
   /**
-   * Workaround a potential driver issue where the bound pipeline should match the render scope.
-   */
-  void update_rendering_scope_pipeline(const VKRenderGraph &render_graph);
-
-  /**
    * Find the first rendering scope inside the given search range of the result_.
    */
   std::optional<std::pair<int64_t, int64_t>> find_rendering_scope(

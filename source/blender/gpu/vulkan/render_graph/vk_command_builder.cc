@@ -7,6 +7,7 @@
  */
 
 #include "vk_command_builder.hh"
+#include "vk_backend.hh"
 #include "vk_render_graph.hh"
 
 namespace blender::gpu::render_graph {
@@ -103,6 +104,36 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
     }
   }
 
+  VkPipeline first_vk_pipeline = VK_NULL_HANDLE;
+  const VKWorkarounds &workarounds = VKBackend::get().device.workarounds_get();
+  if (workarounds.valid_pipeline_at_begin_rendering &&
+      render_graph.nodes_[node_group.first()].type == VKNodeType::BEGIN_RENDERING &&
+      render_graph.nodes_[node_group.first()].begin_rendering.vk_rendering_info.flags == 0)
+  {
+    for (NodeHandle node_handle : node_group) {
+      VKRenderGraphNode &node = render_graph.nodes_[node_handle];
+      switch (node.type) {
+        case VKNodeType::DRAW:
+          first_vk_pipeline = node.draw.pipeline_data.vk_pipeline;
+          break;
+        case VKNodeType::DRAW_INDEXED:
+          first_vk_pipeline = node.draw_indexed.pipeline_data.vk_pipeline;
+          break;
+        case VKNodeType::DRAW_INDEXED_INDIRECT:
+          first_vk_pipeline = node.draw_indexed_indirect.pipeline_data.vk_pipeline;
+          break;
+        case VKNodeType::DRAW_INDIRECT:
+          first_vk_pipeline = node.draw_indirect.pipeline_data.vk_pipeline;
+          break;
+        default:
+          break;
+      }
+      if (first_vk_pipeline != VK_NULL_HANDLE) {
+        break;
+      }
+    }
+  }
+
   for (NodeHandle node_handle : node_group) {
     VKRenderGraphNode &node = render_graph.nodes_[node_handle];
     if (node.type == VKNodeType::BEGIN_RENDERING) {
@@ -118,6 +149,7 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
       if (will_be_suspended) {
         node.begin_rendering.vk_rendering_info.flags = VK_RENDERING_SUSPENDING_BIT;
       }
+      node.begin_rendering.vk_pipeline = first_vk_pipeline;
     }
 
     else if (node.type == VKNodeType::END_RENDERING) {

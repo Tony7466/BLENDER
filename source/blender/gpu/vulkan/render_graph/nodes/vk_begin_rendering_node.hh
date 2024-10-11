@@ -21,6 +21,9 @@ struct VKBeginRenderingData {
   VkRenderingAttachmentInfo depth_attachment;
   VkRenderingAttachmentInfo stencil_attachment;
   VkRenderingInfoKHR vk_rendering_info;
+  /* Will be prefilled by VKCommandBuilder for platforms that require a valid bound pipeline at
+   * begin rendering. */
+  VkPipeline vk_pipeline;
 };
 
 struct VKBeginRenderingCreateInfo {
@@ -87,7 +90,7 @@ class VKBeginRenderingNode : public VKNodeInfo<VKNodeType::BEGIN_RENDERING,
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
                       Data &data,
-                      VKBoundPipelines & /*r_bound_pipelines*/) override
+                      VKBoundPipelines &r_bound_pipelines) override
   {
     /* Localize pointers just before sending to the command buffer. Pointer can (and will) change
      * as they are stored in a union which is stored in a vector. When the vector reallocates, the
@@ -100,6 +103,11 @@ class VKBeginRenderingNode : public VKNodeInfo<VKNodeType::BEGIN_RENDERING,
     }
     if (data.vk_rendering_info.pStencilAttachment) {
       data.vk_rendering_info.pStencilAttachment = &data.stencil_attachment;
+    }
+    if (data.vk_pipeline != VK_NULL_HANDLE &&
+        assign_if_different(r_bound_pipelines.graphics.pipeline.vk_pipeline, data.vk_pipeline))
+    {
+      command_buffer.bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, data.vk_pipeline);
     }
     command_buffer.begin_rendering(&data.vk_rendering_info);
   }

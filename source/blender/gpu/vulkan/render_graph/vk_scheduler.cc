@@ -11,8 +11,6 @@
 #include "vk_render_graph.hh"
 #include "vk_scheduler.hh"
 
-#include "vk_backend.hh"
-
 #include "BLI_index_range.hh"
 #include "BLI_set.hh"
 
@@ -60,10 +58,6 @@ void VKScheduler::select_all_nodes(const VKRenderGraph &render_graph)
 void VKScheduler::reorder_nodes(const VKRenderGraph &render_graph)
 {
   move_transfer_and_dispatch_outside_rendering_scope(render_graph);
-  const VKWorkarounds &workarounds = VKBackend::get().device.workarounds_get();
-  if (workarounds.valid_pipeline_at_begin_rendering) {
-    find_pipeline_for_rendering_scope(render_graph);
-  }
 }
 
 std::optional<std::pair<int64_t, int64_t>> VKScheduler::find_rendering_scope(
