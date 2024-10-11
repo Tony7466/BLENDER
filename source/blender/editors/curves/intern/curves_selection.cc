@@ -87,7 +87,7 @@ Span<StringRef> get_curves_selection_attribute_names(const bke::CurvesGeometry &
 {
   static const std::array<StringRef, 1> selection_attribute_names{".selection"};
   const bke::AttributeAccessor attributes = curves.attributes();
-  return (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
+  return curves.curve_type_counts()[CURVE_TYPE_BEZIER] > 0 ?
              get_curves_all_selection_attribute_names() :
              selection_attribute_names;
 }
