@@ -6,7 +6,10 @@
 #include "usd_hierarchy_iterator.hh"
 #include "usd_utils.hh"
 
+#include <pxr/base/gf/vec3f.h>
 #include <pxr/base/tf/pathUtils.h>
+#include <pxr/base/vt/array.h>
+#include <pxr/base/vt/value.h>
 #include <pxr/usd/usdVol/openVDBAsset.h>
 #include <pxr/usd/usdVol/volume.h>
 
@@ -25,12 +28,30 @@
 
 namespace blender::io::usd {
 
+static bool has_varying_modifiers(const Object *ob)
+{
+  /* These modifiers may vary the Volume either over time or by deformation/transformation. */
+  ModifierData *md = static_cast<ModifierData *>(ob->modifiers.first);
+  while (md) {
+    if (ELEM(md->type,
+             eModifierType_Nodes,
+             eModifierType_VolumeDisplace,
+             eModifierType_MeshToVolume))
+    {
+      return true;
+    }
+    md = md->next;
+  }
+
+  return false;
+}
+
 USDVolumeWriter::USDVolumeWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx) {}
 
 bool USDVolumeWriter::check_is_animated(const HierarchyContext &context) const
 {
   const Volume *volume = static_cast<Volume *>(context.object->data);
-  return volume->is_sequence;
+  return volume->is_sequence || has_varying_modifiers(context.object);
 }
 
 void USDVolumeWriter::do_write(HierarchyContext &context)
@@ -45,7 +66,8 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
     return;
   }
 
-  auto vdb_file_path = resolve_vdb_file(volume);
+  const bool has_modifiers = has_varying_modifiers(context.object);
+  auto vdb_file_path = resolve_vdb_file(volume, has_modifiers);
   if (!vdb_file_path.has_value()) {
     BKE_reportf(reports(),
                 RPT_WARNING,
@@ -78,27 +100,49 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
                                                usd_export_context_.export_params.allow_unicode);
     const pxr::SdfPath grid_path = volume_path.AppendPath(pxr::SdfPath(grid_id));
     pxr::UsdVolOpenVDBAsset usd_grid = pxr::UsdVolOpenVDBAsset::Define(stage, grid_path);
-    usd_grid.GetFieldNameAttr().Set(pxr::TfToken(grid_name), timecode);
-    usd_grid.GetFilePathAttr().Set(pxr::SdfAssetPath(*vdb_file_path), timecode);
+
+    pxr::TfToken grid_name_token = pxr::TfToken(grid_name);
+    pxr::SdfAssetPath asset_path = pxr::SdfAssetPath(*vdb_file_path);
+    pxr::UsdAttribute attr_field = usd_grid.CreateFieldNameAttr(pxr::VtValue(), true);
+    pxr::UsdAttribute attr_file = usd_grid.CreateFilePathAttr(pxr::VtValue(), true);
+    if (!attr_field.HasValue()) {
+      attr_field.Set(grid_name_token, pxr::UsdTimeCode::Default());
+    }
+    if (!attr_file.HasValue()) {
+      attr_file.Set(asset_path, pxr::UsdTimeCode::Default());
+    }
+
+    usd_value_writer_.SetAttribute(attr_field, grid_name_token, timecode);
+    usd_value_writer_.SetAttribute(attr_file, asset_path, timecode);
+
     usd_volume.CreateFieldRelationship(pxr::TfToken(grid_id), grid_path);
   }
 
   if (const std::optional<Bounds<float3>> bounds = BKE_volume_min_max(volume)) {
-    const pxr::VtArray<pxr::GfVec3f> volume_extent = {pxr::GfVec3f(&bounds->min.x),
-                                                      pxr::GfVec3f(&bounds->max.x)};
-    usd_volume.GetExtentAttr().Set(volume_extent, timecode);
+    pxr::VtArray<pxr::GfVec3f> volume_extent = {pxr::GfVec3f(&bounds->min.x),
+                                                pxr::GfVec3f(&bounds->max.x)};
+
+    pxr::UsdAttribute attr_extent = usd_volume.CreateExtentAttr(pxr::VtValue(), true);
+    if (!attr_extent.HasValue()) {
+      attr_extent.Set(volume_extent, pxr::UsdTimeCode::Default());
+    }
+
+    usd_value_writer_.SetAttribute(attr_extent, volume_extent, timecode);
   }
 
   BKE_volume_unload(volume);
 }
 
-std::optional<std::string> USDVolumeWriter::resolve_vdb_file(const Volume *volume) const
+std::optional<std::string> USDVolumeWriter::resolve_vdb_file(const Volume *volume,
+                                                             bool has_modifiers) const
 {
   std::optional<std::string> vdb_file_path;
-  if (volume->filepath[0] == '\0') {
-    /* Entering this section should mean that Volume object contains OpenVDB data that is not
-     * obtained from external `.vdb` file but rather generated inside of Blender (i.e. by 'Mesh to
-     * Volume' modifier). Try to save this data to a `.vdb` file. */
+
+  const bool needs_vdb_save = volume->filepath[0] == '\0' || has_modifiers;
+  if (needs_vdb_save) {
+    /* Entering this section means that the Volume object contains OpenVDB data that is not
+     * obtained soley from external `.vdb` files but is generated or modified inside of Blender.
+     * Write this data as a new `.vdb` files. */
 
     vdb_file_path = construct_vdb_file_path(volume);
     if (!BKE_volume_save(
@@ -149,7 +193,7 @@ std::optional<std::string> USDVolumeWriter::construct_vdb_file_path(const Volume
   const pxr::UsdTimeCode timecode = get_export_time_code();
   if (!timecode.IsDefault()) {
     const int frame = int(timecode.GetValue());
-    const int num_frame_digits = frame == 0 ? 1 : integer_digits_i(abs(frame));
+    const int num_frame_digits = std::max(2, integer_digits_i(abs(frame)));
     BLI_path_frame(vdb_file_name, sizeof(vdb_file_name), frame, num_frame_digits);
   }
   BLI_strncat(vdb_file_name, ".vdb", sizeof(vdb_file_name));
