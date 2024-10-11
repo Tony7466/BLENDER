@@ -249,7 +249,7 @@ mf::Variable *MultiFunctionProcedureOperation::get_multi_function_input_variable
   }
 
   const int input_index = inputs_to_linked_outputs_map_.size();
-  std::string input_identifier = "input" + std::to_string(input_index);
+  const std::string input_identifier = "input" + std::to_string(input_index);
 
   /* Declare the input descriptor for this input and prefer to declare its type to be the same as
    * the type of the output socket because doing type conversion in the multi-function procedure is
@@ -383,7 +383,7 @@ void MultiFunctionProcedureOperation::populate_operation_result(DOutputSocket ou
                                                                 mf::Variable *variable)
 {
   const uint output_id = output_sockets_to_output_identifiers_map_.size();
-  std::string output_identifier = "output" + std::to_string(output_id);
+  const std::string output_identifier = "output" + std::to_string(output_id);
 
   const ResultType result_type = get_node_socket_result_type(output_socket.bsocket());
   const Result result = context().create_result(result_type);

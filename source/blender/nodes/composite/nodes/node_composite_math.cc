@@ -117,83 +117,6 @@ static ShaderNode *get_compositor_shader_node(DNode node)
   return new MathShaderNode(node);
 }
 
-static const mf::MultiFunction *get_base_multi_function(const bNode &node)
-{
-  const int mode = node.custom1;
-  const mf::MultiFunction *base_fn = nullptr;
-
-  try_dispatch_float_math_fl_to_fl(
-      mode, [&](auto devi_fn, auto function, const FloatMathOperationInfo &info) {
-        static auto fn = mf::build::SI1_SO<float, float>(
-            info.title_case_name.c_str(), function, devi_fn);
-        base_fn = &fn;
-      });
-  if (base_fn != nullptr) {
-    return base_fn;
-  }
-
-  try_dispatch_float_math_fl_fl_to_fl(
-      mode, [&](auto devi_fn, auto function, const FloatMathOperationInfo &info) {
-        static auto fn = mf::build::SI2_SO<float, float, float>(
-            info.title_case_name.c_str(), function, devi_fn);
-        base_fn = &fn;
-      });
-  if (base_fn != nullptr) {
-    return base_fn;
-  }
-
-  try_dispatch_float_math_fl_fl_fl_to_fl(
-      mode, [&](auto devi_fn, auto function, const FloatMathOperationInfo &info) {
-        static auto fn = mf::build::SI3_SO<float, float, float, float>(
-            info.title_case_name.c_str(), function, devi_fn);
-        base_fn = &fn;
-      });
-  if (base_fn != nullptr) {
-    return base_fn;
-  }
-
-  return nullptr;
-}
-
-class ClampWrapperFunction : public mf::MultiFunction {
- private:
-  const mf::MultiFunction &fn_;
-
- public:
-  ClampWrapperFunction(const mf::MultiFunction &fn) : fn_(fn)
-  {
-    this->set_signature(&fn.signature());
-  }
-
-  void call(const IndexMask &mask, mf::Params params, mf::Context context) const override
-  {
-    fn_.call(mask, params, context);
-
-    /* Assumes the output parameter is the last one. */
-    const int output_param_index = this->param_amount() - 1;
-    /* This has actually been initialized in the call above. */
-    MutableSpan<float> results = params.uninitialized_single_output<float>(output_param_index);
-
-    mask.foreach_index_optimized<int>([&](const int i) {
-      float &value = results[i];
-      CLAMP(value, 0.0f, 1.0f);
-    });
-  }
-};
-
-static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
-{
-  const mf::MultiFunction *base_function = get_base_multi_function(builder.node());
-
-  const bool clamp_output = builder.node().custom2 != 0;
-  if (clamp_output) {
-    builder.construct_and_set_matching_fn<ClampWrapperFunction>(*base_function);
-  }
-  else {
-    builder.set_matching_fn(base_function);
-  }
-}
-
 }  // namespace blender::nodes::node_composite_math_cc
 
 void register_node_type_cmp_math()
@@ -207,7 +130,7 @@ void register_node_type_cmp_math()
   ntype.labelfunc = node_math_label;
   ntype.updatefunc = node_math_update;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
-  ntype.build_multi_function = file_ns::node_build_multi_function;
+  ntype.build_multi_function = blender::nodes::node_math_build_multi_function;
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
 
   blender::bke::node_register_type(&ntype);
