@@ -661,7 +661,7 @@ void JoltPhysicsWorldData::resize(const int body_num,
     /* Create new default bodies in empty places. */
     const IndexRange full_range = new_rigid_bodies.index_range();
     const IndexRange empty_head = dst_body_range.is_empty() ? full_range : full_range.take_front(dst_body_range.first());
-    const IndexRange empty_tail = dst_body_range.is_empty() ? IndexRange{} : full_range.drop_front(dst_body_range.last());
+    const IndexRange empty_tail = dst_body_range.is_empty() ? IndexRange{} : full_range.drop_front(dst_body_range.one_after_last());
     create_default_bodies(body_interface, new_rigid_bodies, empty_head);
     create_default_bodies(body_interface, new_rigid_bodies, empty_tail);
     bodies_ = std::move(new_rigid_bodies);
