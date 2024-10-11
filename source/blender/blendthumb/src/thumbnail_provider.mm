@@ -1,9 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <AppKit/NSImage.h>
-#include <CoreGraphics/CGDataProvider.h>
-#include <CoreGraphics/CoreGraphics.h>
-#include <Foundation/Foundation.h>
+#import <AppKit/NSImage.h>
 
 #include "BLI_fileops.h"
 #include "BLI_filereader.h"
@@ -110,36 +107,38 @@ static NSError *create_nserror_from_string(NSString *errorStr)
 
 static NSImage *generate_nsimage_for_file(const char *src_blend_path, NSError **error)
 {
-  /* Open source file `src_blend`. */
-  FileDescriptorRAII src_file_fd = FileDescriptorRAII(src_blend_path);
-  if (!src_file_fd.good()) {
-    *error = create_nserror_from_string(@"Failed to open blend");
-    return nil;
-  }
+  @autoreleasepool {
+    /* Open source file `src_blend`. */
+    FileDescriptorRAII src_file_fd = FileDescriptorRAII(src_blend_path);
+    if (!src_file_fd.good()) {
+      *error = create_nserror_from_string(@"Failed to open blend");
+      return nil;
+    }
 
-  FileReader *file_content = BLI_filereader_new_file(src_file_fd.get());
-  if (file_content == nullptr) {
-    *error = create_nserror_from_string(@"Failed to read from blend");
-    return nil;
-  }
+    FileReader *file_content = BLI_filereader_new_file(src_file_fd.get());
+    if (file_content == nullptr) {
+      *error = create_nserror_from_string(@"Failed to read from blend");
+      return nil;
+    }
 
-  /* Extract thumbnail from file. */
-  Thumbnail thumb;
-  eThumbStatus err = blendthumb_create_thumb_from_file(file_content, &thumb);
-  if (err != BT_OK) {
-    *error = create_nserror_from_string(@"Failed to create thumbnail from file");
-    return nil;
-  }
+    /* Extract thumbnail from file. */
+    Thumbnail thumb;
+    eThumbStatus err = blendthumb_create_thumb_from_file(file_content, &thumb);
+    if (err != BT_OK) {
+      *error = create_nserror_from_string(@"Failed to create thumbnail from file");
+      return nil;
+    }
 
-  std::optional<blender::Vector<uint8_t>> png_buf_opt = blendthumb_create_png_data_from_thumb(
-      &thumb);
-  if (!png_buf_opt) {
-    *error = create_nserror_from_string(@"Failed to create png data from thumbnail");
-    return nil;
+    std::optional<blender::Vector<uint8_t>> png_buf_opt = blendthumb_create_png_data_from_thumb(
+        &thumb);
+    if (!png_buf_opt) {
+      *error = create_nserror_from_string(@"Failed to create png data from thumbnail");
+      return nil;
+    }
+    NSData *ns_data = [NSData dataWithBytes:png_buf_opt->data() length:png_buf_opt->size()];
+    NSImage *ns_image = [[NSImage alloc] initWithData:ns_data];
+    return ns_image;
   }
-  NSData *ns_data = [NSData dataWithBytes:png_buf_opt->data() length:png_buf_opt->size()];
-  NSImage *ns_image = [[NSImage alloc] initWithData:ns_data];
-  return ns_image;
 }
 
 @implementation ThumbnailProvider
@@ -152,7 +151,8 @@ static NSImage *generate_nsimage_for_file(const char *src_blend_path, NSError **
   NSLog(@"Generating thumbnail for %@", request.fileURL.path);
   @autoreleasepool {
     NSError *error = nil;
-    NSImage *ns_image = generate_nsimage_for_file(request.fileURL.path.UTF8String, &error);
+    NSImage *ns_image = generate_nsimage_for_file(request.fileURL.path.fileSystemRepresentation,
+                                                  &error);
     if (ns_image == nil) {
       handler(nil, error);
       return;
