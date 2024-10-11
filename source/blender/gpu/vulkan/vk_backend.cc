@@ -276,7 +276,7 @@ void VKBackend::platform_init(const VKDevice &device)
 
 void VKBackend::detect_workarounds(VKDevice &device)
 {
-  VKWorkarounds workarounds;
+  VKWorkarounds &workarounds = device.workarounds_;
 
   if (G.debug & G_DEBUG_GPU_FORCE_WORKAROUNDS) {
     printf("\n");
@@ -290,8 +290,7 @@ void VKBackend::detect_workarounds(VKDevice &device)
     workarounds.shader_output_viewport_index = true;
     workarounds.vertex_formats.r8g8b8 = true;
     workarounds.fragment_shader_barycentric = true;
-
-    device.workarounds_ = workarounds;
+    workarounds.valid_pipeline_at_begin_rendering = true;
     return;
   }
 
@@ -307,6 +306,11 @@ void VKBackend::detect_workarounds(VKDevice &device)
     workarounds.not_aligned_pixel_formats = true;
   }
 
+  /* Intel IRIS driver requires a valid bound pipeline at the beginning of rendering. */
+  if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_WIN, GPU_DRIVER_ANY)) {
+    workarounds.valid_pipeline_at_begin_rendering = true;
+  }
+
   VkFormatProperties format_properties = {};
   vkGetPhysicalDeviceFormatProperties(
       device.physical_device_get(), VK_FORMAT_R8G8B8_UNORM, &format_properties);
@@ -315,8 +319,6 @@ void VKBackend::detect_workarounds(VKDevice &device)
 
   workarounds.fragment_shader_barycentric = !device.supports_extension(
       VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);
-
-  device.workarounds_ = workarounds;
 }
 
 void VKBackend::platform_exit()

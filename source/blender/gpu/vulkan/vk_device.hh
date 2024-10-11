@@ -46,6 +46,13 @@ struct VKWorkarounds {
    */
   bool shader_output_layer = false;
 
+  /**
+   * Intel Iris Xe drivers require a matching pipeline bound when begin rendering.
+   *
+   * See #128850
+   */
+  bool valid_pipeline_at_begin_rendering = false;
+
   struct {
     /**
      * Is the workaround enabled for devices that don't support using VK_FORMAT_R8G8B8_* as vertex
