@@ -201,13 +201,77 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
   }
 }
 
+/* isect_line_line_epsilon_v3 is too strict for checking parallel lines. This
+ * version adds an epsilon to the parallel line check^. */
+static int isect_line_line_v3_loose(const float v1[3],
+                                    const float v2[3],
+                                    const float v3[3],
+                                    const float v4[3],
+                                    float r_i1[3],
+                                    float r_i2[3],
+                                    const float epsilon)
+{
+  float a[3], b[3], c[3], ab[3], cb[3];
+  float d, div;
+  sub_v3_v3v3(a, v2, v1);
+  sub_v3_v3v3(b, v4, v3);
+  sub_v3_v3v3(c, v3, v1);
+
+  cross_v3_v3v3(ab, a, b);
+  d = dot_v3v3(c, ab);
+  div = dot_v3v3(ab, ab);
+
+  /* ^Epsilon has been added here. */
+  if (UNLIKELY(fabsf(div) <= epsilon)) {
+    return 0;
+  }
+  /* test if the two lines are coplanar */
+  if (UNLIKELY(fabsf(d) <= epsilon)) {
+    cross_v3_v3v3(cb, c, b);
+
+    mul_v3_fl(a, dot_v3v3(cb, ab) / div);
+    add_v3_v3v3(r_i1, v1, a);
+    copy_v3_v3(r_i2, r_i1);
+
+    return 1; /* one intersection only */
+  }
+  /* if not */
+
+  float n[3], t[3];
+  float v3t[3], v4t[3];
+  sub_v3_v3v3(t, v1, v3);
+
+  /* offset between both plane where the lines lies */
+  cross_v3_v3v3(n, a, b);
+  project_v3_v3v3(t, t, n);
+
+  /* for the first line, offset the second line until it is coplanar */
+  add_v3_v3v3(v3t, v3, t);
+  add_v3_v3v3(v4t, v4, t);
+
+  sub_v3_v3v3(c, v3t, v1);
+  sub_v3_v3v3(a, v2, v1);
+  sub_v3_v3v3(b, v4t, v3t);
+
+  cross_v3_v3v3(ab, a, b);
+  cross_v3_v3v3(cb, c, b);
+
+  mul_v3_fl(a, dot_v3v3(cb, ab) / dot_v3v3(ab, ab));
+  add_v3_v3v3(r_i1, v1, a);
+
+  /* for the second line, just subtract the offset from the first intersection point */
+  sub_v3_v3v3(r_i2, r_i1, t);
+
+  return 2; /* two nearest points */
+}
+
 /* Check intersection between the line segments ab and cd. Return true only if intersection point
  * is located on both line segments. */
 static IntersectingLineInfo intersecting_lines(
     const float3 &a, const float3 &b, const float3 &c, const float3 &d, const float distance)
 {
   IntersectingLineInfo isectinfo{};
-  if (isect_line_line_epsilon_v3(
+  if (isect_line_line_v3_loose(
           a, b, c, d, isectinfo.isect_point_ab, isectinfo.isect_point_cd, curve_isect_eps))
   {
     /* Discard intersections too far away. Previous function returns intersections that are not
@@ -454,14 +518,10 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                     ab.start, ab.end, cd.start, cd.end, max_distance);
 
                 if (isectinfo.intersects) {
-                  const float3 closest_ab = project ? math::interpolate(ab.orig_start,
-                                                                        ab.orig_end,
-                                                                        isectinfo.lambda_ab) :
-                                                      isectinfo.closest_ab;
-                  const float3 closest_cd = project ? math::interpolate(cd.orig_start,
-                                                                        cd.orig_end,
-                                                                        isectinfo.lambda_cd) :
-                                                      isectinfo.closest_cd;
+                  const float3 closest_ab = math::interpolate(
+                      ab.orig_start, ab.orig_end, isectinfo.lambda_ab);
+                  const float3 closest_cd = math::interpolate(
+                      cd.orig_start, cd.orig_end, isectinfo.lambda_cd);
                   add_intersection_data(
                       local_data,
                       closest_ab,
