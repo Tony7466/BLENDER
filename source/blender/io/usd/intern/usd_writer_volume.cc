@@ -13,6 +13,7 @@
 #include <pxr/usd/usdVol/openVDBAsset.h>
 #include <pxr/usd/usdVol/volume.h>
 
+#include "DNA_scene_types.h"
 #include "DNA_volume_types.h"
 #include "DNA_windowmanager_types.h"
 
@@ -25,6 +26,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_utils.hh"
 #include "BLI_string.h"
+
+#include "DEG_depsgraph_query.hh"
 
 namespace blender::io::usd {
 
@@ -188,13 +191,15 @@ std::optional<std::string> USDVolumeWriter::construct_vdb_file_path(const Volume
   BLI_strncat(vdb_directory_path, vdb_directory_name, sizeof(vdb_directory_path));
   BLI_dir_create_recursive(vdb_directory_path);
 
+  Scene *scene = DEG_get_input_scene(usd_export_context_.depsgraph);
+  const int max_frame_digits = std::max(2, integer_digits_i(abs(scene->r.efra)));
+
   char vdb_file_name[FILE_MAXFILE];
   STRNCPY(vdb_file_name, volume->id.name + 2);
   const pxr::UsdTimeCode timecode = get_export_time_code();
   if (!timecode.IsDefault()) {
     const int frame = int(timecode.GetValue());
-    const int num_frame_digits = std::max(2, integer_digits_i(abs(frame)));
-    BLI_path_frame(vdb_file_name, sizeof(vdb_file_name), frame, num_frame_digits);
+    BLI_path_frame(vdb_file_name, sizeof(vdb_file_name), frame, max_frame_digits);
   }
   BLI_strncat(vdb_file_name, ".vdb", sizeof(vdb_file_name));
 
