@@ -38,15 +38,17 @@ void VKFence::signal()
   context.rendering_end();
   context.descriptor_set_get().upload_descriptor_sets();
   context.render_graph.submit_synchronization_event(vk_fence_);
+  signalled_ = true;
 }
 
 void VKFence::wait()
 {
-  if (vk_fence_ == VK_NULL_HANDLE) {
+  if (!signalled_) {
     return;
   }
   VKContext &context = *VKContext::get();
   context.render_graph.wait_synchronization_event(vk_fence_);
+  signalled_ = false;
 }
 
 }  // namespace blender::gpu
