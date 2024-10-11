@@ -20,7 +20,6 @@
 #  include <TargetConditionals.h>
 #endif
 
-#include "util/boundbox.h"
 #include "util/math.h"
 #include "util/math_fast.h"
 #include "util/math_intersect.h"
@@ -1647,6 +1646,22 @@ static_assert_align(KernelLightDistribution, 16);
 using BoundingBox = struct BoundingBox {
   packed_float3 min;
   packed_float3 max;
+
+  float3 center() const
+  {
+    return 0.5f * (min + max);
+  }
+
+  float3 size() const
+  {
+    return max - min;
+  }
+
+  bool contains(float3 p) const
+  {
+    return p.x >= min.x && p.y >= min.y && p.z >= min.z && p.x <= max.x && p.y <= max.y &&
+           p.z <= max.z;
+  }
 };
 
 using BoundingCone = struct BoundingCone {
@@ -1707,9 +1722,8 @@ struct KernelOctreeNode {
   float sigma_max;
   float sigma_min;
 
-  /* TODO(weizhen): probably we just need center and level, the size is a global constant. Also
-   * BoundBox is not supported in kernel. */
-  BoundBox bbox;
+  /* TODO(weizhen): probably we just need center and level, the size is a global constant. */
+  BoundingBox bbox;
 
   /* TODO(weizhen): leaf node doesn't need this field, can store in a separate array or use union
    * if we use spectrum sigma. If using union, only 7 nodes is needed because children[0] is always

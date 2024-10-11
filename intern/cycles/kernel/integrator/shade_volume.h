@@ -104,7 +104,7 @@ typedef struct VolumeIntegrateState {
 } VolumeIntegrateState;
 
 /* Given a position P and a octree node bounding box, return the octant of P in the box. */
-ccl_device int volume_tree_get_octant(const BoundBox bbox,
+ccl_device int volume_tree_get_octant(const BoundingBox bbox,
                                       const ccl_private Ray *ccl_restrict ray,
                                       const float3 P)
 {
@@ -131,7 +131,7 @@ ccl_device int volume_voxel_get(KernelGlobals kg,
     const ccl_global KernelOctreeNode *knode = &kernel_data_fetch(volume_tree_nodes, node_index);
     if (knode->is_leaf) {
       const bool has_intersection = ray_aabb_intersect(
-          knode->bbox, ray->P, vstate.inv_ray_D, &t_range);
+          knode->bbox.min, knode->bbox.max, ray->P, vstate.inv_ray_D, &t_range);
       /* TODO(weizhen): fix this numerical issue. */
       vstate.tmax = has_intersection ? t_range.y : vstate.tmin + 1e-4f;
       vstate.tmax = fminf(vstate.tmax, ray->tmax);
@@ -143,7 +143,7 @@ ccl_device int volume_voxel_get(KernelGlobals kg,
 
 /* Offset ray to avoid self-intersection. */
 ccl_device_forceinline float3 volume_octree_offset(const float3 P,
-                                                   const BoundBox bbox,
+                                                   const BoundingBox bbox,
                                                    const float3 ray_D)
 {
   /* TODO(weizhen): put the point on the bounding box to improve precision. */
@@ -1386,7 +1386,7 @@ ccl_device void integrator_shade_volume(KernelGlobals kg,
   /* TODO(weizhen): support single-sided swimming pool volume. */
   const ccl_global KernelOctreeNode *kroot = &kernel_data_fetch(volume_tree_nodes, 0);
   float2 t_range = make_float2(ray.tmin, ray.tmax);
-  if (ray_aabb_intersect(kroot->bbox, ray.P, rcp(ray.D), &t_range)) {
+  if (ray_aabb_intersect(kroot->bbox.min, kroot->bbox.max, ray.P, rcp(ray.D), &t_range)) {
     ray.tmin = t_range.x;
     ray.tmax = t_range.y;
   }
