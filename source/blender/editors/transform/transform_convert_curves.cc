@@ -10,6 +10,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
+#include "BLI_index_mask_expression.hh"
 #include "BLI_inplace_priority_queue.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_span.hh"
@@ -224,8 +225,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 }
 
 static void calculate_aligned_handles(const TransCustomData &custom_data,
-                          const int layer,
-                          bke::CurvesGeometry &curves)
+                                      const int layer,
+                                      bke::CurvesGeometry &curves)
 {
   if (ed::curves::get_curves_selection_attribute_names(curves).size() == 1) {
     return;
@@ -233,29 +234,55 @@ static void calculate_aligned_handles(const TransCustomData &custom_data,
   const CurvesTransformData &transform_data = *static_cast<const CurvesTransformData *>(
       custom_data.data);
 
-  IndexMaskMemory memory;
-  const IndexMask &selected_left_handles = transform_data.selection_by_layer[layer + 1];
-  const IndexMask &selected_right_handles = IndexMask::from_difference(
-      transform_data.selection_by_layer[layer + 2], selected_left_handles, memory);
+  const VArray<int8_t> handle_types_left = curves.handle_types_left();
+  const VArray<int8_t> handle_types_right = curves.handle_types_right();
+  const Span<float3> positions = curves.positions();
+  MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
+  MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
 
-  auto both_aligned_from_selection =
-      [&memory](const IndexMask &selected, VArray<int8_t> left_types, VArray<int8_t> right_types) {
-        return IndexMask::from_predicate(selected, GrainSize(4096), memory, [&](const int64_t i) {
-          return left_types[i] == BEZIER_HANDLE_ALIGN && right_types[i] == BEZIER_HANDLE_ALIGN;
-        });
-      };
-  bke::curves::bezier::calculate_aligned_handles(both_aligned_from_selection(selected_left_handles,
-                                                                 curves.handle_types_left(),
-                                                                 curves.handle_types_right()),
-                                     curves.positions(),
-                                     curves.handle_positions_left(),
-                                     curves.handle_positions_right_for_write());
-  bke::curves::bezier::calculate_aligned_handles(both_aligned_from_selection(selected_right_handles,
-                                                                 curves.handle_types_left(),
-                                                                 curves.handle_types_right()),
-                                     curves.positions(),
-                                     curves.handle_positions_right(),
-                                     curves.handle_positions_left_for_write());
+  IndexMaskMemory memory;
+  /* When knot is selected both handles are treaded as selected and transformed together.
+   * So these will be excluded from alignment. */
+  const IndexMask &selected_knots = transform_data.selection_by_layer[layer];
+  const IndexMask selected_left_handles = IndexMask::from_difference(
+      transform_data.selection_by_layer[layer + 1], selected_knots, memory);
+  index_mask::ExprBuilder builder;
+  /* Left are excluded here to align only one handle when both are selected. */
+  const IndexMask selected_right_handles = evaluate_expression(
+      builder.subtract({&transform_data.selection_by_layer[layer + 2]},
+                       {&selected_left_handles, &selected_knots}),
+      memory);
+
+  const IndexMask &affected_handles = IndexMask::from_union(
+      selected_left_handles, selected_right_handles, memory);
+
+  auto aligned_handles_to_selection = [&affected_handles,
+                                       &memory](const VArray<int8_t> &handle_types) {
+    IndexMask selection;
+    devirtualize_varray(handle_types, [&](const auto handle_types) {
+      selection = IndexMask::from_predicate(
+          affected_handles, GrainSize(4096), memory, [&](const int64_t i) {
+            return handle_types[i] == BEZIER_HANDLE_ALIGN;
+          });
+    });
+    return selection;
+  };
+
+  const IndexMask both_aligned = IndexMask::from_intersection(
+      aligned_handles_to_selection(handle_types_left),
+      aligned_handles_to_selection(handle_types_right),
+      memory);
+
+  bke::curves::bezier::calculate_aligned_handles(
+      IndexMask::from_intersection(selected_left_handles, both_aligned, memory),
+      positions,
+      handle_positions_left,
+      handle_positions_right);
+  bke::curves::bezier::calculate_aligned_handles(
+      IndexMask::from_intersection(selected_right_handles, both_aligned, memory),
+      positions,
+      handle_positions_right,
+      handle_positions_left);
 }
 
 static void recalcData_curves(TransInfo *t)
