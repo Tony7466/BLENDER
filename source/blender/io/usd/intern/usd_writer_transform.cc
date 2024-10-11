@@ -110,7 +110,7 @@ void USDTransformWriter::do_write(HierarchyContext &context)
 
   /* If the xform hierarchy is being instanced, then we want to create a new
    * xform prim that will reference the prototype's xform. */
-  if (context.is_instance()) {
+  if (usd_export_context_.export_params.use_instancing && context.is_instance()) {
     std::string ref_path_str(usd_export_context_.export_params.root_prim_path);
     ref_path_str += context.original_export_path;
     pxr::SdfPath ref_path(ref_path_str);
