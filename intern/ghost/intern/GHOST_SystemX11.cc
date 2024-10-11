@@ -1968,6 +1968,9 @@ static GHOST_TKey ghost_key_from_keysym(const KeySym key)
       GXMAP(type, XK_KP_Multiply, GHOST_kKeyNumpadAsterisk);
       GXMAP(type, XK_KP_Divide, GHOST_kKeyNumpadSlash);
 
+      /* For the `¬` key on UK keyboards. */
+      GXMAP(type, XK_notsign, GHOST_kKeyAccentGrave);
+
       /* Media keys in some keyboards and laptops with XFree86/XORG. */
 #ifdef WITH_XF86KEYSYM
       GXMAP(type, XF86XK_AudioPlay, GHOST_kKeyMediaPlay);
