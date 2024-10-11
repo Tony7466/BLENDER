@@ -238,6 +238,22 @@ bool deg_iterator_objects_step(DEGObjectIterData *data)
     }
 
     Object *object = (Object *)id_node->id_cow;
+
+    DEGObjectIterSettings *settings=data->settings;
+    if (settings->include_types) {
+      bool found = false;
+      for (int i = 0; i < settings->include_types_len; i++) {
+        if (object->type == settings->include_types[i]) {
+          found = true; break;
+        }
+      }
+      if (!found) {
+        continue;
+      }
+    }
+
+    BLI_assert(DEG_object_geometry_is_evaluated(*object));
+
     Object *object_orig = DEG_get_original_object(object);
 
     /* NOTE: The object might be invisible after the latest depsgraph evaluation, in which case
