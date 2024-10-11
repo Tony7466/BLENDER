@@ -825,7 +825,7 @@ static float get_margin_to_bottom(const Span<FlatNodeItem> items)
     case flat_item::Type::PanelContentBegin:
       break;
     case flat_item::Type::PanelContentEnd:
-      return 3 * NODE_ITEM_SPACING_Y;
+      return 1 * NODE_ITEM_SPACING_Y;
   }
   BLI_assert_unreachable();
   return 0;
@@ -908,7 +908,7 @@ static float get_margin_between_elements(const Span<FlatNodeItem> items, const i
         case Type::PanelContentBegin:
           return 3 * NODE_ITEM_SPACING_Y;
         case Type::PanelContentEnd:
-          break;
+          return 3 * NODE_ITEM_SPACING_Y;
       }
       break;
     }
@@ -942,7 +942,7 @@ static float get_margin_between_elements(const Span<FlatNodeItem> items, const i
         case Type::PanelContentBegin:
           break;
         case Type::PanelContentEnd:
-          return NODE_ITEM_SPACING_Y;
+          return 0;
       }
       break;
     }
@@ -2640,7 +2640,9 @@ static void node_draw_panels_background(const bNode &node)
   BLI_assert(is_node_panels_supported(node));
 
   float panel_color[4];
-  UI_GetThemeColorShade4fv(TH_NODE, -15, panel_color);
+  UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, panel_color);
+  /* Increase contrast in nodes a bit. */
+  panel_color[3] *= 1.5f;
   const rctf &totr = node.runtime->totr;
 
   const nodes::PanelDeclaration *final_panel_decl = nullptr;
