@@ -33,7 +33,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
@@ -6827,6 +6827,7 @@ static void keymap_item_modified(bContext * /*C*/, void *kmi_p, void * /*unused*
 {
   wmKeyMapItem *kmi = (wmKeyMapItem *)kmi_p;
   WM_keyconfig_update_tag(nullptr, kmi);
+  U.runtime.is_dirty = true;
 }
 
 static void template_keymap_item_properties(uiLayout *layout, const char *title, PointerRNA *ptr)

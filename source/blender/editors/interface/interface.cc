@@ -1619,6 +1619,7 @@ enum PredefinedExtraOpIconType {
   PREDEFINED_EXTRA_OP_ICON_NONE = 1,
   PREDEFINED_EXTRA_OP_ICON_CLEAR,
   PREDEFINED_EXTRA_OP_ICON_EYEDROPPER,
+  PREDEFINED_EXTRA_OP_ICON_BONE_EYEDROPPER
 };
 
 static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
@@ -1710,6 +1711,26 @@ static bool ui_but_icon_extra_is_visible_search_eyedropper(uiBut *but)
   return ((but->editstr == nullptr) && (idcode == ID_OB || OB_DATA_SUPPORT_ID(idcode)));
 }
 
+static bool ui_but_icon_extra_is_visible_bone_eyedropper(uiBut *but)
+{
+  if (but->type != UI_BTYPE_SEARCH_MENU || !(but->flag & UI_BUT_VALUE_CLEAR)) {
+    return false;
+  }
+  if (but->editstr != nullptr) {
+    return false;
+  }
+  if (!ELEM(RNA_property_type(but->rnaprop), PROP_STRING, PROP_POINTER)) {
+    return false;
+  }
+  uiButSearch *search_but = (uiButSearch *)but;
+  if (!search_but->rnasearchprop) {
+    return false;
+  }
+  const StructRNA *type = RNA_property_pointer_type(&search_but->rnasearchpoin,
+                                                    search_but->rnasearchprop);
+  return type == &RNA_Bone || type == &RNA_EditBone;
+}
+
 static PredefinedExtraOpIconType ui_but_icon_extra_get(uiBut *but)
 {
   switch (but->type) {
@@ -1727,6 +1748,9 @@ static PredefinedExtraOpIconType ui_but_icon_extra_get(uiBut *but)
       }
       else if (ui_but_icon_extra_is_visible_search_eyedropper(but)) {
         return PREDEFINED_EXTRA_OP_ICON_EYEDROPPER;
+      }
+      else if (ui_but_icon_extra_is_visible_bone_eyedropper(but)) {
+        return PREDEFINED_EXTRA_OP_ICON_BONE_EYEDROPPER;
       }
       break;
     default:
@@ -1758,6 +1782,17 @@ static void ui_but_predefined_extra_operator_icons_add(uiBut *but)
       optype = id_eyedropper_ot;
       icon = ICON_EYEDROPPER;
 
+      break;
+    }
+    case PREDEFINED_EXTRA_OP_ICON_BONE_EYEDROPPER: {
+      static wmOperatorType *id_eyedropper_ot = nullptr;
+      if (!id_eyedropper_ot) {
+        id_eyedropper_ot = WM_operatortype_find("UI_OT_eyedropper_bone", false);
+      }
+      BLI_assert(id_eyedropper_ot);
+
+      optype = id_eyedropper_ot;
+      icon = ICON_EYEDROPPER;
       break;
     }
     case PREDEFINED_EXTRA_OP_ICON_CLEAR: {
@@ -3365,8 +3400,8 @@ void ui_but_range_set_soft(uiBut *but)
       int imin, imax, istep;
 
       RNA_property_int_ui_range(&but->rnapoin, but->rnaprop, &imin, &imax, &istep);
-      softmin = (imin == INT_MIN) ? -1e4 : imin;
-      softmax = (imin == INT_MAX) ? 1e4 : imax;
+      softmin = std::max(imin, INT_MIN);
+      softmax = std::min(imax, INT_MAX);
       // step = istep;  /* UNUSED */
       // precision = 1; /* UNUSED */
 
@@ -4102,7 +4137,7 @@ void ui_block_cm_to_display_space_v3(uiBlock *block, float pixel[3])
 /**
  * Factory function: Allocate button and set #uiBut.type.
  *
- * \note: #ui_but_mem_delete is the matching 'destructor' function.
+ * \note #ui_but_mem_delete is the matching 'destructor' function.
  */
 static uiBut *ui_but_new(const eButType type)
 {
@@ -5074,7 +5109,7 @@ int UI_autocomplete_end(AutoComplete *autocpl, char *autoname)
   return match;
 }
 
-#define PREVIEW_TILE_PAD (0.15f * UI_UNIT_X)
+#define PREVIEW_TILE_PAD (0.225f * UI_UNIT_X)
 
 int UI_preview_tile_size_x(const int size_px)
 {
@@ -6551,6 +6586,16 @@ void UI_but_search_preview_grid_size_set(uiBut *but, int rows, int cols)
   uiButSearch *but_search = reinterpret_cast<uiButSearch *>(but);
   but_search->preview_rows = rows;
   but_search->preview_cols = cols;
+}
+
+void UI_but_view_item_draw_size_set(uiBut *but,
+                                    const std::optional<int> draw_width,
+                                    const std::optional<int> draw_height)
+{
+  BLI_assert(but->type == UI_BTYPE_VIEW_ITEM);
+  uiButViewItem *but_view_item = reinterpret_cast<uiButViewItem *>(but);
+  but_view_item->draw_width = draw_width.value_or(0);
+  but_view_item->draw_height = draw_height.value_or(0);
 }
 
 void UI_but_focus_on_enter_event(wmWindow *win, uiBut *but)

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_fileops.h"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_string.h"
 
 #include "DNA_brush_types.h"
@@ -174,6 +174,13 @@ static asset_system::AssetCatalog &asset_library_ensure_catalog(
   return *library.catalog_service().create_catalog(path);
 }
 
+/* Suppress warning for GCC-14.2. This isn't a dangling reference
+ * because the #asset_system::AssetLibrary owns the returned value. */
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdangling-reference"
+#endif
+
 static asset_system::AssetCatalog &asset_library_ensure_catalogs_in_path(
     asset_system::AssetLibrary &library, const asset_system::AssetCatalogPath &path)
 {
@@ -186,6 +193,9 @@ static asset_system::AssetCatalog &asset_library_ensure_catalogs_in_path(
   });
   return *library.catalog_service().find_catalog_by_path(path);
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif
 
 static void show_catalog_in_asset_shelf(const bContext &C, const StringRefNull catalog_path)
 {
