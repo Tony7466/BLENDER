@@ -90,22 +90,47 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bke::node_set_socket_availability(ntree, distance, mode == GEO_NODE_CURVE_INTERSECT_CURVE);
 }
 
+/* Store information from line intersection calculations. */
+struct IntersectingLineInfo {
+  float3 isect_point_ab;
+  float3 isect_point_cd;
+  float3 closest_ab;
+  float3 closest_cd;
+  float lambda_ab;
+  float lambda_cd;
+  bool intersects;
+};
+
+/* Store segment details. Start and End must be at the start for BVHTree search. */
+struct Segment {
+  float3 start;
+  float3 end;
+  float3 orig_start;
+  float3 orig_end;
+  float len_start;
+  float len_end;
+  bool is_cyclic_segment;
+  bool is_first_segment;
+  int pos_index;
+  int curve_index;
+  float curve_length;
+};
+
+/* Store data that will be used for attributes and sorting. */
 struct IntersectionData {
+  Vector<float> sortkey;
   Vector<float3> position;
-  Vector<float> lambda;
-  Vector<int> curve_id;
+  Vector<float3> direction;
   Vector<float> length;
   Vector<float> factor;
-  Vector<float3> direction;
+  Vector<int> curve_id;
   Vector<bool> pair;
   Vector<float3> pair_position;
-  Vector<float> sortkey;
 };
 
 using ThreadLocalData = threading::EnumerableThreadSpecific<IntersectionData>;
 
 static void add_intersection_data(IntersectionData &data,
-                                  const float lambda,
                                   const float3 position,
                                   const float3 direction,
                                   const int curve_id,
@@ -116,7 +141,6 @@ static void add_intersection_data(IntersectionData &data,
                                   const bool store_pair_data)
 {
   data.position.append(position);
-  data.lambda.append(lambda);
   data.curve_id.append(curve_id);
   data.length.append(length);
   const float factor = math::safe_divide(length, curve_length);
@@ -127,8 +151,8 @@ static void add_intersection_data(IntersectionData &data,
     data.pair_position.append(pair_position);
   }
 
-  /* Create sortkey for index. */
-  float sortkey = curve_id * 4 + (pair ? 1 : 0) + factor;
+  /* Create sortkey for index. Order by curve_id then factor. */
+  float sortkey = float(curve_id * 2) + factor;
   data.sortkey.append(sortkey);
 }
 
@@ -139,7 +163,6 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
   int64_t total_intersections = 0;
   for (const IntersectionData &local_data : thread_storage) {
     const int64_t local_size = local_data.position.size();
-    BLI_assert(local_data.lambda.size() == local_size);
     BLI_assert(local_data.sortkey.size() == local_size);
     BLI_assert(local_data.curve_id.size() == local_size);
     BLI_assert(local_data.length.size() == local_size);
@@ -154,7 +177,6 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
   const int64_t start_index = r_data.position.size();
   const int64_t new_size = start_index + total_intersections;
   r_data.position.reserve(new_size);
-  r_data.lambda.reserve(new_size);
   r_data.curve_id.reserve(new_size);
   r_data.length.reserve(new_size);
   r_data.factor.reserve(new_size);
@@ -167,7 +189,6 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
 
   for (IntersectionData &local_data : thread_storage) {
     r_data.position.extend(local_data.position);
-    r_data.lambda.extend(local_data.lambda);
     r_data.curve_id.extend(local_data.curve_id);
     r_data.length.extend(local_data.length);
     r_data.factor.extend(local_data.factor);
@@ -180,35 +201,8 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
   }
 }
 
-struct IntersectingLineInfo {
-  float3 isect_point_ab;
-  float3 isect_point_cd;
-  float3 closest_ab;
-  float3 closest_cd;
-  float lambda_ab;
-  float lambda_cd;
-  bool intersects;
-};
-
-struct Segment {
-  /* Start and End must be at the start for BVHTree search. */
-  float3 start;
-  float3 end;
-  float3 orig_start;
-  float3 orig_end;
-  float len_start;
-  float len_end;
-  bool is_cyclic_segment;
-  bool is_first_segment;
-  bool is_last_segment;
-  bool cyclic_curve;
-  int pos_index;
-  int curve_index;
-  float curve_length;
-};
-
-/* Check intersection between the line segments ab and cd. Return true if this exists on both line
- * segments. */
+/* Check intersection between the line segments ab and cd. Return true only if intersection point
+ * is located on both line segments. */
 static IntersectingLineInfo intersecting_lines(
     const float3 &a, const float3 &b, const float3 &c, const float3 &d, const float distance)
 {
@@ -216,7 +210,8 @@ static IntersectingLineInfo intersecting_lines(
   if (isect_line_line_epsilon_v3(
           a, b, c, d, isectinfo.isect_point_ab, isectinfo.isect_point_cd, curve_isect_eps))
   {
-    /* Discard intersections too far away. */
+    /* Discard intersections too far away. Previous function returns intersections that are not
+     * located on the actual segment. */
     if (math::distance(isectinfo.isect_point_ab, isectinfo.isect_point_cd) > distance) {
       isectinfo.intersects = false;
       return isectinfo;
@@ -271,16 +266,12 @@ static BVHTree *create_curve_segment_bvhtree(const bke::CurvesGeometry &src_curv
     const Span<float> lengths = src_curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
     const float curve_length = src_curves.evaluated_length_total_for_curve(curve_i,
                                                                            cyclic[curve_i]);
-    const bool cyclic_curve = cyclic[curve_i];
     const int segment_count = positions.size() - 1;
     for (const int index : IndexRange(positions.size()).drop_back(1)) {
       const bool first_segment = (index == 0);
-      const bool last_segment = (1 + index == segment_count);
       Segment segment;
       segment.is_cyclic_segment = false;
       segment.is_first_segment = first_segment;
-      segment.is_last_segment = last_segment;
-      segment.cyclic_curve = cyclic_curve;
       segment.pos_index = index;
       segment.curve_index = curve_i;
       segment.curve_length = curve_length;
@@ -298,8 +289,6 @@ static BVHTree *create_curve_segment_bvhtree(const bke::CurvesGeometry &src_curv
       Segment segment;
       segment.is_cyclic_segment = true;
       segment.is_first_segment = false;
-      segment.is_last_segment = false;
-      segment.cyclic_curve = cyclic_curve;
       segment.pos_index = segment_count;
       segment.curve_index = curve_i;
       segment.curve_length = curve_length;
@@ -387,7 +376,6 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
             const float len_at_isect = math::interpolate(len_start, len_end, lambda);
             const float3 dir_of_isect = math::normalize(b - a);
             add_intersection_data(local_data,
-                                  lambda,
                                   closest,
                                   dir_of_isect,
                                   curve_i,
@@ -464,19 +452,8 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
               if (calc_all || calc_self) {
                 const IntersectingLineInfo isectinfo = intersecting_lines(
                     ab.start, ab.end, cd.start, cd.end, max_distance);
-                /* To avoid duplicates, discard intersections where lambda is 1.0f except if it is
-                 * the last segment. This does mean that some intersections may be ignored.
-                 * E.g. intersections on a corner
-                 * -----
-                 * |/
-                 * x
-                 * |\
-                 * ----
-                 */
-                const bool midline = isectinfo.lambda_ab < 1.0f && isectinfo.lambda_cd < 1.0f;
-                const bool is_last_segment = (!ab.cyclic_curve && ab.is_last_segment) ||
-                                             (!cd.cyclic_curve && cd.is_last_segment);
-                if (isectinfo.intersects && (midline || is_last_segment)) {
+
+                if (isectinfo.intersects) {
                   const float3 closest_ab = project ? math::interpolate(ab.orig_start,
                                                                         ab.orig_end,
                                                                         isectinfo.lambda_ab) :
@@ -487,7 +464,6 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                                                       isectinfo.closest_cd;
                   add_intersection_data(
                       local_data,
-                      isectinfo.lambda_ab,
                       closest_ab,
                       math::normalize(ab.end - ab.start),
                       ab.curve_index,
@@ -498,7 +474,6 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                       store_pair_data);
                   add_intersection_data(
                       local_data,
-                      isectinfo.lambda_cd,
                       closest_cd,
                       math::normalize(cd.end - cd.start),
                       cd.curve_index,
@@ -580,7 +555,6 @@ static void set_curve_intersections_mesh(GeometrySet &mesh_set,
                   const float3 dir_of_isect = math::normalize(seg.end - seg.start);
                   const float3 closest = math::interpolate(seg.start, seg.end, lambda);
                   add_intersection_data(local_data,
-                                        lambda,
                                         closest,
                                         dir_of_isect,
                                         seg.curve_index,
@@ -621,7 +595,6 @@ static IntersectionData sort_intersection_data(IntersectionData &data, const boo
   /* Ignore sortdata for return data. */
   IntersectionData r_data;
   r_data.position.reserve(data_size);
-  r_data.lambda.reserve(data_size);
   r_data.curve_id.reserve(data_size);
   r_data.length.reserve(data_size);
   r_data.factor.reserve(data_size);
@@ -634,7 +607,6 @@ static IntersectionData sort_intersection_data(IntersectionData &data, const boo
   for (const std::pair key_val : sort_index) {
     const int64_t key_index = key_val.first;
     r_data.position.append(data.position[key_index]);
-    r_data.lambda.append(data.lambda[key_index]);
     r_data.curve_id.append(data.curve_id[key_index]);
     r_data.length.append(data.length[key_index]);
     r_data.factor.append(data.factor[key_index]);
@@ -738,11 +710,6 @@ static void node_geo_exec(GeoNodeExecParams params)
           "curve_index",
           bke::AttrDomain::Point,
           bke::AttributeInitVArray(VArray<int>::ForSpan(sorted_data.curve_id)));
-
-      point_attributes.add<float>(
-          "lambda",
-          AttrDomain::Point,
-          blender::bke::AttributeInitVArray(VArray<float>::ForSpan(sorted_data.lambda)));
 
       point_attributes.add<float>(
           "factor",
