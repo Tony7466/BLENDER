@@ -195,12 +195,6 @@ struct GPUSource {
     }
   }
 
-  static bool is_in_comment(const StringRef &input, int64_t offset)
-  {
-    return (input.rfind("/*", offset) > input.rfind("*/", offset)) ||
-           (input.rfind("//", offset) > input.rfind("\n", offset));
-  }
-
   template<bool check_whole_word = true, bool reversed = false, typename T>
   static int64_t find_str(const StringRef &input, const T keyword, int64_t offset = 0)
   {
@@ -219,11 +213,6 @@ struct GPUSource {
             offset += (reversed) ? -1 : 1;
             continue;
           }
-        }
-        /* Fix case where the keyword is in a comment. */
-        if (is_in_comment(input, offset)) {
-          offset += (reversed) ? -1 : 1;
-          continue;
         }
       }
       return offset;
