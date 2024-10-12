@@ -479,6 +479,46 @@ static void foreach_toplevel_grid_coord_without_corners(
   });
 }
 
+static void foreach_toplevel_grid_coord_only_corners(
+    const MultiresReshapeSmoothContext *reshape_smooth_context,
+    blender::FunctionRef<void(const PTexCoord *, const GridCoord *)> callback)
+{
+  using namespace blender;
+  const MultiresReshapeContext *reshape_context = reshape_smooth_context->reshape_context;
+  const int level_difference = (reshape_context->top.level - reshape_context->reshape.level);
+
+  const int inner_grid_size = (1 << level_difference) + 1;
+  const int far_idx = inner_grid_size - 1;
+  const float inner_grid_size_1_inv = 1.0f / float(inner_grid_size - 1);
+
+  std::array<std::pair<int, int>, 4> corners = {
+      {{0, 0}, {0, far_idx}, {far_idx, 0}, {far_idx, far_idx}}};
+
+  const int num_faces = reshape_smooth_context->geometry.num_faces;
+  threading::parallel_for(IndexRange(num_faces), 1, [&](const IndexRange range) {
+    for (const int face_index : range) {
+      const Face *face = &reshape_smooth_context->geometry.faces[face_index];
+      const GridCoord *face_grid_coords[4];
+      grid_coords_from_face_verts(reshape_smooth_context, face, face_grid_coords);
+
+      for (std::pair<int, int> corner : corners) {
+        const float ptex_u = float(corner.first) * inner_grid_size_1_inv;
+        const float ptex_v = float(corner.second) * inner_grid_size_1_inv;
+
+        PTexCoord ptex_coord;
+        ptex_coord.ptex_face_index = face_index;
+        ptex_coord.u = ptex_u;
+        ptex_coord.v = ptex_v;
+
+        GridCoord grid_coord;
+        interpolate_grid_coord(&grid_coord, face_grid_coords, ptex_u, ptex_v);
+
+        callback(&ptex_coord, &grid_coord);
+      }
+    }
+  });
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1444,6 +1484,33 @@ static void evaluate_higher_grid_positions_with_details(
             reshape_context, grid_coord);
 
         add_v3_v3v3(grid_element.displacement, smooth_limit_P, smooth_delta);
+
+        /* Propagate non-coordinate data. */
+        propagate_linear_data_delta(reshape_smooth_context, &grid_element, grid_coord);
+      });
+
+  /* For the "corner" elements of the sculpt level, we need to still reevaluate the limit surface
+   * but avoid applying the higher level delta.
+   */
+  foreach_toplevel_grid_coord_only_corners(
+      reshape_smooth_context, [&](const PTexCoord *ptex_coord, const GridCoord *grid_coord) {
+        /* Position of the original vertex at top level. */
+        float orig_final_P[3];
+        evaluate_final_original_point(reshape_smooth_context, grid_coord, orig_final_P);
+
+        /* Limit surface of smoothed (subdivided) edited sculpt level. */
+        float smooth_limit_P[3];
+        float smooth_tangent_matrix[3][3];
+        reshape_subdiv_evaluate_limit_at_grid(
+            reshape_smooth_context, ptex_coord, grid_coord, smooth_limit_P, smooth_tangent_matrix);
+
+        /* Grid element of the result.
+         *
+         * NOTE: Displacement is storing object space coordinate. */
+        ReshapeGridElement grid_element = multires_reshape_grid_element_for_grid_coord(
+            reshape_context, grid_coord);
+
+        copy_v3_v3(grid_element.displacement, smooth_limit_P);
 
         /* Propagate non-coordinate data. */
         propagate_linear_data_delta(reshape_smooth_context, &grid_element, grid_coord);
