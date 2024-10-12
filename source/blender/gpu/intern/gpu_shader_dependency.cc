@@ -108,13 +108,9 @@ struct GPUSource {
     /* TODO(fclem): We could do that at compile time. */
     /* Limit to shared header files to avoid the temptation to use C++ syntax in .glsl files. */
     if (filename.endswith(".h") || filename.endswith(".hh")) {
-      quote_preprocess();
       small_types_check();
     }
     else {
-      if (source.find("'") != StringRef::not_found) {
-        char_literals_preprocess();
-      }
 #ifndef NDEBUG
       if ((source.find("drw_debug_") != StringRef::not_found) &&
           /* Avoid these two files where it makes no sense to add the dependency. */
@@ -128,7 +124,6 @@ struct GPUSource {
         builtins |= shader::BuiltinBits::USE_PRINTF;
       }
 #endif
-      check_no_quotes();
     }
 
     if (is_from_material_library()) {
@@ -271,44 +266,6 @@ struct GPUSource {
   if ((test_value) == -1) { \
     print_error(str, ofs, msg); \
     continue; \
-  }
-
-  /**
-   * Some drivers completely forbid quote characters even in unused preprocessor directives.
-   * We fix the cases where we can't manually patch in `enum_preprocess()`.
-   * This check ensure none are present in non-patched sources. (see #97545)
-   */
-  void check_no_quotes()
-  {
-#ifndef NDEBUG
-    int64_t pos = -1;
-    do {
-      pos = source.find('"', pos + 1);
-      if (pos == -1) {
-        break;
-      }
-      if (!is_in_comment(source, pos)) {
-        print_error(source, pos, "Quote characters are forbidden in GLSL files");
-      }
-    } while (true);
-#endif
-  }
-
-  /**
-   * Some drivers completely forbid string characters even in unused preprocessor directives.
-   * This fixes the cases we cannot manually patch: Shared headers #includes. (see #97545)
-   * TODO(fclem): This could be done during the datatoc step.
-   */
-  void quote_preprocess()
-  {
-    if (source.find_first_of('"') == -1) {
-      return;
-    }
-
-    processed_source = source;
-    std::replace(processed_source.begin(), processed_source.end(), '"', ' ');
-
-    source = processed_source.c_str();
   }
 
   /**
@@ -552,65 +509,6 @@ struct GPUSource {
         func->totparam++;
       }
     }
-  }
-
-  void char_literals_preprocess()
-  {
-    const StringRefNull input = source;
-    std::stringstream output;
-    int64_t cursor = -1;
-    int64_t last_pos = 0;
-
-    while (true) {
-      cursor = find_token(input, '\'', cursor + 1);
-      if (cursor == -1) {
-        break;
-      }
-      /* Output anything between 2 print statement. */
-      output << input.substr(last_pos, cursor - last_pos);
-
-      /* Extract string. */
-      int64_t char_start = cursor + 1;
-      int64_t char_end = find_token(input, '\'', char_start);
-      CHECK(char_end, input, cursor, "Malformed char literal. Missing ending `'`.");
-
-      StringRef input_char = input.substr(char_start, char_end - char_start);
-      if (input_char.is_empty()) {
-        CHECK(-1, input, cursor, "Malformed char literal. Empty character constant");
-      }
-
-      uint8_t char_value = input_char[0];
-
-      if (input_char[0] == '\\') {
-        if (input_char[1] == 'n') {
-          char_value = '\n';
-        }
-        else {
-          CHECK(-1, input, cursor, "Unsupported escaped character");
-        }
-      }
-      else {
-        if (input_char.size() > 1) {
-          CHECK(-1, input, cursor, "Malformed char literal. Multi-character character constant");
-        }
-      }
-
-      char hex[8];
-      SNPRINTF(hex, "0x%.2Xu", char_value);
-      output << hex;
-
-      cursor = last_pos = char_end + 1;
-    }
-    /* If nothing has been changed, do not allocate processed_source. */
-    if (last_pos == 0) {
-      return;
-    }
-
-    if (last_pos != 0) {
-      output << input.substr(last_pos);
-    }
-    processed_source = output.str();
-    source = processed_source.c_str();
   }
 
 #undef find_keyword

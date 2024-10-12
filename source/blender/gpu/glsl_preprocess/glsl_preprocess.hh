@@ -56,6 +56,7 @@ class Preprocessor {
       static_strings_parsing(str);
       str = static_strings_mutation(str);
       str = printf_processing(str, report_error);
+      str = remove_quotes(str);
     }
     if (do_linting) {
       matrix_constructor_linting(str, report_error);
@@ -122,6 +123,11 @@ class Preprocessor {
     /* Remove trailing whitespaces as they make the subsequent regex much slower. */
     std::regex regex("(\\ )*?\\n");
     return std::regex_replace(out_str, regex, "\n");
+  }
+
+  std::string remove_quotes(std::string str)
+  {
+    return std::regex_replace(str, std::regex(R"(["'])"), " ");
   }
 
   std::string preprocessor_directive_mutation(const std::string &str)
