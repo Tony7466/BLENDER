@@ -763,6 +763,16 @@ if(WITH_CYCLES_DEVICE_HIPRT)
     set(hiprt_compile_flags ${hiprt_compile_flags} -D WITH_CYCLES_DEBUG)
   endif()
 
+  # When using HIP 6.1.40252 reduce the optimization level to -O1
+  # to fix the improper rendering of volumes.
+  # This does not fix all issues with this version of HIP as shadow caustics
+  # also fail to render, and requires -O0, or code modifications to fix the issue.
+  # -O0 comes at an unreasonable performance cost for the average user, so -O1 is used
+  # instead with this issue.
+  if(WIN32 AND (${HIP_VERSION} STREQUAL "6.1.40252"))
+    set(hiprt_compile_flags ${hiprt_compile_flags} "-O1")
+  endif()
+
   set(hiprt_compile_flags_bvh
     ${hiprt_compile_flags}
     ${target_gpus}
