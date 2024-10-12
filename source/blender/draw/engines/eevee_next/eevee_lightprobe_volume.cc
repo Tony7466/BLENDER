@@ -48,14 +48,17 @@ void VolumeProbeModule::init()
     {
       int atlas_byte_size = 1024 * 1024 * irradiance_pool_size;
       /* Reshape texture to improve grid occupancy within device limits. */
-      for (atlas_col_count = 128; atlas_col_count <= 16348 && !irradiance_atlas_tx_.is_valid();
-           atlas_col_count <<= 1)
+      constexpr uint atlas_col_count_min = 16;
+      constexpr uint atlas_col_count_max = 16384;
+      for (uint atlas_col_count_try = atlas_col_count_min;
+           atlas_col_count_try <= atlas_col_count_max && !irradiance_atlas_tx_.is_valid();
+           atlas_col_count_try <<= 1)
       {
         int3 atlas_extent(IRRADIANCE_GRID_BRICK_SIZE);
         atlas_extent.z *= sh_coef_len;
         /* Add space for validity bits. */
         atlas_extent.z += IRRADIANCE_GRID_BRICK_SIZE / 4;
-        atlas_extent.x *= atlas_col_count;
+        atlas_extent.x *= atlas_col_count_try;
 
         /* Determine the row count depending on the scene settings. */
         int row_byte_size = math::reduce_mul(atlas_extent) * texel_byte_size;
@@ -69,6 +72,7 @@ void VolumeProbeModule::init()
         if (irradiance_atlas_tx_.is_valid()) {
           do_full_update_ = true;
           irradiance_pool_size_alloc_ = irradiance_pool_size;
+          atlas_col_count = atlas_col_count_try;
         }
       }
     }
@@ -76,8 +80,7 @@ void VolumeProbeModule::init()
 
   if (irradiance_pool_size_alloc_ != irradiance_pool_size_) {
     inst_.info_append_i18n(
-        "Warning: Light probes volume pool could not be allocated. Using a pool of {} MB to "
-        "proceed. ",
+        "Warning: Light probes volume pool could not be allocated. Now using a pool of {} MB.",
         irradiance_pool_size_alloc_);
   }
 
