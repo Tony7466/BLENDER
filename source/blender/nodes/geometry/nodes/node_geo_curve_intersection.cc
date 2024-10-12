@@ -81,7 +81,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
       static_cast<const bNode *>(ptr->data)->custom1);
   uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
   if (ELEM(mode, GEO_NODE_CURVE_INTERSECT_CURVE, GEO_NODE_CURVE_INTERSECT_PROJECT)) {
-    uiItemR(layout, ptr, "use_paired_data", UI_ITEM_NONE, "", ICON_NONE);
+    uiItemR(layout, ptr, "use_paired_data", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   }
 }
 
@@ -977,13 +977,9 @@ static void node_rna(StructRNA *srna)
       {int(PairData::Single),
        "SINGLE",
        0,
-       "Single Intersections",
-       "Return first intersection found"},
-      {int(PairData::Paired),
-       "PAIRED",
-       0,
-       "Paired Intersections",
-       "Return all paired intersections"},
+       "Single",
+       "Return first intersection found, weighted to lowest curve id"},
+      {int(PairData::Paired), "PAIRED", 0, "Paired", "Return all paired intersections"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
