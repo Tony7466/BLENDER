@@ -108,7 +108,6 @@ struct GPUSource {
     /* TODO(fclem): We could do that at compile time. */
     /* Limit to shared header files to avoid the temptation to use C++ syntax in .glsl files. */
     if (filename.endswith(".h") || filename.endswith(".hh")) {
-      enum_preprocess();
       quote_preprocess();
       small_types_check();
     }
@@ -350,126 +349,6 @@ struct GPUSource {
     check_type("half4 ");
 #endif
   }
-
-  /**
-   * Transform C,C++ enum declaration into GLSL compatible defines and constants:
-   *
-   * \code{.cpp}
-   * enum eMyEnum : uint32_t {
-   *   ENUM_1 = 0u,
-   *   ENUM_2 = 1u,
-   *   ENUM_3 = 2u,
-   * };
-   * \endcode
-   *
-   * or
-   *
-   * \code{.c}
-   * enum eMyEnum {
-   *   ENUM_1 = 0u,
-   *   ENUM_2 = 1u,
-   *   ENUM_3 = 2u,
-   * };
-   * \endcode
-   *
-   * becomes
-   *
-   * \code{.glsl}
-   * #define eMyEnum uint
-   * const uint ENUM_1 = 0u, ENUM_2 = 1u, ENUM_3 = 2u;
-   * \endcode
-   *
-   * IMPORTANT: This has some requirements:
-   * - Enums needs to have underlying types specified to uint32_t to make them usable in UBO/SSBO.
-   * - All values needs to be specified using constant literals to avoid compiler differences.
-   * - All values needs to have the 'u' suffix to avoid GLSL compiler errors.
-   */
-  void enum_preprocess()
-  {
-    const StringRefNull input = source;
-    std::string output;
-    int64_t cursor = -1;
-    int64_t last_pos = 0;
-    const bool is_cpp = filename.endswith(".hh");
-
-    /* Metal Shading language is based on C++ and supports C++-style enumerations.
-     * For these cases, we do not need to perform auto-replacement. */
-    if (is_cpp && GPU_backend_get_type() == GPU_BACKEND_METAL) {
-      return;
-    }
-
-    while (true) {
-      cursor = find_keyword(input, "enum ", cursor + 1);
-      if (cursor == -1) {
-        break;
-      }
-      /* Skip matches like `typedef enum myEnum myType;` */
-      if (cursor >= 8 && input.substr(cursor - 8, 8) == "typedef ") {
-        continue;
-      }
-      /* Output anything between 2 enums blocks. */
-      output += input.substr(last_pos, cursor - last_pos);
-
-      /* Extract enum type name. */
-      int64_t name_start = input.find(" ", cursor);
-
-      int64_t values_start = find_token(input, '{', cursor);
-      CHECK(values_start, input, cursor, "Malformed enum class. Expected \'{\' after typename.");
-
-      StringRef enum_name = input.substr(name_start, values_start - name_start);
-      if (is_cpp) {
-        int64_t name_end = find_token(enum_name, ":");
-        CHECK(name_end, input, name_start, "Expected \':\' after C++ enum name.");
-
-        int64_t underlying_type = find_keyword(enum_name, "uint32_t", name_end);
-        CHECK(underlying_type, input, name_start, "C++ enums needs uint32_t underlying type.");
-
-        enum_name = input.substr(name_start, name_end);
-      }
-
-      output += "#define " + enum_name + " uint\n";
-
-      /* Extract enum values. */
-      int64_t values_end = find_token(input, '}', values_start);
-      CHECK(values_end, input, cursor, "Malformed enum class. Expected \'}\' after values.");
-
-      /* Skip opening brackets. */
-      values_start += 1;
-
-      StringRef enum_values = input.substr(values_start, values_end - values_start);
-
-      /* Really poor check. Could be done better. */
-      int64_t token = find_token(enum_values, '{');
-      int64_t not_found = (token == -1) ? 0 : -1;
-      CHECK(not_found, input, values_start + token, "Unexpected \'{\' token inside enum values.");
-
-      /* Do not capture the comma after the last value (if present). */
-      int64_t last_equal = rfind_token(enum_values, '=', values_end);
-      int64_t last_comma = rfind_token(enum_values, ',', values_end);
-      if (last_comma > last_equal) {
-        enum_values = input.substr(values_start, last_comma);
-      }
-
-      output += "const uint " + enum_values;
-
-      int64_t semicolon_found = (input[values_end + 1] == ';') ? 0 : -1;
-      CHECK(semicolon_found, input, values_end + 1, "Expected \';\' after enum type declaration.");
-
-      /* Skip the curly bracket but not the semicolon. */
-      cursor = last_pos = values_end + 1;
-    }
-    /* If nothing has been changed, do not allocate processed_source. */
-    if (last_pos == 0) {
-      return;
-    }
-
-    if (last_pos != 0) {
-      output += input.substr(last_pos);
-    }
-
-    processed_source = output;
-    source = processed_source.c_str();
-  };
 
   void material_functions_parse(GPUFunctionDictionnary *g_functions)
   {

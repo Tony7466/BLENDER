@@ -157,3 +157,7 @@ bool is_zero(vec4 A)
 #define _inout_end
 #define _shared_sta
 #define _shared_end
+
+#define ENUM_TYPE(name) uint
+#define ENUM_DECL(name) const uint
+#define ENUM_END ;

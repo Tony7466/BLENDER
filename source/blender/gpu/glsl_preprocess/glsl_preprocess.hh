@@ -61,6 +61,7 @@ class Preprocessor {
       matrix_constructor_linting(str, report_error);
       array_constructor_linting(str, report_error);
     }
+    str = enum_macro_injection(str);
     str = argument_decorator_macro_injection(str);
     str = array_constructor_macro_injection(str);
     return str + static_strings_suffix() + threadgroup_variables_suffix();
@@ -247,6 +248,57 @@ class Preprocessor {
     }
     suffix << "\n";
     return suffix.str();
+  }
+
+  std::string enum_macro_injection(std::string str)
+  {
+    /**
+     * Transform C,C++ enum declaration into GLSL compatible defines and constants:
+     *
+     * \code{.cpp}
+     * enum eMyEnum : uint32_t {
+     *   ENUM_1 = 0u,
+     *   ENUM_2 = 1u,
+     *   ENUM_3 = 2u,
+     * };
+     * \endcode
+     *
+     * or
+     *
+     * \code{.c}
+     * enum eMyEnum {
+     *   ENUM_1 = 0u,
+     *   ENUM_2 = 1u,
+     *   ENUM_3 = 2u,
+     * };
+     * \endcode
+     *
+     * becomes
+     *
+     * \code{.glsl}
+     * ENUM_DECL(_eMyEnum)
+     *   ENUM_1 = 0u,
+     *   ENUM_2 = 1u,
+     *   ENUM_3 = 2u, ENUM_END
+     * #define eMyEnum ENUM_TYPE(_eMyEnum)
+     * \endcode
+     *
+     * IMPORTANT: This has some requirements:
+     * - Enums needs to have underlying types set to uint32_t to make them usable in UBO and SSBO.
+     * - All values needs to be specified using constant literals to avoid compiler differences.
+     * - All values needs to have the 'u' suffix to avoid GLSL compiler errors.
+     */
+    {
+      /* Replaces all matches by the respective string hash. */
+      std::regex regex(R"(enum\s+((\w+)\s*(?:\:\s*\w+\s*)?)\{(\n[^}]+)\n\};)");
+      str = std::regex_replace(str, regex, "ENUM_DECL(_$1)$3 ENUM_END\n#define $2 ENUM_TYPE(_$2)");
+    }
+    {
+      /* Remove trailing comma if any. */
+      std::regex regex(R"(,(\s*ENUM_END))");
+      str = std::regex_replace(str, regex, "$1");
+    }
+    return str;
   }
 
   std::string argument_decorator_macro_injection(const std::string &str)
