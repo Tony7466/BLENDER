@@ -1054,11 +1054,11 @@ static void wm_gesture_straightline_do_angle_snap(rcti *rect, float snap_angle)
   rect->ymax = int(line_snapped_end[1]);
 
   /* Check whether `angle_snapped` is a multiple of 45 degrees, if so ensure X and Y directions
-   * being the same length (there could be an off-by-one due to rounding error). */
+   * are the same length (there could be an off-by-one due to rounding error). */
   const float fract_45 = fractf(angle_snapped / DEG2RADF(45.0f));
   const float fract_90 = fractf(angle_snapped / DEG2RADF(90.0f));
   /* Check if it's a multiple of 45 but not 90 degrees. */
-  if (compare_ff(fract_45, 0.0f, 1e-7) && (!compare_ff(fract_90, 0.0f, 1e-7))) {
+  if (compare_ff(fract_45, 0.0f, 1e-6) && (!compare_ff(fract_90, 0.0f, 1e-6))) {
     int xlen = abs(rect->xmax - rect->xmin);
     int ylen = rect->ymax - rect->ymin;
     if (abs(ylen) != xlen) {
