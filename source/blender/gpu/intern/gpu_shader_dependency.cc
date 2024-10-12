@@ -117,12 +117,7 @@ struct GPUSource {
         char_literals_preprocess();
       }
 #ifndef NDEBUG
-      if (source.find("drw_print") != StringRef::not_found) {
-        string_preprocess();
-      }
       if ((source.find("drw_debug_") != StringRef::not_found) &&
-          /* Avoid this file as it is a false positive match (matches "drw_debug_print_buf"). */
-          filename != "draw_debug_print_display_vert.glsl" &&
           /* Avoid these two files where it makes no sense to add the dependency. */
           !ELEM(filename, "common_debug_draw_lib.glsl", "draw_debug_draw_display_vert.glsl"))
       {
@@ -739,158 +734,6 @@ struct GPUSource {
     source = processed_source.c_str();
   }
 
-  /* Replace print(string) by equivalent drw_print_char4() sequence. */
-  void string_preprocess()
-  {
-    const StringRefNull input = source;
-    std::stringstream output;
-    int64_t cursor = -1;
-    int64_t last_pos = 0;
-
-    while (true) {
-      cursor = find_keyword(input, "drw_print", cursor + 1);
-      if (cursor == -1) {
-        break;
-      }
-
-      bool do_endl = false;
-      StringRef func = input.substr(cursor);
-      if (func.startswith("drw_print(")) {
-        do_endl = true;
-      }
-      else if (func.startswith("drw_print_no_endl(")) {
-        do_endl = false;
-      }
-      else {
-        continue;
-      }
-
-      /* Output anything between 2 print statement. */
-      output << input.substr(last_pos, cursor - last_pos);
-
-      /* Extract string. */
-      int64_t str_start = input.find('(', cursor) + 1;
-      int64_t semicolon = find_token(input, ';', str_start + 1);
-      CHECK(semicolon, input, cursor, "Malformed print(). Missing `;` .");
-      int64_t str_end = rfind_token(input, ')', semicolon);
-      if (str_end < str_start) {
-        CHECK(-1, input, cursor, "Malformed print(). Missing closing `)` .");
-      }
-
-      std::stringstream sub_output;
-      StringRef input_args = input.substr(str_start, str_end - str_start);
-
-      auto print_string = [&](std::string str) -> int {
-        size_t len_before_pad = str.length();
-        /* Pad string to uint size. */
-        while (str.length() % 4 != 0) {
-          str += " ";
-        }
-        /* Keep everything in one line to not mess with the shader logs. */
-        sub_output << "/* " << str << "*/";
-        sub_output << "drw_print_string_start(" << len_before_pad << ");";
-        for (size_t i = 0; i < len_before_pad; i += 4) {
-          uint8_t chars[4] = {*(reinterpret_cast<const uint8_t *>(str.c_str()) + i + 0),
-                              *(reinterpret_cast<const uint8_t *>(str.c_str()) + i + 1),
-                              *(reinterpret_cast<const uint8_t *>(str.c_str()) + i + 2),
-                              *(reinterpret_cast<const uint8_t *>(str.c_str()) + i + 3)};
-          if (i + 4 > len_before_pad) {
-            chars[len_before_pad - i] = '\0';
-          }
-          char uint_hex[12];
-          SNPRINTF(uint_hex, "0x%.2X%.2X%.2X%.2Xu", chars[3], chars[2], chars[1], chars[0]);
-          sub_output << "drw_print_char4(" << StringRefNull(uint_hex) << ");";
-        }
-        return 0;
-      };
-
-      std::string func_args = input_args;
-      /* Workaround to support function call inside prints. We replace commas by a non control
-       * character `$` in order to use simpler regex later. */
-      bool string_scope = false;
-      int func_scope = 0;
-      for (char &c : func_args) {
-        if (c == '"') {
-          string_scope = !string_scope;
-        }
-        else if (!string_scope) {
-          if (c == '(') {
-            func_scope++;
-          }
-          else if (c == ')') {
-            func_scope--;
-          }
-          else if (c == ',' && func_scope != 0) {
-            c = '$';
-          }
-        }
-      }
-
-      const bool print_as_variable = (input_args[0] != '"') && find_token(input_args, ',') == -1;
-      if (print_as_variable) {
-        /* Variable or expression debugging. */
-        std::string arg = input_args;
-        /* Pad align most values. */
-        while (arg.length() % 4 != 0) {
-          arg += " ";
-        }
-        print_string(arg);
-        print_string("= ");
-        sub_output << "drw_print_value(" << input_args << ");";
-      }
-      else {
-        const std::regex arg_regex(
-            /* String args. */
-            "[\\s]*\"([^\r\n\t\f\v\"]*)\""
-            /* OR. */
-            "|"
-            /* value args. */
-            "([^,]+)");
-        std::smatch args_match;
-        std::string::const_iterator args_search_start(func_args.cbegin());
-        while (std::regex_search(args_search_start, func_args.cend(), args_match, arg_regex)) {
-          args_search_start = args_match.suffix().first;
-          std::string arg_string = args_match[1].str();
-          std::string arg_val = args_match[2].str();
-
-          if (arg_string.empty()) {
-            for (char &c : arg_val) {
-              if (c == '$') {
-                c = ',';
-              }
-            }
-            sub_output << "drw_print_value(" << arg_val << ");";
-          }
-          else {
-            print_string(arg_string);
-          }
-        }
-      }
-
-      if (do_endl) {
-        sub_output << "drw_print_newline();";
-      }
-
-      output << sub_output.str();
-
-      cursor = last_pos = str_end + 1;
-    }
-    /* If nothing has been changed, do not allocate processed_source. */
-    if (last_pos == 0) {
-      return;
-    }
-
-    if (filename != "common_debug_print_lib.glsl") {
-      builtins |= shader::BuiltinBits::USE_DEBUG_PRINT;
-    }
-
-    if (last_pos != 0) {
-      output << input.substr(last_pos);
-    }
-    processed_source = output.str();
-    source = processed_source.c_str();
-  }
-
 #undef find_keyword
 #undef rfind_keyword
 #undef find_token
@@ -913,9 +756,6 @@ struct GPUSource {
     }
     if ((builtins & BuiltinBits::USE_DEBUG_DRAW) == BuiltinBits::USE_DEBUG_DRAW) {
       dependencies.append_non_duplicates(dict.lookup("common_debug_draw_lib.glsl"));
-    }
-    if ((builtins & BuiltinBits::USE_DEBUG_PRINT) == BuiltinBits::USE_DEBUG_PRINT) {
-      dependencies.append_non_duplicates(dict.lookup("common_debug_print_lib.glsl"));
     }
 
     while (true) {
