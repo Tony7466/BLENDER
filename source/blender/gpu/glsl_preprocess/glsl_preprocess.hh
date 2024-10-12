@@ -12,6 +12,7 @@
 #include <regex>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace blender::gpu::shader {
@@ -33,6 +34,8 @@ class Preprocessor {
   };
   std::vector<SharedVar> shared_vars_;
 
+  std::unordered_set<std::string> static_strings_;
+
   std::stringstream output_;
 
  public:
@@ -45,13 +48,22 @@ class Preprocessor {
                       const ReportErrorF &report_error)
   {
     str = remove_comments(str, report_error);
-    threadgroup_variable_parsing(str);
-    matrix_constructor_linting(str, report_error);
-    array_constructor_linting(str, report_error);
-    str = preprocessor_directive_mutation(str);
+    threadgroup_variables_parsing(str);
+    if (do_include_mutation) {
+      str = preprocessor_directive_mutation(str);
+    }
+    if (do_string_mutation) {
+      static_strings_parsing(str);
+      str = static_strings_mutation(str);
+      str = printf_processing(str, report_error);
+    }
+    if (do_linting) {
+      matrix_constructor_linting(str, report_error);
+      array_constructor_linting(str, report_error);
+    }
     str = argument_decorator_macro_injection(str);
     str = array_constructor_macro_injection(str);
-    return str + suffix();
+    return str + static_strings_suffix() + threadgroup_variables_suffix();
   }
 
   /* Variant use for python shaders. */
@@ -113,17 +125,128 @@ class Preprocessor {
 
   std::string preprocessor_directive_mutation(const std::string &str)
   {
-    /* Example: `#include "deps.glsl"` > `//include "deps.glsl"` */
-    std::regex regex("#\\s*(include|pragma once)");
-    return std::regex_replace(str, regex, "//$1");
+    std::string out_str = str;
+    {
+      /* Example: `#include "deps.glsl"` > `//__gpu_include "deps.glsl"` */
+      std::regex regex("#\\s*(include|pragma once)");
+      out_str = std::regex_replace(out_str, regex, "//__gpu_$1");
+    }
+    {
+      /* Example: `__gpu_include "deps.glsl"` > `__gpu_include(deps.glsl)` */
+      std::regex regex("__gpu_include\\s+\"([\\w\\.]+)\"");
+      out_str = std::regex_replace(out_str, regex, "__gpu_include($1)");
+    }
+    return out_str;
   }
 
-  void threadgroup_variable_parsing(std::string str)
+  void threadgroup_variables_parsing(std::string str)
   {
     std::regex regex("shared\\s+(\\w+)\\s+(\\w+)([^;]*);");
     for (std::smatch match; std::regex_search(str, match, regex); str = match.suffix()) {
       shared_vars_.push_back({match[1].str(), match[2].str(), match[3].str()});
     }
+  }
+
+  template<typename ReportErrorF>
+  std::string printf_processing(const std::string &str, const ReportErrorF &report_error)
+  {
+    std::string out_str = str;
+    {
+      /* Example: `printf(2, b, f(c, d));` > `printf(2@ b@ f(c@ d))$` */
+      size_t start, end = 0;
+      while ((start = out_str.find("printf(", end)) != std::string::npos) {
+        end = out_str.find(';', start);
+        if (end == std::string::npos) {
+          break;
+        }
+        out_str[end] = '$';
+        int bracket_depth = 0;
+        int arg_len = 0;
+        for (size_t i = start; i < end; ++i) {
+          if (out_str[i] == '(') {
+            bracket_depth++;
+          }
+          else if (out_str[i] == ')') {
+            bracket_depth--;
+          }
+          else if (bracket_depth == 1 && out_str[i] == ',') {
+            out_str[i] = '@';
+            arg_len++;
+          }
+        }
+        if (arg_len > 99) {
+          report_error(str, std::smatch(), "Too many parameters in printf. Max is 99.");
+          break;
+        }
+        /* Encode number of arg in the `ntf` of `printf`. */
+        out_str[start + sizeof("printf") - 4] = '$';
+        out_str[start + sizeof("printf") - 3] = ((arg_len / 10) > 0) ? ('0' + arg_len / 10) : '$';
+        out_str[start + sizeof("printf") - 2] = '0' + arg_len % 10;
+      }
+      if (end == 0) {
+        /* No printf in source. */
+        return str;
+      }
+    }
+    /* Example: `pri$$1(2@ b)$` > `{int c_ = print_header(1, 2); c_ = print_data(c_, b); }` */
+    {
+      std::regex regex(R"(pri\$\$?(\d{1,2})\()");
+      out_str = std::regex_replace(out_str, regex, "{int c_ = print_header($1, ");
+    }
+    {
+      std::regex regex("\\@");
+      out_str = std::regex_replace(out_str, regex, "); c_ = print_data(c_,");
+    }
+    {
+      std::regex regex("\\$");
+      out_str = std::regex_replace(out_str, regex, "; }");
+    }
+    return out_str;
+  }
+
+  void static_strings_parsing(std::string str)
+  {
+    /* Matches any character inside a pair of unescaped quote. */
+    std::regex regex(R"("(?:[^"])*")");
+    for (std::smatch match; std::regex_search(str, match, regex); str = match.suffix()) {
+      static_strings_.insert(match[0].str());
+    }
+  }
+
+  uint string_hash(const std::string &str)
+  {
+    std::hash<std::string> string_hasher;
+    size_t hash_64 = string_hasher(str);
+    return uint((hash_64 >> 32) ^ hash_64);
+  }
+
+  std::string static_strings_mutation(std::string str)
+  {
+    /* Replaces all matches by the respective string hash. */
+    for (const std::string &str_var : static_strings_) {
+      std::regex escape_regex(R"([\\\.\^\$\+\(\)\[\]\{\}\|\?\*])");
+      std::string str_regex = std::regex_replace(str_var, escape_regex, "\\$&");
+
+      std::regex regex(str_regex);
+      str = std::regex_replace(str, regex, std::to_string(string_hash(str_var)) + 'u');
+    }
+    return str;
+  }
+
+  std::string static_strings_suffix()
+  {
+    if (static_strings_.empty()) {
+      return "";
+    }
+
+    std::stringstream suffix;
+    suffix << "\n";
+    for (const std::string &str_var : static_strings_) {
+      uint hash = string_hash(str_var);
+      suffix << "//__gpu_string(" << std::to_string(hash) << ")" << str_var << "\n";
+    }
+    suffix << "\n";
+    return suffix.str();
   }
 
   std::string argument_decorator_macro_injection(const std::string &str)
@@ -167,7 +290,7 @@ class Preprocessor {
     }
   }
 
-  std::string suffix()
+  std::string threadgroup_variables_suffix()
   {
     if (shared_vars_.empty()) {
       return "";
@@ -187,6 +310,7 @@ class Preprocessor {
      * Each part of the codegen is stored inside macros so that we don't have to do string
      * replacement at runtime.
      */
+    suffix << "\n";
     /* Arguments of the wrapper class constructor. */
     suffix << "#undef MSL_SHARED_VARS_ARGS\n";
     /* References assignment inside wrapper class constructor. */
@@ -251,6 +375,7 @@ class Preprocessor {
     suffix << "#define MSL_SHARED_VARS_ASSIGN " << assign.str() << "\n";
     suffix << "#define MSL_SHARED_VARS_DECLARE " << declare.str() << "\n";
     suffix << "#define MSL_SHARED_VARS_PASS (" << pass.str() << ")\n";
+    suffix << "\n";
 
     return suffix.str();
   }

@@ -14,6 +14,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <string>
 
 #include "BLI_ghash.h"
 #include "BLI_map.hh"
@@ -101,6 +102,9 @@ struct GPUSource {
     if (source.find("gl_WorkGroupSize", 0) != StringRef::not_found) {
       builtins |= shader::BuiltinBits::WORK_GROUP_SIZE;
     }
+    if (source.find("__gpu_string(", 0) != StringRef::not_found) {
+      string_parse(g_formats);
+    }
     /* TODO(fclem): We could do that at compile time. */
     /* Limit to shared header files to avoid the temptation to use C++ syntax in .glsl files. */
     if (filename.endswith(".h") || filename.endswith(".hh")) {
@@ -126,12 +130,9 @@ struct GPUSource {
       }
 #endif
 #if GPU_SHADER_PRINTF_ENABLE
-      if (source.find("printf") != StringRef::not_found) {
-        printf_preprocess(g_formats);
+      if (source.find("print_header(") != StringRef::not_found) {
         builtins |= shader::BuiltinBits::USE_PRINTF;
       }
-#else
-      (void)g_formats;
 #endif
       check_no_quotes();
     }
@@ -140,6 +141,75 @@ struct GPUSource {
       material_functions_parse(g_functions);
     }
   };
+
+  void string_parse(GPUPrintFormatMap *format_map)
+  {
+    /* TODO(fclem): Move this to gpu log. */
+    auto add_format = [&](uint32_t format_hash, std::string format) {
+      if (format_map->contains(format_hash)) {
+        if (format_map->lookup(format_hash).format_str != format) {
+          print_error(format, 0, "printf format hash collision.");
+        }
+        else {
+          /* The format map already have the same format. */
+        }
+      }
+      else {
+        shader::PrintfFormat fmt;
+        /* Save for hash collision comparison. */
+        fmt.format_str = format;
+
+        /* Escape characters replacement. Do the most common ones. */
+        format = std::regex_replace(format, std::regex(R"(\\n)"), "\n");
+        format = std::regex_replace(format, std::regex(R"(\\v)"), "\v");
+        format = std::regex_replace(format, std::regex(R"(\\t)"), "\t");
+        format = std::regex_replace(format, std::regex(R"(\\')"), "\'");
+        format = std::regex_replace(format, std::regex(R"(\\")"), "\"");
+        format = std::regex_replace(format, std::regex(R"(\\\\)"), "\\");
+
+        shader::PrintfFormat::Block::ArgumentType type =
+            shader::PrintfFormat::Block::ArgumentType::NONE;
+        int64_t start = 0, end = 0;
+        while ((end = format.find_first_of('%', start + 1)) != -1) {
+          /* Add the previous block without the newly found % character. */
+          fmt.format_blocks.append({type, format.substr(start, end - start)});
+          /* Format type of the next block. */
+          /* TODO(fclem): This doesn't support advance formats like `%3.2f`. */
+          switch (format[end + 1]) {
+            case 'x':
+            case 'u':
+              type = shader::PrintfFormat::Block::ArgumentType::UINT;
+              break;
+            case 'd':
+              type = shader::PrintfFormat::Block::ArgumentType::INT;
+              break;
+            case 'f':
+              type = shader::PrintfFormat::Block::ArgumentType::FLOAT;
+              break;
+            default:
+              BLI_assert_msg(0, "Printing format unsupported");
+              break;
+          }
+          /* Start of the next block. */
+          start = end;
+        }
+        fmt.format_blocks.append({type, format.substr(start, format.size() - start)});
+
+        format_map->add(format_hash, fmt);
+      }
+    };
+    std::string string(source);
+
+    std::regex regex(R"(__gpu_string\((\d+)\)([^\n]+))");
+    std::smatch match;
+    std::string::const_iterator string_search_start(string.cbegin());
+    while (std::regex_search(string_search_start, string.cend(), match, regex)) {
+      string_search_start = match.suffix().first;
+      std::string format = match[2].str();
+      std::string format_no_quotes = format.substr(1, format.size() - 2);
+      add_format(uint32_t(std::stol(match[1].str())), format_no_quotes);
+    }
+  }
 
   static bool is_in_comment(const StringRef &input, int64_t offset)
   {
@@ -821,191 +891,6 @@ struct GPUSource {
     source = processed_source.c_str();
   }
 
-  /**
-   * Preprocess printf statement for correct shader code generation.
-   * `printf(format, data1, data2)`
-   * gets replaced by
-   * `print_data(print_data(print_header(format_hash, 2), data1), data2)`.
-   */
-  void printf_preprocess(GPUPrintFormatMap *format_map)
-  {
-    const StringRefNull input = source;
-    std::stringstream output;
-    int64_t cursor = -1;
-    int64_t last_pos = 0;
-
-    while (true) {
-      cursor = find_keyword(input, "printf(", cursor + 1);
-      if (cursor == -1) {
-        break;
-      }
-
-      /* Output anything between 2 print statement. */
-      output << input.substr(last_pos, cursor - last_pos);
-
-      /* Extract string. */
-      int64_t str_start = input.find('(', cursor) + 1;
-      int64_t semicolon = find_token(input, ';', str_start + 1);
-      CHECK(semicolon, input, cursor, "Malformed printf(). Missing `;` .");
-      int64_t str_end = rfind_token(input, ')', semicolon);
-      if (str_end < str_start) {
-        CHECK(-1, input, cursor, "Malformed printf(). Missing closing `)` .");
-      }
-
-      StringRef input_args = input.substr(str_start, str_end - str_start);
-
-      std::string func_args = input_args;
-      /* Workaround to support function call inside prints. We replace commas by a non control
-       * character `$` in order to use simpler regex later.
-       * Modify `"func %d,\n", func(a, b)` into `"func %d,\n", func(a$ b)` */
-      bool string_scope = false;
-      int func_scope = 0;
-      for (char &c : func_args) {
-        if (c == '"') {
-          string_scope = !string_scope;
-        }
-        else if (!string_scope) {
-          if (c == '(') {
-            func_scope++;
-          }
-          else if (c == ')') {
-            func_scope--;
-          }
-          else if (c == ',' && func_scope != 0) {
-            c = '$';
-          }
-        }
-      }
-
-      std::string format;
-      Vector<std::string> arguments;
-      {
-        const std::regex arg_regex(
-            /* String args. */
-            "[\\s]*\"([^\r\n\t\f\v\"]*)\""
-            /* OR. */
-            "|"
-            /* value args. */
-            "([^,]+)");
-        std::smatch args_match;
-        std::string::const_iterator args_search_start(func_args.cbegin());
-        while (std::regex_search(args_search_start, func_args.cend(), args_match, arg_regex)) {
-          args_search_start = args_match.suffix().first;
-          std::string arg_string = args_match[1].str();
-          std::string arg_val = args_match[2].str();
-
-          if (!arg_string.empty()) {
-            if (!format.empty()) {
-              CHECK(-1, input, cursor, "Format string is not the only string arg.");
-            }
-            if (!arguments.is_empty()) {
-              CHECK(-1, input, cursor, "Format string is not first argument.");
-            }
-            format = arg_string;
-          }
-          else {
-            for (char &c : arg_val) {
-              /* Mutate back functions arguments.*/
-              if (c == '$') {
-                c = ',';
-              }
-            }
-            arguments.append(arg_val);
-          }
-        }
-      }
-
-      if (format.empty()) {
-        CHECK(-1, input, cursor, "No format string found.");
-        return;
-      }
-      int format_arg_count = std::count(format.begin(), format.end(), '%');
-      if (format_arg_count > arguments.size()) {
-        CHECK(-1, input, cursor, "printf call has not enough arguments.");
-        return;
-      }
-      if (format_arg_count < arguments.size()) {
-        CHECK(-1, input, cursor, "printf call has too many arguments.");
-        return;
-      }
-
-      uint64_t format_hash_64 = hash_string(format);
-      uint32_t format_hash = uint32_t((format_hash_64 >> 32) ^ format_hash_64);
-
-      if (format_map->contains(format_hash)) {
-        if (format_map->lookup(format_hash).format_str != format) {
-          CHECK(-1, input, cursor, "printf format hash collision.");
-        }
-        else {
-          /* The format map already have the same format. */
-        }
-      }
-      else {
-        shader::PrintfFormat fmt;
-        /* Save for hash collision comparison. */
-        fmt.format_str = format;
-
-        /* Escape characters replacement. Do the most common ones. */
-        format = std::regex_replace(format, std::regex(R"(\\n)"), "\n");
-        format = std::regex_replace(format, std::regex(R"(\\v)"), "\v");
-        format = std::regex_replace(format, std::regex(R"(\\t)"), "\t");
-        format = std::regex_replace(format, std::regex(R"(\\')"), "\'");
-        format = std::regex_replace(format, std::regex(R"(\\")"), "\"");
-        format = std::regex_replace(format, std::regex(R"(\\\\)"), "\\");
-
-        shader::PrintfFormat::Block::ArgumentType type =
-            shader::PrintfFormat::Block::ArgumentType::NONE;
-        int64_t start = 0, end = 0;
-        while ((end = format.find_first_of('%', start + 1)) != -1) {
-          /* Add the previous block without the newly found % character. */
-          fmt.format_blocks.append({type, format.substr(start, end - start)});
-          /* Format type of the next block. */
-          /* TODO(fclem): This doesn't support advance formats like `%3.2f`. */
-          switch (format[end + 1]) {
-            case 'x':
-            case 'u':
-              type = shader::PrintfFormat::Block::ArgumentType::UINT;
-              break;
-            case 'd':
-              type = shader::PrintfFormat::Block::ArgumentType::INT;
-              break;
-            case 'f':
-              type = shader::PrintfFormat::Block::ArgumentType::FLOAT;
-              break;
-            default:
-              BLI_assert_msg(0, "Printing format unsupported");
-              break;
-          }
-          /* Start of the next block. */
-          start = end;
-        }
-        fmt.format_blocks.append({type, format.substr(start, format.size() - start)});
-
-        format_map->add(format_hash, fmt);
-      }
-
-      std::string sub_output = "print_header(" + std::to_string(format_hash) + "u, " +
-                               std::to_string(format_arg_count) + "u)";
-      for (std::string &arg : arguments) {
-        sub_output = "print_data(" + sub_output + ", " + arg + ")";
-      }
-
-      output << sub_output << ";\n";
-
-      cursor = last_pos = str_end + 1;
-    }
-    /* If nothing has been changed, do not allocate processed_source. */
-    if (last_pos == 0) {
-      return;
-    }
-
-    if (last_pos != 0) {
-      output << input.substr(last_pos);
-    }
-    processed_source = output.str();
-    source = processed_source.c_str();
-  }
-
 #undef find_keyword
 #undef rfind_keyword
 #undef find_token
@@ -1038,12 +923,12 @@ struct GPUSource {
 
       {
         /* Include directive has been mangled on purpose. See `glsl_preprocess.hh`. */
-        pos = source.find("\n//include \"", pos + 1);
+        pos = source.find("__gpu_include", pos + 1);
         if (pos == -1) {
           return 0;
         }
-        int64_t start = source.find('"', pos) + 1;
-        int64_t end = source.find('"', start + 1);
+        int64_t start = source.find('(', pos) + 1;
+        int64_t end = source.find(')', start + 1);
         if (end == -1) {
           print_error(source, start, "Malformed include: Missing \" token");
           return 1;
