@@ -105,12 +105,7 @@ struct GPUSource {
     if (source.find("__gpu_string(", 0) != StringRef::not_found) {
       string_parse(g_formats);
     }
-    /* TODO(fclem): We could do that at compile time. */
-    /* Limit to shared header files to avoid the temptation to use C++ syntax in .glsl files. */
-    if (filename.endswith(".h") || filename.endswith(".hh")) {
-      small_types_check();
-    }
-    else {
+    if (!filename.endswith(".h") && !filename.endswith(".hh")) {
 #ifndef NDEBUG
       if ((source.find("drw_debug_") != StringRef::not_found) &&
           /* Avoid these two files where it makes no sense to add the dependency. */
@@ -266,45 +261,6 @@ struct GPUSource {
   if ((test_value) == -1) { \
     print_error(str, ofs, msg); \
     continue; \
-  }
-
-  /**
-   * Assert not small types are present inside shader shared files.
-   */
-  void small_types_check()
-  {
-#ifndef NDEBUG
-    auto check_type = [&](StringRefNull type_str) {
-      int64_t cursor = -1;
-      while (true) {
-        cursor = find_keyword(source, type_str, cursor + 1);
-        if (cursor == -1) {
-          break;
-        }
-        print_error(source, cursor, "small types are forbidden in shader interfaces");
-      }
-    };
-    check_type("char ");
-    check_type("char2 ");
-    check_type("char3 ");
-    check_type("char4 ");
-    check_type("uchar ");
-    check_type("uchar2 ");
-    check_type("uchar3 ");
-    check_type("uchar4 ");
-    check_type("short ");
-    check_type("short2 ");
-    check_type("short3 ");
-    check_type("short4 ");
-    check_type("ushort ");
-    check_type("ushort2 ");
-    check_type("ushort3 ");
-    check_type("ushort4 ");
-    check_type("half ");
-    check_type("half2 ");
-    check_type("half3 ");
-    check_type("half4 ");
-#endif
   }
 
   void material_functions_parse(GPUFunctionDictionnary *g_functions)

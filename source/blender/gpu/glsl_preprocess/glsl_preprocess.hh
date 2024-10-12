@@ -46,6 +46,7 @@ class Preprocessor {
                       bool do_linting,
                       bool do_string_mutation,
                       bool do_include_mutation,
+                      bool do_small_type_linting,
                       const ReportErrorF &report_error)
   {
     str = remove_comments(str, report_error);
@@ -63,6 +64,9 @@ class Preprocessor {
       matrix_constructor_linting(str, report_error);
       array_constructor_linting(str, report_error);
     }
+    if (do_small_type_linting) {
+      small_type_linting(str, report_error);
+    }
     str = enum_macro_injection(str);
     str = argument_decorator_macro_injection(str);
     str = array_constructor_macro_injection(str);
@@ -74,7 +78,7 @@ class Preprocessor {
   std::string process(const std::string &str)
   {
     auto no_err_report = [](std::string, std::smatch, const char *) {};
-    return process(str, "", false, false, false, no_err_report);
+    return process(str, "", false, false, false, false, no_err_report);
   }
 
  private:
@@ -347,6 +351,15 @@ class Preprocessor {
       const char *msg =
           "Array constructor is not cross API compatible. Use type_array instead of type[].";
       report_error(str, match, msg);
+    }
+  }
+
+  template<typename ReportErrorF>
+  void small_type_linting(std::string str, const ReportErrorF &report_error)
+  {
+    std::regex regex(R"(\su?(char|short|half)(2|3|4)?\s)");
+    for (std::smatch match; std::regex_search(str, match, regex); str = match.suffix()) {
+      report_error(str, match, "Small types are forbidden in shader interfaces.");
     }
   }
 
