@@ -42,6 +42,7 @@ class Preprocessor {
   /* Takes a whole source file and output processed source. */
   template<typename ReportErrorF>
   std::string process(std::string str,
+                      std::string filename,
                       bool do_linting,
                       bool do_string_mutation,
                       bool do_include_mutation,
@@ -65,14 +66,15 @@ class Preprocessor {
     str = enum_macro_injection(str);
     str = argument_decorator_macro_injection(str);
     str = array_constructor_macro_injection(str);
-    return str + static_strings_suffix() + threadgroup_variables_suffix();
+    return line_directive_prefix(filename) + str + static_strings_suffix() +
+           threadgroup_variables_suffix();
   }
 
   /* Variant use for python shaders. */
   std::string process(const std::string &str)
   {
     auto no_err_report = [](std::string, std::smatch, const char *) {};
-    return process(str, false, false, false, no_err_report);
+    return process(str, "", false, false, false, no_err_report);
   }
 
  private:
@@ -436,6 +438,25 @@ class Preprocessor {
     suffix << "\n";
 
     return suffix.str();
+  }
+
+  std::string line_directive_prefix(const std::string &filepath)
+  {
+#ifndef __APPLE__
+    /* For now, only Metal supports filname in line directive. */
+    /* TODO(fclem): Set file source-string-number to the filename hash. */
+    return std::string("");
+#else
+    std::string filename = std::regex_replace(filepath, std::regex(R"((?:.*)\/(.*))"), "$1");
+
+    std::stringstream suffix;
+    suffix << "#line 1 ";
+    if (!filename.empty()) {
+      suffix << "\"" << filename << "\"";
+    }
+    suffix << "\n";
+    return suffix.str();
+#endif
   }
 };
 
