@@ -36,7 +36,7 @@ class Preprocessor {
 
   std::unordered_set<std::string> static_strings_;
 
-  std::stringstream output_;
+  std::stringstream gpu_functions_;
 
  public:
   /* Takes a whole source file and output processed source. */
@@ -51,6 +51,9 @@ class Preprocessor {
   {
     str = remove_comments(str, report_error);
     threadgroup_variables_parsing(str);
+    if (true) {
+      parse_library_functions(str);
+    }
     if (do_include_mutation) {
       str = preprocessor_directive_mutation(str);
     }
@@ -71,7 +74,7 @@ class Preprocessor {
     str = argument_decorator_macro_injection(str);
     str = array_constructor_macro_injection(str);
     return line_directive_prefix(filename) + str + static_strings_suffix() +
-           threadgroup_variables_suffix();
+           threadgroup_variables_suffix() + gpu_functions_.str();
   }
 
   /* Variant use for python shaders. */
@@ -158,6 +161,29 @@ class Preprocessor {
     for (std::smatch match; std::regex_search(str, match, regex); str = match.suffix()) {
       shared_vars_.push_back({match[1].str(), match[2].str(), match[3].str()});
     }
+  }
+
+  void parse_library_functions(std::string str)
+  {
+    gpu_functions_ << "\n";
+    std::regex regex_func(R"(void\s+(\w+)\s*\(([^)]+\))\s*\{)");
+    for (std::smatch match; std::regex_search(str, match, regex_func); str = match.suffix()) {
+      std::string name = match[1].str();
+      std::string args = match[2].str();
+      gpu_functions_ << "//__gpu_function(" << name << ")";
+
+      std::regex regex_arg(R"((?:(const|in|out|inout)\s)?(\w+)\s([\w\[\]]+)(?:,|\)))");
+      for (std::smatch arg; std::regex_search(args, arg, regex_arg); args = arg.suffix()) {
+        std::string qualifier = arg[1].str();
+        std::string type = arg[2].str();
+        if (qualifier.empty()) {
+          qualifier = "in";
+        }
+      }
+
+      gpu_functions_ << "\n";
+    }
+    gpu_functions_ << "\n";
   }
 
   template<typename ReportErrorF>

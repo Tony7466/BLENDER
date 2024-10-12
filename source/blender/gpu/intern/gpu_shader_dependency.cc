@@ -256,100 +256,92 @@ struct GPUSource {
   {
     const StringRefNull input = source;
 
-    const char whitespace_chars[] = " \r\n\t";
-
     auto function_parse = [&](const StringRef input,
                               int64_t &cursor,
-                              StringRef &out_return_type,
-                              StringRef &out_name,
-                              StringRef &out_args) -> bool {
-      cursor = find_keyword(input, "void ", cursor + 1);
+                              std::string &out_return_type,
+                              std::string &out_name,
+                              std::string &out_args) -> bool {
+      cursor = input.find("__gpu_function", cursor + 1);
       if (cursor == -1) {
         return false;
       }
-      int64_t arg_start = find_token(input, '(', cursor);
-      if (arg_start == -1) {
-        return false;
-      }
-      int64_t arg_end = find_token(input, ')', arg_start);
-      if (arg_end == -1) {
-        return false;
-      }
-      int64_t body_start = find_token(input, '{', arg_end);
-      int64_t next_semicolon = find_token(input, ';', arg_end);
-      if (body_start != -1 && next_semicolon != -1 && body_start > next_semicolon) {
-        /* Assert no prototypes but could also just skip them. */
-        BLI_assert_msg(false, "No prototypes allowed in node GLSL libraries.");
-      }
-      int64_t name_start = input.find_first_not_of(whitespace_chars, input.find(' ', cursor));
-      if (name_start == -1) {
-        return false;
-      }
-      int64_t name_end = input.find_last_not_of(whitespace_chars, arg_start);
-      if (name_end == -1) {
-        return false;
-      }
-      /* Only support void type for now. */
-      out_return_type = "void";
-      out_name = input.substr(name_start, name_end - name_start);
-      out_args = input.substr(arg_start + 1, arg_end - (arg_start + 1));
+      std::string str(input.substr(cursor));
+
+      std::regex regex(R"(__gpu_function\((\w+)\)(.*)\n)");
+      std::smatch match;
+      std::regex_search(str, match, regex);
+      out_name = match[1].str();
+      out_args = match[2].str();
       return true;
     };
 
-    auto keyword_parse = [&](const StringRef str, int64_t &cursor) -> StringRef {
-      int64_t keyword_start = str.find_first_not_of(whitespace_chars, cursor);
-      if (keyword_start == -1) {
-        /* No keyword found. */
-        return str.substr(0, 0);
-      }
-      int64_t keyword_end = str.find_first_of(whitespace_chars, keyword_start);
-      if (keyword_end == -1) {
-        /* Last keyword. */
-        keyword_end = str.size();
-      }
-      cursor = keyword_end + 1;
-      return str.substr(keyword_start, keyword_end - keyword_start);
-    };
-
-    auto arg_parse = [&](const StringRef str,
+    auto arg_parse = [&](std::string &args,
                          int64_t &cursor,
-                         StringRef &out_qualifier,
-                         StringRef &out_type,
-                         StringRef &out_name) -> bool {
-      int64_t arg_start = cursor + 1;
-      if (arg_start >= str.size()) {
-        return false;
+                         std::string &out_qualifier,
+                         std::string &out_type,
+                         std::string &out_name) -> bool {
+      std::regex regex(R"((\w+),(\w+);)");
+      std::smatch match;
+      if (std::regex_search(args, match, regex)) {
+        out_qualifier = match[1].str();
+        out_type = match[2].str();
+        args = match.suffix();
+        return true;
       }
-      cursor = find_token(str, ',', arg_start);
-      if (cursor == -1) {
-        /* Last argument. */
-        cursor = str.size();
-      }
-      const StringRef arg = str.substr(arg_start, cursor - arg_start);
+      return false;
+    };
 
-      int64_t keyword_cursor = 0;
-      out_qualifier = keyword_parse(arg, keyword_cursor);
-      out_type = keyword_parse(arg, keyword_cursor);
-      /* Skip qualifier prefix macro expanded by GLSL preprocessing (e.g. _out_sta). */
-      StringRef qualifier_prefix = keyword_parse(arg, keyword_cursor);
-      out_name = keyword_parse(arg, keyword_cursor);
+    auto parse_qualifier = [](StringRef qualifier) -> GPUFunctionQual {
+      if (qualifier == "out") {
+        return FUNCTION_QUAL_OUT;
+      }
+      if (qualifier == "inout") {
+        return FUNCTION_QUAL_INOUT;
+      }
+      return FUNCTION_QUAL_IN;
+    };
 
-      if (out_qualifier == "const") {
-        out_name = qualifier_prefix;
+    auto parse_type = [](StringRef type) -> eGPUType {
+      if (type == "float") {
+        return GPU_FLOAT;
       }
-      if (out_name.is_empty()) {
-        /* No qualifier case. */
-        out_name = out_type;
-        out_type = out_qualifier;
-        out_qualifier = arg.substr(0, 0);
+      if (type == "vec2") {
+        return GPU_VEC2;
       }
-      return true;
+      if (type == "vec3") {
+        return GPU_VEC3;
+      }
+      if (type == "vec4") {
+        return GPU_VEC4;
+      }
+      if (type == "mat3") {
+        return GPU_MAT3;
+      }
+      if (type == "mat4") {
+        return GPU_MAT4;
+      }
+      if (type == "sampler1DArray") {
+        return GPU_TEX1D_ARRAY;
+      }
+      if (type == "sampler2DArray") {
+        return GPU_TEX2D_ARRAY;
+      }
+      if (type == "sampler2D") {
+        return GPU_TEX2D;
+      }
+      if (type == "sampler3D") {
+        return GPU_TEX3D;
+      }
+      if (type == "Closure") {
+        return GPU_CLOSURE;
+      }
+      return GPU_NONE;
     };
 
     int64_t cursor = -1;
-    StringRef func_return_type, func_name, func_args;
+    std::string func_return_type, func_name, func_args;
     while (function_parse(input, cursor, func_return_type, func_name, func_args)) {
-      /* Main functions needn't be handled because they are the entry point of the shader. */
+      /* Main functions should not be parsed because they are the entry point of the shader. */
       if (func_name == "main") {
         continue;
       }
@@ -379,76 +371,22 @@ struct GPUSource {
         continue;
       }
 
-      if (func_return_type != "void") {
-        continue;
-      }
-
       func->totparam = 0;
       int64_t args_cursor = -1;
-      StringRef arg_qualifier, arg_type, arg_name;
+      std::string arg_qualifier, arg_type, arg_name;
       while (arg_parse(func_args, args_cursor, arg_qualifier, arg_type, arg_name)) {
 
         if (func->totparam >= ARRAY_SIZE(func->paramtype)) {
-          print_error(input, source.find(func_name), "Too much parameter in function");
+          print_error(input, source.find(func_name), "Too many parameters in function");
           break;
         }
-
-        auto parse_qualifier = [](StringRef qualifier) -> GPUFunctionQual {
-          if (qualifier == "out") {
-            return FUNCTION_QUAL_OUT;
-          }
-          if (qualifier == "inout") {
-            return FUNCTION_QUAL_INOUT;
-          }
-          return FUNCTION_QUAL_IN;
-        };
-
-        auto parse_type = [](StringRef type) -> eGPUType {
-          if (type == "float") {
-            return GPU_FLOAT;
-          }
-          if (type == "vec2") {
-            return GPU_VEC2;
-          }
-          if (type == "vec3") {
-            return GPU_VEC3;
-          }
-          if (type == "vec4") {
-            return GPU_VEC4;
-          }
-          if (type == "mat3") {
-            return GPU_MAT3;
-          }
-          if (type == "mat4") {
-            return GPU_MAT4;
-          }
-          if (type == "sampler1DArray") {
-            return GPU_TEX1D_ARRAY;
-          }
-          if (type == "sampler2DArray") {
-            return GPU_TEX2D_ARRAY;
-          }
-          if (type == "sampler2D") {
-            return GPU_TEX2D;
-          }
-          if (type == "sampler3D") {
-            return GPU_TEX3D;
-          }
-          if (type == "Closure") {
-            return GPU_CLOSURE;
-          }
-          return GPU_NONE;
-        };
 
         func->paramqual[func->totparam] = parse_qualifier(arg_qualifier);
         func->paramtype[func->totparam] = parse_type(arg_type);
 
         if (func->paramtype[func->totparam] == GPU_NONE) {
-          std::string err = "Unknown parameter type \"" + arg_type + "\"";
-          int64_t err_ofs = source.find(func_name);
-          err_ofs = find_keyword(source, arg_name, err_ofs);
-          err_ofs = rfind_keyword(source, arg_type, err_ofs);
-          print_error(input, err_ofs, err);
+          std::cerr << "Unknown parameter type \"" << arg_type << "\"";
+          BLI_assert_unreachable();
         }
 
         func->totparam++;
