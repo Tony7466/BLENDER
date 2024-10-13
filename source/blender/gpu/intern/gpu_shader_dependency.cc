@@ -25,6 +25,8 @@
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_dependency_private.hh"
 
+#include "../glsl_preprocess/glsl_preprocess.hh"
+
 #include "GPU_context.hh"
 
 extern "C" {
@@ -195,35 +197,6 @@ struct GPUSource {
     }
   }
 
-  template<bool check_whole_word = true, bool reversed = false, typename T>
-  static int64_t find_str(const StringRef &input, const T keyword, int64_t offset = 0)
-  {
-    while (true) {
-      if constexpr (reversed) {
-        offset = input.rfind(keyword, offset);
-      }
-      else {
-        offset = input.find(keyword, offset);
-      }
-      if (offset > 0) {
-        if constexpr (check_whole_word) {
-          /* Fix false positive if something has "enum" as suffix. */
-          char previous_char = input[offset - 1];
-          if (!ELEM(previous_char, '\n', '\t', ' ', ':', '(', ',')) {
-            offset += (reversed) ? -1 : 1;
-            continue;
-          }
-        }
-      }
-      return offset;
-    }
-  }
-
-#define find_keyword find_str<true, false>
-#define rfind_keyword find_str<true, true>
-#define find_token find_str<false, false>
-#define rfind_token find_str<false, true>
-
   void print_error(const StringRef &input, int64_t offset, const StringRef message)
   {
     StringRef sub = input.substr(0, offset);
@@ -246,123 +219,80 @@ struct GPUSource {
     std::cerr << "^\n";
   }
 
-#define CHECK(test_value, str, ofs, msg) \
-  if ((test_value) == -1) { \
-    print_error(str, ofs, msg); \
-    continue; \
-  }
-
   void material_functions_parse(GPUFunctionDictionnary *g_functions)
   {
-    const StringRefNull input = source;
-
-    auto function_parse = [&](const StringRef input,
-                              int64_t &cursor,
-                              std::string &out_return_type,
-                              std::string &out_name,
-                              std::string &out_args) -> bool {
-      cursor = input.find("__gpu_function", cursor + 1);
-      if (cursor == -1) {
-        return false;
-      }
-      std::string str(input.substr(cursor));
-
-      std::regex regex(R"(__gpu_function\((\w+)\)(.*)\n)");
-      std::smatch match;
-      std::regex_search(str, match, regex);
-      out_name = match[1].str();
-      out_args = match[2].str();
-      return true;
-    };
-
-    auto arg_parse = [&](std::string &args,
-                         int64_t &cursor,
-                         std::string &out_qualifier,
-                         std::string &out_type,
-                         std::string &out_name) -> bool {
-      std::regex regex(R"((\w+),(\w+);)");
-      std::smatch match;
-      if (std::regex_search(args, match, regex)) {
-        out_qualifier = match[1].str();
-        out_type = match[2].str();
-        args = match.suffix();
-        return true;
-      }
-      return false;
-    };
-
     auto parse_qualifier = [](StringRef qualifier) -> GPUFunctionQual {
-      if (qualifier == "out") {
-        return FUNCTION_QUAL_OUT;
+      using namespace blender::gpu::shader;
+      switch (std::stoll(qualifier)) {
+        case "out"_hash:
+          return FUNCTION_QUAL_OUT;
+        case "inout"_hash:
+          return FUNCTION_QUAL_INOUT;
+        default:
+          return FUNCTION_QUAL_IN;
       }
-      if (qualifier == "inout") {
-        return FUNCTION_QUAL_INOUT;
-      }
-      return FUNCTION_QUAL_IN;
     };
 
     auto parse_type = [](StringRef type) -> eGPUType {
-      if (type == "float") {
-        return GPU_FLOAT;
+      using namespace blender::gpu::shader;
+      switch (std::stoll(type)) {
+        case "float"_hash:
+          return GPU_FLOAT;
+        case "vec2"_hash:
+          return GPU_VEC2;
+        case "vec3"_hash:
+          return GPU_VEC3;
+        case "vec4"_hash:
+          return GPU_VEC4;
+        case "mat3"_hash:
+          return GPU_MAT3;
+        case "mat4"_hash:
+          return GPU_MAT4;
+        case "sampler1DArray"_hash:
+          return GPU_TEX1D_ARRAY;
+        case "sampler2DArray"_hash:
+          return GPU_TEX2D_ARRAY;
+        case "sampler2D"_hash:
+          return GPU_TEX2D;
+        case "sampler3D"_hash:
+          return GPU_TEX3D;
+        case "Closure"_hash:
+          return GPU_CLOSURE;
+        default:
+          BLI_assert_unreachable();
+          return GPU_NONE;
       }
-      if (type == "vec2") {
-        return GPU_VEC2;
-      }
-      if (type == "vec3") {
-        return GPU_VEC3;
-      }
-      if (type == "vec4") {
-        return GPU_VEC4;
-      }
-      if (type == "mat3") {
-        return GPU_MAT3;
-      }
-      if (type == "mat4") {
-        return GPU_MAT4;
-      }
-      if (type == "sampler1DArray") {
-        return GPU_TEX1D_ARRAY;
-      }
-      if (type == "sampler2DArray") {
-        return GPU_TEX2D_ARRAY;
-      }
-      if (type == "sampler2D") {
-        return GPU_TEX2D;
-      }
-      if (type == "sampler3D") {
-        return GPU_TEX3D;
-      }
-      if (type == "Closure") {
-        return GPU_CLOSURE;
-      }
-      return GPU_NONE;
     };
 
-    int64_t cursor = -1;
-    std::string func_return_type, func_name, func_args;
-    while (function_parse(input, cursor, func_return_type, func_name, func_args)) {
+    const StringRefNull input = source;
+    int64_t cursor = input.find("__gpu_function");
+    if (cursor == -1) {
+      return;
+    }
+    std::string str = input.substr(cursor);
+
+    static std::regex regex_func(R"(__gpu_function\((\w+)\)(.*)\n)");
+    for (std::smatch match; std::regex_search(str, match, regex_func); str = match.suffix()) {
       /* Main functions should not be parsed because they are the entry point of the shader. */
-      if (func_name == "main") {
+      if (match[1].str() == "main") {
         continue;
       }
+      std::string name = match[1].str();
+      std::string args = match[2].str();
 
       GPUFunction *func = MEM_new<GPUFunction>(__func__);
-      func_name.copy(func->name, sizeof(func->name));
+      name.copy(func->name, sizeof(func->name));
       func->source = reinterpret_cast<void *>(this);
 
       bool insert = g_functions->add(func->name, func);
-
       /* NOTE: We allow overloading non void function, but only if the function comes from the
        * same file. Otherwise the dependency system breaks. */
       if (!insert) {
-        GPUSource *other_source = reinterpret_cast<GPUSource *>(
-            g_functions->lookup(func_name)->source);
+        GPUSource *other_source = reinterpret_cast<GPUSource *>(g_functions->lookup(name)->source);
         if (other_source != this) {
-          print_error(input,
-                      source.find(func_name),
-                      "Function redefinition or overload in two different files ...");
-          print_error(
-              input, other_source->source.find(func_name), "... previous definition was here");
+          const char *msg = "Function redefinition or overload in two different files ...";
+          print_error(input, source.find(name), msg);
+          print_error(input, other_source->source.find(name), "... previous definition was here");
         }
         else {
           /* Non-void function overload. */
@@ -372,32 +302,18 @@ struct GPUSource {
       }
 
       func->totparam = 0;
-      int64_t args_cursor = -1;
-      std::string arg_qualifier, arg_type, arg_name;
-      while (arg_parse(func_args, args_cursor, arg_qualifier, arg_type, arg_name)) {
-
+      static std::regex regex_arg(R"((\w+),(\w+);)");
+      for (std::smatch arg; std::regex_search(args, arg, regex_arg); args = arg.suffix()) {
         if (func->totparam >= ARRAY_SIZE(func->paramtype)) {
-          print_error(input, source.find(func_name), "Too many parameters in function");
+          print_error(input, source.find(name), "Too many parameters in function");
           break;
         }
-
-        func->paramqual[func->totparam] = parse_qualifier(arg_qualifier);
-        func->paramtype[func->totparam] = parse_type(arg_type);
-
-        if (func->paramtype[func->totparam] == GPU_NONE) {
-          std::cerr << "Unknown parameter type \"" << arg_type << "\"";
-          BLI_assert_unreachable();
-        }
-
+        func->paramqual[func->totparam] = parse_qualifier(arg[1].str());
+        func->paramtype[func->totparam] = parse_type(arg[2].str());
         func->totparam++;
       }
     }
   }
-
-#undef find_keyword
-#undef rfind_keyword
-#undef find_token
-#undef rfind_token
 
   /* Return 1 one error. */
   int init_dependencies(const GPUSourceDictionnary &dict,

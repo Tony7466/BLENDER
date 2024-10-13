@@ -17,6 +17,19 @@
 
 namespace blender::gpu::shader {
 
+namespace detail {
+// FNV-1a 32bit hashing algorithm.
+constexpr std::uint32_t fnv1a_32(char const *s, std::size_t count)
+{
+  return ((count ? fnv1a_32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
+}
+}  // namespace detail
+
+constexpr std::uint32_t operator"" _hash(char const *s, std::size_t count)
+{
+  return detail::fnv1a_32(s, count);
+}
+
 /**
  * Shader source preprocessor that allow to mutate GLSL into cross API source that can be
  * interpreted by the different GPU backends. Some syntax are mutated or reported as incompatible.
@@ -179,6 +192,8 @@ class Preprocessor {
         if (qualifier.empty()) {
           qualifier = "in";
         }
+        gpu_functions_ << detail::fnv1a_32(qualifier.c_str(), qualifier.size()) << ','
+                       << detail::fnv1a_32(type.c_str(), type.size()) << ";";
       }
 
       gpu_functions_ << "\n";
