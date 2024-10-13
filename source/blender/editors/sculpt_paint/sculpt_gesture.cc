@@ -181,9 +181,9 @@ std::unique_ptr<GestureData> init_from_box(bContext *C, wmOperator *op)
 static void line_plane_from_tri(float *r_plane,
                                 const GestureData &gesture_data,
                                 const bool flip,
-                                const float3& p1,
-                                const float3& p2,
-                                const float3& p3)
+                                const float3 &p1,
+                                const float3 &p2,
+                                const float3 &p3)
 {
   float3 normal;
   normal_tri_v3(normal, p1, p2, p3);
