@@ -46,8 +46,10 @@ class Preprocessor {
     std::string array;
   };
   std::vector<SharedVar> shared_vars_;
-
   std::unordered_set<std::string> static_strings_;
+  std::unordered_set<std::string> gpu_builtins_;
+  /* Note: Could be a set, but for now the order matters. */
+  std::vector<std::string> dependencies_;
 
   std::stringstream gpu_functions_;
 
@@ -64,10 +66,12 @@ class Preprocessor {
   {
     str = remove_comments(str, report_error);
     threadgroup_variables_parsing(str);
+    parse_builtins(str);
     if (true) {
       parse_library_functions(str);
     }
     if (do_include_mutation) {
+      preprocessor_parse(str);
       str = preprocessor_directive_mutation(str);
     }
     if (do_string_mutation) {
@@ -86,8 +90,9 @@ class Preprocessor {
     str = enum_macro_injection(str);
     str = argument_decorator_macro_injection(str);
     str = array_constructor_macro_injection(str);
-    return line_directive_prefix(filename) + str + static_strings_suffix() +
-           threadgroup_variables_suffix() + gpu_functions_.str();
+    return line_directive_prefix(filename) + str + threadgroup_variables_suffix() +
+           "//__blender_metadata_sta\n" + gpu_functions_.str() + static_strings_suffix() +
+           gpu_builtins_suffix(filename) + dependency_suffix() + "//__blender_metadata_end\n";
   }
 
   /* Variant use for python shaders. */
@@ -152,20 +157,38 @@ class Preprocessor {
     return std::regex_replace(str, std::regex(R"(["'])"), " ");
   }
 
-  std::string preprocessor_directive_mutation(const std::string &str)
+  void preprocessor_parse(std::string str)
+  {
+    /* Parse include directive before removing them. */
+    std::regex regex(R"(#\s*include\s*\"(\w+\.\w+)\")");
+    for (std::smatch match; std::regex_search(str, match, regex); str = match.suffix()) {
+      std::string dependency_name = match[1].str();
+      if (dependency_name == "gpu_glsl_cpp_stubs.hh") {
+        /* Skip GLSL-C++ stubs. They are only for IDE linting. */
+        continue;
+      }
+      dependencies_.emplace_back(dependency_name);
+    }
+  }
+
+  std::string preprocessor_directive_mutation(std::string str)
   {
     std::string out_str = str;
-    {
-      /* Example: `#include "deps.glsl"` > `//__gpu_include "deps.glsl"` */
-      std::regex regex("#\\s*(include|pragma once)");
-      out_str = std::regex_replace(out_str, regex, "//__gpu_$1");
+    /* Remove unsupported directives.` */
+    std::regex regex(R"(#\s*(?:include|pragma once)[^\n]*)");
+    return std::regex_replace(str, regex, "");
+  }
+
+  std::string dependency_suffix()
+  {
+    if (dependencies_.empty()) {
+      return "";
     }
-    {
-      /* Example: `__gpu_include "deps.glsl"` > `__gpu_include(deps.glsl)` */
-      std::regex regex("__gpu_include\\s+\"([\\w\\.]+)\"");
-      out_str = std::regex_replace(out_str, regex, "__gpu_include($1)");
+    std::stringstream suffix;
+    for (const std::string &filename : dependencies_) {
+      suffix << "// " << std::to_string("dependency"_hash) << " " << filename << "\n";
     }
-    return out_str;
+    return suffix.str();
   }
 
   void threadgroup_variables_parsing(std::string str)
@@ -178,12 +201,11 @@ class Preprocessor {
 
   void parse_library_functions(std::string str)
   {
-    gpu_functions_ << "\n";
     std::regex regex_func(R"(void\s+(\w+)\s*\(([^)]+\))\s*\{)");
     for (std::smatch match; std::regex_search(str, match, regex_func); str = match.suffix()) {
       std::string name = match[1].str();
       std::string args = match[2].str();
-      gpu_functions_ << "//__gpu_function(" << name << ")";
+      gpu_functions_ << "// " << std::to_string("function"_hash) << " " << name;
 
       std::regex regex_arg(R"((?:(const|in|out|inout)\s)?(\w+)\s([\w\[\]]+)(?:,|\)))");
       for (std::smatch arg; std::regex_search(args, arg, regex_arg); args = arg.suffix()) {
@@ -192,13 +214,58 @@ class Preprocessor {
         if (qualifier.empty()) {
           qualifier = "in";
         }
-        gpu_functions_ << detail::fnv1a_32(qualifier.c_str(), qualifier.size()) << ','
-                       << detail::fnv1a_32(type.c_str(), type.size()) << ";";
+        gpu_functions_ << ' ' << detail::fnv1a_32(qualifier.c_str(), qualifier.size()) << ' '
+                       << detail::fnv1a_32(type.c_str(), type.size());
       }
-
       gpu_functions_ << "\n";
     }
-    gpu_functions_ << "\n";
+  }
+
+  void parse_builtins(std::string str)
+  {
+    /* FIXME: This can trigger false positive caused by disabled #if blocks. */
+    std::regex regex(
+        "("
+        "gl_FragCoord|"
+        "gl_FrontFacing|"
+        "gl_GlobalInvocationID|"
+        "gl_InstanceID|"
+        "gl_LocalInvocationID|"
+        "gl_LocalInvocationIndex|"
+        "gl_NumWorkGroup|"
+        "gl_PointCoord|"
+        "gl_PointSize|"
+        "gl_PrimitiveID|"
+        "gl_VertexID|"
+        "gl_WorkGroupID|"
+        "gl_WorkGroupSize|"
+        "drw_debug_|"
+        "printf"
+        ")");
+    for (std::smatch match; std::regex_search(str, match, regex); str = match.suffix()) {
+      gpu_builtins_.insert(match[0].str());
+    }
+  }
+
+  std::string gpu_builtins_suffix(std::string filename)
+  {
+    if (gpu_builtins_.empty()) {
+      return "";
+    }
+
+    const bool skip_drw_debug = filename.find("common_debug_draw_lib.glsl") != std::string::npos ||
+                                filename.find("draw_debug_draw_display_vert.glsl") !=
+                                    std::string::npos;
+
+    std::stringstream suffix;
+    for (const std::string &str_var : gpu_builtins_) {
+      if (str_var == "drw_debug_" && skip_drw_debug) {
+        continue;
+      }
+      uint hash = detail::fnv1a_32(str_var.c_str(), str_var.size());
+      suffix << "// " << std::to_string("builtin"_hash) << " " << std::to_string(hash) << "\n";
+    }
+    return suffix.str();
   }
 
   template<typename ReportErrorF>
@@ -292,14 +359,12 @@ class Preprocessor {
     if (static_strings_.empty()) {
       return "";
     }
-
     std::stringstream suffix;
-    suffix << "\n";
     for (const std::string &str_var : static_strings_) {
       uint hash = string_hash(str_var);
-      suffix << "//__gpu_string(" << std::to_string(hash) << ")" << str_var << "\n";
+      suffix << "// " << std::to_string("string"_hash) << " " << std::to_string(hash) << " "
+             << str_var << "\n";
     }
-    suffix << "\n";
     return suffix.str();
   }
 

@@ -50,10 +50,129 @@ struct GPUSource {
   StringRefNull fullpath;
   StringRefNull filename;
   StringRefNull source;
+  Vector<StringRef> dependencies_names;
   Vector<GPUSource *> dependencies;
   bool dependencies_init = false;
   shader::BuiltinBits builtins = shader::BuiltinBits::NONE;
-  std::string processed_source;
+
+  shader::BuiltinBits parse_builtin_bit(StringRef builtin)
+  {
+    using namespace blender::gpu::shader;
+    switch (std::stoll(builtin)) {
+      case "gl_FragCoord"_hash:
+        return BuiltinBits::FRAG_COORD;
+      case "gl_FrontFacing"_hash:
+        return BuiltinBits::FRONT_FACING;
+      case "gl_GlobalInvocationID"_hash:
+        return BuiltinBits::GLOBAL_INVOCATION_ID;
+      case "gl_InstanceID"_hash:
+        return BuiltinBits::INSTANCE_ID;
+      case "gl_LocalInvocationID"_hash:
+        return BuiltinBits::LOCAL_INVOCATION_ID;
+      case "gl_LocalInvocationIndex"_hash:
+        return BuiltinBits::LOCAL_INVOCATION_INDEX;
+      case "gl_NumWorkGroup"_hash:
+        return BuiltinBits::NUM_WORK_GROUP;
+      case "gl_PointCoord"_hash:
+        return BuiltinBits::POINT_COORD;
+      case "gl_PointSize"_hash:
+        return BuiltinBits::POINT_SIZE;
+      case "gl_PrimitiveID"_hash:
+        return BuiltinBits::PRIMITIVE_ID;
+      case "gl_VertexID"_hash:
+        return BuiltinBits::VERTEX_ID;
+      case "gl_WorkGroupID"_hash:
+        return BuiltinBits::WORK_GROUP_ID;
+      case "gl_WorkGroupSize"_hash:
+        return BuiltinBits::WORK_GROUP_SIZE;
+      case "drw_debug_"_hash:
+#ifndef NDEBUG
+        return BuiltinBits::USE_DEBUG_DRAW;
+#else
+        return BuiltinBits::NONE;
+#endif
+      case "printf"_hash:
+#if GPU_SHADER_PRINTF_ENABLE
+        return BuiltinBits::USE_PRINTF;
+#else
+        return BuiltinBits::NONE;
+#endif
+      default:
+        BLI_assert_unreachable();
+        return BuiltinBits::NONE;
+    }
+  }
+
+  GPUFunctionQual parse_qualifier(StringRef qualifier)
+  {
+    using namespace blender::gpu::shader;
+    switch (std::stoll(qualifier)) {
+      case "out"_hash:
+        return FUNCTION_QUAL_OUT;
+      case "inout"_hash:
+        return FUNCTION_QUAL_INOUT;
+      default:
+        return FUNCTION_QUAL_IN;
+    }
+  }
+
+  eGPUType parse_type(StringRef type)
+  {
+    using namespace blender::gpu::shader;
+    switch (std::stoll(type)) {
+      case "float"_hash:
+        return GPU_FLOAT;
+      case "vec2"_hash:
+        return GPU_VEC2;
+      case "vec3"_hash:
+        return GPU_VEC3;
+      case "vec4"_hash:
+        return GPU_VEC4;
+      case "mat3"_hash:
+        return GPU_MAT3;
+      case "mat4"_hash:
+        return GPU_MAT4;
+      case "sampler1DArray"_hash:
+        return GPU_TEX1D_ARRAY;
+      case "sampler2DArray"_hash:
+        return GPU_TEX2D_ARRAY;
+      case "sampler2D"_hash:
+        return GPU_TEX2D;
+      case "sampler3D"_hash:
+        return GPU_TEX3D;
+      case "Closure"_hash:
+        return GPU_CLOSURE;
+      default:
+        BLI_assert_unreachable();
+        return GPU_NONE;
+    }
+  }
+
+  StringRef split_on(StringRef &data, char token)
+  {
+    /* Assume lines are terminated by `\n`. */
+    int64_t pos = data.find(token);
+    if (pos == StringRef::not_found) {
+      StringRef line = data;
+      data = data.substr(0, 0);
+      return line;
+    }
+    StringRef line = data.substr(0, pos);
+    data = data.substr(pos + 1);
+    return line;
+  }
+
+  StringRef pop_line(StringRef &data)
+  {
+    /* Assume lines are terminated by `\n`. */
+    return split_on(data, '\n');
+  }
+
+  StringRef pop_token(StringRef &data)
+  {
+    /* Assumes tokens are split by spaces. */
+    return split_on(data, ' ');
+  }
 
   GPUSource(const char *path,
             const char *file,
@@ -62,73 +181,56 @@ struct GPUSource {
             GPUPrintFormatMap *g_formats)
       : fullpath(path), filename(file), source(datatoc)
   {
-    /* Scan for builtins. */
-    /* FIXME: This can trigger false positive caused by disabled #if blocks. */
-    /* TODO(fclem): Could be made faster by scanning once. */
-    if (source.find("gl_FragCoord", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::FRAG_COORD;
-    }
-    if (source.find("gl_FrontFacing", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::FRONT_FACING;
-    }
-    if (source.find("gl_GlobalInvocationID", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::GLOBAL_INVOCATION_ID;
-    }
-    if (source.find("gl_InstanceID", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::INSTANCE_ID;
-    }
-    if (source.find("gl_LocalInvocationID", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::LOCAL_INVOCATION_ID;
-    }
-    if (source.find("gl_LocalInvocationIndex", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::LOCAL_INVOCATION_INDEX;
-    }
-    if (source.find("gl_NumWorkGroup", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::NUM_WORK_GROUP;
-    }
-    if (source.find("gl_PointCoord", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::POINT_COORD;
-    }
-    if (source.find("gl_PointSize", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::POINT_SIZE;
-    }
-    if (source.find("gl_PrimitiveID", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::PRIMITIVE_ID;
-    }
-    if (source.find("gl_VertexID", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::VERTEX_ID;
-    }
-    if (source.find("gl_WorkGroupID", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::WORK_GROUP_ID;
-    }
-    if (source.find("gl_WorkGroupSize", 0) != StringRef::not_found) {
-      builtins |= shader::BuiltinBits::WORK_GROUP_SIZE;
-    }
-    if (source.find("__gpu_string(", 0) != StringRef::not_found) {
-      string_parse(g_formats);
-    }
-    if (!filename.endswith(".h") && !filename.endswith(".hh")) {
-#ifndef NDEBUG
-      if ((source.find("drw_debug_") != StringRef::not_found) &&
-          /* Avoid these two files where it makes no sense to add the dependency. */
-          !ELEM(filename, "common_debug_draw_lib.glsl", "draw_debug_draw_display_vert.glsl"))
-      {
-        builtins |= shader::BuiltinBits::USE_DEBUG_DRAW;
-      }
-#endif
-#if GPU_SHADER_PRINTF_ENABLE
-      if (source.find("print_header(") != StringRef::not_found) {
-        builtins |= shader::BuiltinBits::USE_PRINTF;
-      }
-#endif
-    }
+    /* Extract metadata string. */
+    int64_t sta = source.rfind("//__blender_metadata_sta");
+    int64_t end = source.rfind("//__blender_metadata_end");
+    StringRef metadata = source.substr(sta, end - sta);
+    pop_line(metadata);
 
-    if (is_from_material_library()) {
-      material_functions_parse(g_functions);
+    /* Non-library files contains functions with unsupported argument types.
+     * Also Non-library files are not supposed to be referenced for GPU node-tree. */
+    const bool do_parse_function = is_from_material_library();
+
+    StringRef line;
+    while ((line = pop_line(metadata)).is_empty() == false) {
+      using namespace blender::gpu::shader;
+      /* Skip comment start. */
+      pop_token(line);
+
+      StringRef identifier = pop_token(line);
+      switch (std::stoll(identifier)) {
+        case "function"_hash:
+          if (do_parse_function) {
+            parse_function(line, g_functions);
+          }
+          break;
+        case "string"_hash:
+          parse_string(line, g_formats);
+          break;
+        case "builtin"_hash:
+          parse_builtin(line);
+          break;
+        case "dependency"_hash:
+          parse_dependency(line);
+          break;
+        default:
+          BLI_assert_unreachable();
+          break;
+      }
     }
   };
 
-  void string_parse(GPUPrintFormatMap *format_map)
+  void parse_builtin(StringRef line)
+  {
+    builtins |= parse_builtin_bit(pop_token(line));
+  }
+
+  void parse_dependency(StringRef line)
+  {
+    dependencies_names.append(line);
+  }
+
+  void parse_string(StringRef line, GPUPrintFormatMap *format_map)
   {
     /* TODO(fclem): Move this to gpu log. */
     auto add_format = [&](uint32_t format_hash, std::string format) {
@@ -184,16 +286,51 @@ struct GPUSource {
         format_map->add(format_hash, fmt);
       }
     };
-    std::string string(source);
 
-    std::regex regex(R"(__gpu_string\((\d+)\)([^\n]+))");
-    std::smatch match;
-    std::string::const_iterator string_search_start(string.cbegin());
-    while (std::regex_search(string_search_start, string.cend(), match, regex)) {
-      string_search_start = match.suffix().first;
-      std::string format = match[2].str();
-      std::string format_no_quotes = format.substr(1, format.size() - 2);
-      add_format(uint32_t(std::stol(match[1].str())), format_no_quotes);
+    StringRef hash = pop_token(line);
+    StringRef string = line;
+    add_format(uint32_t(std::stol(hash)), string);
+  }
+
+  void parse_function(StringRef line, GPUFunctionDictionnary *g_functions)
+  {
+    StringRef name = pop_token(line);
+
+    GPUFunction *func = MEM_new<GPUFunction>(__func__);
+    name.copy(func->name, sizeof(func->name));
+    func->source = reinterpret_cast<void *>(this);
+    func->totparam = 0;
+    while (1) {
+      StringRef arg_qual = pop_token(line);
+      StringRef arg_type = pop_token(line);
+      if (arg_qual.is_empty()) {
+        break;
+      }
+      if (func->totparam >= ARRAY_SIZE(func->paramtype)) {
+        print_error(source, source.find(name), "Too many parameters in function");
+        break;
+      }
+      func->paramqual[func->totparam] = parse_qualifier(arg_qual);
+      func->paramtype[func->totparam] = parse_type(arg_type);
+      func->totparam++;
+    }
+
+    bool insert = g_functions->add(func->name, func);
+    /* NOTE: We allow overloading non void function, but only if the function comes from the
+     * same file. Otherwise the dependency system breaks. */
+    if (!insert) {
+      GPUSource *other_source = reinterpret_cast<GPUSource *>(g_functions->lookup(name)->source);
+      if (other_source != this) {
+        const char *msg = "Function redefinition or overload in two different files ...";
+        print_error(source, source.find(name), msg);
+        print_error(other_source->source,
+                    other_source->source.find(name),
+                    "... previous definition was here");
+      }
+      else {
+        /* Non-void function overload. */
+        MEM_delete(func);
+      }
     }
   }
 
@@ -219,102 +356,6 @@ struct GPUSource {
     std::cerr << "^\n";
   }
 
-  void material_functions_parse(GPUFunctionDictionnary *g_functions)
-  {
-    auto parse_qualifier = [](StringRef qualifier) -> GPUFunctionQual {
-      using namespace blender::gpu::shader;
-      switch (std::stoll(qualifier)) {
-        case "out"_hash:
-          return FUNCTION_QUAL_OUT;
-        case "inout"_hash:
-          return FUNCTION_QUAL_INOUT;
-        default:
-          return FUNCTION_QUAL_IN;
-      }
-    };
-
-    auto parse_type = [](StringRef type) -> eGPUType {
-      using namespace blender::gpu::shader;
-      switch (std::stoll(type)) {
-        case "float"_hash:
-          return GPU_FLOAT;
-        case "vec2"_hash:
-          return GPU_VEC2;
-        case "vec3"_hash:
-          return GPU_VEC3;
-        case "vec4"_hash:
-          return GPU_VEC4;
-        case "mat3"_hash:
-          return GPU_MAT3;
-        case "mat4"_hash:
-          return GPU_MAT4;
-        case "sampler1DArray"_hash:
-          return GPU_TEX1D_ARRAY;
-        case "sampler2DArray"_hash:
-          return GPU_TEX2D_ARRAY;
-        case "sampler2D"_hash:
-          return GPU_TEX2D;
-        case "sampler3D"_hash:
-          return GPU_TEX3D;
-        case "Closure"_hash:
-          return GPU_CLOSURE;
-        default:
-          BLI_assert_unreachable();
-          return GPU_NONE;
-      }
-    };
-
-    const StringRefNull input = source;
-    int64_t cursor = input.find("__gpu_function");
-    if (cursor == -1) {
-      return;
-    }
-    std::string str = input.substr(cursor);
-
-    static std::regex regex_func(R"(__gpu_function\((\w+)\)(.*)\n)");
-    for (std::smatch match; std::regex_search(str, match, regex_func); str = match.suffix()) {
-      /* Main functions should not be parsed because they are the entry point of the shader. */
-      if (match[1].str() == "main") {
-        continue;
-      }
-      std::string name = match[1].str();
-      std::string args = match[2].str();
-
-      GPUFunction *func = MEM_new<GPUFunction>(__func__);
-      name.copy(func->name, sizeof(func->name));
-      func->source = reinterpret_cast<void *>(this);
-
-      bool insert = g_functions->add(func->name, func);
-      /* NOTE: We allow overloading non void function, but only if the function comes from the
-       * same file. Otherwise the dependency system breaks. */
-      if (!insert) {
-        GPUSource *other_source = reinterpret_cast<GPUSource *>(g_functions->lookup(name)->source);
-        if (other_source != this) {
-          const char *msg = "Function redefinition or overload in two different files ...";
-          print_error(input, source.find(name), msg);
-          print_error(input, other_source->source.find(name), "... previous definition was here");
-        }
-        else {
-          /* Non-void function overload. */
-          MEM_delete(func);
-        }
-        continue;
-      }
-
-      func->totparam = 0;
-      static std::regex regex_arg(R"((\w+),(\w+);)");
-      for (std::smatch arg; std::regex_search(args, arg, regex_arg); args = arg.suffix()) {
-        if (func->totparam >= ARRAY_SIZE(func->paramtype)) {
-          print_error(input, source.find(name), "Too many parameters in function");
-          break;
-        }
-        func->paramqual[func->totparam] = parse_qualifier(arg[1].str());
-        func->paramtype[func->totparam] = parse_type(arg[2].str());
-        func->totparam++;
-      }
-    }
-  }
-
   /* Return 1 one error. */
   int init_dependencies(const GPUSourceDictionnary &dict,
                         const GPUFunctionDictionnary &g_functions)
@@ -323,7 +364,6 @@ struct GPUSource {
       return 0;
     }
     this->dependencies_init = true;
-    int64_t pos = -1;
 
     using namespace shader;
     /* Auto dependency injection for debug capabilities. */
@@ -334,32 +374,11 @@ struct GPUSource {
       dependencies.append_non_duplicates(dict.lookup("common_debug_draw_lib.glsl"));
     }
 
-    while (true) {
-      GPUSource *dependency_source = nullptr;
-
-      {
-        /* Include directive has been mangled on purpose. See `glsl_preprocess.hh`. */
-        pos = source.find("__gpu_include", pos + 1);
-        if (pos == -1) {
-          return 0;
-        }
-        int64_t start = source.find('(', pos) + 1;
-        int64_t end = source.find(')', start + 1);
-        if (end == -1) {
-          print_error(source, start, "Malformed include: Missing \" token");
-          return 1;
-        }
-        StringRef dependency_name = source.substr(start, end - start);
-        if (dependency_name == "gpu_glsl_cpp_stubs.hh") {
-          /* Skip GLSL-C++ stubs. They are only for IDE linting. */
-          continue;
-        }
-
-        dependency_source = dict.lookup_default(dependency_name, nullptr);
-        if (dependency_source == nullptr) {
-          print_error(source, start, "Dependency not found");
-          return 1;
-        }
+    for (auto dependency_name : dependencies_names) {
+      GPUSource *dependency_source = dict.lookup_default(dependency_name, nullptr);
+      if (dependency_source == nullptr) {
+        print_error(source, 0, "Dependency not found");
+        return 1;
       }
 
       /* Recursive. */
@@ -373,8 +392,7 @@ struct GPUSource {
       }
       dependencies.append_non_duplicates(dependency_source);
     }
-    /* Precedes an eternal loop (quiet CLANG's `unreachable-code` warning). */
-    BLI_assert_unreachable();
+    dependencies_names.clear();
     return 0;
   }
 
