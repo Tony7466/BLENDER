@@ -50,12 +50,15 @@
  */
 
 #include <climits>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_index_range.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
+#include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_bvhutils.hh"
@@ -323,6 +326,7 @@ static bool cast_ray_highpoly(BVHTreeFromMesh *treeData,
                               BakePixel *pixel_array,
                               const float mat_low[4][4],
                               BakeHighPolyData *highpoly,
+                              BVHTreeRayHit *hits,
                               const float co[3],
                               const float dir[3],
                               const int pixel_id,
@@ -337,9 +341,7 @@ static bool cast_ray_highpoly(BVHTreeFromMesh *treeData,
     hit_distance_squared = FLT_MAX;
   }
 
-  BVHTreeRayHit *hits;
-  hits = static_cast<BVHTreeRayHit *>(
-      MEM_mallocN(sizeof(BVHTreeRayHit) * tot_highpoly, "Bake Highpoly to Lowpoly: BVH Rays"));
+  memset(hits, 0, sizeof(sizeof(BVHTreeRayHit) * tot_highpoly));
 
   for (i = 0; i < tot_highpoly; i++) {
     float co_high[3], dir_high[3];
@@ -442,7 +444,6 @@ static bool cast_ray_highpoly(BVHTreeFromMesh *treeData,
     pixel_array[pixel_id].seed = 0;
   }
 
-  MEM_freeN(hits);
   return hit_mesh != -1;
 }
 
@@ -555,9 +556,6 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
                                           const float mat_cage[4][4],
                                           Mesh *me_cage)
 {
-  size_t i;
-  int primitive_id;
-  float u, v;
   float imat_low[4][4];
   bool is_cage = me_cage != nullptr;
   bool result = true;
@@ -592,7 +590,7 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
 
   invert_m4_m4(imat_low, mat_low);
 
-  for (i = 0; i < tot_highpoly; i++) {
+  for (int i = 0; i < tot_highpoly; i++) {
     tris_high[i] = mesh_calc_tri_tessface(highpoly[i].mesh, false, nullptr);
 
     me_highpoly[i] = highpoly[i].mesh;
@@ -610,60 +608,68 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
     }
   }
 
-  for (i = 0; i < pixels_num; i++) {
-    float co[3];
-    float dir[3];
-    TriTessFace *tri_low;
+  blender::threading::parallel_for(
+      blender::IndexRange(pixels_num), 1024 * 128, [&](const blender::IndexRange range) {
+        BVHTreeRayHit *hits = static_cast<BVHTreeRayHit *>(MEM_mallocN(
+            sizeof(BVHTreeRayHit) * tot_highpoly, "Bake Highpoly to Lowpoly: BVH Rays"));
+        for (const auto i : range) {
+          float co[3];
+          float dir[3];
+          float u, v;
+          TriTessFace *tri_low;
 
-    primitive_id = pixel_array_from[i].primitive_id;
+          int primitive_id = pixel_array_from[i].primitive_id;
 
-    if (primitive_id == -1) {
-      pixel_array_to[i].primitive_id = -1;
-      continue;
-    }
+          if (primitive_id == -1) {
+            pixel_array_to[i].primitive_id = -1;
+            continue;
+          }
+          u = pixel_array_from[i].uv[0];
+          v = pixel_array_from[i].uv[1];
 
-    u = pixel_array_from[i].uv[0];
-    v = pixel_array_from[i].uv[1];
+          /* calculate from low poly mesh cage */
+          if (is_custom_cage) {
+            calc_point_from_barycentric_cage(
+                tris_low, tris_cage, mat_low, mat_cage, primitive_id, u, v, co, dir);
+            tri_low = &tris_cage[primitive_id];
+          }
+          else if (is_cage) {
+            calc_point_from_barycentric_extrusion(
+                tris_cage, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, true);
+            tri_low = &tris_cage[primitive_id];
+          }
+          else {
+            calc_point_from_barycentric_extrusion(
+                tris_low, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, false);
+            tri_low = &tris_low[primitive_id];
+          }
 
-    /* calculate from low poly mesh cage */
-    if (is_custom_cage) {
-      calc_point_from_barycentric_cage(
-          tris_low, tris_cage, mat_low, mat_cage, primitive_id, u, v, co, dir);
-      tri_low = &tris_cage[primitive_id];
-    }
-    else if (is_cage) {
-      calc_point_from_barycentric_extrusion(
-          tris_cage, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, true);
-      tri_low = &tris_cage[primitive_id];
-    }
-    else {
-      calc_point_from_barycentric_extrusion(
-          tris_low, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, false);
-      tri_low = &tris_low[primitive_id];
-    }
+          /* cast ray */
+          if (!cast_ray_highpoly(treeData.data(),
+                                 tri_low,
+                                 tris_high,
+                                 pixel_array_from,
+                                 pixel_array_to,
+                                 mat_low,
+                                 highpoly,
+                                 hits,
+                                 co,
+                                 dir,
+                                 i,
+                                 tot_highpoly,
+                                 max_ray_distance))
+          {
+            /* if it fails mask out the original pixel array */
+            pixel_array_from[i].primitive_id = -1;
+          }
+        }
 
-    /* cast ray */
-    if (!cast_ray_highpoly(treeData.data(),
-                           tri_low,
-                           tris_high,
-                           pixel_array_from,
-                           pixel_array_to,
-                           mat_low,
-                           highpoly,
-                           co,
-                           dir,
-                           i,
-                           tot_highpoly,
-                           max_ray_distance))
-    {
-      /* if it fails mask out the original pixel array */
-      pixel_array_from[i].primitive_id = -1;
-    }
-  }
+        MEM_freeN(hits);
+      });
 
   /* garbage collection */
 cleanup:
-  for (i = 0; i < tot_highpoly; i++) {
+  for (int i = 0; i < tot_highpoly; i++) {
     free_bvhtree_from_mesh(&treeData[i]);
 
     if (tris_high[i]) {
