@@ -840,7 +840,8 @@ static void init_internal_icons()
     def_internal_icon(nullptr, x, 0, 0, 0, icontype.type, icontype.theme_color);
   }
 
-  def_internal_cursor(ICON_CURSOR_SAMPLE, 0.0f, 1.0f, 1.0f);
+  def_internal_cursor(ICON_CURSOR_POINTER, 0.0f, 1.0f, 1.0f);
+  def_internal_cursor(ICON_CURSOR_TEXT_EDIT, 0.5f, 0.5f, 0.6f);
 
   def_internal_vicon(ICON_KEYTYPE_KEYFRAME_VEC, vicon_keytype_keyframe_draw);
   def_internal_vicon(ICON_KEYTYPE_BREAKDOWN_VEC, vicon_keytype_breakdown_draw);
@@ -1564,7 +1565,7 @@ static void icon_draw_size(float x,
     BLF_draw_svg_icon(uint(icon_id),
                       x,
                       y,
-                      float(draw_size) / aspect / di->data.cursor.scale,
+                      float(draw_size) / aspect * di->data.cursor.scale,
                       nullptr,
                       0.0f,
                       true,
@@ -2050,6 +2051,16 @@ ImBuf *UI_svg_icon_bitmap(uint icon_id, float size, bool multicolor)
   int width;
   int height;
   blender::Array<uchar> bitmap;
+
+  Icon *icon = BKE_icon_get(icon_id);
+  if (!icon) {
+    return nullptr;
+  }
+
+  DrawInfo *di = icon_ensure_drawinfo(icon);
+  if (di->type == ICON_TYPE_CURSOR) {
+    size *= di->data.cursor.scale;
+  }
 
   if (multicolor) {
     bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, true, icon_source_edit_cb);

@@ -146,7 +146,7 @@ static void window_set_custom_cursor_ex(wmWindow *win, BCursor *cursor)
 
 static bool icon_cursor(wmWindow *win, WMCursorType curs)
 {
-  ImBuf *imb = UI_svg_icon_bitmap(ICON_CURSOR_SAMPLE, 28.0f, true);
+  ImBuf *imb = UI_svg_icon_bitmap(ICON_CURSOR_TEXT_EDIT, 28.0f * UI_SCALE_FAC, true);
   if (!imb) {
     return false;
   }
