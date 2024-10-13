@@ -420,7 +420,8 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   SEQ_iterator_set_expand(scene, seqbase, strips, SEQ_query_strip_effect_chain);
 
   /* All connected strips (that are selected and at the cut frame) must also be duplicated. */
-  for (Sequence *strip : strips) {
+  blender::VectorSet<Sequence *> strips_old(strips);
+  for (Sequence *strip : strips_old) {
     blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(strip);
     connections.remove_if([&](Sequence *connection) {
       return !(connection->flag & SELECT) ||
