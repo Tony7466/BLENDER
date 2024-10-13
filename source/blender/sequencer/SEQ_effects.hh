@@ -117,7 +117,6 @@ struct TextVarsRuntime {
   int font_descender;
   int character_count;
   int font;
-
   /* Variables for UI. xxx comment */
   bool editing_is_active;
 };
