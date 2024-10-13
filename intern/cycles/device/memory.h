@@ -388,7 +388,7 @@ template<typename T> class device_vector : public device_memory {
   {
     size_t new_size = size(width, height, depth);
 
-    if (new_size != data_size) {
+    if ((new_size != data_size) || (!host_pointer)) {
       device_free();
       host_free();
       host_pointer = host_alloc(sizeof(T) * new_size);
