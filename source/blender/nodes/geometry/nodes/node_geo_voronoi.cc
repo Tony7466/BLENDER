@@ -97,12 +97,13 @@ static Mesh *compute_voronoi_bounds(GeometrySet& sites, AttributeOutputs& attrib
   if (sites.has_mesh()){
     const Mesh *site_mesh = sites.get_mesh();
     positions = site_mesh->vert_positions();
-    Span<int2> edges = site_mesh->edges();
-    for (auto edge: edges){
-      adjacency_list[edge[0]].push_back(edge[1]);
-      adjacency_list[edge[1]].push_back(edge[0]);
+    if (edge_group){
+      Span<int2> edges = site_mesh->edges();
+      for (auto edge: edges){
+        adjacency_list[edge[0]].push_back(edge[1]);
+        adjacency_list[edge[1]].push_back(edge[0]);
+      }
     }
-
     const bke::AttrDomain att_domain = bke::AttrDomain::Point;
     const int domain_size = site_mesh->attributes().domain_size(att_domain);
     bke::MeshFieldContext field_context{*site_mesh, att_domain};
@@ -262,10 +263,18 @@ static Mesh *compute_voronoi_bravais(GeometrySet& sites, AttributeOutputs& attri
   {
   Span<float3> positions;
   VArray<int> group_ids;
+  std::unordered_map<int, std::list<int>> adjacency_list;
 
   if (sites.has_mesh()){
     const Mesh *site_mesh = sites.get_mesh();
     positions = site_mesh->vert_positions();
+    if (edge_group){
+      Span<int2> edges = site_mesh->edges();
+      for (auto edge: edges){
+        adjacency_list[edge[0]].push_back(edge[1]);
+        adjacency_list[edge[1]].push_back(edge[0]);
+      }
+    }
 
     const bke::AttrDomain att_domain = bke::AttrDomain::Point;
     const int domain_size = site_mesh->attributes().domain_size(att_domain);
@@ -328,32 +337,59 @@ static Mesh *compute_voronoi_bravais(GeometrySet& sites, AttributeOutputs& attri
 
   int offset = 0;
 
-  if(vl.start()) do if(con.compute_cell(c,vl)){
-    vl.pos(x,y,z);
-    id=vl.pid();
-    
-    c.neighbors(neigh);
-    c.face_vertices(f_vert);
-    c.vertices(x,y,z,v);
+  if (!edge_group) {
+    if(vl.start()) do if(con.compute_cell(c,vl)){
+      vl.pos(x,y,z);
+      id=vl.pid();
+      
+      c.neighbors(neigh);
+      c.face_vertices(f_vert);
+      c.vertices(x,y,z,v);
 
-    for(i = 0, j=0; i < neigh.size(); i++){
-      if(neigh[i] != id && (boundary || neigh[i] > -1)){
-        l = f_vert[j];
-        n = f_vert[j];
-        face_sizes.append(n);
-        for(k=0; k < n; k++){
-          l=3*f_vert[j+k+1];
-          verts.append(float3(v[l],v[l+1],v[l+2]));
-          corner_verts.append(offset);
-          ids.append(id);
-          offset++;
-          centers.append(float3(x,y,z));
+      for(i = 0, j=0; i < neigh.size(); i++){
+        if(neigh[i] != id && (boundary || neigh[i] > -1)){
+          l = f_vert[j];
+          n = f_vert[j];
+          face_sizes.append(n);
+          for(k=0; k < n; k++){
+            l=3*f_vert[j+k+1];
+            verts.append(float3(v[l],v[l+1],v[l+2]));
+            corner_verts.append(offset);
+            ids.append(id);
+            offset++;
+            centers.append(float3(x,y,z));
+          }
         }
+        j += f_vert[j]+1;
       }
-      j += f_vert[j]+1;
-    }
-  } while(vl.inc());
- 
+    } while(vl.inc());
+  } else {
+    if(vl.start()) do if(con.compute_cell(c,vl)){
+      vl.pos(x,y,z);
+      id=vl.pid();
+      
+      c.neighbors(neigh);
+      c.face_vertices(f_vert);
+      c.vertices(x,y,z,v);
+
+      for(i = 0, j=0; i < neigh.size(); i++){
+        if(std::find(adjacency_list[id].begin(), adjacency_list[id].end(), neigh[i]) ==  adjacency_list[id].end() && (boundary || neigh[i] > -1)){
+          l = f_vert[j];
+          n = f_vert[j];
+          face_sizes.append(n);
+          for(k=0; k < n; k++){
+            l=3*f_vert[j+k+1];
+            verts.append(float3(v[l],v[l+1],v[l+2]));
+            corner_verts.append(offset);
+            ids.append(id);
+            offset++;
+            centers.append(float3(x,y,z));
+          }
+        }
+        j += f_vert[j]+1;
+      }
+    } while(vl.inc());
+  }
 
   Mesh *mesh = BKE_mesh_new_nomain(verts.size(), 0,face_sizes.size(), corner_verts.size());
   mesh->vert_positions_for_write().copy_from(verts);
