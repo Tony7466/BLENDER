@@ -82,8 +82,8 @@ static void init_common(bContext *C, const wmOperator *op, GestureData &gesture_
       math::transform_direction(object.world_to_object(), view_dir));
 
   /* View Origin. */
-  copy_v3_v3(gesture_data.world_space_view_origin, gesture_data.vc.rv3d->viewinv[3]);
-  copy_v3_v3(gesture_data.true_view_origin, gesture_data.vc.rv3d->viewinv[3]);
+  gesture_data.world_space_view_origin = gesture_data.vc.rv3d->viewinv[3];
+  gesture_data.true_view_origin = gesture_data.vc.rv3d->viewinv[3];
 }
 
 static void lasso_px_cb(const int x, const int x_end, const int y, void *user_data)
