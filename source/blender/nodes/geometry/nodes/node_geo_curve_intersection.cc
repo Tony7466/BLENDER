@@ -278,7 +278,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage,
 }
 
 /* isect_line_line_epsilon_v3 is too strict for checking parallel lines. This
- * version adds an epsilon to the parallel line check^. */
+ * version adds an epsilon 0.00000001f to the parallel line check^. */
 static int isect_line_line_v3_loose(const float v1[3],
                                     const float v2[3],
                                     const float v3[3],
@@ -298,7 +298,7 @@ static int isect_line_line_v3_loose(const float v1[3],
   div = dot_v3v3(ab, ab);
 
   /* ^Epsilon has been added here. */
-  if (UNLIKELY(fabsf(div) <= epsilon)) {
+  if (UNLIKELY(fabsf(div) <= 0.00000001f)) {
     return 0;
   }
   /* test if the two lines are coplanar */
@@ -848,7 +848,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         const float3 direction = params.extract_input<float3>("Direction");
         const float3 plane_center = params.extract_input<float3>("Center");
         set_curve_intersections_plane(
-            src_curves, plane_center, direction, attribute_outputs, r_data);
+            src_curves, plane_center, math::normalize(direction), attribute_outputs, r_data);
         break;
       }
       case GEO_NODE_CURVE_INTERSECT_SURFACE: {
