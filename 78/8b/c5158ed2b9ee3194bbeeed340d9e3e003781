@@ -1,1 +1,2 @@
 Referenced by pull request #114545, The SLIM UV unwrap algorithm implementation for Blender 4.x
+Referenced by commit 77b523d31795971848fb602579b02481a0bf3311, Fix #128920: Crash calculating geometry nodes that use UV unwrap
