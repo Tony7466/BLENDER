@@ -341,9 +341,11 @@ class Preprocessor {
     for (const std::string &str_var : static_strings_) {
       std::regex escape_regex(R"([\\\.\^\$\+\(\)\[\]\{\}\|\?\*])");
       std::string str_regex = std::regex_replace(str_var, escape_regex, "\\$&");
+      uint64_t hash_64 = hash(str_var);
+      uint32_t hash_32 = uint32_t(hash_64 ^ (hash_64 >> 32));
 
       std::regex regex(str_regex);
-      str = std::regex_replace(str, regex, std::to_string(hash(str_var)) + 'u');
+      str = std::regex_replace(str, regex, std::to_string(hash_32) + 'u');
     }
     return str;
   }
