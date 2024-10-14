@@ -470,6 +470,7 @@ static bool pass_left_to_right(const bNodeTree &tree,
         }
         break;
       }
+      /* TODO: References on border links may exist on data inputs of the closure. */
       case GEO_NODE_CLOSURE_OUTPUT: {
         const bNodeTreeZone *zone = get_zone_of_node_if_full(zones, *node);
         if (!zone) {
