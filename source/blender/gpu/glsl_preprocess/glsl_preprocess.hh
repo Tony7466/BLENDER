@@ -214,7 +214,7 @@ class Preprocessor {
       for (std::smatch arg; std::regex_search(args, arg, regex_arg); args = arg.suffix()) {
         std::string qualifier = arg[1].str();
         std::string type = arg[2].str();
-        if (qualifier.empty()) {
+        if (qualifier.empty() || qualifier == "const") {
           qualifier = "in";
         }
         gpu_functions_ << ' ' << hash(qualifier) << ' ' << hash(type);
@@ -574,7 +574,7 @@ class Preprocessor {
  * Eventually, remove the need for these and output the metadata inside header files. */
 namespace metadata {
 
-enum Builtin {
+enum Builtin : uint64_t {
   FragCoord = Preprocessor::hash("gl_FragCoord"),
   FrontFacing = Preprocessor::hash("gl_FrontFacing"),
   GlobalInvocationID = Preprocessor::hash("gl_GlobalInvocationID"),
@@ -592,13 +592,13 @@ enum Builtin {
   printf = Preprocessor::hash("printf"),
 };
 
-enum Qualifier {
+enum Qualifier : uint64_t {
   in = Preprocessor::hash("in"),
   out = Preprocessor::hash("out"),
   inout = Preprocessor::hash("inout"),
 };
 
-enum Type {
+enum Type : uint64_t {
   vec1 = Preprocessor::hash("float"),
   vec2 = Preprocessor::hash("vec2"),
   vec3 = Preprocessor::hash("vec3"),
