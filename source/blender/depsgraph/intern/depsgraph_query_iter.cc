@@ -239,9 +239,15 @@ bool deg_iterator_objects_step(DEGObjectIterData *data)
 
     Object *object = (Object *)id_node->id_cow;
 
-    DEGObjectIterSettings *settings = data->settings;
-    if (!settings->include_types.is_empty()) {
-      if (!settings->include_types.contains(object->type)) {
+    DEGObjectIterSettings *settings=data->settings;
+    if (settings->include_types) {
+      bool found = false;
+      for (int i = 0; i < settings->include_types_len; i++) {
+        if (object->type == settings->include_types[i]) {
+          found = true; break;
+        }
+      }
+      if (!found) {
         continue;
       }
     }

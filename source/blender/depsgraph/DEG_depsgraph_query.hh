@@ -202,8 +202,10 @@ struct DEGObjectIterSettings {
 
   /**
    * When set, only set types will be iterated upon.
+   * e.g. set `include_types` to { OB_MESH, OB_CURVES } and set `include_types_len` to 2.
    */
-  blender::Span<int> include_types;
+  uint32_t* include_types;
+  int include_types_len;
 };
 
 /**
