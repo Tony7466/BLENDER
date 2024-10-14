@@ -2615,16 +2615,6 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
   DEGObjectIterSettings deg_iter_settings = {nullptr};
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = flags;
-  uint32_t include_types_array[] = {OB_MESH,
-                                    OB_CURVES_LEGACY,
-                                    OB_SURF,
-                                    OB_FONT,
-                                    OB_MBALL,
-                                    OB_GPENCIL_LEGACY,
-                                    OB_CURVES,
-                                    OB_EMPTY};
-  deg_iter_settings.include_types = include_types_array;
-  deg_iter_settings.include_types_len = sizeof(include_types_array) / sizeof(uint32_t);
 
   /* XXX(@Yiming): Temporary solution, this iterator is technically unsafe to use *during*
    * depsgraph evaluation, see D14997 for detailed explanations. */
