@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <algorithm>
+#include <cstdint>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -16,19 +16,6 @@
 #include <vector>
 
 namespace blender::gpu::shader {
-
-namespace detail {
-// FNV-1a 32bit hashing algorithm.
-constexpr std::uint32_t fnv1a_32(char const *s, std::size_t count)
-{
-  return ((count ? fnv1a_32(s, count - 1) : 2166136261u) ^ s[count]) * 16777619u;
-}
-}  // namespace detail
-
-constexpr std::uint32_t operator"" _hash(char const *s, std::size_t count)
-{
-  return detail::fnv1a_32(s, count);
-}
 
 /**
  * Shader source preprocessor that allow to mutate GLSL into cross API source that can be
@@ -38,7 +25,7 @@ constexpr std::uint32_t operator"" _hash(char const *s, std::size_t count)
  * shaders source.
  */
 class Preprocessor {
-  using uint = unsigned int;
+  using uint64_t = std::uint64_t;
 
   struct SharedVar {
     std::string type;
@@ -54,6 +41,22 @@ class Preprocessor {
   std::stringstream gpu_functions_;
 
  public:
+  /* Compile-time hashing function which converts string to a 64bit hash. */
+  constexpr static uint64_t hash(const char *name)
+  {
+    uint64_t hash = 2166136261u;
+    while (*name) {
+      hash = hash * 16777619u;
+      hash = hash ^ *name;
+      ++name;
+    }
+    return hash;
+  }
+  static uint64_t hash(const std::string &name)
+  {
+    return hash(name.c_str());
+  }
+
   /* Takes a whole source file and output processed source. */
   template<typename ReportErrorF>
   std::string process(std::string str,
@@ -186,7 +189,7 @@ class Preprocessor {
     }
     std::stringstream suffix;
     for (const std::string &filename : dependencies_) {
-      suffix << "// " << std::to_string("dependency"_hash) << " " << filename << "\n";
+      suffix << "// " << std::to_string(hash("dependency")) << " " << filename << "\n";
     }
     return suffix.str();
   }
@@ -205,7 +208,7 @@ class Preprocessor {
     for (std::smatch match; std::regex_search(str, match, regex_func); str = match.suffix()) {
       std::string name = match[1].str();
       std::string args = match[2].str();
-      gpu_functions_ << "// " << std::to_string("function"_hash) << " " << name;
+      gpu_functions_ << "// " << hash("function") << " " << name;
 
       std::regex regex_arg(R"((?:(const|in|out|inout)\s)?(\w+)\s([\w\[\]]+)(?:,|\)))");
       for (std::smatch arg; std::regex_search(args, arg, regex_arg); args = arg.suffix()) {
@@ -214,8 +217,7 @@ class Preprocessor {
         if (qualifier.empty()) {
           qualifier = "in";
         }
-        gpu_functions_ << ' ' << detail::fnv1a_32(qualifier.c_str(), qualifier.size()) << ' '
-                       << detail::fnv1a_32(type.c_str(), type.size());
+        gpu_functions_ << ' ' << hash(qualifier) << ' ' << hash(type);
       }
       gpu_functions_ << "\n";
     }
@@ -262,8 +264,7 @@ class Preprocessor {
       if (str_var == "drw_debug_" && skip_drw_debug) {
         continue;
       }
-      uint hash = detail::fnv1a_32(str_var.c_str(), str_var.size());
-      suffix << "// " << std::to_string("builtin"_hash) << " " << std::to_string(hash) << "\n";
+      suffix << "// " << hash("builtin") << " " << hash(str_var) << "\n";
     }
     return suffix.str();
   }
@@ -334,13 +335,6 @@ class Preprocessor {
     }
   }
 
-  uint string_hash(const std::string &str)
-  {
-    std::hash<std::string> string_hasher;
-    size_t hash_64 = string_hasher(str);
-    return uint((hash_64 >> 32) ^ hash_64);
-  }
-
   std::string static_strings_mutation(std::string str)
   {
     /* Replaces all matches by the respective string hash. */
@@ -349,7 +343,7 @@ class Preprocessor {
       std::string str_regex = std::regex_replace(str_var, escape_regex, "\\$&");
 
       std::regex regex(str_regex);
-      str = std::regex_replace(str, regex, std::to_string(string_hash(str_var)) + 'u');
+      str = std::regex_replace(str, regex, std::to_string(hash(str_var)) + 'u');
     }
     return str;
   }
@@ -361,9 +355,7 @@ class Preprocessor {
     }
     std::stringstream suffix;
     for (const std::string &str_var : static_strings_) {
-      uint hash = string_hash(str_var);
-      suffix << "// " << std::to_string("string"_hash) << " " << std::to_string(hash) << " "
-             << str_var << "\n";
+      suffix << "// " << hash("string") << " " << hash(str_var) << " " << str_var << "\n";
     }
     return suffix.str();
   }
@@ -561,21 +553,22 @@ class Preprocessor {
 
   std::string line_directive_prefix(const std::string &filepath)
   {
-#ifndef __APPLE__
-    /* For now, only Metal supports filname in line directive. */
-    /* TODO(fclem): Set file source-string-number to the filename hash. */
-    return std::string("");
-#else
-    std::string filename = std::regex_replace(filepath, std::regex(R"((?:.*)\/(.*))"), "$1");
-
     std::stringstream suffix;
     suffix << "#line 1 ";
+#ifdef __APPLE__
+    /* For now, only Metal supports filname in line directive. */
+    std::string filename = std::regex_replace(filepath, std::regex(R"((?:.*)\/(.*))"), "$1");
     if (!filename.empty()) {
       suffix << "\"" << filename << "\"";
     }
+#else
+    uint64_t hash_value = hash(filepath);
+    /* Fold the value so it fits the GLSL spec. */
+    hash_value = (hash_value ^ (hash_value >> 32)) & (~uint64_t(0) >> 33);
+    suffix << std::to_string(uint64_t(hash_value));
+#endif
     suffix << "\n";
     return suffix.str();
-#endif
   }
 };
 

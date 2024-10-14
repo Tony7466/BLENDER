@@ -58,40 +58,40 @@ struct GPUSource {
   shader::BuiltinBits parse_builtin_bit(StringRef builtin)
   {
     using namespace blender::gpu::shader;
-    switch (std::stoll(builtin)) {
-      case "gl_FragCoord"_hash:
+    switch (uint64_t(std::stoull(builtin))) {
+      case Preprocessor::hash("gl_FragCoord"):
         return BuiltinBits::FRAG_COORD;
-      case "gl_FrontFacing"_hash:
+      case Preprocessor::hash("gl_FrontFacing"):
         return BuiltinBits::FRONT_FACING;
-      case "gl_GlobalInvocationID"_hash:
+      case Preprocessor::hash("gl_GlobalInvocationID"):
         return BuiltinBits::GLOBAL_INVOCATION_ID;
-      case "gl_InstanceID"_hash:
+      case Preprocessor::hash("gl_InstanceID"):
         return BuiltinBits::INSTANCE_ID;
-      case "gl_LocalInvocationID"_hash:
+      case Preprocessor::hash("gl_LocalInvocationID"):
         return BuiltinBits::LOCAL_INVOCATION_ID;
-      case "gl_LocalInvocationIndex"_hash:
+      case Preprocessor::hash("gl_LocalInvocationIndex"):
         return BuiltinBits::LOCAL_INVOCATION_INDEX;
-      case "gl_NumWorkGroup"_hash:
+      case Preprocessor::hash("gl_NumWorkGroup"):
         return BuiltinBits::NUM_WORK_GROUP;
-      case "gl_PointCoord"_hash:
+      case Preprocessor::hash("gl_PointCoord"):
         return BuiltinBits::POINT_COORD;
-      case "gl_PointSize"_hash:
+      case Preprocessor::hash("gl_PointSize"):
         return BuiltinBits::POINT_SIZE;
-      case "gl_PrimitiveID"_hash:
+      case Preprocessor::hash("gl_PrimitiveID"):
         return BuiltinBits::PRIMITIVE_ID;
-      case "gl_VertexID"_hash:
+      case Preprocessor::hash("gl_VertexID"):
         return BuiltinBits::VERTEX_ID;
-      case "gl_WorkGroupID"_hash:
+      case Preprocessor::hash("gl_WorkGroupID"):
         return BuiltinBits::WORK_GROUP_ID;
-      case "gl_WorkGroupSize"_hash:
+      case Preprocessor::hash("gl_WorkGroupSize"):
         return BuiltinBits::WORK_GROUP_SIZE;
-      case "drw_debug_"_hash:
+      case Preprocessor::hash("drw_debug_"):
 #ifndef NDEBUG
         return BuiltinBits::USE_DEBUG_DRAW;
 #else
         return BuiltinBits::NONE;
 #endif
-      case "printf"_hash:
+      case Preprocessor::hash("printf"):
 #if GPU_SHADER_PRINTF_ENABLE
         return BuiltinBits::USE_PRINTF;
 #else
@@ -106,10 +106,10 @@ struct GPUSource {
   GPUFunctionQual parse_qualifier(StringRef qualifier)
   {
     using namespace blender::gpu::shader;
-    switch (std::stoll(qualifier)) {
-      case "out"_hash:
+    switch (uint64_t(std::stoull(qualifier))) {
+      case Preprocessor::hash("out"):
         return FUNCTION_QUAL_OUT;
-      case "inout"_hash:
+      case Preprocessor::hash("inout"):
         return FUNCTION_QUAL_INOUT;
       default:
         return FUNCTION_QUAL_IN;
@@ -119,28 +119,28 @@ struct GPUSource {
   eGPUType parse_type(StringRef type)
   {
     using namespace blender::gpu::shader;
-    switch (std::stoll(type)) {
-      case "float"_hash:
+    switch (uint64_t(std::stoull(type))) {
+      case Preprocessor::hash("float"):
         return GPU_FLOAT;
-      case "vec2"_hash:
+      case Preprocessor::hash("vec2"):
         return GPU_VEC2;
-      case "vec3"_hash:
+      case Preprocessor::hash("vec3"):
         return GPU_VEC3;
-      case "vec4"_hash:
+      case Preprocessor::hash("vec4"):
         return GPU_VEC4;
-      case "mat3"_hash:
+      case Preprocessor::hash("mat3"):
         return GPU_MAT3;
-      case "mat4"_hash:
+      case Preprocessor::hash("mat4"):
         return GPU_MAT4;
-      case "sampler1DArray"_hash:
+      case Preprocessor::hash("sampler1DArray"):
         return GPU_TEX1D_ARRAY;
-      case "sampler2DArray"_hash:
+      case Preprocessor::hash("sampler2DArray"):
         return GPU_TEX2D_ARRAY;
-      case "sampler2D"_hash:
+      case Preprocessor::hash("sampler2D"):
         return GPU_TEX2D;
-      case "sampler3D"_hash:
+      case Preprocessor::hash("sampler3D"):
         return GPU_TEX3D;
-      case "Closure"_hash:
+      case Preprocessor::hash("Closure"):
         return GPU_CLOSURE;
       default:
         BLI_assert_unreachable();
@@ -198,19 +198,19 @@ struct GPUSource {
       pop_token(line);
 
       StringRef identifier = pop_token(line);
-      switch (std::stoll(identifier)) {
-        case "function"_hash:
+      switch (uint64_t(std::stoull(identifier))) {
+        case Preprocessor::hash("function"):
           if (do_parse_function) {
             parse_function(line, g_functions);
           }
           break;
-        case "string"_hash:
+        case Preprocessor::hash("string"):
           parse_string(line, g_formats);
           break;
-        case "builtin"_hash:
+        case Preprocessor::hash("builtin"):
           parse_builtin(line);
           break;
-        case "dependency"_hash:
+        case Preprocessor::hash("dependency"):
           parse_dependency(line);
           break;
         default:
