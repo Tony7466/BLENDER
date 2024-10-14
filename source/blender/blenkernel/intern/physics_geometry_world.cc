@@ -19,7 +19,7 @@
 #include "attribute_access_intern.hh"
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_intern.hh"
-#include "physics_geometry_world_jolt.hh"
+#include "physics_geometry_world.hh"
 
 #ifdef WITH_JOLT
 #  include <Jolt/Core/TempAllocator.h>
