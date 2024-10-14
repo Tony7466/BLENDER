@@ -947,6 +947,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const PairData pair_data_mode = PairData(params.node().custom2);
   const bool curve_mode = ELEM(mode, IntersectionMode::Curve, IntersectionMode::Curve_Project);
   const bool use_paired_data = ELEM(pair_data_mode, PairData::FullPair, PairData::HalfPair);
+  const bool points_only_mode = curve_mode && pair_data_mode == PairData::PointsOnly;
 
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
@@ -954,8 +955,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   lazy_threading::send_hint();
 
   AttributeOutputs attribute_outputs;
-
-  const bool points_only_mode = curve_mode && pair_data_mode == PairData::PointsOnly;
 
   if (!points_only_mode) {
     attribute_outputs.direction = params.get_output_anonymous_attribute_id_if_needed("Direction");
@@ -968,12 +967,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (mode == IntersectionMode::Surface) {
     attribute_outputs.normal = params.get_output_anonymous_attribute_id_if_needed("Normal");
   }
+
   if (curve_mode && use_paired_data) {
     attribute_outputs.pair_position = params.get_output_anonymous_attribute_id_if_needed(
         "Pair Position");
     attribute_outputs.pair_direction = params.get_output_anonymous_attribute_id_if_needed(
         "Pair Direction");
   }
+
   if (curve_mode && pair_data_mode == PairData::FullPair) {
     attribute_outputs.pair = params.get_output_anonymous_attribute_id_if_needed("Pair");
   }
