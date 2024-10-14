@@ -438,7 +438,7 @@ class LightTree {
                        int end,
                        LightTreeEmitter *emitters,
                        uint bit_trail,
-                       uint8_t depth);
+                       const uint8_t depth);
 
   bool should_split(LightTreeEmitter *emitters,
                     const int start,
@@ -446,7 +446,8 @@ class LightTree {
                     const int end,
                     LightTreeMeasure &measure,
                     LightTreeLightLink &light_link,
-                    int &split_dim);
+                    int &split_dim,
+                    const uint8_t depth);
 
   /* Check whether the light tree can use this triangle as light-emissive. */
   bool triangle_usable_as_light(Mesh *mesh, int prim_id);

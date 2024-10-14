@@ -471,12 +471,10 @@ void LightTree::recursive_build(const Child child,
   }
 
   /* Find the best place to split the emitters into 2 nodes.
-   * If the best split cost is no better than making a leaf node, make a leaf instead.
-   * Do not split if the depth is >=32 as a bit trail to the node is stored in a 32 bit uint,
-   * meaning the maximum possible depth that can be stored in the bit trail is 32. */
+   * If the best split cost is no better than making a leaf node, make a leaf instead. */
   int split_dim = -1, middle;
-  if (depth < 32 &&
-      should_split(emitters, start, middle, end, node->measure, node->light_link, split_dim))
+  if (should_split(
+          emitters, start, middle, end, node->measure, node->light_link, split_dim, depth))
   {
 
     if (split_dim != -1) {
@@ -520,7 +518,8 @@ bool LightTree::should_split(LightTreeEmitter *emitters,
                              const int end,
                              LightTreeMeasure &measure,
                              LightTreeLightLink &light_link,
-                             int &split_dim)
+                             int &split_dim,
+                             const uint8_t depth)
 {
   const int num_emitters = end - start;
   if (num_emitters < 2) {
@@ -528,6 +527,19 @@ bool LightTree::should_split(LightTreeEmitter *emitters,
       /* Do not try to split if there is only one emitter. */
       measure = emitters[start].measure;
       light_link = LightTreeLightLink(emitters[start].light_set_membership);
+    }
+    return false;
+  }
+
+  /* Limit depth to 32 as the bit trail to the current node is stored in a 32bit unit, meaning the
+   * maximum storable depth is 32. */
+  if (UNLIKELY(depth >= 32)) {
+    /* Assert in case the depth somehow exceeds 32 */
+    assert(!(depth > 32));
+    for (int i = start; i < end; i++) {
+      const LightTreeEmitter *emitter = emitters + i;
+      measure.add(emitter->measure);
+      light_link.add(LightTreeLightLink(emitter->light_set_membership));
     }
     return false;
   }
