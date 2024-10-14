@@ -30,9 +30,9 @@ constexpr float pi_2_f = math::numbers::pi * 0.5f;
 constexpr float pi_2_f_eps = pi_2_f - 0.0001f;
 
 enum class PairData {
-  Single = 0,
-  Paired = 1,
-  SinglePairData = 2,
+  PointsOnly = 0,
+  FullPair = 1,
+  HalfPair = 2,
 };
 
 enum class IntersectionMode {
@@ -84,8 +84,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       "The portion of the spline's total length at the intersection point");
   b.add_output<decl::Float>("Length").field_on_all().description(
       "The distance along the spline at the intersection point");
-
-  /* Mode dependent outputs. */
   b.add_output<decl::Vector>("Normal")
       .field_on_all()
       .make_available([](bNode &node) { node.custom1 = int16_t(IntersectionMode::Surface); })
@@ -118,7 +116,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = int16_t(IntersectionMode::Curve);
-  node->custom2 = int16_t(PairData::Single);
+  node->custom2 = int16_t(PairData::PointsOnly);
 }
 
 static void node_update(bNodeTree *ntree, bNode *node)
@@ -132,30 +130,43 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *plane_center = direction->next;
   bNodeSocket *distance = plane_center->next;
 
-  const bool curve_intersect = ELEM(
-      mode, IntersectionMode::Curve, IntersectionMode::Curve_Project);
+  const bool curve_mode = ELEM(mode, IntersectionMode::Curve, IntersectionMode::Curve_Project);
 
   bke::node_set_socket_availability(ntree, mesh, mode == IntersectionMode::Surface);
-  bke::node_set_socket_availability(ntree, self, curve_intersect);
-  bke::node_set_socket_availability(ntree, all, curve_intersect);
+  bke::node_set_socket_availability(ntree, self, curve_mode);
+  bke::node_set_socket_availability(ntree, all, curve_mode);
   bke::node_set_socket_availability(
       ntree, direction, ELEM(mode, IntersectionMode::Plane, IntersectionMode::Curve_Project));
   bke::node_set_socket_availability(ntree, plane_center, mode == IntersectionMode::Plane);
   bke::node_set_socket_availability(ntree, distance, mode == IntersectionMode::Curve);
 
   const bool use_paired_data = ELEM(
-      PairData(node->custom2), PairData::Paired, PairData::SinglePairData);
+      PairData(node->custom2), PairData::FullPair, PairData::HalfPair);
+
+  const bool points_only_mode = curve_mode && PairData(node->custom2) == PairData::PointsOnly;
 
   LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
+    if (STREQ(socket->name, "Curve Index")) {
+      bke::node_set_socket_availability(ntree, socket, !points_only_mode);
+    }
+    if (STREQ(socket->name, "Direction")) {
+      bke::node_set_socket_availability(ntree, socket, !points_only_mode);
+    }
+    if (STREQ(socket->name, "Factor")) {
+      bke::node_set_socket_availability(ntree, socket, !points_only_mode);
+    }
+    if (STREQ(socket->name, "Length")) {
+      bke::node_set_socket_availability(ntree, socket, !points_only_mode);
+    }
     if (STREQ(socket->name, "Pair Position")) {
-      bke::node_set_socket_availability(ntree, socket, curve_intersect && use_paired_data);
+      bke::node_set_socket_availability(ntree, socket, curve_mode && use_paired_data);
     }
     if (STREQ(socket->name, "Pair Direction")) {
-      bke::node_set_socket_availability(ntree, socket, curve_intersect && use_paired_data);
+      bke::node_set_socket_availability(ntree, socket, curve_mode && use_paired_data);
     }
     if (STREQ(socket->name, "Pair")) {
       bke::node_set_socket_availability(
-          ntree, socket, curve_intersect && PairData(node->custom2) == PairData::Paired);
+          ntree, socket, curve_mode && PairData(node->custom2) == PairData::FullPair);
     }
     if (STREQ(socket->name, "Normal")) {
       bke::node_set_socket_availability(ntree, socket, mode == IntersectionMode::Surface);
@@ -614,13 +625,17 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
           float3 closest = float3(0.0f);
           float lambda = 0.0f;
 
+          const float3 segment_direction = use_direction_data || use_angle ?
+                                               math::normalize(b - a) :
+                                               float3(0.0f);
+
+          /* Discard by angle. */
+          if (use_angle && calc_min_angle(segment_direction, plane_direction, true) < angle) {
+            return;
+          }
+
           if (isect_line_plane_v3_crossing(a, b, plane_center, plane_direction, closest, lambda)) {
-            const float3 segment_direction = use_direction_data || use_angle ?
-                                                 math::normalize(b - a) :
-                                                 float3(0.0f);
-            if (use_angle && calc_min_angle(segment_direction, plane_direction, true) < angle) {
-              return;
-            }
+
             add_intersection_data(local_data,
                                   closest,
                                   curve_i,
@@ -654,6 +669,104 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
     });
   });
   gather_thread_storage(thread_storage, r_data, attribute_outputs);
+}
+
+/* Calculate intersections between curve and mesh surface. */
+static void set_curve_intersections_mesh(GeometrySet &mesh_set,
+                                         const bke::CurvesGeometry &src_curves,
+                                         const float angle,
+                                         const AttributeOutputs &attribute_outputs,
+                                         IntersectionData &r_data)
+{
+  /* Build bvh. */
+  Vector<Segment> curve_segments;
+  BVHTree *bvhtree = create_curve_segment_bvhtree(
+      src_curves, &curve_segments, angle, false, float3(0.0f), attribute_outputs);
+  BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
+  const bool use_angle = angle > 0.0f;
+  const bool use_normal = use_angle || attribute_outputs.normal;
+
+  /* Loop mesh data. */
+  mesh_set.modify_geometry_sets([&](GeometrySet &mesh_set) {
+    if (!mesh_set.has_mesh()) {
+      return;
+    }
+    const Mesh &mesh = *mesh_set.get_mesh();
+    if (mesh.faces_num < 1) {
+      return;
+    }
+    const Span<float3> positions = mesh.vert_positions();
+    const Span<int> corner_verts = mesh.corner_verts();
+    const Span<int3> corner_tris = mesh.corner_tris();
+
+    /* Loop face data. */
+    ThreadLocalData thread_storage;
+    threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
+      IntersectionData &local_data = thread_storage.local();
+      threading::isolate_task([&]() {
+        for (const int64_t face_index : range) {
+          const int3 &tri = corner_tris[face_index];
+          const int v0_loop = tri[0];
+          const int v1_loop = tri[1];
+          const int v2_loop = tri[2];
+          const float3 &v0_pos = positions[corner_verts[v0_loop]];
+          const float3 &v1_pos = positions[corner_verts[v1_loop]];
+          const float3 &v2_pos = positions[corner_verts[v2_loop]];
+
+          float3 center_pos;
+          interp_v3_v3v3v3(center_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
+
+          const float distance = math::max(
+              math::max(math::distance(center_pos, v0_pos), math::distance(center_pos, v1_pos)),
+              math::distance(center_pos, v2_pos));
+
+          BLI_bvhtree_range_query_cpp(
+              *bvhtree,
+              center_pos,
+              distance + curve_isect_eps,
+              [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
+                const Segment seg = curve_segments[index];
+                float lambda = 0.0f;
+
+                float3 normal = float3(0.0f);
+                if (use_normal) {
+                  normal_tri_v3(normal, v0_pos, v1_pos, v2_pos);
+                }
+
+                /* Discard by angle. */
+                if (use_angle && calc_min_angle(seg.direction, normal, true) < angle) {
+                  return;
+                }
+
+                if (isect_line_segment_tri_epsilon_v3(seg.start,
+                                                      seg.end,
+                                                      v0_pos,
+                                                      v1_pos,
+                                                      v2_pos,
+                                                      &lambda,
+                                                      nullptr,
+                                                      curve_isect_eps))
+                {
+                  const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
+                  const float3 closest_position = math::interpolate(seg.start, seg.end, lambda);
+                  add_intersection_data(local_data,
+                                        closest_position,
+                                        seg.curve_index,
+                                        seg.direction,
+                                        len_at_isect,
+                                        seg.curve_length,
+                                        normal,
+                                        float3(0.0f),
+                                        float3(0.0f),
+                                        false,
+                                        attribute_outputs);
+                }
+              });
+        }
+      });
+    });
+    gather_thread_storage(thread_storage, r_data, attribute_outputs);
+  });
 }
 
 /* Calculate intersections between 3d curves, optionally projected onto 2d plane. */
@@ -723,7 +836,10 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                       !pair_weight,
                       attribute_outputs);
                   /* Only return both intersection points if required. */
-                  if (pair_data_mode == PairData::Paired) {
+                  if (pair_data_mode == PairData::FullPair ||
+                      (pair_data_mode == PairData::PointsOnly &&
+                       math::distance(closest_ab, closest_cd) > curve_isect_eps))
+                  {
                     add_intersection_data(
                         local_data,
                         closest_cd,
@@ -744,103 +860,6 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
     });
   });
   gather_thread_storage(thread_storage, r_data, attribute_outputs);
-}
-
-/* Calculate intersections between curve and mesh surface. */
-static void set_curve_intersections_mesh(GeometrySet &mesh_set,
-                                         const bke::CurvesGeometry &src_curves,
-                                         const float angle,
-                                         const AttributeOutputs &attribute_outputs,
-                                         IntersectionData &r_data)
-{
-  /* Build bvh. */
-  Vector<Segment> curve_segments;
-  BVHTree *bvhtree = create_curve_segment_bvhtree(
-      src_curves, &curve_segments, angle, false, float3(0.0f), attribute_outputs);
-  BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
-  const bool use_angle = angle > 0.0f;
-  const bool use_normal = use_angle || attribute_outputs.normal;
-
-  /* Loop mesh data. */
-  mesh_set.modify_geometry_sets([&](GeometrySet &mesh_set) {
-    if (!mesh_set.has_mesh()) {
-      return;
-    }
-    const Mesh &mesh = *mesh_set.get_mesh();
-    if (mesh.faces_num < 1) {
-      return;
-    }
-    const Span<float3> positions = mesh.vert_positions();
-    const Span<int> corner_verts = mesh.corner_verts();
-    const Span<int3> corner_tris = mesh.corner_tris();
-
-    /* Loop face data. */
-    ThreadLocalData thread_storage;
-    threading::parallel_for(corner_tris.index_range(), 128, [&](IndexRange range) {
-      IntersectionData &local_data = thread_storage.local();
-      threading::isolate_task([&]() {
-        for (const int64_t face_index : range) {
-          const int3 &tri = corner_tris[face_index];
-          const int v0_loop = tri[0];
-          const int v1_loop = tri[1];
-          const int v2_loop = tri[2];
-          const float3 &v0_pos = positions[corner_verts[v0_loop]];
-          const float3 &v1_pos = positions[corner_verts[v1_loop]];
-          const float3 &v2_pos = positions[corner_verts[v2_loop]];
-
-          float3 center_pos;
-          interp_v3_v3v3v3(center_pos, v0_pos, v1_pos, v2_pos, float3(1.0f / 3.0f));
-
-          const float distance = math::max(
-              math::max(math::distance(center_pos, v0_pos), math::distance(center_pos, v1_pos)),
-              math::distance(center_pos, v2_pos));
-
-          BLI_bvhtree_range_query_cpp(
-              *bvhtree,
-              center_pos,
-              distance + curve_isect_eps,
-              [&](const int index, const float3 & /*co*/, const float /*dist_sq*/) {
-                const Segment seg = curve_segments[index];
-                float lambda = 0.0f;
-
-                float3 normal = float3(0.0f);
-                if (use_normal) {
-                  normal_tri_v3(normal, v0_pos, v1_pos, v2_pos);
-                }
-
-                if (use_angle && calc_min_angle(seg.direction, normal, true) < angle) {
-                  return;
-                }
-
-                if (isect_line_segment_tri_epsilon_v3(seg.start,
-                                                      seg.end,
-                                                      v0_pos,
-                                                      v1_pos,
-                                                      v2_pos,
-                                                      &lambda,
-                                                      nullptr,
-                                                      curve_isect_eps))
-                {
-                  const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
-                  const float3 closest_position = math::interpolate(seg.start, seg.end, lambda);
-                  add_intersection_data(local_data,
-                                        closest_position,
-                                        seg.curve_index,
-                                        seg.direction,
-                                        len_at_isect,
-                                        seg.curve_length,
-                                        normal,
-                                        float3(0.0f),
-                                        float3(0.0f),
-                                        false,
-                                        attribute_outputs);
-                }
-              });
-        }
-      });
-    });
-    gather_thread_storage(thread_storage, r_data, attribute_outputs);
-  });
 }
 
 /* Sorting intersections by sortkey (which is curve_index and factor postion on curve). */
@@ -927,7 +946,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const IntersectionMode mode = IntersectionMode(params.node().custom1);
   const PairData pair_data_mode = PairData(params.node().custom2);
   const bool curve_mode = ELEM(mode, IntersectionMode::Curve, IntersectionMode::Curve_Project);
-  const bool use_paired_data = ELEM(pair_data_mode, PairData::Paired, PairData::SinglePairData);
+  const bool use_paired_data = ELEM(pair_data_mode, PairData::FullPair, PairData::HalfPair);
 
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
@@ -936,11 +955,15 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   AttributeOutputs attribute_outputs;
 
-  attribute_outputs.direction = params.get_output_anonymous_attribute_id_if_needed("Direction");
-  attribute_outputs.curve_index = params.get_output_anonymous_attribute_id_if_needed(
-      "Curve Index");
-  attribute_outputs.factor = params.get_output_anonymous_attribute_id_if_needed("Factor");
-  attribute_outputs.length = params.get_output_anonymous_attribute_id_if_needed("Length");
+  const bool points_only_mode = curve_mode && pair_data_mode == PairData::PointsOnly;
+
+  if (!points_only_mode) {
+    attribute_outputs.direction = params.get_output_anonymous_attribute_id_if_needed("Direction");
+    attribute_outputs.curve_index = params.get_output_anonymous_attribute_id_if_needed(
+        "Curve Index");
+    attribute_outputs.factor = params.get_output_anonymous_attribute_id_if_needed("Factor");
+    attribute_outputs.length = params.get_output_anonymous_attribute_id_if_needed("Length");
+  }
 
   if (mode == IntersectionMode::Surface) {
     attribute_outputs.normal = params.get_output_anonymous_attribute_id_if_needed("Normal");
@@ -951,7 +974,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     attribute_outputs.pair_direction = params.get_output_anonymous_attribute_id_if_needed(
         "Pair Direction");
   }
-  if (curve_mode && pair_data_mode == PairData::Paired) {
+  if (curve_mode && pair_data_mode == PairData::FullPair) {
     attribute_outputs.pair = params.get_output_anonymous_attribute_id_if_needed("Pair");
   }
 
@@ -1114,7 +1137,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         pair_direction.finish();
       }
 
-      if (attribute_outputs.pair && pair_data_mode == PairData::Paired) {
+      if (attribute_outputs.pair && pair_data_mode == PairData::FullPair) {
         SpanAttributeWriter<bool> pair = attributes.lookup_or_add_for_write_only_span<bool>(
             *attribute_outputs.pair, AttrDomain::Point);
         pair.span.copy_from(sorted_data.pair);
@@ -1160,22 +1183,22 @@ static void node_rna(StructRNA *srna)
                     NOD_inline_enum_accessors(custom1));
 
   static EnumPropertyItem pair_data_mode_items[] = {
-      {int16_t(PairData::Single),
-       "SINGLE",
+      {int16_t(PairData::PointsOnly),
+       "POINTS_ONLY",
        0,
-       "Single Intersections",
-       "Return first intersection, weighted to lowest curve id"},
-      {int16_t(PairData::SinglePairData),
-       "SINGLE_PAIR",
+       "Points Only",
+       "Return intersection points only"},
+      {int16_t(PairData::HalfPair),
+       "HALF_PAIR",
        0,
-       "Single with Pair Data",
-       "Return first intersection, weighted to lowest curve id and corresponding pair "
+       "Half Pair",
+       "Return first intersection of a pair, weighted to lowest curve id and corresponding pair "
        "data"},
-      {int16_t(PairData::Paired),
-       "PAIRED",
+      {int16_t(PairData::FullPair),
+       "FULL_PAIR",
        0,
-       "Paired Intersections",
-       "Return all paired intersections and data"},
+       "Full Pair",
+       "Return all intersections and corresponding pair data"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
