@@ -20,7 +20,6 @@
 #include "DNA_customdata_types.h"
 
 #include "attribute_access_intern.hh"
-#include "physics_geometry_world_bullet.hh"
 #include "physics_geometry_world_jolt.hh"
 
 class btRigidBody;

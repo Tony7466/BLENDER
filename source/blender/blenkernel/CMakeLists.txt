@@ -268,7 +268,6 @@ set(SRC
   intern/pbvh_uv_islands.cc
   intern/physics_geometry.cc
   intern/physics_geometry_attributes.cc
-  intern/physics_geometry_world_bullet.cc
   intern/physics_geometry_world_jolt.cc
   intern/pointcache.cc
   intern/pointcloud.cc
@@ -565,7 +564,6 @@ set(SRC
   intern/pbvh_uv_islands.hh
   intern/physics_geometry_attributes.hh
   intern/physics_geometry_intern.hh
-  intern/physics_geometry_world_bullet.hh
   intern/physics_geometry_world_jolt.hh
   intern/subdiv_converter.hh
   intern/subdiv_inline.hh

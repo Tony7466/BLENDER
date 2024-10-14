@@ -12,7 +12,6 @@
 
 #include "BLI_math_matrix_types.hh"
 
-#include "physics_geometry_world_bullet.hh"
 #include "physics_geometry_world_jolt.hh"
 
 #ifdef WITH_BULLET
