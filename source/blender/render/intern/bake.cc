@@ -606,60 +606,59 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
     }
   }
 
-  threading::parallel_for(
-      IndexRange(pixels_num), 1024, [&](const IndexRange range) {
-        Array<BVHTreeRayHit> hits(tot_highpoly);
-        for (const IndexRange::Iterator::value_type i : range) {
-          int primitive_id = pixel_array_from[i].primitive_id;
+  threading::parallel_for(IndexRange(pixels_num), 1024, [&](const IndexRange range) {
+    Array<BVHTreeRayHit> hits(tot_highpoly);
+    for (const IndexRange::Iterator::value_type i : range) {
+      int primitive_id = pixel_array_from[i].primitive_id;
 
-          if (primitive_id == -1) {
-            pixel_array_to[i].primitive_id = -1;
-            continue;
-          }
+      if (primitive_id == -1) {
+        pixel_array_to[i].primitive_id = -1;
+        continue;
+      }
 
-          const float u = pixel_array_from[i].uv[0];
-          const float v = pixel_array_from[i].uv[1];
-          float co[3];
-          float dir[3];
-          TriTessFace *tri_low;
+      const float u = pixel_array_from[i].uv[0];
+      const float v = pixel_array_from[i].uv[1];
+      float co[3];
+      float dir[3];
+      TriTessFace *tri_low;
 
-          /* calculate from low poly mesh cage */
-          if (is_custom_cage) {
-            calc_point_from_barycentric_cage(
-                tris_low, tris_cage, mat_low, mat_cage, primitive_id, u, v, co, dir);
-            tri_low = &tris_cage[primitive_id];
-          }
-          else if (is_cage) {
-            calc_point_from_barycentric_extrusion(
-                tris_cage, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, true);
-            tri_low = &tris_cage[primitive_id];
-          }
-          else {
-            calc_point_from_barycentric_extrusion(
-                tris_low, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, false);
-            tri_low = &tris_low[primitive_id];
-          }
+      /* calculate from low poly mesh cage */
+      if (is_custom_cage) {
+        calc_point_from_barycentric_cage(
+            tris_low, tris_cage, mat_low, mat_cage, primitive_id, u, v, co, dir);
+        tri_low = &tris_cage[primitive_id];
+      }
+      else if (is_cage) {
+        calc_point_from_barycentric_extrusion(
+            tris_cage, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, true);
+        tri_low = &tris_cage[primitive_id];
+      }
+      else {
+        calc_point_from_barycentric_extrusion(
+            tris_low, mat_low, imat_low, primitive_id, u, v, cage_extrusion, co, dir, false);
+        tri_low = &tris_low[primitive_id];
+      }
 
-          /* cast ray */
-          if (!cast_ray_highpoly(treeData.data(),
-                                 tri_low,
-                                 tris_high,
-                                 pixel_array_from,
-                                 pixel_array_to,
-                                 mat_low,
-                                 highpoly,
-                                 hits,
-                                 co,
-                                 dir,
-                                 i,
-                                 tot_highpoly,
-                                 max_ray_distance))
-          {
-            /* if it fails mask out the original pixel array */
-            pixel_array_from[i].primitive_id = -1;
-          }
-        }
-      });
+      /* cast ray */
+      if (!cast_ray_highpoly(treeData.data(),
+                             tri_low,
+                             tris_high,
+                             pixel_array_from,
+                             pixel_array_to,
+                             mat_low,
+                             highpoly,
+                             hits,
+                             co,
+                             dir,
+                             i,
+                             tot_highpoly,
+                             max_ray_distance))
+      {
+        /* if it fails mask out the original pixel array */
+        pixel_array_from[i].primitive_id = -1;
+      }
+    }
+  });
 
   /* garbage collection */
 cleanup:
