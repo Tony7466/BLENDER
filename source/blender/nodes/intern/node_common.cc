@@ -349,13 +349,11 @@ static BaseSocketDeclarationBuilder &build_interface_socket_declaration(
         break;
       }
       case SOCK_BUNDLE: {
-        auto value = std::make_unique<decl::Bundle>();
-        dst = std::move(value);
+        decl = &b.add_socket<decl::Bundle>(name, identifier, in_out);
         break;
       }
       case SOCK_CLOSURE: {
-        auto value = std::make_unique<decl::Closure>();
-        dst = std::move(value);
+        decl = &b.add_socket<decl::Closure>(name, identifier, in_out);
         break;
       }
       case SOCK_CUSTOM: {
