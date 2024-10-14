@@ -36,7 +36,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
       const std::string identifier =
           EvaluateClosureOutputItemsAccessor::socket_identifier_for_item(item);
-      b.add_output(socket_type, item.name, identifier);
+      b.add_output(socket_type, item.name, identifier).propagate_all().reference_pass_all();
     }
   }
 

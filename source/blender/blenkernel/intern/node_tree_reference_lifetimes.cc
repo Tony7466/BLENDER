@@ -39,6 +39,12 @@ std::ostream &operator<<(std::ostream &stream, const ReferenceSetInfo &info)
     case ReferenceSetType::LocalReferenceSet:
       stream << "Local: " << info.socket->name;
       break;
+    case ReferenceSetType::ClosureInputReferenceSet:
+      stream << "Closure Input Reference: " << info.socket->name;
+      break;
+    case ReferenceSetType::ClosureOutputData:
+      stream << "Closure Output Data: " << info.socket->name;
+      break;
   }
   stream << " (";
   for (const bNodeSocket *socket : info.potential_data_origins) {
@@ -228,7 +234,8 @@ static Array<const aal::RelationsInNode *> prepare_relations_by_node(const bNode
 static Vector<ReferenceSetInfo> find_reference_sets(
     const bNodeTree &tree,
     const Span<const aal::RelationsInNode *> &relations_by_node,
-    Vector<int> &r_group_output_reference_sets)
+    Vector<int> &r_group_output_reference_sets,
+    MultiValueMap<const bNodeTreeZone *, int> &r_output_set_sources_by_closure_zone)
 {
   const bNodeTreeZones *zones = tree.zones();
 
@@ -306,14 +313,16 @@ static Vector<ReferenceSetInfo> find_reference_sets(
       for (const int output_i : IndexRange(storage.output_items.items_num)) {
         const bNodeSocket &socket = zone->output_node->input_socket(output_i);
         if (can_contain_referenced_data(eNodeSocketDatatype(socket.type))) {
-          reference_sets.append({ReferenceSetType::ClosureOutputData, &socket});
+          r_output_set_sources_by_closure_zone.add(
+              zone,
+              reference_sets.append_and_get_index({ReferenceSetType::ClosureOutputData, &socket}));
         }
       }
       MutableSpan<ReferenceSetInfo> new_reference_sets =
           reference_sets.as_mutable_span().drop_front(old_reference_sets_count);
       for (const int input_i : IndexRange(storage.input_items.items_num)) {
         const bNodeSocket &socket = zone->input_node->output_socket(input_i);
-        if (can_contain_reference(eNodeSocketDatatype(socket.type))) {
+        if (can_contain_referenced_data(eNodeSocketDatatype(socket.type))) {
           for (ReferenceSetInfo &source : new_reference_sets) {
             source.potential_data_origins.append(&socket);
           }
@@ -336,7 +345,8 @@ static void set_initial_data_and_reference_bits(const bNodeTree &tree,
       r_potential_data_by_socket[socket->index_in_tree()][reference_set_i].set();
     }
     switch (reference_set.type) {
-      case ReferenceSetType::LocalReferenceSet: {
+      case ReferenceSetType::LocalReferenceSet:
+      case ReferenceSetType::ClosureInputReferenceSet: {
         r_potential_reference_by_socket[reference_set.socket->index_in_tree()][reference_set_i]
             .set();
         break;
@@ -348,16 +358,9 @@ static void set_initial_data_and_reference_bits(const bNodeTree &tree,
         }
         break;
       }
-      case ReferenceSetType::GroupOutputData: {
-        /* Nothing to do. */
-        break;
-      }
-      case ReferenceSetType::ClosureInputReferenceSet: {
-        /* TODO */
-        break;
-      }
+      case ReferenceSetType::GroupOutputData:
       case ReferenceSetType::ClosureOutputData: {
-        /* TODO. */
+        /* Nothing to do. */
         break;
       }
     }
@@ -539,10 +542,13 @@ static void prepare_required_data_for_outputs(
     const bNodeTree &tree,
     const Span<ReferenceSetInfo> reference_sets,
     const Span<int> group_output_set_sources,
+    MultiValueMap<const bNodeTreeZone *, int> &output_set_sources_by_closure_zone,
     const BitGroupVector<> &potential_data_by_socket,
     const BitGroupVector<> &potential_reference_by_socket,
     BitGroupVector<> &r_required_data_by_socket)
 {
+  const bNodeTreeZones *zones = tree.zones();
+
   /* Initialize required data for group output sockets. */
   if (const bNode *group_output_node = tree.group_output_node()) {
     const Span<const bNodeSocket *> sockets = group_output_node->input_sockets().drop_back(1);
@@ -565,6 +571,38 @@ static void prepare_required_data_for_outputs(
       /* Make sure that only available data is also required. This is enforced in the end anyway,
        * but may reduce some unnecessary work. */
       r_required_data_by_socket[index] &= potential_data_by_socket[index];
+    }
+  }
+
+  if (zones) {
+    for (const bNodeTreeZone *zone : zones->zones) {
+      if (!zone->input_node || !zone->output_node) {
+        continue;
+      }
+      if (zone->output_node->type != GEO_NODE_CLOSURE_OUTPUT) {
+        continue;
+      }
+      const Span<int> closure_output_set_sources = output_set_sources_by_closure_zone.lookup(zone);
+      for (const int reference_set_i : closure_output_set_sources) {
+        const ReferenceSetInfo &reference_set = reference_sets[reference_set_i];
+        BLI_assert(reference_set.type == ReferenceSetType::ClosureOutputData);
+        r_required_data_by_socket[reference_set.socket->index_in_tree()][reference_set_i].set();
+      }
+      BitVector<> potential_output_references(reference_sets.size(), false);
+      const Span<const bNodeSocket *> sockets = zone->output_node->input_sockets().drop_back(1);
+      for (const bNodeSocket *socket : sockets) {
+        potential_output_references |= potential_reference_by_socket[socket->index_in_tree()];
+      }
+      for (const bNodeSocket *socket : sockets) {
+        if (!can_contain_referenced_data(eNodeSocketDatatype(socket->type))) {
+          continue;
+        }
+        const int index = socket->index_in_tree();
+        r_required_data_by_socket[index] |= potential_output_references;
+        /* Make sure that only available data is also required. This is enforced in the end anyway,
+         * but may reduce some unnecessary work. */
+        r_required_data_by_socket[index] &= potential_data_by_socket[index];
+      }
     }
   }
 }
@@ -804,7 +842,6 @@ static aal::RelationsInNode get_tree_relations(
         });
       }
     }
-    /* TODO: Handle closure output nodes. */
   }
 
   return tree_relations;
@@ -829,8 +866,9 @@ static std::unique_ptr<ReferenceLifetimesInfo> make_reference_lifetimes_info(con
   Array<const aal::RelationsInNode *> relations_by_node = prepare_relations_by_node(tree, scope);
 
   Vector<int> group_output_set_sources;
+  MultiValueMap<const bNodeTreeZone *, int> output_set_sources_by_closure_zone;
   reference_lifetimes_info->reference_sets = find_reference_sets(
-      tree, relations_by_node, group_output_set_sources);
+      tree, relations_by_node, group_output_set_sources, output_set_sources_by_closure_zone);
   const Span<ReferenceSetInfo> reference_sets = reference_lifetimes_info->reference_sets;
 
   const int sockets_num = tree.all_sockets().size();
@@ -852,6 +890,7 @@ static std::unique_ptr<ReferenceLifetimesInfo> make_reference_lifetimes_info(con
   prepare_required_data_for_outputs(tree,
                                     reference_sets,
                                     group_output_set_sources,
+                                    output_set_sources_by_closure_zone,
                                     potential_data_by_socket,
                                     potential_reference_by_socket,
                                     required_data_by_socket);

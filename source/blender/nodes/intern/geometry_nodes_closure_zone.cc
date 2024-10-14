@@ -6,12 +6,17 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_geometry_nodes_closure.hh"
+#include "BKE_geometry_nodes_reference_set.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
+#include "BKE_node_tree_reference_lifetimes.hh"
 
 #include "DEG_depsgraph_query.hh"
 
 namespace blender::nodes {
+
+using bke::node_tree_reference_lifetimes::ReferenceSetInfo;
+using bke::node_tree_reference_lifetimes::ReferenceSetType;
 
 class LazyFunctionForClosureZone : public LazyFunction {
  private:
@@ -35,7 +40,21 @@ class LazyFunctionForClosureZone : public LazyFunction {
   {
     debug_name_ = "Closure Zone";
 
-    initialize_zone_wrapper(zone, zone_info, body_fn, inputs_, outputs_);
+    initialize_zone_wrapper(zone, zone_info, body_fn, false, inputs_, outputs_);
+    for (const auto item : body_fn.indices.inputs.reference_sets.items()) {
+      const ReferenceSetInfo &reference_set =
+          btree.runtime->reference_lifetimes_info->reference_sets[item.key];
+      if (ELEM(reference_set.type,
+               ReferenceSetType::ClosureInputReferenceSet,
+               ReferenceSetType::ClosureOutputData))
+      {
+        continue;
+      }
+      zone_info.indices.inputs.reference_sets.add_new(
+          item.key,
+          inputs_.append_and_get_index_as("Reference Set",
+                                          CPPType::get<bke::GeometryNodesReferenceSet>()));
+    }
 
     /* All border links are used. */
     for (const int i : zone_.border_links.index_range()) {

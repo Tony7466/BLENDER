@@ -569,6 +569,7 @@ LazyFunction &build_closure_zone_lazy_function(ResourceScope &scope,
 void initialize_zone_wrapper(const bke::bNodeTreeZone &zone,
                              ZoneBuildInfo &zone_info,
                              const ZoneBodyFunction &body_fn,
+                             bool expose_all_reference_sets,
                              Vector<lf::Input> &r_inputs,
                              Vector<lf::Output> &r_outputs);
 

@@ -1563,6 +1563,7 @@ static bool ignore_zone_bsocket(const bNodeSocket &bsocket)
 void initialize_zone_wrapper(const bNodeTreeZone &zone,
                              ZoneBuildInfo &zone_info,
                              const ZoneBodyFunction &body_fn,
+                             const bool expose_all_reference_sets,
                              Vector<lf::Input> &r_inputs,
                              Vector<lf::Output> &r_outputs)
 {
@@ -1605,11 +1606,14 @@ void initialize_zone_wrapper(const bNodeTreeZone &zone,
         r_outputs.append_and_get_index_as("Border Link Usage", CPPType::get<bool>()));
   }
 
-  for (const auto item : body_fn.indices.inputs.reference_sets.items()) {
-    zone_info.indices.inputs.reference_sets.add_new(
-        item.key,
-        r_inputs.append_and_get_index_as(
-            "Reference Set", CPPType::get<GeometryNodesReferenceSet>(), lf::ValueUsage::Maybe));
+  /* Some zone types (e.g. the closure zone) do not expose all reference sets. */
+  if (expose_all_reference_sets) {
+    for (const auto item : body_fn.indices.inputs.reference_sets.items()) {
+      zone_info.indices.inputs.reference_sets.add_new(
+          item.key,
+          r_inputs.append_and_get_index_as(
+              "Reference Set", CPPType::get<GeometryNodesReferenceSet>(), lf::ValueUsage::Maybe));
+    }
   }
 }
 
@@ -2278,7 +2282,9 @@ struct GeometryNodesLazyFunctionBuilder {
           add_reference_set_zone_input(reference_set_i);
           break;
         }
-        case ReferenceSetType::LocalReferenceSet: {
+        case ReferenceSetType::LocalReferenceSet:
+        case ReferenceSetType::ClosureOutputData:
+        case ReferenceSetType::ClosureInputReferenceSet: {
           const bNodeSocket &bsocket = *reference_set.socket;
           if (lf::OutputSocket *lf_socket = graph_params.lf_output_by_bsocket.lookup_default(
                   &bsocket, nullptr))
@@ -2455,6 +2461,12 @@ struct GeometryNodesLazyFunctionBuilder {
           lf::GraphInputSocket *lf_reference_set_socket = reference_set_by_output_.lookup(
               group_output_i);
           lf_reference_sets.add_new(reference_set_i, lf_reference_set_socket);
+          break;
+        }
+        case ReferenceSetType::ClosureOutputData:
+        case ReferenceSetType::ClosureInputReferenceSet: {
+          /* These reference sets are not used outside of zones. */
+          BLI_assert_unreachable();
           break;
         }
       }
