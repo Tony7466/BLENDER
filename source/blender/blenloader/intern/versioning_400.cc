@@ -62,6 +62,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_image_format.h"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
@@ -197,7 +198,33 @@ static void version_legacy_actions_to_layered(Main *bmain)
       return true;
     };
 
+    auto embedded_id_callback = [&](LibraryIDLinkCallbackData *cb_data) -> int {
+      ID *id = *cb_data->id_pointer;
+
+      /* We only process embedded IDs with this callback. */
+      if (!id || (id->flag & ID_FLAG_EMBEDDED_DATA) == 0) {
+        return IDWALK_RET_NOP;
+      }
+
+      foreach_action_slot_use_with_references(*id, callback);
+
+      return IDWALK_RET_NOP;
+    };
+
+    /* Process the main ID itself. */
     foreach_action_slot_use_with_references(*id, callback);
+
+    /* Process embedded IDs, as these are not listed in bmain, but still can
+     * have their own Action+Slot. */
+    BKE_library_foreach_ID_link(
+        bmain,
+        id,
+        embedded_id_callback,
+        nullptr,
+        IDWALK_RECURSE |
+            /* This is more about "we don't care" than "must be ignored". We don't pass an owner
+             * ID, and it's not used in the callback either, so don't bother looking it up.  */
+            IDWALK_IGNORE_MISSING_OWNER_ID);
   }
   FOREACH_MAIN_ID_END;
 
