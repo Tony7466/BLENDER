@@ -237,7 +237,7 @@ mf::Variable *MultiFunctionProcedureOperation::get_multi_function_input_variable
    * we just return its variable. But we update the domain priority of the input descriptor to be
    * the higher priority of the existing descriptor and the descriptor of the new input socket.
    * That's because the same output might be connected to multiple inputs inside the multi-function
-   * procedure operation which have different proprieties. */
+   * procedure operation which have different priorities. */
   if (output_to_variable_map_.contains(output_socket)) {
     const std::string input_identifier = outputs_to_declared_inputs_map_.lookup(output_socket);
     InputDescriptor &input_descriptor = this->get_input_descriptor(input_identifier);

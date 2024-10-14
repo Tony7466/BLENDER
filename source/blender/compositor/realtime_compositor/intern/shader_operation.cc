@@ -183,7 +183,7 @@ void ShaderOperation::link_node_input_external(DInputSocket input_socket,
      * But we update the domain priority of the input descriptor to be the higher priority of the
      * existing descriptor and the descriptor of the new input socket. That's because the same
      * output might be connected to multiple inputs inside the shader operation which have
-     * different proprieties. */
+     * different priorities. */
     const std::string input_identifier = outputs_to_declared_inputs_map_.lookup(output_socket);
     InputDescriptor &input_descriptor = this->get_input_descriptor(input_identifier);
     input_descriptor.domain_priority = math::min(

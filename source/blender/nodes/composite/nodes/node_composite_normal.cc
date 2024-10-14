@@ -6,6 +6,10 @@
  * \ingroup cmpnodes
  */
 
+#include "FN_multi_function_builder.hh"
+
+#include "NOD_multi_function.hh"
+
 #include "GPU_material.hh"
 
 #include "COM_shader_node.hh"
