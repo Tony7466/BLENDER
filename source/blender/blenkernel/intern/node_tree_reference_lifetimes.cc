@@ -230,6 +230,8 @@ static Vector<ReferenceSetInfo> find_reference_sets(
     const Span<const aal::RelationsInNode *> &relations_by_node,
     Vector<int> &r_group_output_reference_sets)
 {
+  const bNodeTreeZones *zones = tree.zones();
+
   Vector<ReferenceSetInfo> reference_sets;
   const Span<const bNodeTreeInterfaceSocket *> interface_inputs = tree.interface_inputs();
   const Span<const bNodeTreeInterfaceSocket *> interface_outputs = tree.interface_outputs();
@@ -287,6 +289,39 @@ static Vector<ReferenceSetInfo> find_reference_sets(
     }
   }
 
+  if (zones) {
+    for (const bNodeTreeZone *zone : zones->zones) {
+      if (zone->output_node->type != GEO_NODE_CLOSURE_OUTPUT) {
+        continue;
+      }
+      const auto &storage = *static_cast<const NodeGeometryClosureOutput *>(
+          zone->output_node->storage);
+      const int old_reference_sets_count = reference_sets.size();
+      for (const int input_i : IndexRange(storage.input_items.items_num)) {
+        const bNodeSocket &socket = zone->input_node->output_socket(input_i);
+        if (can_contain_reference(eNodeSocketDatatype(socket.type))) {
+          reference_sets.append({ReferenceSetType::ClosureInputReferenceSet, &socket});
+        }
+      }
+      for (const int output_i : IndexRange(storage.output_items.items_num)) {
+        const bNodeSocket &socket = zone->output_node->input_socket(output_i);
+        if (can_contain_referenced_data(eNodeSocketDatatype(socket.type))) {
+          reference_sets.append({ReferenceSetType::ClosureOutputData, &socket});
+        }
+      }
+      MutableSpan<ReferenceSetInfo> new_reference_sets =
+          reference_sets.as_mutable_span().drop_front(old_reference_sets_count);
+      for (const int input_i : IndexRange(storage.input_items.items_num)) {
+        const bNodeSocket &socket = zone->input_node->output_socket(input_i);
+        if (can_contain_reference(eNodeSocketDatatype(socket.type))) {
+          for (ReferenceSetInfo &source : new_reference_sets) {
+            source.potential_data_origins.append(&socket);
+          }
+        }
+      }
+    }
+  }
+
   return reference_sets;
 }
 
@@ -315,6 +350,14 @@ static void set_initial_data_and_reference_bits(const bNodeTree &tree,
       }
       case ReferenceSetType::GroupOutputData: {
         /* Nothing to do. */
+        break;
+      }
+      case ReferenceSetType::ClosureInputReferenceSet: {
+        /* TODO */
+        break;
+      }
+      case ReferenceSetType::ClosureOutputData: {
+        /* TODO. */
         break;
       }
     }
@@ -421,6 +464,21 @@ static bool pass_left_to_right(const bNodeTree &tree,
             const int dst_index = output_socket->index_in_tree();
             r_potential_data_by_socket[dst_index] |= r_potential_data_by_socket[src_index];
           }
+        }
+        break;
+      }
+      case GEO_NODE_CLOSURE_OUTPUT: {
+        const bNodeTreeZone *zone = get_zone_of_node_if_full(zones, *node);
+        if (!zone) {
+          break;
+        }
+        const BitVector<> outside_references = get_references_coming_from_outside_zone(
+            *zone, r_potential_data_by_socket, r_potential_reference_by_socket);
+        const int dst_index = zone->output_node->output_socket(0).index_in_tree();
+        for (const int input_i : node->input_sockets().index_range()) {
+          const int src_index = zone->output_node->input_socket(input_i).index_in_tree();
+          r_potential_data_by_socket[dst_index] |= r_potential_data_by_socket[src_index];
+          r_potential_reference_by_socket[dst_index] |= r_potential_reference_by_socket[src_index];
         }
         break;
       }
@@ -617,6 +675,20 @@ static bool pass_right_to_left(const bNodeTree &tree,
         }
         break;
       }
+      case GEO_NODE_CLOSURE_OUTPUT: {
+        const bNodeTreeZone *zone = get_zone_of_node_if_full(zones, *node);
+        if (!zone) {
+          break;
+        }
+        const bNodeSocket &output_socket = node->output_socket(0);
+        const int src_index = output_socket.index_in_tree();
+        for (const bNodeSocket *input_socket : node->input_sockets()) {
+          const int dst_index = input_socket->index_in_tree();
+          r_required_data_by_socket[dst_index] |= r_required_data_by_socket[src_index];
+        }
+
+        break;
+      }
     }
   }
   return needs_extra_pass;
@@ -732,6 +804,7 @@ static aal::RelationsInNode get_tree_relations(
         });
       }
     }
+    /* TODO: Handle closure output nodes. */
   }
 
   return tree_relations;
