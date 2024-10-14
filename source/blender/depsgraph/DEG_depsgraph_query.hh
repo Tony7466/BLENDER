@@ -199,6 +199,12 @@ struct DEGObjectIterSettings {
    * geometry for the viewer path included in the iterator.
    */
   const ViewerPath *viewer_path;
+
+  /**
+   * If not empty, the iterator should only return objects that are in this list (or their
+   * instances are in it).
+   */
+  blender::Span<Object *> including_objects;
 };
 
 /**

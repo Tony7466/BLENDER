@@ -11,7 +11,7 @@
 
 #include "MOD_lineart.h"
 
-#include "lineart_intern.h"
+#include "lineart_intern.hh"
 
 #include <algorithm> /* For `min/max`. */
 #include <cmath>

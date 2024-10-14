@@ -62,7 +62,7 @@
 
 #include "GEO_join_geometries.hh"
 
-#include "lineart_intern.h"
+#include "lineart_intern.hh"
 
 #include <algorithm> /* For `min/max`. */
 
@@ -2551,7 +2551,8 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
                                   LineartData *ld,
                                   bool allow_duplicates,
                                   bool do_shadow_casting,
-                                  ListBase *shadow_elns)
+                                  ListBase *shadow_elns,
+                                  blender::Span<Object *> including_objects)
 {
   double proj[4][4], view[4][4], result[4][4];
   float inv[4][4];
@@ -2615,9 +2616,8 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
   DEGObjectIterSettings deg_iter_settings = {nullptr};
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = flags;
+  deg_iter_settings.including_objects = including_objects;
 
-  /* XXX(@Yiming): Temporary solution, this iterator is technically unsafe to use *during*
-   * depsgraph evaluation, see D14997 for detailed explanations. */
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
 
     obindex++;
@@ -5093,13 +5093,18 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
   /* Get view vector before loading geometries, because we detect feature lines there. */
   lineart_main_get_view_vector(ld);
 
+  blender::Vector<Object *> *including_objects = reinterpret_cast<blender::Vector<Object *> *>(
+      lmd.object_dependencies);
+
   lineart_main_load_geometries(depsgraph,
                                scene,
                                lineart_camera,
                                ld,
                                lmd.calculation_flags & MOD_LINEART_ALLOW_DUPLI_OBJECTS,
                                false,
-                               shadow_elns);
+                               shadow_elns,
+                               including_objects ? including_objects->as_span() :
+                                                   blender::Span<Object *>());
 
   if (shadow_generated) {
     lineart_main_transform_and_add_shadow(ld, shadow_veln, shadow_eeln);

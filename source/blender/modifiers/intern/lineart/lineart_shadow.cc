@@ -8,7 +8,7 @@
 
 #include "MOD_lineart.h"
 
-#include "lineart_intern.h"
+#include "lineart_intern.hh"
 
 #include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
@@ -1251,8 +1251,18 @@ bool lineart_main_try_generate_shadow_v3(Depsgraph *depsgraph,
 
   lineart_main_get_view_vector(ld);
 
-  lineart_main_load_geometries(
-      depsgraph, scene, nullptr, ld, lmd->flags & MOD_LINEART_ALLOW_DUPLI_OBJECTS, true, nullptr);
+  blender::Vector<Object *> *including_objects = reinterpret_cast<blender::Vector<Object *> *>(
+      lmd->object_dependencies);
+
+  lineart_main_load_geometries(depsgraph,
+                               scene,
+                               nullptr,
+                               ld,
+                               lmd->flags & MOD_LINEART_ALLOW_DUPLI_OBJECTS,
+                               true,
+                               nullptr,
+                               including_objects ? including_objects->as_span() :
+                                                   blender::Span<Object *>());
 
   if (!ld->geom.vertex_buffer_pointers.first) {
     /* No geometry loaded, return early. */

@@ -82,6 +82,23 @@ static void init_data(ModifierData *md)
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
   BKE_modifier_copydata_generic(md, target, flag);
+
+  GreasePencilLineartModifierData *target_lmd =
+      reinterpret_cast<GreasePencilLineartModifierData *>(target);
+  blender::Vector<Object *> *object_dependencies = reinterpret_cast<blender::Vector<Object *> *>(
+      target_lmd->object_dependencies);
+  target_lmd->object_dependencies = new blender::Vector<Object *>(*object_dependencies);
+}
+
+static void free_data(ModifierData *md)
+{
+  GreasePencilLineartModifierData *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
+  if (lmd->object_dependencies) {
+    blender::Vector<Object *> *object_dependencies = reinterpret_cast<blender::Vector<Object *> *>(
+        lmd->object_dependencies);
+    delete object_dependencies;
+    lmd->object_dependencies = nullptr;
+  }
 }
 
 static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
@@ -125,7 +142,7 @@ static void add_this_collection(Collection &collection,
       {
         DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
         DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
-        object_dependencies.append(ob);
+        object_dependencies.append_non_duplicates(ob);
       }
     }
     if (ob->type == OB_EMPTY && (ob->transflag & OB_DUPLICOLLECTION)) {
@@ -133,6 +150,7 @@ static void add_this_collection(Collection &collection,
         continue;
       }
       add_this_collection(*ob->instance_collection, ctx, mode, object_dependencies);
+      object_dependencies.append_non_duplicates(ob);
     }
   }
   FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
@@ -149,10 +167,20 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 
   /* Do we need to distinguish DAG_EVAL_VIEWPORT or DAG_EVAL_RENDER here? */
 
-  lmd->object_dependencies.clear();
-  add_this_collection(*ctx->scene->master_collection, ctx, DAG_EVAL_VIEWPORT, lmd->object_dependencies);
+  Vector<Object *> *object_dependencies = reinterpret_cast<Vector<Object *> *>(
+      lmd->object_dependencies);
 
-  /* No need to add any non-geometry objects into `lmd->object_dependencies` because we won't be loading */
+  if (!object_dependencies) {
+    object_dependencies = new Vector<Object *>;
+    lmd->object_dependencies = object_dependencies;
+  }
+
+  object_dependencies->clear();
+  add_this_collection(
+      *ctx->scene->master_collection, ctx, DAG_EVAL_VIEWPORT, *object_dependencies);
+
+  /* No need to add any non-geometry objects into `lmd->object_dependencies` because we won't be
+   * loading */
   if (lmd->calculation_flags & MOD_LINEART_USE_CUSTOM_CAMERA && lmd->source_camera) {
     DEG_add_object_relation(
         ctx->node, lmd->source_camera, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
@@ -856,7 +884,7 @@ ModifierTypeInfo modifierType_GreasePencilLineart = {
 
     /*init_data*/ blender::init_data,
     /*required_data_mask*/ nullptr,
-    /*free_data*/ nullptr,
+    /*free_data*/ blender::free_data,
     /*is_disabled*/ blender::is_disabled,
     /*update_depsgraph*/ blender::update_depsgraph,
     /*depends_on_time*/ nullptr,
