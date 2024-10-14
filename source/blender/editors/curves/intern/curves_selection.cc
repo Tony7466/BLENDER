@@ -86,7 +86,6 @@ IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &mem
 Span<StringRef> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves)
 {
   static const std::array<StringRef, 1> selection_attribute_names{".selection"};
-  const bke::AttributeAccessor attributes = curves.attributes();
   return curves.curve_type_counts()[CURVE_TYPE_BEZIER] > 0 ?
              get_curves_all_selection_attribute_names() :
              selection_attribute_names;
