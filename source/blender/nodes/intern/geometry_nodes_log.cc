@@ -663,6 +663,11 @@ static void find_tree_zone_hash_recursive(
           *zone.output_node, storage.inspection_index);
       break;
     }
+    case GEO_NODE_CLOSURE_OUTPUT: {
+      /* Can't find hashes for closure zones. Nodes in these zones may be evaluated in different
+       * contexts based on where the closures are called. */
+      return;
+    }
   }
   r_hash_by_zone.add_new(&zone, compute_context_builder.hash());
   for (const bNodeTreeZone *child_zone : zone.child_zones) {

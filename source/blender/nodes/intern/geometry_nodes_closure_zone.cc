@@ -143,6 +143,28 @@ class LazyFunctionForClosureZone : public LazyFunction {
       lf_body_node.input(body_fn_.indices.inputs.border_links[i]).set_default_value(stored_ptr);
     }
 
+    for (const auto &item : body_fn_.indices.inputs.reference_sets.items()) {
+      const ReferenceSetInfo &reference_set =
+          btree_.runtime->reference_lifetimes_info->reference_sets[item.key];
+      switch (reference_set.type) {
+        case ReferenceSetType::ClosureInputReferenceSet:
+        case ReferenceSetType::ClosureOutputData: {
+          /* TODO */
+          break;
+        }
+        default: {
+          auto &input_reference_set =
+              *params.try_get_input_data_ptr<bke::GeometryNodesReferenceSet>(
+                  zone_info_.indices.inputs.reference_sets.lookup(item.key));
+          auto &stored = closure_scope->construct<bke::GeometryNodesReferenceSet>(
+              std::move(input_reference_set));
+          lf_body_node.input(body_fn_.indices.inputs.reference_sets.lookup(item.key))
+              .set_default_value(&stored);
+          break;
+        }
+      }
+    }
+
     bNodeTree &btree_orig = *reinterpret_cast<bNodeTree *>(
         DEG_get_original_id(const_cast<ID *>(&btree_.id)));
     if (btree_orig.runtime->logged_zone_graphs) {
