@@ -12,7 +12,7 @@
 
 #include "BLI_math_matrix_types.hh"
 
-#include "physics_geometry_world_jolt.hh"
+#include "physics_geometry_world.hh"
 
 namespace blender::bke {
 

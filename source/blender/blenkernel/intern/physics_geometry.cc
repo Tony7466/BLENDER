@@ -29,7 +29,7 @@
 #include "DNA_customdata_types.h"
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_intern.hh"
-#include "physics_geometry_world_jolt.hh"
+#include "physics_geometry_world.hh"
 
 #ifndef NDEBUG
 #  include <iostream>
