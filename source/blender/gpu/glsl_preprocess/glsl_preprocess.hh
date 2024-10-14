@@ -568,4 +568,48 @@ class Preprocessor {
   }
 };
 
+/* Enum values of metadata that the preprocessor can append at the end of a source file.
+ * Eventually, remove the need for these and output the metadata inside header files. */
+namespace metadata {
+
+enum Builtin {
+  FragCoord = Preprocessor::hash("gl_FragCoord"),
+  FrontFacing = Preprocessor::hash("gl_FrontFacing"),
+  GlobalInvocationID = Preprocessor::hash("gl_GlobalInvocationID"),
+  InstanceID = Preprocessor::hash("gl_InstanceID"),
+  LocalInvocationID = Preprocessor::hash("gl_LocalInvocationID"),
+  LocalInvocationIndex = Preprocessor::hash("gl_LocalInvocationIndex"),
+  NumWorkGroup = Preprocessor::hash("gl_NumWorkGroup"),
+  PointCoord = Preprocessor::hash("gl_PointCoord"),
+  PointSize = Preprocessor::hash("gl_PointSize"),
+  PrimitiveID = Preprocessor::hash("gl_PrimitiveID"),
+  VertexID = Preprocessor::hash("gl_VertexID"),
+  WorkGroupID = Preprocessor::hash("gl_WorkGroupID"),
+  WorkGroupSize = Preprocessor::hash("gl_WorkGroupSize"),
+  drw_debug = Preprocessor::hash("drw_debug_"),
+  printf = Preprocessor::hash("printf"),
+};
+
+enum Qualifier {
+  in = Preprocessor::hash("in"),
+  out = Preprocessor::hash("out"),
+  inout = Preprocessor::hash("inout"),
+};
+
+enum Type {
+  vec1 = Preprocessor::hash("float"),
+  vec2 = Preprocessor::hash("vec2"),
+  vec3 = Preprocessor::hash("vec3"),
+  vec4 = Preprocessor::hash("vec4"),
+  mat3 = Preprocessor::hash("mat3"),
+  mat4 = Preprocessor::hash("mat4"),
+  sampler1DArray = Preprocessor::hash("sampler1DArray"),
+  sampler2DArray = Preprocessor::hash("sampler2DArray"),
+  sampler2D = Preprocessor::hash("sampler2D"),
+  sampler3D = Preprocessor::hash("sampler3D"),
+  Closure = Preprocessor::hash("Closure"),
+};
+
+}  // namespace metadata
+
 }  // namespace blender::gpu::shader

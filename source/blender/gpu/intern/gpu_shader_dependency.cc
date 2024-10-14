@@ -58,94 +58,95 @@ struct GPUSource {
   shader::BuiltinBits parse_builtin_bit(StringRef builtin)
   {
     using namespace blender::gpu::shader;
-    switch (uint64_t(std::stoull(builtin))) {
-      case Preprocessor::hash("gl_FragCoord"):
+    using namespace blender::gpu::shader::metadata;
+    switch (Builtin(std::stoull(builtin))) {
+      case Builtin::FragCoord:
         return BuiltinBits::FRAG_COORD;
-      case Preprocessor::hash("gl_FrontFacing"):
+      case Builtin::FrontFacing:
         return BuiltinBits::FRONT_FACING;
-      case Preprocessor::hash("gl_GlobalInvocationID"):
+      case Builtin::GlobalInvocationID:
         return BuiltinBits::GLOBAL_INVOCATION_ID;
-      case Preprocessor::hash("gl_InstanceID"):
+      case Builtin::InstanceID:
         return BuiltinBits::INSTANCE_ID;
-      case Preprocessor::hash("gl_LocalInvocationID"):
+      case Builtin::LocalInvocationID:
         return BuiltinBits::LOCAL_INVOCATION_ID;
-      case Preprocessor::hash("gl_LocalInvocationIndex"):
+      case Builtin::LocalInvocationIndex:
         return BuiltinBits::LOCAL_INVOCATION_INDEX;
-      case Preprocessor::hash("gl_NumWorkGroup"):
+      case Builtin::NumWorkGroup:
         return BuiltinBits::NUM_WORK_GROUP;
-      case Preprocessor::hash("gl_PointCoord"):
+      case Builtin::PointCoord:
         return BuiltinBits::POINT_COORD;
-      case Preprocessor::hash("gl_PointSize"):
+      case Builtin::PointSize:
         return BuiltinBits::POINT_SIZE;
-      case Preprocessor::hash("gl_PrimitiveID"):
+      case Builtin::PrimitiveID:
         return BuiltinBits::PRIMITIVE_ID;
-      case Preprocessor::hash("gl_VertexID"):
+      case Builtin::VertexID:
         return BuiltinBits::VERTEX_ID;
-      case Preprocessor::hash("gl_WorkGroupID"):
+      case Builtin::WorkGroupID:
         return BuiltinBits::WORK_GROUP_ID;
-      case Preprocessor::hash("gl_WorkGroupSize"):
+      case Builtin::WorkGroupSize:
         return BuiltinBits::WORK_GROUP_SIZE;
-      case Preprocessor::hash("drw_debug_"):
+      case Builtin::drw_debug:
 #ifndef NDEBUG
         return BuiltinBits::USE_DEBUG_DRAW;
 #else
         return BuiltinBits::NONE;
 #endif
-      case Preprocessor::hash("printf"):
+      case Builtin::printf:
 #if GPU_SHADER_PRINTF_ENABLE
         return BuiltinBits::USE_PRINTF;
 #else
         return BuiltinBits::NONE;
 #endif
-      default:
-        BLI_assert_unreachable();
-        return BuiltinBits::NONE;
     }
+    BLI_assert_unreachable();
+    return BuiltinBits::NONE;
   }
 
   GPUFunctionQual parse_qualifier(StringRef qualifier)
   {
     using namespace blender::gpu::shader;
-    switch (uint64_t(std::stoull(qualifier))) {
-      case Preprocessor::hash("out"):
-        return FUNCTION_QUAL_OUT;
-      case Preprocessor::hash("inout"):
-        return FUNCTION_QUAL_INOUT;
-      default:
+    switch (metadata::Qualifier(std::stoull(qualifier))) {
+      case metadata::Qualifier::in:
         return FUNCTION_QUAL_IN;
+      case metadata::Qualifier::out:
+        return FUNCTION_QUAL_OUT;
+      case metadata::Qualifier::inout:
+        return FUNCTION_QUAL_INOUT;
     }
+    BLI_assert_unreachable();
+    return FUNCTION_QUAL_IN;
   }
 
   eGPUType parse_type(StringRef type)
   {
     using namespace blender::gpu::shader;
-    switch (uint64_t(std::stoull(type))) {
-      case Preprocessor::hash("float"):
+    switch (metadata::Type(std::stoull(type))) {
+      case metadata::Type::vec1:
         return GPU_FLOAT;
-      case Preprocessor::hash("vec2"):
+      case metadata::Type::vec2:
         return GPU_VEC2;
-      case Preprocessor::hash("vec3"):
+      case metadata::Type::vec3:
         return GPU_VEC3;
-      case Preprocessor::hash("vec4"):
+      case metadata::Type::vec4:
         return GPU_VEC4;
-      case Preprocessor::hash("mat3"):
+      case metadata::Type::mat3:
         return GPU_MAT3;
-      case Preprocessor::hash("mat4"):
+      case metadata::Type::mat4:
         return GPU_MAT4;
-      case Preprocessor::hash("sampler1DArray"):
+      case metadata::Type::sampler1DArray:
         return GPU_TEX1D_ARRAY;
-      case Preprocessor::hash("sampler2DArray"):
+      case metadata::Type::sampler2DArray:
         return GPU_TEX2D_ARRAY;
-      case Preprocessor::hash("sampler2D"):
+      case metadata::Type::sampler2D:
         return GPU_TEX2D;
-      case Preprocessor::hash("sampler3D"):
+      case metadata::Type::sampler3D:
         return GPU_TEX3D;
-      case Preprocessor::hash("Closure"):
+      case metadata::Type::Closure:
         return GPU_CLOSURE;
-      default:
-        BLI_assert_unreachable();
-        return GPU_NONE;
     }
+    BLI_assert_unreachable();
+    return GPU_NONE;
   }
 
   StringRef split_on(StringRef &data, char token)
