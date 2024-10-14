@@ -3016,13 +3016,6 @@ typedef enum GeometryNodeCurveSampleMode {
   GEO_NODE_CURVE_SAMPLE_LENGTH = 1,
 } GeometryNodeCurveSampleMode;
 
-typedef enum GeometryNodeCurveIntersectionMode {
-  GEO_NODE_CURVE_INTERSECT_CURVE = 0,
-  GEO_NODE_CURVE_INTERSECT_PLANE = 1,
-  GEO_NODE_CURVE_INTERSECT_SURFACE = 2,
-  GEO_NODE_CURVE_INTERSECT_PROJECT = 3,
-} GeometryNodeCurveIntersectionMode;
-
 typedef enum GeometryNodeCurveFilletMode {
   GEO_NODE_CURVE_FILLET_BEZIER = 0,
   GEO_NODE_CURVE_FILLET_POLY = 1,
