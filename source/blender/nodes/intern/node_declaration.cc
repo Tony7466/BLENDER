@@ -38,7 +38,7 @@ void build_node_declaration(const bke::bNodeType &typeinfo,
 void NodeDeclarationBuilder::build_remaining_anonymous_attribute_relations()
 {
   auto is_data_socket_decl = [](const SocketDeclaration *socket_decl) {
-    return dynamic_cast<const decl::Geometry *>(socket_decl);
+    return ELEM(socket_decl->socket_type, SOCK_GEOMETRY, SOCK_BUNDLE, SOCK_CLOSURE);
   };
 
   Vector<int> geometry_inputs;

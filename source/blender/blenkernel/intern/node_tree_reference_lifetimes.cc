@@ -77,12 +77,13 @@ static bool or_into_each_other(MutableBoundedBitSpan a, MutableBoundedBitSpan b)
 
 static bool can_contain_reference(const eNodeSocketDatatype socket_type)
 {
-  return nodes::socket_type_supports_fields(socket_type);
+  return nodes::socket_type_supports_fields(socket_type) ||
+         ELEM(socket_type, SOCK_BUNDLE, SOCK_CLOSURE);
 }
 
 static bool can_contain_referenced_data(const eNodeSocketDatatype socket_type)
 {
-  return ELEM(socket_type, SOCK_GEOMETRY);
+  return ELEM(socket_type, SOCK_GEOMETRY, SOCK_BUNDLE, SOCK_CLOSURE);
 }
 
 static const bNodeTreeZone *get_zone_of_node_if_full(const bNodeTreeZones *zones,
