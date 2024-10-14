@@ -131,6 +131,7 @@ static void convert_action_in_place(blender::animrig::Action &action)
 
   Slot &slot = action.slot_add();
   slot.idtype = idtype;
+  slot.name_ensure_prefix();
 
   Layer &layer = action.layer_add("Layer");
   blender::animrig::Strip &strip = layer.strip_add(action,
