@@ -454,7 +454,7 @@ void LightTree::recursive_build(const Child child,
                                 const int end,
                                 LightTreeEmitter *emitters,
                                 const uint bit_trail,
-                                const int depth)
+                                const uint8_t depth)
 {
   if (progress_.get_cancel()) {
     return;
@@ -471,9 +471,13 @@ void LightTree::recursive_build(const Child child,
   }
 
   /* Find the best place to split the emitters into 2 nodes.
-   * If the best split cost is no better than making a leaf node, make a leaf instead. */
+   * If the best split cost is no better than making a leaf node, make a leaf instead.
+   * Do not split if the depth is >=32 as a bit trail to the node is stored in a 32 bit uint,
+   * meaning the maximum possible depth that can be stored in the bit trail is 32. */
   int split_dim = -1, middle;
-  if (should_split(emitters, start, middle, end, node->measure, node->light_link, split_dim)) {
+  if (depth < 32 &&
+      should_split(emitters, start, middle, end, node->measure, node->light_link, split_dim))
+  {
 
     if (split_dim != -1) {
       /* Partition the emitters between start and end based on the centroids. */

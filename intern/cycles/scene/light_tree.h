@@ -438,7 +438,7 @@ class LightTree {
                        int end,
                        LightTreeEmitter *emitters,
                        uint bit_trail,
-                       int depth);
+                       uint8_t depth);
 
   bool should_split(LightTreeEmitter *emitters,
                     const int start,
