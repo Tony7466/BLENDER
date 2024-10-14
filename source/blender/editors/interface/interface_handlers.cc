@@ -957,7 +957,7 @@ static void ui_apply_but_undo(uiBut *but)
     str_len_clip = ui_but_drawstr_len_without_sep_char(but);
   }
   else {
-    str = but->tip;
+    str = but->tip.c_str();
     str_len_clip = ui_but_tip_len_only_first_line(but);
   }
 

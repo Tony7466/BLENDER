@@ -68,9 +68,7 @@ bool ui_but_is_interactive_ex(const uiBut *but, const bool labeledit, const bool
   if (ELEM(but->type, UI_BTYPE_LABEL, UI_BTYPE_PREVIEW_TILE)) {
     if (for_tooltip) {
       /* It's important labels are considered interactive for the purpose of showing tooltip. */
-      if (!ui_but_drag_is_draggable(but) && but->tip_func == nullptr &&
-          (but->tip == nullptr || but->tip[0] == '\0'))
-      {
+      if (!ui_but_drag_is_draggable(but) && but->tip_func == nullptr && but->tip.empty()) {
         return false;
       }
     }
@@ -625,11 +623,11 @@ blender::StringRef ui_but_drawstr_without_sep_char(const uiBut *but)
 
 size_t ui_but_tip_len_only_first_line(const uiBut *but)
 {
-  if (but->tip == nullptr) {
+  if (but->tip.empty()) {
     return 0;
   }
-  const char *str_sep = BLI_strchr_or_end(but->tip, '\n');
-  return (str_sep - but->tip);
+  const char *str_sep = BLI_strchr_or_end(but->tip.c_str(), '\n');
+  return (str_sep - but->tip.c_str());
 }
 
 /** \} */

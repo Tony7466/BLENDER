@@ -6770,9 +6770,9 @@ std::string UI_but_string_get_rna_label_context(const uiBut &but)
 std::string UI_but_string_get_tooltip(bContext &C, uiBut &but)
 {
   if (but.tip_func) {
-    return but.tip_func(&C, but.tip_arg, but.tip);
+    return but.tip_func(&C, but.tip_arg, but.tip.c_str());
   }
-  if (but.tip && but.tip[0]) {
+  if (!but.tip.empty()) {
     return but.tip;
   }
   return UI_but_string_get_rna_tooltip(C, but);

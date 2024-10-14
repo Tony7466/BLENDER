@@ -1178,7 +1178,7 @@ void UI_context_active_but_prop_get_filebrowser(const bContext *C,
  */
 static void ui_but_tip_from_enum_item(uiBut *but, const EnumPropertyItem *item)
 {
-  if (but->tip == nullptr || but->tip[0] == '\0') {
+  if (but->tip.empty()) {
     if (item->description && item->description[0] &&
         !(but->optype && but->optype->get_description))
     {
@@ -6345,7 +6345,7 @@ static void ui_layout_introspect_button(DynStr *ds, const uiButtonItem *bitem)
   BLI_dynstr_appendf(ds, "'type':%d, ", int(but->type));
   BLI_dynstr_appendf(ds, "'draw_string':'''%s''', ", but->drawstr.c_str());
   /* Not exactly needed, rna has this. */
-  BLI_dynstr_appendf(ds, "'tip':'''%s''', ", but->tip ? but->tip : "");
+  BLI_dynstr_appendf(ds, "'tip':'''%s''', ", but->tip.c_str());
 
   if (but->optype) {
     std::string opstr = WM_operator_pystring_ex(static_cast<bContext *>(but->block->evil_C),
