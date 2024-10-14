@@ -4597,7 +4597,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
                                      &handle->retvalue,
                                      item->value,
                                      0.0,
-                                     item->description);
+                                     nullptr);
       }
       else {
         item_but = uiDefButI(block,
@@ -4611,10 +4611,22 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
                              &handle->retvalue,
                              item->value,
                              0.0,
-                             item->description);
+                             nullptr);
       }
       if (item->value == current_value) {
         item_but->flag |= UI_SELECT_DRAW;
+      }
+      if (item->description && item->description[0]) {
+        /* Store a copy of the description and use the tooltip callback to return that copy. This
+         * way we're independent of the lifetime of Python strings. */
+        char *description_copy = BLI_strdup(item->description);
+        UI_but_func_tooltip_set(
+            item_but,
+            [](bContext * /*C*/, void *argN, const char * /*tip*/) -> std::string {
+              return static_cast<const char *>(argN);
+            },
+            description_copy,
+            MEM_freeN);
       }
     }
   }
