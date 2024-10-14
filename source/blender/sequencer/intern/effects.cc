@@ -3240,28 +3240,15 @@ static float2 anchor_offset_get(const TextVars *data, int width_max, int text_he
   return anchor_offset;
 }
 
-static void apply_text_alignment(const TextVars *data,
-                                 TextVarsRuntime *runtime,
-                                 const int2 image_size)
+static void calc_boundbox(const TextVars *data, TextVarsRuntime *runtime, const int2 image_size)
 {
   const int width_max = text_box_width_get(runtime->lines);
   const int text_height = runtime->lines.size() * runtime->line_height;
-
   const float2 image_center{data->loc[0] * image_size.x, data->loc[1] * image_size.y};
-  const float2 line_height_offset{0.0f,
-                                  float(-runtime->line_height - BLF_descender(runtime->font))};
   const float2 anchor = anchor_offset_get(data, width_max, text_height);
-
   Vector<rcti> line_boxes;
 
   for (LineInfo &line : runtime->lines) {
-    const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
-    const float2 alignment = math::round(image_center + line_height_offset + alignment_x + anchor);
-
-    for (CharInfo &character : line.characters) {
-      character.position += alignment;
-    }
-
     /* Get text box for line. This has to be done, because some fonts do not use descenders, but
      * define their height. In that case, box has unwanted offset in Y axis. */
     rcti line_box;
@@ -3275,6 +3262,35 @@ static void apply_text_alignment(const TextVars *data,
   runtime->text_boundbox = line_boxes.first();
   for (const rcti &box : line_boxes) {
     BLI_rcti_union(&runtime->text_boundbox, &box);
+  }
+
+  /* Editing boundbox - Displayed when editing text. */
+  runtime->edit_boundbox.xmin = anchor.x + image_center.x + runtime->font_descender / 2;
+  runtime->edit_boundbox.xmax = anchor.x + image_center.x + width_max -
+                                runtime->font_descender / 2;
+  runtime->edit_boundbox.ymax = anchor.y + image_center.y - runtime->font_descender / 2;
+  runtime->edit_boundbox.ymin = anchor.y + image_center.y - text_height;
+}
+
+static void apply_text_alignment(const TextVars *data,
+                                 TextVarsRuntime *runtime,
+                                 const int2 image_size)
+{
+  const int width_max = text_box_width_get(runtime->lines);
+  const int text_height = runtime->lines.size() * runtime->line_height;
+
+  const float2 image_center{data->loc[0] * image_size.x, data->loc[1] * image_size.y};
+  const float2 line_height_offset{0.0f,
+                                  float(-runtime->line_height - BLF_descender(runtime->font))};
+  const float2 anchor = anchor_offset_get(data, width_max, text_height);
+
+  for (LineInfo &line : runtime->lines) {
+    const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
+    const float2 alignment = math::round(image_center + line_height_offset + alignment_x + anchor);
+
+    for (CharInfo &character : line.characters) {
+      character.position += alignment;
+    }
   }
 }
 
@@ -3296,6 +3312,7 @@ static void calc_text_runtime(const Sequence *seq, int font, const int2 image_si
   blender::Vector<CharInfo> characters_temp = build_character_info(data, font);
   apply_word_wrapping(data, runtime, image_size, characters_temp);
   apply_text_alignment(data, runtime, image_size);
+  calc_boundbox(data, runtime, image_size);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,

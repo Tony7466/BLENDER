@@ -12,9 +12,16 @@
 #include "BLF_api.hh"
 
 #include "BLI_blenlib.h"
+#include "BLI_index_range.hh"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector_types.hh"
+#include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
+#include "BLI_vector.hh"
+#include "GPU_primitive.hh"
 #include "IMB_imbuf_types.hh"
 
 #include "DNA_scene_types.h"
@@ -1030,6 +1037,9 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
   {
     return;
   }
+  if (sequencer_text_editing_active_poll(const_cast<bContext *>(C))) {
+    return;
+  }
 
   float origin[2];
   SEQ_image_transform_origin_offset_pixelspace_get(CTX_data_scene(C), seq, origin);
@@ -1077,21 +1087,17 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
   GPU_line_smooth(false);
 }
 
-static void text_selection_draw(
-    View2D *v2d, TextVarsRuntime *text, TextVars *data, uint pos, blender::float2 image_offset)
+static void text_selection_draw(const bContext *C, Sequence *seq, uint pos)
 {
-  if (data->selection_start_offset == -1) {
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  TextVarsRuntime *text = data->runtime;
+  View2D *v2d = UI_view2d_fromcontext(C);
+
+  if (data->selection_start_offset == -1 || seq_text_selection_range_get(data).is_empty()) {
     return;
   }
-
-  immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.3f));
 
   blender::IndexRange sel_range = seq_text_selection_range_get(data);
-
-  if (sel_range.is_empty()) {
-    return;
-  }
-
   blender::int2 selection_start = seq_text_cursor_offset_to_position(text, sel_range.first());
   blender::int2 selection_end = seq_text_cursor_offset_to_position(text, sel_range.last());
   const int line_start = selection_start.y;
@@ -1110,14 +1116,99 @@ static void text_selection_draw(
     }
 
     const float line_y = character_start.position.y + text->font_descender;
-    rctf rect{character_start.position.x,
-              character_end.position.x + character_end.advance_x,
-              line_y,
-              line_y + text->line_height};
-    BLI_rctf_translate(&rect, image_offset.x, image_offset.y);
-    BLI_rctf_translate(&rect, -v2d->tot.xmax, -v2d->tot.ymax);
-    immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
+
+    blender::float4x4 transform_mat;
+    SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
+    blender::float4x3 selection_quad{
+        {character_start.position.x, line_y, 0.0f},
+        {character_start.position.x, line_y + text->line_height, 0.0f},
+        {character_end.position.x + character_end.advance_x, line_y + text->line_height, 0.0f},
+        {character_end.position.x + character_end.advance_x, line_y, 0.0f},
+    };
+
+    const blender::float3 view_offs{-v2d->tot.xmax, -v2d->tot.ymax, 0.0f};
+
+    immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.3f));
+    immBegin(GPU_PRIM_TRIS, 6);
+
+    for (int i : blender::IndexRange(0, 4)) {
+      // xxx needs to be modified by aspect rato and eeeh mirror
+      selection_quad[i] += view_offs;
+      selection_quad[i] = blender::math::transform_point(transform_mat, selection_quad[i]);
+    }
+    for (int i : blender::Vector<int>{0, 1, 2, 2, 3, 0}) {
+      immVertex2f(pos, selection_quad[i][0], selection_quad[i][1]);
+    }
+
+    immEnd();
   }
+}
+
+static void text_edit_draw_cursor(const bContext *C, Sequence *seq, uint pos)
+{
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  TextVarsRuntime *text = data->runtime;
+  View2D *v2d = UI_view2d_fromcontext(C);
+
+  blender::float4x4 transform_mat;
+  SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
+  const blender::int2 cursor_position = seq_text_cursor_offset_to_position(text,
+                                                                           data->cursor_offset);
+  const blender::seq::CharInfo character =
+      text->lines[cursor_position.y].characters[cursor_position.x];
+  blender::float4x3 cursor_quad{
+      {character.position.x, character.position.y, 0.0f},
+      {character.position.x, character.position.y + text->line_height, 0.0f},
+      {character.position.x + 10, character.position.y + text->line_height, 0.0f},
+      {character.position.x + 10, character.position.y, 0.0f},
+  };
+  const blender::float3 descender_offs{0.0f, float(text->font_descender), 0.0f};
+  const blender::float3 view_offs{-v2d->tot.xmax, -v2d->tot.ymax, 0.0f};
+
+  immUniformColor4fv(blender::float4(0.43f, 0.65f, 1.0f, 0.8f));
+  immBegin(GPU_PRIM_TRIS, 6);
+
+  for (int i : blender::IndexRange(0, 4)) {
+    // xxx needs to be modified by aspect rato and eeeh mirror
+    cursor_quad[i] += descender_offs + view_offs;
+    cursor_quad[i] = blender::math::transform_point(transform_mat, cursor_quad[i]);
+  }
+  for (int i : blender::Vector<int>{0, 1, 2, 2, 3, 0}) {
+    immVertex2f(pos, cursor_quad[i][0], cursor_quad[i][1]);
+  }
+
+  immEnd();
+}
+
+static void text_edit_draw_box(const bContext *C, Sequence *seq, uint pos)
+{
+  View2D *v2d = UI_view2d_fromcontext(C);
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  TextVarsRuntime *text = data->runtime;
+
+  blender::float3 col;
+  UI_GetThemeColor3fv(TH_SEQ_ACTIVE, col);
+  immUniformColor3fv(col);
+  immUniform1f("lineWidth", U.pixelsize);
+  immBegin(GPU_PRIM_LINE_LOOP, 4);
+
+  const blender::float3 view_offs{-v2d->tot.xmax, -v2d->tot.ymax, 0.0f};
+  blender::float4x4 transform_mat;
+  SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
+  blender::float4x3 box_quad{
+      {float(text->edit_boundbox.xmin), float(text->edit_boundbox.ymin), 0.0f},
+      {float(text->edit_boundbox.xmin), float(text->edit_boundbox.ymax), 0.0f},
+      {float(text->edit_boundbox.xmax), float(text->edit_boundbox.ymax), 0.0f},
+      {float(text->edit_boundbox.xmax), float(text->edit_boundbox.ymin), 0.0f},
+  };
+
+  for (int i : blender::IndexRange(0, 4)) {
+    // xxx needs to be modified by aspect rato and eeeh mirror
+    box_quad[i] += view_offs;
+    box_quad[i] = blender::math::transform_point(transform_mat, box_quad[i]);
+    immVertex2f(pos, box_quad[i][0], box_quad[i][1]);
+  }
+  immEnd();
 }
 
 static void text_edit_draw(const bContext *C)
@@ -1126,38 +1217,22 @@ static void text_edit_draw(const bContext *C)
     return;
   }
 
-  View2D *v2d = UI_view2d_fromcontext(C);
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
-  TextVars *data = static_cast<TextVars *>(seq->effectdata);
-  TextVarsRuntime *text = data->runtime;
-
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPU_line_smooth(true);
   GPU_blend(GPU_BLEND_ALPHA);
+  GPU_line_width(2);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor4fv(blender::float4(0.43f, 0.65f, 1.0f, 0.8f));
 
-  const Scene *scene = CTX_data_scene(C);
-  blender::float2 image_offset;
-  SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, image_offset);
-  blender::int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
-  blender::seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
-
-  // xxx cursor width depends on zoom, hardcoded
-  rctf text_box{character.position.x,
-                character.position.x + 10,
-                character.position.y,
-                character.position.y + text->line_height};
-  BLI_rctf_translate(&text_box, 0, text->font_descender);
-  BLI_rctf_translate(&text_box, image_offset.x, image_offset.y);
-  BLI_rctf_translate(&text_box, -v2d->tot.xmax, -v2d->tot.ymax);
-
-  immRectf(pos, text_box.xmax, text_box.ymax, text_box.xmin, text_box.ymin);
-
-  text_selection_draw(v2d, text, data, pos, image_offset);
+  text_edit_draw_cursor(C, seq, pos);
+  text_selection_draw(C, seq, pos);
+  text_edit_draw_box(C, seq, pos);
 
   immUnbindProgram();
+  GPU_line_width(1);
   GPU_blend(GPU_BLEND_NONE);
+  GPU_line_smooth(false);
 }
 
 void sequencer_draw_preview(const bContext *C,

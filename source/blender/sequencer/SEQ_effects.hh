@@ -112,13 +112,13 @@ struct LineInfo {
 struct TextVarsRuntime {
   Vector<LineInfo> lines;
 
-  rcti text_boundbox;
+  rcti text_boundbox; /* Boundbox used for box drawing and selection. */
+  rcti edit_boundbox; /* Boundbox used for text editing. */
   int line_height;
   int font_descender;
   int character_count;
   int font;
-  /* Variables for UI. xxx comment */
-  bool editing_is_active;
+  bool editing_is_active; /* UI uses this to differentiate behavior. */
 };
 
 }  // namespace blender::seq

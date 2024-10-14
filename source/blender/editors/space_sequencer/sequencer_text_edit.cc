@@ -6,25 +6,22 @@
  * \ingroup spseq
  */
 
+#include "BLI_math_basis_types.hh"
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
-#include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
 #include "DNA_scene_types.h"
-#include "DNA_space_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_report.hh"
-#include "BKE_scene.hh"
 
 #include "ED_select_utils.hh"
 #include "ED_sequencer.hh"
 
 #include "SEQ_effects.hh"
-#include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_select.hh"
 #include "SEQ_transform.hh"
@@ -678,16 +675,16 @@ static void cursor_set_by_mouse_position(const bContext *C, const wmEvent *event
 
   int2 mval_region;
   WM_event_drag_start_mval(event, CTX_wm_region(C), mval_region);
-  float2 mouse_loc;
+  float3 mouse_loc;
   UI_view2d_region_to_view(v2d, mval_region.x, mval_region.y, &mouse_loc.x, &mouse_loc.y);
 
   /* Convert cursor coordinates to domain of CharInfo::position. */
-  blender::float2 image_offset;
-  SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, image_offset);
-  mouse_loc += {v2d->tot.xmax, v2d->tot.ymax};
-  mouse_loc -= image_offset;
-
-  data->cursor_offset = find_closest_cursor_offset(data, mouse_loc);
+  blender::float4x4 transform_mat;
+  SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
+  transform_mat = blender::math::invert(transform_mat);
+  mouse_loc = blender::math::transform_point(transform_mat, mouse_loc);
+  mouse_loc += {v2d->tot.xmax, v2d->tot.ymax, 0.0f};
+  data->cursor_offset = find_closest_cursor_offset(data, float2(mouse_loc));
 }
 
 static int sequencer_text_cursor_set_modal(bContext *C, wmOperator * /*op*/, const wmEvent *event)
@@ -696,9 +693,9 @@ static int sequencer_text_cursor_set_modal(bContext *C, wmOperator * /*op*/, con
   Sequence *seq = SEQ_select_active_get(scene);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   /* XXX This happened sometimes, maybe not needed now, since I no longer invalidate runtime. */
-  if (data->runtime == nullptr) {
+  /*if (data->runtime == nullptr) {
     return OPERATOR_RUNNING_MODAL;
-  }
+  }*/
 
   bool make_selection = false;
 
