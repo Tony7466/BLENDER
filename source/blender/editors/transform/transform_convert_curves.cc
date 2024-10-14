@@ -162,12 +162,24 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
       const index_mask::Expr &nonselected_knots = builder.subtract(&bezier_points,
                                                                    {&selected_knots});
+      const index_mask::Expr &selected_left_nonselected_knots = builder.intersect(
+          {&selection_per_attribute[1], &nonselected_knots});
+      const index_mask::Expr &selected_right_nonselected_knots = builder.intersect(
+          {&selection_per_attribute[2], &nonselected_knots});
+
+      const index_mask::Expr &selected_auto_left = builder.intersect(
+          {&selected_left_nonselected_knots, &auto_left});
+      const index_mask::Expr &selected_auto_right = builder.intersect(
+          {&selected_right_nonselected_knots, &auto_right});
+
       {
-        const index_mask::Expr &selected_left_nonselected_knots = builder.intersect(
-            {&selection_per_attribute[1], &nonselected_knots});
         /* Selected BEZIER_HANDLE_AUTO left handles. */
         const IndexMask &convert_to_align = evaluate_expression(
-            builder.intersect({&selected_left_nonselected_knots, &auto_left}), memory);
+            builder.merge({
+                &selected_auto_left,
+                &builder.intersect({&selected_auto_right, &auto_left}),
+            }),
+            memory);
         index_mask::masked_fill(left_handle_types, int8_t(BEZIER_HANDLE_ALIGN), convert_to_align);
         /* Selected BEZIER_HANDLE_VECTOR left handles. */
         const IndexMask &convert_to_free = evaluate_expression(
@@ -175,11 +187,13 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
         index_mask::masked_fill(left_handle_types, int8_t(BEZIER_HANDLE_FREE), convert_to_free);
       }
       {
-        const index_mask::Expr &selected_right_nonselected_knots = builder.intersect(
-            {&selection_per_attribute[2], &nonselected_knots});
         /* Selected BEZIER_HANDLE_AUTO right handles. */
         const IndexMask &convert_to_align = evaluate_expression(
-            builder.intersect({&selected_right_nonselected_knots, &auto_right}), memory);
+            builder.merge({
+                &selected_auto_right,
+                &builder.intersect({&selected_auto_left, &auto_right}),
+            }),
+            memory);
         index_mask::masked_fill(right_handle_types, int8_t(BEZIER_HANDLE_ALIGN), convert_to_align);
         /* Selected BEZIER_HANDLE_VECTOR right handles. */
         const IndexMask &convert_to_free = evaluate_expression(
