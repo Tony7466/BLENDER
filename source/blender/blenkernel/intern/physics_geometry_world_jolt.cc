@@ -42,7 +42,7 @@
 
 namespace blender::bke {
 
-#ifdef WITH_BULLET
+#ifdef WITH_JOLT
 
 static const AttributeAccessorFunctions &get_accessor_functions_ref();
 

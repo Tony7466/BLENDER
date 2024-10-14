@@ -1138,9 +1138,7 @@ TEST_F(PhysicsGeometryTest, update_read_cache)
 
 /* Some attributes are connected internally. Changing mass, motion type
  * (static/kinematic/dynamic) or the shape is expected to conditionally change the other
- * attributes on the Bullet side. Attributes remain untouched, these read/write from custom
- * data.
- */
+ * attributes. Attributes remain untouched, these read/write from custom data. */
 TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
 {
   AllShapesData all_shapes_data;
