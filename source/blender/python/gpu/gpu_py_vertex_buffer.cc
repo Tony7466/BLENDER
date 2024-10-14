@@ -15,10 +15,11 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "../generic/py_capi_utils.h"
-#include "../generic/python_compat.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/py_capi_utils.hh"
+#include "../generic/python_compat.hh"
+#include "../generic/python_utildefines.hh"
 
+#include "gpu_py.hh"
 #include "gpu_py_vertex_buffer.hh" /* own include */
 #include "gpu_py_vertex_format.hh"
 
@@ -211,7 +212,7 @@ static int pygpu_vertbuf_fill(blender::gpu::VertBuf *buf,
     return 0;
   }
 
-  if (GPU_vertbuf_get_data(*buf) == nullptr) {
+  if (buf->data<char>().data() == nullptr) {
     PyErr_SetString(PyExc_ValueError, "Can't fill, static buffer already in use");
     return 0;
   }
@@ -231,6 +232,8 @@ static int pygpu_vertbuf_fill(blender::gpu::VertBuf *buf,
 
 static PyObject *pygpu_vertbuf__tp_new(PyTypeObject * /*type*/, PyObject *args, PyObject *kwds)
 {
+  BPYGPU_IS_INIT_OR_ERROR_OBJ;
+
   struct {
     PyObject *py_fmt;
     uint len;

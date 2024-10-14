@@ -590,6 +590,13 @@ std::string GLShader::resources_declare(const ShaderCreateInfo &info) const
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource_alias(ss, res);
   }
+  ss << "\n/* Geometry Resources. */\n";
+  for (const ShaderCreateInfo::Resource &res : info.geometry_resources_) {
+    print_resource(ss, res, info.auto_resource_location_);
+  }
+  for (const ShaderCreateInfo::Resource &res : info.geometry_resources_) {
+    print_resource_alias(ss, res);
+  }
   ss << "\n/* Push Constants. */\n";
   for (const ShaderCreateInfo::PushConst &uniform : info.push_constants_) {
     ss << "uniform " << to_string(uniform.type) << " " << uniform.name;
@@ -730,7 +737,6 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       ss << "flat in vec4 gpu_pos[3];\n";
       ss << "smooth in vec3 gpu_BaryCoord;\n";
       ss << "noperspective in vec3 gpu_BaryCoordNoPersp;\n";
-      ss << "#define gpu_position_at_vertex(v) gpu_pos[v]\n";
     }
     else if (epoxy_has_gl_extension("GL_AMD_shader_explicit_vertex_parameter")) {
       /* NOTE(fclem): This won't work with geometry shader. Hopefully, we don't need geometry
@@ -749,11 +755,6 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
       ss << "  return bary.xyz;\n";
       ss << "}\n";
       ss << "\n";
-      ss << "vec4 gpu_position_at_vertex(int v) {\n";
-      ss << "  if (interpolateAtVertexAMD(gpu_pos, 0) == gpu_pos_flat) { v = (v + 2) % 3; }\n";
-      ss << "  if (interpolateAtVertexAMD(gpu_pos, 2) == gpu_pos_flat) { v = (v + 1) % 3; }\n";
-      ss << "  return interpolateAtVertexAMD(gpu_pos, v);\n";
-      ss << "}\n";
 
       pre_main += "  gpu_BaryCoord = stable_bary_(gl_BaryCoordSmoothAMD);\n";
       pre_main += "  gpu_BaryCoordNoPersp = stable_bary_(gl_BaryCoordNoPerspAMD);\n";
@@ -762,9 +763,7 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   if (info.early_fragment_test_) {
     ss << "layout(early_fragment_tests) in;\n";
   }
-  if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
-    ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
-  }
+  ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
 
   ss << "\n/* Sub-pass Inputs. */\n";
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
@@ -970,7 +969,7 @@ std::string GLShader::workaround_geometry_shader_source_create(
     ss << "  gpu_pos[2] = gl_in[2].gl_Position;\n";
   }
   for (auto i : IndexRange(3)) {
-    for (StageInterfaceInfo *iface : info_modified.vertex_out_interfaces_) {
+    for (const StageInterfaceInfo *iface : info_modified.vertex_out_interfaces_) {
       for (auto &inout : iface->inouts) {
         ss << "  " << iface->instance_name << "_out." << inout.name;
         ss << " = " << iface->instance_name << "_in[" << i << "]." << inout.name << ";\n";
@@ -1032,9 +1031,6 @@ static const char *glsl_patch_default_get()
     ss << "#define GPU_ARB_shader_draw_parameters\n";
     ss << "#define gpu_BaseInstance gl_BaseInstanceARB\n";
   }
-  if (epoxy_has_gl_extension("GL_ARB_conservative_depth")) {
-    ss << "#extension GL_ARB_conservative_depth : enable\n";
-  }
   if (GLContext::layered_rendering_support) {
     ss << "#extension GL_ARB_shader_viewport_layer_array: enable\n";
     ss << "#define gpu_Layer gl_Layer\n";
@@ -1062,10 +1058,6 @@ static const char *glsl_patch_default_get()
 
   /* Array compatibility. */
   ss << "#define gpu_Array(_type) _type[]\n";
-
-  /* Derivative sign can change depending on implementation. */
-  ss << "#define DFDX_SIGN " << std::setprecision(2) << GLContext::derivative_signs[0] << "\n";
-  ss << "#define DFDY_SIGN " << std::setprecision(2) << GLContext::derivative_signs[1] << "\n";
 
   /* GLSL Backend Lib. */
   ss << datatoc_glsl_shader_defines_glsl;
@@ -1820,6 +1812,8 @@ BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
 bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
 {
   std::scoped_lock lock(mutex_);
+
+  BLI_assert(batches.contains(handle));
   Batch &batch = batches.lookup(handle);
   if (batch.is_ready) {
     return true;
@@ -1879,6 +1873,8 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
     BLI_time_sleep_ms(1);
   }
   std::scoped_lock lock(mutex_);
+
+  BLI_assert(batches.contains(handle));
   Batch batch = batches.pop(handle);
   Vector<Shader *> result;
   for (CompilationWork &item : batch.items) {
@@ -1888,42 +1884,62 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
   return result;
 }
 
-void GLShaderCompiler::precompile_specializations(Span<ShaderSpecialization> specializations)
+SpecializationBatchHandle GLShaderCompiler::precompile_specializations(
+    Span<ShaderSpecialization> specializations)
 {
   BLI_assert(GPU_use_parallel_compilation());
 
-  struct SpecializationWork {
-    GLShader *shader = nullptr;
-    GLuint program;
-    GLSourcesBaked sources;
+  std::scoped_lock lock(mutex_);
 
-    GLCompilerWorker *worker = nullptr;
-    bool do_async_compilation = false;
-    bool is_ready = false;
-  };
+  SpecializationBatchHandle handle = next_batch_handle++;
 
-  Vector<SpecializationWork> items;
-  items.reserve(specializations.size());
+  specialization_queue.append({handle, specializations});
 
-  for (auto &specialization : specializations) {
+  return handle;
+}
+
+GLShader::GLProgram *GLShaderCompiler::SpecializationWork::program_get()
+{
+  for (const SpecializationConstant &constant : constants) {
+    const ShaderInput *input = shader->interface->constant_get(constant.name.c_str());
+    BLI_assert_msg(input != nullptr, "The specialization constant doesn't exists");
+    shader->constants.values[input->location].u = constant.value.u;
+  }
+  shader->constants.is_dirty = true;
+  if (shader->program_cache_.contains(shader->constants.values)) {
+    return &shader->program_cache_.lookup(shader->constants.values);
+  }
+  return nullptr;
+}
+
+void GLShaderCompiler::prepare_next_specialization_batch()
+{
+  BLI_assert(current_specialization_batch.is_ready && !specialization_queue.is_empty());
+
+  SpecializationRequest &next = specialization_queue.first();
+  SpecializationBatch &batch = current_specialization_batch;
+  batch.handle = next.handle;
+  batch.is_ready = false;
+  Vector<SpecializationWork> &items = batch.items;
+  items.clear();
+  items.reserve(next.specializations.size());
+
+  for (auto &specialization : next.specializations) {
     GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
-    for (const SpecializationConstant &constant : specialization.constants) {
-      const ShaderInput *input = sh->interface->constant_get(constant.name.c_str());
-      BLI_assert_msg(input != nullptr, "The specialization constant doesn't exists");
-      sh->constants.values[input->location].u = constant.value.u;
-    }
-    sh->constants.is_dirty = true;
-    if (sh->program_cache_.contains(sh->constants.values)) {
-      /* Already compiled. */
-      continue;
-    }
     items.append({});
     SpecializationWork &item = items.last();
     item.shader = sh;
+    item.constants = specialization.constants;
+
+    if (item.program_get()) {
+      /* Already compiled. */
+      items.pop_last();
+      continue;
+    }
 
     /** WORKAROUND: Set async_compilation to true, so only the sources are generated. */
     sh->async_compilation_ = true;
-    item.program = sh->program_get();
+    sh->program_get();
     sh->async_compilation_ = false;
 
     item.sources = sh->get_sources();
@@ -1932,53 +1948,71 @@ void GLShaderCompiler::precompile_specializations(Span<ShaderSpecialization> spe
     item.do_async_compilation = required_size <= sizeof(ShaderSourceHeader::sources);
   }
 
-  bool is_ready = false;
-  while (!is_ready) {
-    /* Loop until ready, we can't defer the compilation of required specialization constants. */
-    is_ready = true;
+  specialization_queue.remove(0);
+}
 
-    for (SpecializationWork &item : items) {
-      if (item.is_ready) {
-        continue;
-      }
-      std::scoped_lock lock(mutex_);
+bool GLShaderCompiler::specialization_batch_is_ready(SpecializationBatchHandle &handle)
+{
+  std::scoped_lock lock(mutex_);
 
-      if (!item.do_async_compilation) {
-        /* Compilation will happen locally on shader bind. */
-        glDeleteProgram(item.program);
-        item.program = 0;
-        item.shader->program_active_->program_id = 0;
-        item.shader->constants.is_dirty = true;
+  SpecializationBatch &batch = current_specialization_batch;
+
+  if (handle < batch.handle || (handle == batch.handle && batch.is_ready)) {
+    handle = 0;
+    return true;
+  }
+
+  if (batch.is_ready) {
+    prepare_next_specialization_batch();
+  }
+
+  bool is_ready = true;
+  for (SpecializationWork &item : batch.items) {
+    if (item.is_ready) {
+      continue;
+    }
+
+    if (!item.do_async_compilation) {
+      GLShader::GLProgram *program = item.program_get();
+      glDeleteProgram(program->program_id);
+      program->program_id = 0;
+      item.shader->constants.is_dirty = true;
+      item.is_ready = true;
+      continue;
+    }
+
+    if (item.worker == nullptr) {
+      /* Try to acquire an available worker. */
+      item.worker = get_compiler_worker(item.sources);
+    }
+    else if (item.worker->is_ready()) {
+      /* Retrieve the binary compiled by the worker. */
+      if (item.worker->load_program_binary(item.program_get()->program_id)) {
         item.is_ready = true;
-        continue;
       }
-
-      if (item.worker == nullptr) {
-        /* Try to acquire an available worker. */
-        item.worker = get_compiler_worker(item.sources);
-      }
-      else if (item.worker->is_ready()) {
-        /* Retrieve the binary compiled by the worker. */
-        if (item.worker->load_program_binary(item.program)) {
-          item.worker->release();
-          item.worker = nullptr;
-          item.is_ready = true;
-        }
-        else {
-          /* Compilation failed, local compilation will be tried later on shader bind. */
-          item.do_async_compilation = false;
-        }
-      }
-      else if (worker_is_lost(item.worker)) {
-        /* We lost the worker, local compilation will be tried later on shader bind. */
+      else {
+        /* Compilation failed, local compilation will be tried later on shader bind. */
         item.do_async_compilation = false;
       }
+      item.worker->release();
+      item.worker = nullptr;
+    }
+    else if (worker_is_lost(item.worker)) {
+      /* We lost the worker, local compilation will be tried later on shader bind. */
+      item.do_async_compilation = false;
+    }
 
-      if (!item.is_ready) {
-        is_ready = false;
-      }
+    if (!item.is_ready) {
+      is_ready = false;
     }
   }
+
+  if (is_ready) {
+    batch.is_ready = true;
+    handle = 0;
+  }
+
+  return is_ready;
 }
 
 /** \} */

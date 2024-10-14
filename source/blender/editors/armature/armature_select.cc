@@ -19,7 +19,7 @@
 #include "BLI_rect.h"
 #include "BLI_string_utils.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
@@ -1291,7 +1291,6 @@ bool ED_armature_edit_select_op_from_tagged(bArmature *arm, const int sel_op)
     }
 
     ED_armature_edit_sync_selection(arm->edbo);
-    ED_armature_edit_validate_active(arm);
   }
 
   return changed;
