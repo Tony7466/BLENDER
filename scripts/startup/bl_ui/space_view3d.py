@@ -103,18 +103,6 @@ class VIEW3D_HT_tool_header(Header):
             # if tool.use_brushes:
             #     layout.popover_group(context=".paint_common", **popover_kw)
             pass
-        elif tool_mode == 'PAINT_GPENCIL':
-            if is_valid_context:
-                brush = context.tool_settings.gpencil_paint.brush
-                if brush:
-                    if brush.gpencil_tool != 'ERASE':
-                        if brush.gpencil_tool != 'TINT':
-                            layout.popover("VIEW3D_PT_tools_grease_pencil_brush_advanced")
-
-                        if brush.gpencil_tool not in {'FILL', 'TINT'}:
-                            layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stroke")
-
-                    layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
         elif tool_mode == 'PAINT_GREASE_PENCIL':
             if is_valid_context:
                 brush = context.tool_settings.gpencil_paint.brush
@@ -126,14 +114,6 @@ class VIEW3D_HT_tool_header(Header):
                         if brush.gpencil_tool not in {'FILL', 'TINT'}:
                             layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_stroke")
                     layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
-        elif tool_mode == 'SCULPT_GPENCIL':
-            if is_valid_context:
-                brush = context.tool_settings.gpencil_sculpt_paint.brush
-                if brush:
-                    tool = brush.gpencil_sculpt_tool
-                    if tool in {'SMOOTH', 'RANDOMIZE'}:
-                        layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_brush_popover")
-                    layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
         elif tool_mode == 'SCULPT_GREASE_PENCIL':
             if is_valid_context:
                 brush = context.tool_settings.gpencil_sculpt_paint.brush
@@ -690,6 +670,30 @@ class _draw_tool_settings_context_mode:
         return True
 
 
+def draw_topbar_grease_pencil_layer_panel(context, layout):
+    grease_pencil = context.object.data
+    layer = grease_pencil.layers.active
+    group = grease_pencil.layer_groups.active
+
+    icon = 'OUTLINER_DATA_GP_LAYER'
+    node_name = None
+    if layer or group:
+        icon = 'OUTLINER_DATA_GP_LAYER' if layer else 'GREASEPENCIL_LAYER_GROUP'
+        node_name = layer.name if layer else group.name
+
+        # Clamp long names otherwise the selector can get too wide.
+        max_width = 25
+        if len(node_name) > max_width:
+            node_name = node_name[:max_width - 5] + '..' + node_name[-3:]
+
+    sub = layout.row()
+    sub.popover(
+        panel="TOPBAR_PT_grease_pencil_layers",
+        text=node_name,
+        icon=icon,
+    )
+
+
 class VIEW3D_HT_header(Header):
     bl_space_type = 'VIEW_3D'
 
@@ -803,6 +807,9 @@ class VIEW3D_HT_header(Header):
                 icon_only=True,
                 panel="VIEW3D_PT_proportional_edit",
             )
+
+        if object_mode == 'EDIT' and obj.type == 'GREASEPENCIL':
+            draw_topbar_grease_pencil_layer_panel(context, layout)
 
     def draw(self, context):
         layout = self.layout
@@ -928,33 +935,7 @@ class VIEW3D_HT_header(Header):
                     panel="VIEW3D_PT_grease_pencil_lock",
                 )
 
-            if mode_string in {
-                'EDIT_GREASE_PENCIL',
-                'PAINT_GREASE_PENCIL',
-                'SCULPT_GREASE_PENCIL',
-                'WEIGHT_GREASE_PENCIL',
-                    'VERTEX_GREASE_PENCIL'}:
-                grease_pencil = context.object.data
-                layer = grease_pencil.layers.active
-                group = grease_pencil.layer_groups.active
-
-                icon = 'OUTLINER_DATA_GP_LAYER'
-                node_name = None
-                if layer or group:
-                    icon = 'OUTLINER_DATA_GP_LAYER' if layer else 'GREASEPENCIL_LAYER_GROUP'
-                    node_name = layer.name if layer else group.name
-
-                    # Clamp long names otherwise the selector can get too wide.
-                    max_width = 25
-                    if len(node_name) > max_width:
-                        node_name = node_name[:max_width - 5] + '..' + node_name[-3:]
-
-                sub = layout.row()
-                sub.popover(
-                    panel="TOPBAR_PT_grease_pencil_layers",
-                    text=node_name,
-                    icon=icon,
-                )
+            draw_topbar_grease_pencil_layer_panel(context, layout)
 
             if object_mode == 'PAINT_GREASE_PENCIL':
                 # FIXME: this is bad practice!
@@ -1012,10 +993,12 @@ class VIEW3D_HT_header(Header):
         elif object_mode == 'VERTEX_PAINT':
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_color_attributes", icon='GROUP_VCOL')
-
+        elif object_mode == 'VERTEX_GREASE_PENCIL':
+            draw_topbar_grease_pencil_layer_panel(context, layout)
         elif object_mode in {'WEIGHT_PAINT', 'WEIGHT_GREASE_PENCIL'}:
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_vertex_groups", icon='GROUP_VERTEX')
+            draw_topbar_grease_pencil_layer_panel(context, row)
 
             if object_mode != 'WEIGHT_GREASE_PENCIL':
                 layout.popover(
@@ -1202,7 +1185,9 @@ class VIEW3D_MT_editor_menus(Menu):
             elif mode_string in {'EDIT_CURVE', 'EDIT_SURFACE'}:
                 layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
                 layout.menu("VIEW3D_MT_edit_curve_segments")
-            elif mode_string in {'EDIT_CURVES', 'EDIT_POINT_CLOUD'}:
+            elif mode_string == 'EDIT_POINT_CLOUD':
+                layout.template_node_operator_asset_root_items()
+            elif mode_string == 'EDIT_CURVES':
                 layout.menu("VIEW3D_MT_edit_curves_control_points")
                 layout.menu("VIEW3D_MT_edit_curves_segments")
                 layout.template_node_operator_asset_root_items()
@@ -5723,10 +5708,11 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.operator("grease_pencil.stroke_subdivide", text="Subdivide")
         layout.operator("grease_pencil.stroke_subdivide_smooth", text="Subdivide and Smooth")
         layout.operator("grease_pencil.stroke_simplify", text="Simplify")
+        layout.operator("grease_pencil.stroke_trim", text="Trim")
 
         layout.separator()
 
-        layout.operator("grease_pencil.stroke_trim", text="Trim")
+        layout.operator_menu_enum("grease_pencil.join_selection", "type", text="Join")
 
         layout.separator()
 
@@ -7471,6 +7457,9 @@ class VIEW3D_PT_snapping(Panel):
         col.prop(tool_settings, "snap_elements_individual", expand=True)
 
         col.separator()
+
+        if 'INCREMENT' in tool_settings.snap_elements:
+            col.prop(tool_settings, "use_snap_grid_absolute")
 
         if 'VOLUME' in tool_settings.snap_elements:
             col.prop(tool_settings, "use_snap_peel_object")
