@@ -291,11 +291,20 @@ class IDSocketDeclaration : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
+template<typename T> class IDSocketDeclarationBuilder : public SocketDeclarationBuilder<T> {
+ public:
+  IDSocketDeclarationBuilder &default_value_fn(std::function<ID *(const bNode &node)> fn)
+  {
+    this->decl_->default_value_fn = std::move(fn);
+    return *this;
+  }
+};
+
 class Object : public IDSocketDeclaration {
  public:
   static constexpr eNodeSocketDatatype static_socket_type = SOCK_OBJECT;
 
-  using Builder = SocketDeclarationBuilder<Object>;
+  using Builder = IDSocketDeclarationBuilder<Object>;
 
   Object();
 };
@@ -304,7 +313,7 @@ class Material : public IDSocketDeclaration {
  public:
   static constexpr eNodeSocketDatatype static_socket_type = SOCK_MATERIAL;
 
-  using Builder = SocketDeclarationBuilder<Material>;
+  using Builder = IDSocketDeclarationBuilder<Material>;
 
   Material();
 };
@@ -313,7 +322,7 @@ class Collection : public IDSocketDeclaration {
  public:
   static constexpr eNodeSocketDatatype static_socket_type = SOCK_COLLECTION;
 
-  using Builder = SocketDeclarationBuilder<Collection>;
+  using Builder = IDSocketDeclarationBuilder<Collection>;
 
   Collection();
 };
@@ -322,7 +331,7 @@ class Texture : public IDSocketDeclaration {
  public:
   static constexpr eNodeSocketDatatype static_socket_type = SOCK_TEXTURE;
 
-  using Builder = SocketDeclarationBuilder<Texture>;
+  using Builder = IDSocketDeclarationBuilder<Texture>;
 
   Texture();
 };
@@ -331,7 +340,7 @@ class Image : public IDSocketDeclaration {
  public:
   static constexpr eNodeSocketDatatype static_socket_type = SOCK_IMAGE;
 
-  using Builder = SocketDeclarationBuilder<Image>;
+  using Builder = IDSocketDeclarationBuilder<Image>;
 
   Image();
 };
@@ -394,6 +403,13 @@ class Custom : public SocketDeclaration {
 class CustomTypeBuilder : public SocketDeclarationBuilder<Custom> {
  public:
   CustomTypeBuilder &idname(const char *idname);
+
+  CustomTypeBuilder &init_socket_fn(
+      std::function<void(bNode &node, bNodeSocket &socket, const char *data_path)> fn)
+  {
+    decl_->init_socket_fn = std::move(fn);
+    return *this;
+  }
 };
 
 /* -------------------------------------------------------------------- */
@@ -587,7 +603,5 @@ inline CustomTypeBuilder &CustomTypeBuilder::idname(const char *idname)
 }
 
 /** \} */
-
-SocketDeclarationPtr create_extend_declaration(const eNodeSocketInOut in_out);
 
 }  // namespace blender::nodes::decl
