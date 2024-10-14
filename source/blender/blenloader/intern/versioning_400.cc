@@ -275,8 +275,7 @@ static void version_legacy_actions_to_layered(Main *bmain)
               "Warning: legacy action \"%s\" is assigned to \"%s\", which does not match the "
               "action's id_root \"%s\". The action has been upgraded to a slotted action with "
               "slot \"%s\" with an id_type \"%s\", which has also been assigned to \"%s\" despite "
-              "this type mismatch. This is technically valid, but probably indicates something "
-              "odd about the blend file.\n",
+              "this type mismatch. This likely indicates something odd about the blend file.\n",
               action.id.name + 2,
               action_user.id->name,
               slot_to_assign.name_prefix_for_idtype().c_str(),

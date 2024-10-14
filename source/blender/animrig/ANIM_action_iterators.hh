@@ -68,14 +68,14 @@ bool foreach_action_slot_use(
  * the ID as well as pointers via which the callback can modify which
  * Action/slot is assigned.
  *
- * Note: the ID provided to the callback is not necessarily the source of the
- * pointers. For example, the pointers may be for an Action Constraint or NLA
- * Strip owned by the ID. You should modify Action/slot assignment via the
- * pointers, not the ID.
+ * The ID passed to the callback is always the same `animated_id` as is passed
+ * to this function. The actions & slots passed to the callback are *not*
+ * necessarily the direct action & slot of that ID: they can also be the action
+ * & slot of an Action Constraint or NLA Strip owned by the ID.
  *
- * \see blender::animrig::generic_assign_action \see
- * blender::animrig::generic_assign_action_slot \see
- * blender::animrig::generic_assign_action_slot_handle
+ * \see blender::animrig::generic_assign_action
+ * \see blender::animrig::generic_assign_action_slot
+ * \see blender::animrig::generic_assign_action_slot_handle
  */
 bool foreach_action_slot_use_with_references(ID &animated_id,
                                              FunctionRef<bool(ID &animated_id,
