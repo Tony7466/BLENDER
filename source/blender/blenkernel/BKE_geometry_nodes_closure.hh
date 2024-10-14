@@ -39,6 +39,8 @@ struct ClosureFunctionIndices {
   struct {
     IndexRange main;
     IndexRange output_usages;
+    /** Output bsocket index -> input lf socket index. */
+    Map<int, int> output_data_reference_sets;
   } inputs;
   struct {
     IndexRange main;

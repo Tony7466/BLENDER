@@ -44,11 +44,15 @@ class LazyFunctionForClosureZone : public LazyFunction {
     for (const auto item : body_fn.indices.inputs.reference_sets.items()) {
       const ReferenceSetInfo &reference_set =
           btree.runtime->reference_lifetimes_info->reference_sets[item.key];
-      if (ELEM(reference_set.type,
-               ReferenceSetType::ClosureInputReferenceSet,
-               ReferenceSetType::ClosureOutputData))
-      {
-        continue;
+      if (reference_set.type == ReferenceSetType::ClosureInputReferenceSet) {
+        BLI_assert(&reference_set.socket->owner_node() != zone_.input_node);
+      }
+      if (reference_set.type == ReferenceSetType::ClosureOutputData) {
+        if (&reference_set.socket->owner_node() == zone_.output_node) {
+          /* This reference set comes from the caller of the closure and is not captured at the
+           * place where the closure is created. */
+          continue;
+        }
       }
       zone_info.indices.inputs.reference_sets.add_new(
           item.key,
@@ -146,23 +150,29 @@ class LazyFunctionForClosureZone : public LazyFunction {
     for (const auto &item : body_fn_.indices.inputs.reference_sets.items()) {
       const ReferenceSetInfo &reference_set =
           btree_.runtime->reference_lifetimes_info->reference_sets[item.key];
-      switch (reference_set.type) {
-        case ReferenceSetType::ClosureInputReferenceSet:
-        case ReferenceSetType::ClosureOutputData: {
-          /* TODO */
-          break;
-        }
-        default: {
-          auto &input_reference_set =
-              *params.try_get_input_data_ptr<bke::GeometryNodesReferenceSet>(
-                  zone_info_.indices.inputs.reference_sets.lookup(item.key));
-          auto &stored = closure_scope->construct<bke::GeometryNodesReferenceSet>(
-              std::move(input_reference_set));
-          lf_body_node.input(body_fn_.indices.inputs.reference_sets.lookup(item.key))
-              .set_default_value(&stored);
-          break;
+      if (reference_set.type == ReferenceSetType::ClosureOutputData) {
+        const bNodeSocket &socket = *reference_set.socket;
+        const bNode &node = socket.owner_node();
+        if (&node == zone_.output_node) {
+          /* This reference set is passed in by the code that invokes the closure. */
+          lf::GraphInputSocket &lf_graph_input = lf_graph.add_input(
+              CPPType::get<bke::GeometryNodesReferenceSet>(),
+              StringRef("Reference Set: ") + reference_set.socket->name);
+          lf_graph.add_link(
+              lf_graph_input,
+              lf_body_node.input(body_fn_.indices.inputs.reference_sets.lookup(item.key)));
+          closure_indices.inputs.output_data_reference_sets.add_new(reference_set.socket->index(),
+                                                                    lf_graph_input.index());
+          continue;
         }
       }
+
+      auto &input_reference_set = *params.try_get_input_data_ptr<bke::GeometryNodesReferenceSet>(
+          zone_info_.indices.inputs.reference_sets.lookup(item.key));
+      auto &stored = closure_scope->construct<bke::GeometryNodesReferenceSet>(
+          std::move(input_reference_set));
+      lf_body_node.input(body_fn_.indices.inputs.reference_sets.lookup(item.key))
+          .set_default_value(&stored);
     }
 
     bNodeTree &btree_orig = *reinterpret_cast<bNodeTree *>(
