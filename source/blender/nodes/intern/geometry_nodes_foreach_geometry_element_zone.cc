@@ -1184,7 +1184,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
                  {GeometryComponent::Type::Mesh,
                   GeometryComponent::Type::PointCloud,
                   GeometryComponent::Type::Curve,
-                  GeometryComponent::Type::GreasePencil})
+                  GeometryComponent::Type::GreasePencil,
+                  GeometryComponent::Type::Physics})
             {
               if (sub_geometry.has(component_type)) {
                 bke::try_capture_field_on_geometry(
