@@ -373,25 +373,18 @@ class Preprocessor {
      * };
      * \endcode
      *
-     * or
-     *
-     * \code{.c}
-     * enum eMyEnum {
-     *   ENUM_1 = 0u,
-     *   ENUM_2 = 1u,
-     *   ENUM_3 = 2u,
-     * };
-     * \endcode
-     *
      * becomes
      *
      * \code{.glsl}
-     * ENUM_DECL(_eMyEnum)
+     * _enum_decl(_eMyEnum)
      *   ENUM_1 = 0u,
      *   ENUM_2 = 1u,
-     *   ENUM_3 = 2u, ENUM_END
-     * #define eMyEnum ENUM_TYPE(_eMyEnum)
+     *   ENUM_3 = 2u, _enum_end
+     * #define eMyEnum _enum_type(_eMyEnum)
      * \endcode
+     *
+     * It is made like so to avoid messing with error lines, allowing to point at the exact
+     * location inside the source file.
      *
      * IMPORTANT: This has some requirements:
      * - Enums needs to have underlying types set to uint32_t to make them usable in UBO and SSBO.
@@ -401,11 +394,14 @@ class Preprocessor {
     {
       /* Replaces all matches by the respective string hash. */
       std::regex regex(R"(enum\s+((\w+)\s*(?:\:\s*\w+\s*)?)\{(\n[^}]+)\n\};)");
-      str = std::regex_replace(str, regex, "ENUM_DECL(_$1)$3 ENUM_END\n#define $2 ENUM_TYPE(_$2)");
+      str = std::regex_replace(str,
+                               regex,
+                               "_enum_decl(_$1)$3 _enum_end\n"
+                               "#define $2 _enum_type(_$2)");
     }
     {
       /* Remove trailing comma if any. */
-      std::regex regex(R"(,(\s*ENUM_END))");
+      std::regex regex(R"(,(\s*_enum_end))");
       str = std::regex_replace(str, regex, "$1");
     }
     return str;
