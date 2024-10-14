@@ -107,7 +107,8 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
 
 static void add_this_collection(Collection &collection,
                                 const ModifierUpdateDepsgraphContext *ctx,
-                                const int mode)
+                                const int mode,
+                                Vector<Object *> &object_dependencies)
 {
   bool default_add = true;
   /* Do not do nested collection usage check, this is consistent with lineart calculation, because
@@ -124,13 +125,14 @@ static void add_this_collection(Collection &collection,
       {
         DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_GEOMETRY, "Line Art Modifier");
         DEG_add_object_relation(ctx->node, ob, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
+        object_dependencies.append(ob);
       }
     }
     if (ob->type == OB_EMPTY && (ob->transflag & OB_DUPLICOLLECTION)) {
       if (!ob->instance_collection) {
         continue;
       }
-      add_this_collection(*ob->instance_collection, ctx, mode);
+      add_this_collection(*ob->instance_collection, ctx, mode, object_dependencies);
     }
   }
   FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
@@ -147,8 +149,10 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 
   /* Do we need to distinguish DAG_EVAL_VIEWPORT or DAG_EVAL_RENDER here? */
 
-  add_this_collection(*ctx->scene->master_collection, ctx, DAG_EVAL_VIEWPORT);
+  lmd->object_dependencies.clear();
+  add_this_collection(*ctx->scene->master_collection, ctx, DAG_EVAL_VIEWPORT, lmd->object_dependencies);
 
+  /* No need to add any non-geometry objects into `lmd->object_dependencies` because we won't be loading */
   if (lmd->calculation_flags & MOD_LINEART_USE_CUSTOM_CAMERA && lmd->source_camera) {
     DEG_add_object_relation(
         ctx->node, lmd->source_camera, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
