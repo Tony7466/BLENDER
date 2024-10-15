@@ -2,6 +2,7 @@ Project: Google Logging
 URL: https://github.com/google/glog
 License:SPDX:BSD-3-Clause
 Upstream version: 0.4.0, 96a2f23dca4
+Copyright: Copyright (c) 2006, Google Inc. All rights reserved.
 Local modifications:
 * Added per-platform config.h files so no configuration-time
   checks for functions and so are needed.

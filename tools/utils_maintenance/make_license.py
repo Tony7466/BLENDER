@@ -20,7 +20,7 @@ class Filepaths:
 
 INTRODUCTION = """<!--
 
-This document is auto-generated with `make format`.
+This document is auto-generated with `make license`.
 To update it, edit:
 
  * For external libraries: versions.cmake

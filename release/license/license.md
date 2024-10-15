@@ -1,6 +1,6 @@
 <!--
 
-This document is auto-generated with `make format`.
+This document is auto-generated with `make license`.
 To update it, edit:
 
  * For external libraries: versions.cmake
@@ -815,12 +815,12 @@ org.
 | ------- | ------- | --- | --------- |
 | Audaspace | 1.4+ (ae29ce2, 2024 Feb 26) | https://audaspace.github.io/ | `Copyright © 2009-2015 Jörg Müller. All rights reserved.` |
 | Cuda Wrangler | cbf465b | https://github.com/CudaWrangler/cuew | `Copyright 2011-2014 Blender Foundation` |
-| Draco | 1.5.2 | https://google.github.io/draco/ | - |
+| Draco | 1.5.2 | https://google.github.io/draco/ | `Copyright 2018 The Draco Authors` |
 | HIP Extension Wrangler Library (HIPEW) | N/A | https://projects.blender.org/blender/blender.git | - |
-| Mantaflow | 0.13 | http://mantaflow.com/ | - |
+| Mantaflow | 0.13 | http://mantaflow.com/ | `Copyright 2011 Tobias Pfaff, Nils Thuerey` |
 | OpenSSL | 3.1.5 | https://www.openssl.org | `Copyright (c) 1998-2024 The OpenSSL Project Authors; Copyright (c) 1995-1998 Eric A. Young, Tim J. Hudson; All rights reserved.` |
 | OpenXR | 1.0.22 | https://khronos.org/openxr/ | `Copyright (c) 2017-2020 The Khronos Group Inc.; Copyright (c) 2017-2019 Valve Corporation;Copyright (c) 2017-2019 LunarG, Inc.;Copyright (c) 2019 Collabora, Ltd.` |
-| RangeTree | 40ebed8aa209 | https://github.com/ideasman42/rangetree-c | - |
+| RangeTree | 40ebed8aa209 | https://github.com/ideasman42/rangetree-c | `Copyright (c) 2016, Campbell Barton` |
 | SDL Extension Wrangler | 15edf8e | https://github.com/SDLWrangler/sdlew | - |
 <details>
 <summary>Apache License 2.0</summary>
@@ -1103,11 +1103,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | Library | version | URL | Copyright |
 | ------- | ------- | --- | --------- |
 | Blosc | 1.21.1 | https://www.blosc.org/ | `Copyright "(C) 2009-2018 Francesc Alted <francesc@blosc.org>; Copyright (C) 2019-present Blosc Development team <blosc@blosc.org>; Copyright (C) 2006 by Rob Landley <rob@landley.net>` |
-| Ceres Solver | None | http://ceres-solver.org/ | - |
+| Ceres Solver | None | http://ceres-solver.org/ | `Copyright 2015 Google Inc. All rights reserved.` |
 | Curve-Fit-nD | ae32da9de264c3ed399673e2bc1bc09003799416 (Last Release) | https://github.com/ideasman42/curve-fit-nd | - |
-| Google C++ Testing Framework | 1.10.0 (703bd9caab5) | https://github.com/google/googletest | - |
-| Google Flags | 2.2.1 (46f73f88b18) | https://github.com/gflags/gflags | - |
-| Google Logging | 0.4.0, 96a2f23dca4 | https://github.com/google/glog | - |
+| Google C++ Testing Framework | 1.10.0 (703bd9caab5) | https://github.com/google/googletest | `Copyright 2007, Google Inc. All rights reserved.` |
+| Google Flags | 2.2.1 (46f73f88b18) | https://github.com/gflags/gflags | `Copyright (c) 1999, Google Inc. All rights reserved.` |
+| Google Logging | 0.4.0, 96a2f23dca4 | https://github.com/google/glog | `Copyright (c) 2006, Google Inc. All rights reserved.` |
 | OpenColorIO | 2.3.2 |  | `Copyright Contributors to the OpenColorIO Project.` |
 | OpenGL Extension Wrangler Library | 2.0.0 | http://glew.sourceforge.net/ | `Copyright (C) 2008-2015, Nigel Stewart <nigels[]users sourceforge net>; Copyright (C) 2002-2008, Milan Ikits <milan ikits[]ieee org>; Copyright (C) 2002-2008, Marcelo E. Magallon <mmagallo[]debian org>; Copyright (C) 2002, Lev Povalahev; All rights reserved.` |
 <details>
@@ -1325,9 +1325,9 @@ Legal Terms
 
 | Library | version | URL | Copyright |
 | ------- | ------- | --- | --------- |
-| miniLZO | 2.08 | http://www.oberhumer.com/opensource/lzo/ | - |
+| miniLZO | 2.08 | http://www.oberhumer.com/opensource/lzo/ | `Copyright (C) 1996-2014 Markus Franz Xaver Oberhumer All Rights Reserved.` |
 | Openal | 1.23.1 | https://openal-soft.org/ | `Copyright (c) 2015, Archontis Politis; Copyright (c) 2019, Christopher Robinson` |
-| X Drag and Drop | 2000-08-08 | http://www.newplanetsoftware.com/xdnd/ (defunct) | - |
+| X Drag and Drop | 2000-08-08 | http://www.newplanetsoftware.com/xdnd/ (defunct) | `Copyright (C) 1996-2000 Paul Sheer` |
 <details>
 <summary>GNU General Public License v2.0 or later</summary>
 
@@ -1706,6 +1706,8 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 | Library | version | URL | Copyright |
 | ------- | ------- | --- | --------- |
 | JSON | 3.11.2 | https://github.com/nlohmann/json/ | - |
+| Opencollada | dfc341ab0b3b23ee307ab8660c0213e64da1eac6 |  | `Copyright (c) 2008-2009 NetAllied Systems GmbH` |
+| Pugixml | 1.10 | https://pugixml.org/ | `Copyright (c) 2006-2020 Arseny Kapoulkine` |
 | VulkanMemoryAllocator | a6bfc23 | https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator | - |
 | {fmt} | 10.1.1 (f5e5435, 2023 Aug 28) | https://github.com/fmtlib/fmt | - |
 <details>
@@ -2195,7 +2197,7 @@ disclaims all warranties with regard to this software.
 
 | Library | version | URL | Copyright |
 | ------- | ------- | --- | --------- |
-| Bullet Continuous Collision Detection and Physics Library | 3.07 | http://bulletphysics.org | - |
+| Bullet Continuous Collision Detection and Physics Library | 3.07 | http://bulletphysics.org | `Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/` |
 | NanoSVG | None | https://github.com/memononen/nanosvg | - |
 | Zlib | 1.2.13 | https://zlib.net | `Copyright (C) 1995-2017 Jean-loup Gailly` |
 <details>

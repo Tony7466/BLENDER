@@ -164,6 +164,8 @@ set(OPENCOLLADA_URI https://github.com/aras-p/OpenCOLLADA/archive/${OPENCOLLADA_
 set(OPENCOLLADA_HASH 2120c8c02aab840e81cb87e625a608f7)
 set(OPENCOLLADA_HASH_TYPE MD5)
 set(OPENCOLLADA_FILE opencollada-${OPENCOLLADA_VERSION}.tar.gz)
+set(OPENCOLLADA_LICENSE SPDX:MIT)
+set(OPENCOLLADA_COPYRIGHT "Copyright (c) 2008-2009 NetAllied Systems GmbH")
 
 set(OPENCOLORIO_VERSION 2.3.2)
 set(OPENCOLORIO_URI https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/v${OPENCOLORIO_VERSION}.tar.gz)
@@ -475,6 +477,9 @@ set(PUGIXML_HASH 0c208b0664c7fb822bf1b49ad035e8fd)
 set(PUGIXML_HASH_TYPE MD5)
 set(PUGIXML_FILE pugixml-${PUGIXML_VERSION}.tar.gz)
 set(PUGIXML_CPE "cpe:2.3:a:pugixml_project:pugixml:${PUGIXML_VERSION}:*:*:*:*:*:*:*")
+set(PUGIXML_HOMEPAGE https://pugixml.org/)
+set(PUGIXML_LICENSE SPDX:MIT)
+set(PUGIXML_COPYRIGHT "Copyright (c) 2006-2020 Arseny Kapoulkine")
 
 set(FLEXBISON_VERSION 2.5.24)
 set(FLEXBISON_URI http://prdownloads.sourceforge.net/winflexbison/win_flex_bison-${FLEXBISON_VERSION}.zip)
