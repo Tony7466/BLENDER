@@ -15,10 +15,10 @@
  * Currently this shader is dispatched with one thread-group for all directional light.
  */
 
-#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_light_iter_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
+#include "eevee_light_iter_lib.glsl"
+#include "eevee_shadow_tilemap_lib.glsl"
+#include "gpu_shader_math_matrix_lib.glsl"
+#include "gpu_shader_utildefines_lib.glsl"
 
 shared ShadowSamplingTilePacked tiles_local[SHADOW_TILEMAP_RES][SHADOW_TILEMAP_RES];
 
@@ -91,6 +91,28 @@ void main()
       barrier();
       tiles_local[tile_co.y][tile_co.x] = (tile.is_valid) ? tile_packed : SHADOW_NO_DATA;
       barrier();
+    }
+  }
+  LIGHT_FOREACH_END
+
+  LIGHT_FOREACH_BEGIN_LOCAL_NO_CULL(light_cull_buf, l_idx)
+  {
+    LightData light = light_buf[l_idx];
+    if (light.tilemap_index == LIGHT_NO_SHADOW) {
+      continue;
+    }
+
+    int lod_min = 0;
+    int tilemap_count = light_local_tilemap_count(light);
+    for (int i = 0; i < tilemap_count; i++) {
+      ShadowTileMapData tilemap = tilemaps_buf[light.tilemap_index + i];
+      lod_min = max(lod_min, tilemap.effective_lod_min);
+    }
+    if (lod_min > 0) {
+      /* Override the effective lod min distance in absolute mode (negative).
+       * Note that this only changes the sampling for this AA sample. */
+      const float projection_diagonal = 2.0 * M_SQRT2;
+      light_buf[l_idx].lod_min = -(projection_diagonal / float(SHADOW_MAP_MAX_RES >> lod_min));
     }
   }
   LIGHT_FOREACH_END

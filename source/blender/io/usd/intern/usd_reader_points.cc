@@ -9,10 +9,8 @@
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
 
-#include "BLI_color.hh"
 #include "BLI_span.hh"
 
-#include "DNA_cachefile_types.h"
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
@@ -76,7 +74,7 @@ void USDPointsReader::read_object_data(Main *bmain, double motionSampleTime)
 
 void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
                                     USDMeshReadParams params,
-                                    const char ** /*err_str*/)
+                                    const char ** /*r_err_str*/)
 {
   if (!points_prim_) {
     /* Invalid prim, so we pass. */
@@ -104,7 +102,7 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
 
   if (!usd_widths.empty()) {
     bke::MutableAttributeAccessor attributes = point_cloud->attributes_for_write();
-    bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
+    bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_only_span<float>(
         "radius", bke::AttrDomain::Point);
 
     const pxr::TfToken widths_interp = points_prim_.GetWidthsInterpolation();
@@ -137,12 +135,12 @@ void USDPointsReader::read_velocities(PointCloud *point_cloud, const double moti
 
   if (!velocities.empty()) {
     bke::MutableAttributeAccessor attributes = point_cloud->attributes_for_write();
-    bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
-        "velocity", bke::AttrDomain::Point, CD_PROP_FLOAT3);
+    bke::SpanAttributeWriter<float3> velocity =
+        attributes.lookup_or_add_for_write_only_span<float3>("velocity", bke::AttrDomain::Point);
 
     Span<pxr::GfVec3f> usd_data(velocities.data(), velocities.size());
-    attribute.span.typed<float3>().copy_from(usd_data.cast<float3>());
-    attribute.finish();
+    velocity.span.copy_from(usd_data.cast<float3>());
+    velocity.finish();
   }
 }
 

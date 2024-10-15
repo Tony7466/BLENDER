@@ -2,18 +2,20 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Depth of Field Gather accumulator.
  * We currently have only 2 which are very similar.
  * One is for the half-resolution gather passes and the other one for slight in focus regions.
  */
 
-#pragma BLENDER_REQUIRE(gpu_shader_debug_gradients_lib.glsl)
-#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_depth_of_field_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#include "draw_view_lib.glsl"
+#include "eevee_colorspace_lib.glsl"
+#include "eevee_depth_of_field_lib.glsl"
+#include "eevee_sampling_lib.glsl"
+#include "gpu_shader_debug_gradients_lib.glsl"
+#include "gpu_shader_math_matrix_lib.glsl"
 
 /* -------------------------------------------------------------------- */
 /** \name Options.
@@ -113,7 +115,7 @@ float dof_gather_accum_weight(float coc, float bordering_radius, bool first_ring
   return saturate(coc - bordering_radius);
 }
 
-void dof_gather_ammend_weight(inout DofGatherData sample_data, float weight)
+void dof_gather_amend_weight(inout DofGatherData sample_data, float weight)
 {
   sample_data.color *= weight;
   sample_data.coc *= weight;
@@ -319,7 +321,7 @@ void dof_gather_accumulate_center_sample(DofGatherData center_data,
     if (is_foreground && !is_resolve) {
       /* Reduce issue with closer foreground over distant foreground. */
       float ring_area = square(bordering_radius);
-      dof_gather_ammend_weight(center_data, ring_area);
+      dof_gather_amend_weight(center_data, ring_area);
     }
 
     /* Accumulate center as its own ring. */
@@ -521,7 +523,7 @@ void dof_gather_accumulator(sampler2D color_tx,
       float ring_area = (square(float(ring) + 0.5 + coc_radius_error) -
                          square(float(ring) - 0.5 + coc_radius_error)) *
                         square(base_radius * unit_sample_radius);
-      dof_gather_ammend_weight(ring_data, ring_area);
+      dof_gather_amend_weight(ring_data, ring_area);
     }
 
     dof_gather_accumulate_sample_ring(
@@ -540,7 +542,7 @@ void dof_gather_accumulator(sampler2D color_tx,
         const float outer_rings_weight = 1.0 / (radius_downscale_factor * radius_downscale_factor);
         /* Samples are already weighted per ring in foreground pass. */
         if (!is_foreground) {
-          dof_gather_ammend_weight(accum_data, outer_rings_weight);
+          dof_gather_amend_weight(accum_data, outer_rings_weight);
         }
         /* Re-init kernel position & sampling parameters. */
         dof_gather_init(base_radius, noise, center_co, lod, isect_mul);
@@ -624,8 +626,8 @@ void dof_slight_focus_gather(depth2D depth_tx,
 
   for (float s = 0.0; s < sample_count; s++) {
     vec2 rand2 = fract(hammersley_2d(s, sample_count) + noise);
-    vec2 offset = sample_disk(rand2);
-    float ring_dist = sqrt(rand2.y);
+    vec2 offset = sample_disk(rand2) * radius;
+    float ring_dist = length(offset);
 
     DofGatherData pair_data[2];
     for (int i = 0; i < 2; i++) {

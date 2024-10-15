@@ -12,6 +12,7 @@
 #include "usd_reader_prim.hh"
 
 #include <pxr/usd/usdGeom/imageable.h>
+#include <pxr/usd/usdLux/domeLight.h>
 
 #include <string>
 
@@ -40,6 +41,10 @@ class USDStageReader {
   ImportSettings settings_;
 
   blender::Vector<USDPrimReader *> readers_;
+
+  /* USD dome lights are converted to a world material,
+   * rather than light objects, so are handled differently */
+  blender::Vector<pxr::UsdLuxDomeLight> dome_lights_;
 
   /* USD material prim paths encountered during stage
    * traversal, for importing unused materials. */
@@ -112,6 +117,11 @@ class USDStageReader {
     return readers_;
   };
 
+  const blender::Vector<pxr::UsdLuxDomeLight> &dome_lights() const
+  {
+    return dome_lights_;
+  };
+
   void sort_readers();
 
   /**
@@ -174,6 +184,7 @@ class USDStageReader {
    *         does not contain any point instancers.
    */
   UsdPathSet collect_point_instancer_proto_paths() const;
+  void collect_point_instancer_proto_paths(const pxr::UsdPrim &prim, UsdPathSet &r_paths) const;
 
   /**
    * Populate the instancer_proto_readers_ map for the prototype prims

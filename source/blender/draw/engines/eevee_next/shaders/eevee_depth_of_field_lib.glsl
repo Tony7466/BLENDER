@@ -2,13 +2,15 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Depth of Field utils.
  */
 
-#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#include "draw_view_lib.glsl"
+#include "gpu_shader_math_base_lib.glsl"
+#include "gpu_shader_utildefines_lib.glsl"
 
 /* -------------------------------------------------------------------- */
 /** \name Constants.
@@ -55,8 +57,8 @@ const float dof_layer_offset = 0.5 + 0.5;
 
 const int dof_max_slight_focus_radius = DOF_MAX_SLIGHT_FOCUS_RADIUS;
 
-const uvec2 quad_offsets_u[4] = uvec2[4](uvec2(0, 1), uvec2(1, 1), uvec2(1, 0), uvec2(0, 0));
-const vec2 quad_offsets[4] = vec2[4](
+const uvec2 quad_offsets_u[4] = uint2_array(uvec2(0, 1), uvec2(1, 1), uvec2(1, 0), uvec2(0, 0));
+const vec2 quad_offsets[4] = float2_array(
     vec2(-0.5, 0.5), vec2(0.5, 0.5), vec2(0.5, -0.5), vec2(-0.5, -0.5));
 
 /** \} */
@@ -218,7 +220,7 @@ CocTile dof_coc_tile_unpack(vec3 fg, vec3 bg)
   return tile;
 }
 
-/* WORKAROUND(fclem): GLSL compilers differs in what qualifiers are requires to pass images as
+/* WORKAROUND(@fclem): GLSL compilers differs in what qualifiers are requires to pass images as
  * parameters. Workaround by using defines. */
 #define dof_coc_tile_load(tiles_fg_img_, tiles_bg_img_, texel_) \
   dof_coc_tile_unpack( \

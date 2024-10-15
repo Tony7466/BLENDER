@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Virtual shadow-mapping: Usage tagging
  *
@@ -9,11 +11,11 @@
  * This contains the common logic used for tagging shadows for opaque and transparent receivers.
  */
 
-#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
-#pragma BLENDER_REQUIRE(draw_intersect_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_light_iter_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
+#include "draw_intersect_lib.glsl"
+#include "draw_view_lib.glsl"
+#include "eevee_light_iter_lib.glsl"
+#include "eevee_light_lib.glsl"
+#include "eevee_shadow_lib.glsl"
 
 void shadow_tag_usage_tile(LightData light, uvec2 tile_co, int lod, int tilemap_index)
 {
@@ -53,9 +55,11 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
 
   vec3 lP = light_world_to_local_direction(light, P);
 
-  /* TODO(Miguel Pozo): Implement lod_bias support. */
+  LightSunData sun = light_sun_data_get(light);
+
   if (radius == 0.0) {
     int level = shadow_directional_level(light, lP - light_position_get(light));
+    level = clamp(level + lod_bias, sun.clipmap_lod_min, sun.clipmap_lod_max);
     ShadowCoordinates coord = shadow_directional_coordinates_at_level(light, lP, level);
     shadow_tag_usage_tile(light, coord.tilemap_tile, 0, coord.tilemap_index);
   }
@@ -64,6 +68,8 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
     vec3 end_lP = light_world_to_local_direction(light, P + V * radius);
     int min_level = shadow_directional_level(light, start_lP - light_position_get(light));
     int max_level = shadow_directional_level(light, end_lP - light_position_get(light));
+    min_level = clamp(min_level + lod_bias, sun.clipmap_lod_min, sun.clipmap_lod_max);
+    max_level = clamp(max_level + lod_bias, sun.clipmap_lod_min, sun.clipmap_lod_max);
 
     for (int level = min_level; level <= max_level; level++) {
       ShadowCoordinates coord_min = shadow_directional_coordinates_at_level(
