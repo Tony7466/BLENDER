@@ -35,6 +35,8 @@
 
 #include "DEG_depsgraph.hh"
 
+using namespace blender;
+
 /* -------------------------------------------------------------------- */
 /** \name Flip the Action (Armature/Pose Objects)
  *
@@ -455,7 +457,8 @@ static void action_flip_pchan_rna_paths(bAction *act)
 
 void BKE_action_flip_with_pose(bAction *act, Object *ob_arm)
 {
-  FCurvePathCache *fcache = BKE_fcurve_pathcache_create(&act->curves);
+  Vector<FCurve *> fcurves = animrig::legacy::fcurves_first_slot(act);
+  FCurvePathCache *fcache = BKE_fcurve_pathcache_create(fcurves);
   int i;
   LISTBASE_FOREACH_INDEX (bPoseChannel *, pchan, &ob_arm->pose->chanbase, i) {
     action_flip_pchan(ob_arm, pchan, fcache);
