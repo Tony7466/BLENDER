@@ -4041,35 +4041,23 @@ static void outliner_update_viewable_area(ARegion *region,
  * Draw contents of Outliner editor.
  * \{ */
 
-void draw_outliner(const bContext *C)
+/**
+ * Drawing implementation.
+ *
+ * The following data has already been calculated:
+ *
+ * - #outliner_build_tree.
+ * - sync-selection.
+ */
+static void draw_outliner_impl(const bContext *C,
+                               Main *mainvar,
+                               SpaceOutliner *space_outliner,
+                               ARegion *region,
+                               TreeViewContext &tvc)
 {
-  Main *mainvar = CTX_data_main(C);
-  ARegion *region = CTX_wm_region(C);
   View2D *v2d = &region->v2d;
-  SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   uiBlock *block;
   TreeElement *te_edit = nullptr;
-
-  TreeViewContext tvc;
-  outliner_viewcontext_init(C, &tvc);
-
-  outliner_build_tree(mainvar, tvc.scene, tvc.view_layer, space_outliner, region); /* Always. */
-
-  /* If global sync select is dirty, flag other outliners. */
-  if (ED_outliner_select_sync_is_dirty(C)) {
-    ED_outliner_select_sync_flag_outliners(C);
-  }
-
-  /* Sync selection state from view layer. */
-  if (!ELEM(space_outliner->outlinevis,
-            SO_LIBRARIES,
-            SO_OVERRIDES_LIBRARY,
-            SO_DATA_API,
-            SO_ID_ORPHANS) &&
-      space_outliner->flag & SO_SYNC_SELECT)
-  {
-    outliner_sync_selection(C, space_outliner);
-  }
 
   /* Force display to pixel coords. */
   v2d->flag |= (V2D_PIXELOFS_X | V2D_PIXELOFS_Y);
@@ -4164,6 +4152,54 @@ void draw_outliner(const bContext *C)
   /* Update total viewable region. */
   outliner_update_viewable_area(
       region, space_outliner, tree_width, tree_height, right_column_width);
+}
+
+void draw_outliner(const bContext *C)
+{
+  Main *mainvar = CTX_data_main(C);
+  ARegion *region = CTX_wm_region(C);
+  SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
+
+  TreeViewContext tvc;
+  outliner_viewcontext_init(C, &tvc);
+
+  outliner_build_tree(mainvar, tvc.scene, tvc.view_layer, space_outliner, region); /* Always. */
+
+  /* If global sync select is dirty, flag other outliners. */
+  if (ED_outliner_select_sync_is_dirty(C)) {
+    ED_outliner_select_sync_flag_outliners(C);
+  }
+
+  /* Sync selection state from view layer. */
+  if (!ELEM(space_outliner->outlinevis,
+            SO_LIBRARIES,
+            SO_OVERRIDES_LIBRARY,
+            SO_DATA_API,
+            SO_ID_ORPHANS) &&
+      space_outliner->flag & SO_SYNC_SELECT)
+  {
+    outliner_sync_selection(C, space_outliner);
+  }
+
+  /* NOTE(@ideasman42): drawing twice is weak but currently necessary
+   * when #UI_view2d_totRect_set clamps `region->v2d.cur`.
+   *
+   * In this case clamping the outliner scroll requires drawing again
+   * otherwise the outliner tree could display can show nothing as all
+   * items are scrolled outside the view.
+   * An alternative solution would be to calculate the `v2d` values before drawing
+   * which is how it worked in v2.79 and earlier, however this means values from
+   * drawing could not be used in to calculate the drawable area. See #128346. */
+  const rctf v2d_cur_prev = region->v2d.cur;
+  for (int pass = 0; pass < 2; pass++) {
+
+    /* Main drawing logic, will only run once unless the view was clamped. */
+    draw_outliner_impl(C, mainvar, space_outliner, region, tvc);
+
+    if (BLI_rctf_compare(&v2d_cur_prev, &region->v2d.cur, FLT_EPSILON)) {
+      break;
+    }
+  }
 }
 
 /** \} */
