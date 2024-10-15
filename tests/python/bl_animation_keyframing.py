@@ -770,12 +770,12 @@ class NlaInsertTest(AbstractKeyframingTest, unittest.TestCase):
             bpy.ops.anim.keyframe_insert()
 
         # Check that the expected F-Curves exist.
-        fcurves_actual = [(f.data_path, f.array_index) for f in base_action.fcurves]
-        fcurves_expect = [
+        fcurves_actual = {(f.data_path, f.array_index) for f in base_action.fcurves}
+        fcurves_expect = {
             ("location", 0),
             ("location", 1),
             ("location", 2),
-        ]
+        }
         self.assertEqual(fcurves_actual, fcurves_expect)
 
         # This should have added keys to Y and Z but not X.

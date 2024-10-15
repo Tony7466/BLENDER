@@ -114,15 +114,6 @@ class NlaStripBoundaryTest(AbstractNlaStripTest):
 
 
 class NLAStripActionSlotSelectionTest(AbstractNlaStripTest):
-
-    def setUp(self):
-        enable_experimental_animation_baklava()
-        return super().setUp()
-
-    def tearDown(self) -> None:
-        disable_experimental_animation_baklava()
-        return super().tearDown()
-
     def test_two_strips_for_same_action(self):
         action = bpy.data.actions.new("StripAction")
         action.slots.new()
