@@ -1,2 +1,3 @@
 Referenced by issue #74443, No render in VP9 lossless mode
 Referenced by pull request #129045, Fix: ffmpeg VP9 lossless flag was wrongly applied to all WebM containers
+Referenced by commit f6242edf73f592d9eeb340eda28eb66424370cc0, Fix: ffmpeg VP9 lossless flag was wrongly applied to all WebM containers
