@@ -679,11 +679,15 @@ static void cursor_set_by_mouse_position(const bContext *C, const wmEvent *event
   UI_view2d_region_to_view(v2d, mval_region.x, mval_region.y, &mouse_loc.x, &mouse_loc.y);
 
   /* Convert cursor coordinates to domain of CharInfo::position. */
+  const blender::float3 view_offs{-scene->r.xsch / 2.0f, -scene->r.ysch / 2.0f, 0.0f};
+  const float view_aspect = scene->r.xasp / scene->r.yasp;
   blender::float4x4 transform_mat;
   SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
   transform_mat = blender::math::invert(transform_mat);
+
+  mouse_loc.x /= view_aspect;
   mouse_loc = blender::math::transform_point(transform_mat, mouse_loc);
-  mouse_loc += {v2d->tot.xmax, v2d->tot.ymax, 0.0f};
+  mouse_loc -= view_offs;
   data->cursor_offset = find_closest_cursor_offset(data, float2(mouse_loc));
 }
 

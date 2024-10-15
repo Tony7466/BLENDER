@@ -1091,7 +1091,7 @@ static void text_selection_draw(const bContext *C, Sequence *seq, uint pos)
 {
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   TextVarsRuntime *text = data->runtime;
-  View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
 
   if (data->selection_start_offset == -1 || seq_text_selection_range_get(data).is_empty()) {
     return;
@@ -1117,8 +1117,10 @@ static void text_selection_draw(const bContext *C, Sequence *seq, uint pos)
 
     const float line_y = character_start.position.y + text->font_descender;
 
+    const blender::float3 view_offs{-scene->r.xsch / 2.0f, -scene->r.ysch / 2.0f, 0.0f};
+    const float view_aspect = scene->r.xasp / scene->r.yasp;
     blender::float4x4 transform_mat;
-    SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
+    SEQ_image_transform_matrix_get(scene, seq, transform_mat.ptr());
     blender::float4x3 selection_quad{
         {character_start.position.x, line_y, 0.0f},
         {character_start.position.x, line_y + text->line_height, 0.0f},
@@ -1126,15 +1128,13 @@ static void text_selection_draw(const bContext *C, Sequence *seq, uint pos)
         {character_end.position.x + character_end.advance_x, line_y, 0.0f},
     };
 
-    const blender::float3 view_offs{-v2d->tot.xmax, -v2d->tot.ymax, 0.0f};
-
     immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.3f));
     immBegin(GPU_PRIM_TRIS, 6);
 
     for (int i : blender::IndexRange(0, 4)) {
-      // xxx needs to be modified by aspect rato and eeeh mirror
       selection_quad[i] += view_offs;
       selection_quad[i] = blender::math::transform_point(transform_mat, selection_quad[i]);
+      selection_quad[i].x *= view_aspect;
     }
     for (int i : blender::Vector<int>{0, 1, 2, 2, 3, 0}) {
       immVertex2f(pos, selection_quad[i][0], selection_quad[i][1]);
@@ -1148,10 +1148,12 @@ static void text_edit_draw_cursor(const bContext *C, Sequence *seq, uint pos)
 {
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   TextVarsRuntime *text = data->runtime;
-  View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
 
+  const blender::float3 view_offs{-scene->r.xsch / 2.0f, -scene->r.ysch / 2.0f, 0.0f};
+  const float view_aspect = scene->r.xasp / scene->r.yasp;
   blender::float4x4 transform_mat;
-  SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
+  SEQ_image_transform_matrix_get(scene, seq, transform_mat.ptr());
   const blender::int2 cursor_position = seq_text_cursor_offset_to_position(text,
                                                                            data->cursor_offset);
   const blender::seq::CharInfo character =
@@ -1163,15 +1165,14 @@ static void text_edit_draw_cursor(const bContext *C, Sequence *seq, uint pos)
       {character.position.x + 10, character.position.y, 0.0f},
   };
   const blender::float3 descender_offs{0.0f, float(text->font_descender), 0.0f};
-  const blender::float3 view_offs{-v2d->tot.xmax, -v2d->tot.ymax, 0.0f};
 
   immUniformColor4fv(blender::float4(0.43f, 0.65f, 1.0f, 0.8f));
   immBegin(GPU_PRIM_TRIS, 6);
 
   for (int i : blender::IndexRange(0, 4)) {
-    // xxx needs to be modified by aspect rato and eeeh mirror
     cursor_quad[i] += descender_offs + view_offs;
     cursor_quad[i] = blender::math::transform_point(transform_mat, cursor_quad[i]);
+    cursor_quad[i].x *= view_aspect;
   }
   for (int i : blender::Vector<int>{0, 1, 2, 2, 3, 0}) {
     immVertex2f(pos, cursor_quad[i][0], cursor_quad[i][1]);
@@ -1182,9 +1183,9 @@ static void text_edit_draw_cursor(const bContext *C, Sequence *seq, uint pos)
 
 static void text_edit_draw_box(const bContext *C, Sequence *seq, uint pos)
 {
-  View2D *v2d = UI_view2d_fromcontext(C);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   TextVarsRuntime *text = data->runtime;
+  const Scene *scene = CTX_data_scene(C);
 
   blender::float3 col;
   UI_GetThemeColor3fv(TH_SEQ_ACTIVE, col);
@@ -1192,7 +1193,8 @@ static void text_edit_draw_box(const bContext *C, Sequence *seq, uint pos)
   immUniform1f("lineWidth", U.pixelsize);
   immBegin(GPU_PRIM_LINE_LOOP, 4);
 
-  const blender::float3 view_offs{-v2d->tot.xmax, -v2d->tot.ymax, 0.0f};
+  const blender::float3 view_offs{-scene->r.xsch / 2.0f, -scene->r.ysch / 2.0f, 0.0f};
+  const float view_aspect = scene->r.xasp / scene->r.yasp;
   blender::float4x4 transform_mat;
   SEQ_image_transform_matrix_get(CTX_data_scene(C), seq, transform_mat.ptr());
   blender::float4x3 box_quad{
@@ -1203,9 +1205,9 @@ static void text_edit_draw_box(const bContext *C, Sequence *seq, uint pos)
   };
 
   for (int i : blender::IndexRange(0, 4)) {
-    // xxx needs to be modified by aspect rato and eeeh mirror
     box_quad[i] += view_offs;
     box_quad[i] = blender::math::transform_point(transform_mat, box_quad[i]);
+    box_quad[i].x *= view_aspect;
     immVertex2f(pos, box_quad[i][0], box_quad[i][1]);
   }
   immEnd();
