@@ -264,6 +264,7 @@ class GHOST_DeviceVK {
     dynamic_rendering.pNext = device_create_info_p_next;
     device_create_info_p_next = &dynamic_rendering;
 
+#if 0
     VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT
         dynamic_rendering_unused_attachments = {};
     dynamic_rendering_unused_attachments.sType =
@@ -273,6 +274,7 @@ class GHOST_DeviceVK {
       dynamic_rendering_unused_attachments.pNext = device_create_info_p_next;
       device_create_info_p_next = &dynamic_rendering_unused_attachments;
     }
+#endif
 
     /* Query for Mainenance4 (core in Vulkan 1.3). */
     VkPhysicalDeviceMaintenance4FeaturesKHR maintenance_4 = {};
@@ -994,7 +996,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   /* NOTE: marking this as an optional extension, but is actually required. Renderdoc doesn't
    * create a device with this extension, but seems to work when not requesting the extension.
    */
-  optional_device_extensions.push_back(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME);
+  // optional_device_extensions.push_back(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME);
   optional_device_extensions.push_back(VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME);
   optional_device_extensions.push_back(VK_KHR_MAINTENANCE_4_EXTENSION_NAME);
   optional_device_extensions.push_back(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME);

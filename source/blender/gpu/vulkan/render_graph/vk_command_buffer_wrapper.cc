@@ -9,6 +9,7 @@
 #include "vk_command_buffer_wrapper.hh"
 #include "vk_backend.hh"
 #include "vk_memory.hh"
+#include "vk_to_string.hh"
 
 namespace blender::gpu::render_graph {
 VKCommandBufferWrapper::VKCommandBufferWrapper()
@@ -333,6 +334,8 @@ void VKCommandBufferWrapper::push_constants(VkPipelineLayout layout,
 
 void VKCommandBufferWrapper::begin_rendering(const VkRenderingInfo *p_rendering_info)
 {
+  std::cout << "VKCommandBufferWrapper::" << __func__ << ": " << to_string(*p_rendering_info)
+            << "\n";
   const VKDevice &device = VKBackend::get().device;
   BLI_assert(device.functions.vkCmdBeginRendering);
   device.functions.vkCmdBeginRendering(vk_command_buffer_, p_rendering_info);
