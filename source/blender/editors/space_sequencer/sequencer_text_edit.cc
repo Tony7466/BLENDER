@@ -148,8 +148,7 @@ static void delete_selected_text(TextVars *data)
   char *addr_start = const_cast<char *>(char_start.str_ptr);
   char *addr_end = const_cast<char *>(char_end.str_ptr) + char_end.byte_length;
 
-  /* XXX hardcoded size.*/
-  const int move_len = strlen_include_null_terminator(addr_end, 512);
+  const int move_len = strlen_include_null_terminator(addr_end, sizeof(data->text));
   std::memmove(addr_start, addr_end, move_len);
 
   int2 sel_start = seq_text_cursor_offset_to_position(text, sel_range.first());
@@ -403,8 +402,7 @@ static void text_insert(TextVars *data, const char *buf)
   /* XXX Bail, if array is full. */
   seq::CharInfo cur_char = character_at_cursor_offset_get(text, data->cursor_offset);
   char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
-  /* XXX hardcoded size.*/
-  size_t move_len = strlen_include_null_terminator(cursor_addr, 512);
+  size_t move_len = strlen_include_null_terminator(cursor_addr, sizeof(data->text));
 
   std::memmove(cursor_addr + in_buf_len, cursor_addr, move_len);
   std::memcpy(cursor_addr, buf, in_buf_len);
@@ -472,12 +470,11 @@ static const EnumPropertyItem delete_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static void delete_character(seq::CharInfo character)
+static void delete_character(seq::CharInfo character, TextVars *data)
 {
   char *cursor_addr = const_cast<char *>(character.str_ptr);
   char *next_char_addr = cursor_addr + character.byte_length;
-  /* XXX hardcoded size.*/
-  const size_t len = strlen_include_null_terminator(next_char_addr, 512);
+  const size_t len = strlen_include_null_terminator(next_char_addr, sizeof(data->text));
   std::memmove(cursor_addr, next_char_addr, len);
 }
 
@@ -499,14 +496,14 @@ static int sequencer_text_delete_exec(bContext *C, wmOperator *op)
       return OPERATOR_CANCELLED;
     }
 
-    delete_character(character_at_cursor_offset_get(text, data->cursor_offset));
+    delete_character(character_at_cursor_offset_get(text, data->cursor_offset), data);
   }
   if (type == DEL_PREV_SEL) {
     if (data->cursor_offset == 0) {
       return OPERATOR_CANCELLED;
     }
 
-    delete_character(character_at_cursor_offset_get(text, data->cursor_offset - 1));
+    delete_character(character_at_cursor_offset_get(text, data->cursor_offset - 1), data);
     data->cursor_offset -= 1;
   }
 
@@ -786,7 +783,7 @@ static void text_edit_copy(TextVars *data)
   seq::CharInfo end = character_at_cursor_offset_get(text, selection_range.last());
   const size_t len = end.str_ptr + end.byte_length - start.str_ptr;
 
-  char clipboard_buf[512] = {0};  // xxx
+  char clipboard_buf[sizeof(data->text)] = {0};  // xxx
   memcpy(clipboard_buf, start.str_ptr, math::min(len, sizeof(clipboard_buf)));
   WM_clipboard_text_set(clipboard_buf, false);
 }
@@ -836,8 +833,7 @@ static int sequencer_text_edit_paste_exec(bContext *C, wmOperator * /*op*/)
 
   seq::CharInfo cur_char = character_at_cursor_offset_get(text, data->cursor_offset);
   char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
-  /* XXX hardcoded size.*/
-  size_t move_len = strlen_include_null_terminator(cursor_addr, 512);
+  size_t move_len = strlen_include_null_terminator(cursor_addr, sizeof(data->text));
 
   // XXX unsafe memmove and memcpy!
   std::memmove(cursor_addr + clipboard_len, cursor_addr, move_len);
