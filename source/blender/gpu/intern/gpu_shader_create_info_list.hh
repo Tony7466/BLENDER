@@ -2,8 +2,51 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/* Basic engine. */
-#include "basic_depth_info.hh"
+/* GPU module. */
+#include "gpu_clip_planes_info.hh"
+#include "gpu_index_load_info.hh"
+#include "gpu_shader_2D_area_borders_info.hh"
+#include "gpu_shader_2D_checker_info.hh"
+#include "gpu_shader_2D_diag_stripes_info.hh"
+#include "gpu_shader_2D_image_desaturate_color_info.hh"
+#include "gpu_shader_2D_image_info.hh"
+#include "gpu_shader_2D_image_overlays_merge_info.hh"
+#include "gpu_shader_2D_image_overlays_stereo_merge_info.hh"
+#include "gpu_shader_2D_image_rect_color_info.hh"
+#include "gpu_shader_2D_image_shuffle_color_info.hh"
+#include "gpu_shader_2D_nodelink_info.hh"
+#include "gpu_shader_2D_point_uniform_size_uniform_color_aa_info.hh"
+#include "gpu_shader_2D_point_uniform_size_uniform_color_outline_aa_info.hh"
+#include "gpu_shader_2D_point_varying_size_varying_color_info.hh"
+#include "gpu_shader_2D_widget_info.hh"
+#include "gpu_shader_3D_depth_only_info.hh"
+#include "gpu_shader_3D_flat_color_info.hh"
+#include "gpu_shader_3D_image_info.hh"
+#include "gpu_shader_3D_point_info.hh"
+#include "gpu_shader_3D_polyline_info.hh"
+#include "gpu_shader_3D_smooth_color_info.hh"
+#include "gpu_shader_3D_uniform_color_info.hh"
+#include "gpu_shader_gpencil_stroke_info.hh"
+#include "gpu_shader_icon_info.hh"
+#include "gpu_shader_index_info.hh"
+#include "gpu_shader_instance_varying_color_varying_size_info.hh"
+#include "gpu_shader_keyframe_shape_info.hh"
+#include "gpu_shader_line_dashed_uniform_color_info.hh"
+#include "gpu_shader_print_info.hh"
+#include "gpu_shader_sequencer_info.hh"
+#include "gpu_shader_simple_lighting_info.hh"
+#include "gpu_shader_text_info.hh"
+#include "gpu_srgb_to_framebuffer_space_info.hh"
+
+#ifdef WITH_GPU_DRAW_TESTS
+#  include "gpu_shader_test_info.hh"
+#endif
+
+#ifdef WITH_METAL_BACKEND
+/* Metal */
+#  include "depth_2d_update_info.hh"
+#  include "gpu_shader_fullscreen_blit_info.hh"
+#endif
 
 /* Realtime compositor. */
 #include "compositor_alpha_crop_info.hh"
@@ -72,6 +115,9 @@
 #include "draw_object_infos_info.hh"
 #include "draw_view_info.hh"
 
+/* Basic engine. */
+#include "basic_depth_info.hh"
+
 /* EEVEE engine. */
 #include "eevee_ambient_occlusion_info.hh"
 #include "eevee_deferred_info.hh"
@@ -98,48 +144,7 @@
 #include "gpencil_info.hh"
 #include "gpencil_vfx_info.hh"
 
-/* GPU module. */
-#include "gpu_clip_planes_info.hh"
-#include "gpu_index_load_info.hh"
-#include "gpu_shader_2D_area_borders_info.hh"
-#include "gpu_shader_2D_checker_info.hh"
-#include "gpu_shader_2D_diag_stripes_info.hh"
-#include "gpu_shader_2D_image_desaturate_color_info.hh"
-#include "gpu_shader_2D_image_info.hh"
-#include "gpu_shader_2D_image_overlays_merge_info.hh"
-#include "gpu_shader_2D_image_overlays_stereo_merge_info.hh"
-#include "gpu_shader_2D_image_rect_color_info.hh"
-#include "gpu_shader_2D_image_shuffle_color_info.hh"
-#include "gpu_shader_2D_nodelink_info.hh"
-#include "gpu_shader_2D_point_uniform_size_uniform_color_aa_info.hh"
-#include "gpu_shader_2D_point_uniform_size_uniform_color_outline_aa_info.hh"
-#include "gpu_shader_2D_point_varying_size_varying_color_info.hh"
-#include "gpu_shader_2D_widget_info.hh"
-#include "gpu_shader_3D_depth_only_info.hh"
-#include "gpu_shader_3D_flat_color_info.hh"
-#include "gpu_shader_3D_image_info.hh"
-#include "gpu_shader_3D_point_info.hh"
-#include "gpu_shader_3D_polyline_info.hh"
-#include "gpu_shader_3D_smooth_color_info.hh"
-#include "gpu_shader_3D_uniform_color_info.hh"
-#include "gpu_shader_fullscreen_blit_info.hh"
-#include "gpu_shader_gpencil_stroke_info.hh"
-#include "gpu_shader_icon_info.hh"
-#include "gpu_shader_index_info.hh"
-#include "gpu_shader_instance_varying_color_varying_size_info.hh"
-#include "gpu_shader_keyframe_shape_info.hh"
-#include "gpu_shader_line_dashed_uniform_color_info.hh"
-#include "gpu_shader_print_info.hh"
-#include "gpu_shader_sequencer_info.hh"
-#include "gpu_shader_simple_lighting_info.hh"
-#include "gpu_shader_test_info.hh"
-#include "gpu_shader_text_info.hh"
-#include "gpu_srgb_to_framebuffer_space_info.hh"
-
-/* Metal */
-#include "depth_2d_update_info.hh"
-
-/* Overlay */
+/* Overlay engine. */
 #include "overlay_antialiasing_info.hh"
 #include "overlay_armature_info.hh"
 #include "overlay_background_info.hh"
