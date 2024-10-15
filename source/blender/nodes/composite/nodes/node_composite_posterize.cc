@@ -6,6 +6,8 @@
  * \ingroup cmpnodes
  */
 
+#include "BLI_math_vector_types.hh"
+
 #include "FN_multi_function_builder.hh"
 
 #include "NOD_multi_function.hh"

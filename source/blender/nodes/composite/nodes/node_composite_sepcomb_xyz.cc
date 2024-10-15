@@ -6,6 +6,8 @@
  * \ingroup cmpnodes
  */
 
+#include "BLI_math_vector_types.hh"
+
 #include "FN_multi_function_builder.hh"
 
 #include "NOD_multi_function.hh"
@@ -50,13 +52,12 @@ static ShaderNode *get_compositor_shader_node(DNode node)
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  /* Not yet implemented. Return zero. */
   static auto function = mf::build::SI1_SO3<float4, float, float, float>(
       "Separate XYZ",
-      [](const float4 & /*vector*/, float &x, float &y, float &z) -> void {
-        x = 0.0f;
-        y = 0.0f;
-        z = 0.0f;
+      [](const float4 &vector, float &x, float &y, float &z) -> void {
+        x = vector.x;
+        y = vector.y;
+        z = vector.z;
       },
       mf::build::exec_presets::AllSpanOrSingle());
   builder.set_matching_fn(function);
@@ -112,7 +113,6 @@ static ShaderNode *get_compositor_shader_node(DNode node)
 
 static void node_build_multi_function(blender::nodes::NodeMultiFunctionBuilder &builder)
 {
-  /* Not yet implemented. Return zero. */
   static auto function = mf::build::SI3_SO<float, float, float, float4>(
       "Combine XYZ",
       [](const float x, const float y, const float z) -> float4 { return float4(x, y, z, 0.0f); },
