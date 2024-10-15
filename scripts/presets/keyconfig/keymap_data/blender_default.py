@@ -7853,6 +7853,7 @@ def km_sequencer_editor_tool_generic_select_timeline_lcs(params):
         *_template_items_change_frame(params),
     ]
 
+
 def km_sequencer_editor_tool_generic_select_box_timeline(params, *, fallback):
     return (
         _fallback_id("Sequencer Timeline Tool: Select Box", fallback),
