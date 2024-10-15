@@ -612,7 +612,6 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
     GPUAttachmentState attachment_state = attachment_states_[GPU_FB_DEPTH_ATTACHMENT];
     VkImageView depth_image_view = VK_NULL_HANDLE;
-    VkFormat vk_format = VK_FORMAT_UNDEFINED;
     if (attachment_state == GPU_ATTACHMENT_WRITE) {
       VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
                                          IndexRange(max_ii(attachment.layer, 0), 1),
@@ -623,10 +622,10 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                          VKImageViewArrayed::DONT_CARE};
       depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
     }
-    vk_format = (workarounds.dynamic_rendering_unused_attachments &&
-                 depth_image_view == VK_NULL_HANDLE) ?
-                    VK_FORMAT_UNDEFINED :
-                    to_vk_format(depth_texture.device_format_get());
+    VkFormat vk_format = (workarounds.dynamic_rendering_unused_attachments &&
+                          depth_image_view == VK_NULL_HANDLE) ?
+                             VK_FORMAT_UNDEFINED :
+                             to_vk_format(depth_texture.device_format_get());
 
     /* TODO: we should be able to use a single attachment info and only set the
      * #pDepthAttachment/#pStencilAttachment to the same struct.
