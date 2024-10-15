@@ -101,7 +101,7 @@ class Preprocessor {
   /* Variant use for python shaders. */
   std::string process(const std::string &str)
   {
-    auto no_err_report = [](std::string, std::smatch, const char *) {};
+    auto no_err_report = [](std::smatch, const char *) {};
     return process(str, "", false, false, false, false, no_err_report);
   }
 
@@ -127,7 +127,7 @@ class Preprocessor {
 
       if (end == std::string::npos) {
         /* TODO(fclem): Add line / char position to report. */
-        report_error(str, std::smatch(), "Malformed multi-line comment.");
+        report_error(std::smatch(), "Malformed multi-line comment.");
         return out_str;
       }
     }
@@ -146,7 +146,7 @@ class Preprocessor {
 
       if (end == std::string::npos) {
         /* TODO(fclem): Add line / char position to report. */
-        report_error(str, std::smatch(), "Malformed single line comment, missing newline.");
+        report_error(std::smatch(), "Malformed single line comment, missing newline.");
         return out_str;
       }
     }
@@ -297,7 +297,7 @@ class Preprocessor {
           }
         }
         if (arg_len > 99) {
-          report_error(str, std::smatch(), "Too many parameters in printf. Max is 99.");
+          report_error(std::smatch(), "Too many parameters in printf. Max is 99.");
           break;
         }
         /* Encode number of arg in the `ntf` of `printf`. */
@@ -434,7 +434,7 @@ class Preprocessor {
       const char *msg =
           "Matrix constructor is not cross API compatible. "
           "Use to_floatNxM to reshape the matrix or use other constructors instead.";
-      report_error(str, match, msg);
+      report_error(match, msg);
     }
   }
 
@@ -446,7 +446,7 @@ class Preprocessor {
       /* This only catches some invalid usage. For the rest, the CI will catch them. */
       const char *msg =
           "Array constructor is not cross API compatible. Use type_array instead of type[].";
-      report_error(str, match, msg);
+      report_error(match, msg);
     }
   }
 
@@ -455,7 +455,7 @@ class Preprocessor {
   {
     std::regex regex(R"(\su?(char|short|half)(2|3|4)?\s)");
     for (std::smatch match; std::regex_search(str, match, regex); str = match.suffix()) {
-      report_error(str, match, "Small types are forbidden in shader interfaces.");
+      report_error(match, "Small types are forbidden in shader interfaces.");
     }
   }
 
