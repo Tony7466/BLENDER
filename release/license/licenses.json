@@ -1,7 +1,7 @@
 {
   "Arev-Fonts": {
-    "name": "Arev",
-    "url": ""
+    "name": "Arev Fonts License",
+    "url": "http://tavmjong.free.fr/FONTS/ArevCopyright.txt"
   },
   "ICS": {
     "name": "WC Width License",
@@ -27,6 +27,10 @@
     "name": "BSD 3-Clause \"New\" or \"Revised\" License",
     "url": "https://spdx.org/licenses/BSD-3-Clause.html"
   },
+  "SPDX:Font-exception-2.0": {
+    "name": "Font exception 2.0",
+    "url": "https://spdx.org/licenses/Font-exception-2.0.html"
+  },
   "SPDX:FTL": {
     "name": "Freetype Project License",
     "url": "https://spdx.org/licenses/FTL.html"
@@ -39,6 +43,10 @@
     "name": "GNU General Public License v3.0 or later",
     "url": "https://spdx.org/licenses/GPL-3.0-or-later.html"
   },
+  "SPDX:LGPL-2.1-or-later": {
+    "name": "GNU Lesse General Public License v2.1 or later",
+    "url": "https://spdx.org/licenses/LGPL-2.1-or-later.html"
+  }, 
   "SPDX:libtiff": {
     "name": "libtiff License",
     "url": "https://spdx.org/licenses/libtiff.html"
@@ -50,6 +58,10 @@
   "SPDX:MPL-2.0": {
     "name": "Mozilla Public License 2.0",
     "url": "https://spdx.org/licenses/MPL-2.0.html"
+  },
+  "SPDX:mplus": {
+    "name": "mplus Font License",
+    "url": "https://spdx.org/licenses/mplus.html"
   },
   "SPDX:Python-2.0": {
     "name": "Python License 2.0",

@@ -40,16 +40,86 @@ it contains dependencies which have different licenses.
 
 ## Fonts
 
+Fonts are made of separate group of glyphs, each with their own license.
+"""
+
+INTRODUCTION += """
+### Blender Main I18n
+
+Blender Main I18n font includes glyphs imported from the following fonts:
+
+1. DejaVu Sans
+2. Droid Sans Regular
+3. Samyak-devanagari
+4. Droid Sans Hebrew Regular
+5. Droid Sans Ethiopic Regular
+6. Samyak-tamil
+7. KhmerOSsys
+8. tlwg' Loma (Thaï)
+
+These were merged using FontForge in (approximately) the above order. For each glyph,
+a license of the font from which it was imported is applied.
+
+Feb 2020 - Cyrillic unicode range (specifically U+400-U+0525) reimported
+from current version of DejaVu Sans
+
+tlwg' Loma was modified to fix and/or adapt kerning to Blender basic layout engine by Hồ Châu in 2016.
+
+
 | Font     | License | Copyright |
 | -------  | --------- | ------- |
-| Arev   | Arev Fonts | `Copyright (c) 2006 by Tavmjong Bah. All Rights Reserved.` |
-| Bistream | Bistream Vera Fonts | `Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. Bitstream Vera is a trademark of Bitstream, Inc.`
-| DejaVu-Lite | Public Domain | |
+| 1. DejaVu Sans | <Arev-Fonts|link> + <SPDX:Bitstream-Vera|link> | `2003 Bitstream, Inc. (Bitstream font glyphs); 2006 Tavmjong Bah (Arev font glyphs); DejaVu changes are in public domain` |
+| 2. Droid Sans Regular | <SPDX:Apache-2.0|link> | `Copyright © 2006, 2007, 2008, 2009, 2010 Google Corp. Droid is a trademark of Google Corp.` |
+| 3. Samyak-devanagari | <SPDX:GPL-3.0-or-later|link> WITH <SPDX:Font-exception-2.0|link> | `Copyright: 2005-2006, Rahul Bhalerao <b.rahul.pm@gmail.com>; 2005-2006, Bageshri Salvi <sbageshri@gmail.com>; 2005-2006, Pravin Satpute <pravin.d.s@gmail.com>; 2005-2006, Sandeep Shedmake <Sandeep.shedmake@gmail.com>` |
+| 4. Droid Sans Hebrew Regular | <SPDX:Apache-2.0|link> | `Copyright © 2006, 2007, 2008, 2009, 2010 Google Corp. Droid is a trademark of Google Corp.` |
+| 5. Droid Sans Ethiopic Regular | <SPDX:Apache-2.0|link> | `Copyright © 2006, 2007, 2008, 2009, 2010 Google Corp. Droid is a trademark of Google Corp.` |
+| 6. Samyak-tamil | <SPDX:GPL-3.0-or-later|link> WITH <SPDX:Font-exception-2.0|link> | `Copyright: 2005-2006, Rahul Bhalerao <b.rahul.pm@gmail.com>; 2005-2006, Bageshri Salvi <sbageshri@gmail.com>; 2005-2006, Pravin Satpute <pravin.d.s@gmail.com>; 2005-2006, Sandeep Shedmake <Sandeep.shedmake@gmail.com>` |
+| 7. KhmerOSsys | <SPDX:LGPL-2.1-or-later|link> | `Copyright: 2005, 2006 Danh Hong; 2005, 2006 Open Forum of Cambodia` |
+| 8. tlwg' Loma (Thaï) | <SPDX:GPL-2.0-or-later|link> WITH <SPDX:Font-exception-2.0|link> | `Copyright: 2003 National Electronics and Computer Technology Center` |
 
+-----------------
+
+<SPDX:Apache-2.0>
 <Arev-Fonts>
-
 <SPDX:Bitstream-Vera>
+<SPDX:GPL-2.0-or-later>
+<SPDX:GPL-3.0-or-later>
+<SPDX:LGPL-2.1-or-later>
+<SPDX:Font-exception-2.0>
 
+"""
+# TODO
+
+INTRODUCTION += """
+### Blender Mono I18n
+
+Blender Mono I18n font includes glyphs imported from the following fonts:
+
+1. DejaVu Sans Mono
+2. M+ 1M Regular
+3. Wen Quan Yi Micro Hei Mono
+4. Droid Sans Hebrew Regular (with some edits)
+
+These were merged using FontForge in the above order.  For each glyph,
+a license of the font from which it was imported is applied.
+
+Feb 2020 - Cyrillic unicode range (specifically U+400-U+0525) reimported
+from current version of DejaVu Sans Mono.
+
+
+| Font     | License | Copyright |
+| -------  | --------- | ------- |
+| 1. DejaVu Sans Mono   | [Arev Fonts](http://tavmjong.free.fr/FONTS/ArevCopyright.txt) + [Bistream VeraFont License](https://spdx.org/licenses/Bitstream-Vera.html) | `2003 Bitstream, Inc. (Bitstream font glyphs); 2006 Tavmjong Bah (Arev font glyphs); DejaVu changes are in public domain` |
+| 2. M+ 1M Regular | [mplus Font License](https://spdx.org/licenses/mplus.html) | `Copyright: 2002-2012 M+ FONTS PROJECT` |
+| 3. Wen Quan Yi Micro Hei Mono | [Apache License 2.0](https://spdx.org/licenses/Apache-2.0.html) | `Copyright: 2007 Google Corporation (Digitized data); 2008-2009 WenQuanYi Project Board of Trustees; 2008-2009 mozbug and Qianqian Fang (Droid Sans Fallback extension interface)` |
+| 4. Droid Sans Hebrew Regular | [Apache License 2.0](https://spdx.org/licenses/Apache-2.0.html) | `Copyright: 2011 Google Corporation` |
+
+-----------------
+
+<SPDX:Apache-2.0>
+<Arev-Fonts>
+<SPDX:Bitstream-Vera>
+<SPDX:mplus>
 """
 
 
@@ -348,9 +418,13 @@ def get_introduction(licenses: set[License]) -> str:
     introduction = INTRODUCTION
 
     license_lookups = {
-        'SPDX:GPL-3.0-or-later',
-        'SPDX:Bitstream-Vera',
+        'SPDX:Apache-2.0',
         'Arev-Fonts',
+        'SPDX:Bitstream-Vera',
+        'SPDX:Font-exception-2.0',
+        'SPDX:GPL-2.0-or-later',
+        'SPDX:GPL-3.0-or-later',
+        'SPDX:LGPL-2.1-or-later',
     }
 
     for license_lookup in license_lookups:
@@ -359,9 +433,15 @@ def get_introduction(licenses: set[License]) -> str:
             # sys.exit(1) # TODO DEBUG
             continue
 
+        license = licenses[license_lookup]
         introduction = introduction.replace(
             f'<{license_lookup}>',
-            licenses[license_lookup].dump()
+            license.dump()
+        )
+
+        introduction = introduction.replace(
+            f'<{license_lookup}|link>',
+            f'[{license.name}]({license.url})'
         )
 
     return introduction
