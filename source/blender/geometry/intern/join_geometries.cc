@@ -215,6 +215,8 @@ GeometrySet join_geometries(
        GeometryComponent::Type::Curve,
        GeometryComponent::Type::GreasePencil,
        GeometryComponent::Type::Physics,
+       /* TODO construct compound shapes when joining collision shapes. */
+       /*GeometryComponent::Type::CollisionShape,*/
        GeometryComponent::Type::Edit});
 
   const Span<GeometryComponent::Type> types_to_join = component_types_to_join.has_value() ?

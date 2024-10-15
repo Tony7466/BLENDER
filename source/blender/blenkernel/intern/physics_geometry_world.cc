@@ -80,7 +80,8 @@ static float4x4 get_constraint_frame2(const JPH::Constraint &constraint)
 
 static void set_constraint_frame2(JPH::Constraint & /*constraint*/, float4x4 /*value*/) {}
 
-static Array<JPH::BodyID> get_valid_body_ids(const Span<JPH::Body *> bodies, const IndexMask &selection)
+static Array<JPH::BodyID> get_valid_body_ids(const Span<JPH::Body *> bodies,
+                                             const IndexMask &selection)
 {
   IndexMaskMemory memory;
   IndexMask selection_valid = IndexMask::from_predicate(
@@ -100,7 +101,8 @@ static Array<JPH::BodyID> get_valid_body_ids(const Span<JPH::Body *> bodies)
   return get_valid_body_ids(bodies, bodies.index_range());
 }
 
-static Array<JPH::Constraint *> get_valid_constraints(const Span<JPH::Constraint *> constraints, const IndexMask &selection)
+static Array<JPH::Constraint *> get_valid_constraints(const Span<JPH::Constraint *> constraints,
+                                                      const IndexMask &selection)
 {
   IndexMaskMemory memory;
   IndexMask selection_valid = IndexMask::from_predicate(
@@ -115,7 +117,8 @@ static Array<JPH::Constraint *> get_valid_constraints(const Span<JPH::Constraint
   return valid_constraints;
 }
 
-static Array<JPH::Constraint *> get_valid_constraints(const Span<JPH::Constraint *> constraints){
+static Array<JPH::Constraint *> get_valid_constraints(const Span<JPH::Constraint *> constraints)
+{
   return get_valid_constraints(constraints, constraints.index_range());
 }
 
@@ -660,8 +663,12 @@ void JoltPhysicsWorldData::resize(const int body_num,
 
     /* Create new default bodies in empty places. */
     const IndexRange full_range = new_rigid_bodies.index_range();
-    const IndexRange empty_head = dst_body_range.is_empty() ? full_range : full_range.take_front(dst_body_range.first());
-    const IndexRange empty_tail = dst_body_range.is_empty() ? IndexRange{} : full_range.drop_front(dst_body_range.one_after_last());
+    const IndexRange empty_head = dst_body_range.is_empty() ?
+                                      full_range :
+                                      full_range.take_front(dst_body_range.first());
+    const IndexRange empty_tail = dst_body_range.is_empty() ?
+                                      IndexRange{} :
+                                      full_range.drop_front(dst_body_range.one_after_last());
     create_default_bodies(body_interface, new_rigid_bodies, empty_head);
     create_default_bodies(body_interface, new_rigid_bodies, empty_tail);
     bodies_ = std::move(new_rigid_bodies);
@@ -773,65 +780,6 @@ void JoltPhysicsWorldData::ensure_bodies_and_constraints_in_world()
   });
 }
 
-void JoltPhysicsWorldData::update_bodies(const IndexMask &selection,
-                                         AttributeAccessor attributes,
-                                         const Span<CollisionShapePtr> shapes)
-{
-  using namespace bke::physics_attributes;
-
-  static const JPH::EActivation activation_mode = JPH::EActivation::DontActivate;
-
-  const VArraySpan<int> shape_indices = physics_attribute_lookup_or_default<int>(
-      attributes, BodyAttribute::collision_shape);
-  const VArraySpan<float3> positions = physics_attribute_lookup_or_default<float3>(
-      attributes, BodyAttribute::position);
-  const VArraySpan<math::Quaternion> rotations =
-      physics_attribute_lookup_or_default<math::Quaternion>(attributes, BodyAttribute::rotation);
-  const VArraySpan<int> motion_types = physics_attribute_lookup_or_default<int>(
-      attributes, BodyAttribute::motion_type);
-  const VArraySpan<float> masses = physics_attribute_lookup_or_default<float>(attributes,
-                                                                              BodyAttribute::mass);
-  const VArraySpan<float3> inertias = physics_attribute_lookup_or_default<float3>(
-      attributes, BodyAttribute::inertia);
-
-  JPH::BodyInterface &body_interface = physics_system_.GetBodyInterface();
-  selection.foreach_index(GrainSize(512), [&](const int index) {
-    const int handle = shape_indices[index];
-    if (!shapes.index_range().contains(handle)) {
-      return;
-    }
-    const CollisionShapePtr &shape_ptr = shapes[handle];
-    BLI_assert(shape_ptr);
-    const JPH::Shape *jolt_shape = &shape_ptr->impl().as_jolt_shape();
-    const JPH::EMotionType jolt_motion_type = to_jolt(PhysicsMotionType(motion_types[index]));
-
-    const JPH::ObjectLayer layer =
-        (ELEM(jolt_motion_type, JPH::EMotionType::Dynamic, JPH::EMotionType::Kinematic) ?
-             Layers::moving :
-             Layers::non_moving);
-    JPH::BodyCreationSettings settings(
-        jolt_shape, to_jolt(positions[index]), to_jolt(rotations[index]), jolt_motion_type, layer);
-
-    const float mass = masses[index];
-    const float3 inertia = inertias[index];
-    if (mass == 0.0f) {
-      settings.mOverrideMassProperties = JPH::EOverrideMassProperties ::CalculateMassAndInertia;
-    }
-    else if (math::is_zero(inertia)) {
-      settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
-      settings.mMassPropertiesOverride.mMass = to_jolt(mass);
-    }
-    else {
-      settings.mOverrideMassProperties = JPH::EOverrideMassProperties::MassAndInertiaProvided;
-      settings.mMassPropertiesOverride.mMass = to_jolt(mass);
-      settings.mMassPropertiesOverride.mInertia = to_jolt(math::from_scale<float4x4>(inertia));
-    }
-
-    JPH::Body *body = this->bodies_[index];
-    body_interface.SetShape(body->GetID(), jolt_shape, true, activation_mode);
-  });
-}
-
 void JoltPhysicsWorldData::init_constraints(const IndexMask &selection)
 {
   if (selection.is_empty()) {
@@ -889,7 +837,7 @@ void JoltPhysicsWorldData::step_simulation(const float delta_time, const int col
 }
 
 void JoltPhysicsWorldData::set_body_shapes(const IndexMask &selection,
-                                           const Span<CollisionShapePtr> shapes,
+                                           const Span<InstanceReference> shapes,
                                            const Span<int> shape_handles)
 {
   static const JPH::EActivation activation_mode = JPH::EActivation::DontActivate;
@@ -900,21 +848,22 @@ void JoltPhysicsWorldData::set_body_shapes(const IndexMask &selection,
     if (!shapes.index_range().contains(handle)) {
       return;
     }
-    const CollisionShapePtr &shape_ptr = shapes[handle];
-    if (!shape_ptr) {
+    const InstanceReference &reference = shapes[handle];
+    const CollisionShape *shape = reference.geometry_set().get_collision_shape();
+    if (!shape) {
       return;
     }
 
-    const JPH::Shape *jolt_shape = &shape_ptr->impl().as_jolt_shape();
+    const JPH::Shape &jolt_shape = shape->impl();
     JPH::Body *body = this->bodies_[index];
     /* XXX Jolt bug: triangle shapes always compute zero mass from density,
      * updating motion properties will trigger an assert. */
-    const bool update_motion_props = shape_ptr->supports_motion() &&
-                                     (shape_ptr->type() != CollisionShape::ShapeType::Triangle);
-    const JPH::EActivation body_activation_mode = shape_ptr->supports_motion() ?
+    const bool update_motion_props = shape->supports_motion() &&
+                                     (shape->type() != CollisionShapeType::Triangle);
+    const JPH::EActivation body_activation_mode = shape->supports_motion() ?
                                                       activation_mode :
                                                       JPH::EActivation::DontActivate;
-    body_interface.SetShape(body->GetID(), jolt_shape, update_motion_props, body_activation_mode);
+    body_interface.SetShape(body->GetID(), &jolt_shape, update_motion_props, body_activation_mode);
   });
 }
 
@@ -998,7 +947,7 @@ Span<JPH::Constraint *> JoltPhysicsWorldData::constraints() const
 }
 
 bool JoltPhysicsWorldData::validate(const AttributeAccessor /*attributes*/,
-                                    const Span<CollisionShapePtr> /*shapes*/)
+                                    const Span<InstanceReference> /*shapes*/)
 {
   // TODO
   return true;

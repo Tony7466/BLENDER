@@ -26,52 +26,14 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  /* Share geometry for instances if the collision shapes are the same. */
-  Map<const bke::CollisionShape *, GeometrySet> shape_geometry_map;
+  const GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
+  if (!geometry_set.has_collision_shape()) {
+    return;
+  }
 
-  GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
-  geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    if (!geometry_set.has_physics()) {
-      geometry_set = {};
-      return;
-    }
-
-    const bke::PhysicsGeometry &physics = *geometry_set.get_physics();
-    Span<bke::CollisionShapePtr> shapes = physics.state().shapes();
-
-    bke::Instances *instances = new bke::Instances();
-    instances->resize(shapes.size());
-
-    MutableSpan<int> handles = instances->reference_handles_for_write();
-    MutableSpan<float4x4> transforms = instances->transforms_for_write();
-    for (const int i : shapes.index_range()) {
-      const bke::CollisionShape *shape = shapes[i].get();
-
-      const GeometrySet &shape_geometry = shape_geometry_map.lookup_or_add_cb(
-          shape, [&]() { return shape->create_geometry(); });
-      handles[i] = instances->add_reference(bke::InstanceReference{shape_geometry});
-      transforms[i] = float4x4::identity();
-    }
-
-    bke::AttributeAccessor src_attributes = physics.attributes();
-    bke::AttributeFilter attribute_filter = bke::AttributeFilterFromFunc(
-        [&](const StringRef name) {
-          if (src_attributes.is_builtin(name)) {
-            return bke::AttributeFilter::Result::AllowSkip;
-          }
-          return bke::AttributeFilter::Result::Process;
-        });
-
-    bke::copy_attributes(physics.attributes(),
-                         bke::AttrDomain::Instance,
-                         bke::AttrDomain::Instance,
-                         attribute_filter,
-                         instances->attributes_for_write());
-
-    geometry_set = GeometrySet::from_instances(instances);
-  });
-
-  params.set_output("Geometry", std::move(geometry_set));
+  const bke::CollisionShape *shape = geometry_set.get_collision_shape();
+  GeometrySet shape_geometry = shape->create_mesh_instances();
+  params.set_output("Geometry", std::move(shape_geometry));
 }
 
 static void node_register()

@@ -230,6 +230,8 @@ class Instances {
 VArray<float3> instance_position_varray(const Instances &instances);
 VMutableArray<float3> instance_position_varray_for_write(Instances &instances);
 
+Vector<InstanceReference> ensure_geometry_instances_span(const Span<InstanceReference> references);
+
 /* -------------------------------------------------------------------- */
 /** \name #InstanceReference Inline Methods
  * \{ */

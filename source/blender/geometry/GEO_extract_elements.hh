@@ -74,8 +74,4 @@ Array<bke::PhysicsGeometry *> extract_physics_constraints(
     const IndexMask &mask,
     const bke::AttributeFilter &attribute_filter);
 
-Array<bke::PhysicsGeometry *> extract_physics_shapes(const bke::PhysicsGeometry &physics,
-                                                     const IndexMask &mask,
-                                                     const bke::AttributeFilter &attribute_filter);
-
 }  // namespace blender::geometry

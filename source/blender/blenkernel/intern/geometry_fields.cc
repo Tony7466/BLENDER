@@ -145,6 +145,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       geometry_ = physics_component.get();
       break;
     }
+    case GeometryComponent::Type::CollisionShape:
     case GeometryComponent::Type::Volume:
     case GeometryComponent::Type::Edit:
       BLI_assert_unreachable();

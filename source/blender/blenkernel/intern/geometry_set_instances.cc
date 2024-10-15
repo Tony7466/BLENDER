@@ -103,9 +103,14 @@ void Instances::foreach_referenced_geometry(
 
 void Instances::ensure_geometry_instances()
 {
+  references_ = ensure_geometry_instances_span(references_);
+}
+
+Vector<InstanceReference> ensure_geometry_instances_span(const Span<InstanceReference> references)
+{
   Vector<InstanceReference> new_references;
-  new_references.reserve(references_.size());
-  for (const InstanceReference &reference : references_) {
+  new_references.reserve(references.size());
+  for (const InstanceReference &reference : references) {
     switch (reference.type()) {
       case InstanceReference::Type::None: {
         new_references.append(InstanceReference(GeometrySet{}));
@@ -157,7 +162,7 @@ void Instances::ensure_geometry_instances()
       }
     }
   }
-  references_ = std::move(new_references);
+  return new_references;
 }
 
 }  // namespace blender::bke

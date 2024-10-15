@@ -535,9 +535,12 @@ Array<bke::PhysicsGeometry *> extract_physics_bodies(const bke::PhysicsGeometry 
   Array<bke::PhysicsGeometry *> elements(mask.size(), nullptr);
 
   const bke::AttributeAccessor src_attributes = physics.attributes();
+  const Span<bke::InstanceReference> src_shapes = physics.state().shapes();
+  const VArraySpan<int> src_shape_handles = bke::physics_attributes::physics_attribute_lookup_or_default<int>(physics.attributes(), bke::PhysicsBodyAttribute::collision_shape);
 
   mask.foreach_index(GrainSize(32), [&](const int body_i, const int element_i) {
-    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(1, 0, 0);
+    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(1, 0);
+    bke::AttributeWriter<int> shape_handles_writer = element->body_shapes_for_write();
 
     bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
     bke::gather_attributes(src_attributes,
@@ -546,6 +549,17 @@ Array<bke::PhysicsGeometry *> extract_physics_bodies(const bke::PhysicsGeometry 
                            attribute_filter,
                            Span<int>{body_i},
                            element_attributes);
+
+    /* Reference the collision shape and correct the index. */
+    const int  src_shape_handle=src_shape_handles[body_i];
+    int dst_shape_handle =-1;
+    if (src_shapes.index_range().contains(src_shape_handle)){
+      const bke::InstanceReference reference = src_shapes[src_shape_handle];
+      dst_shape_handle = element->state_for_write().add_new_shape(reference);
+    }
+    shape_handles_writer.varray.set(0, dst_shape_handle);
+    shape_handles_writer.finish();
+
     elements[element_i] = element;
   });
 
@@ -563,7 +577,7 @@ Array<bke::PhysicsGeometry *> extract_physics_constraints(
   const bke::AttributeAccessor src_attributes = physics.attributes();
 
   mask.foreach_index(GrainSize(32), [&](const int constraint_i, const int element_i) {
-    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(0, 1, 0);
+    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(0, 1);
 
     bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
     bke::gather_attributes(src_attributes,
@@ -571,31 +585,6 @@ Array<bke::PhysicsGeometry *> extract_physics_constraints(
                            AttrDomain::Edge,
                            attribute_filter,
                            Span<int>{constraint_i},
-                           element_attributes);
-    elements[element_i] = element;
-  });
-
-  return elements;
-}
-
-Array<bke::PhysicsGeometry *> extract_physics_shapes(const bke::PhysicsGeometry &physics,
-                                                     const IndexMask &mask,
-                                                     const bke::AttributeFilter &attribute_filter)
-{
-  BLI_assert(mask.min_array_size() <= physics.shapes_num());
-  Array<bke::PhysicsGeometry *> elements(mask.size(), nullptr);
-
-  const bke::AttributeAccessor src_attributes = physics.attributes();
-
-  mask.foreach_index(GrainSize(32), [&](const int shape_i, const int element_i) {
-    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(0, 0, 1);
-
-    bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
-    bke::gather_attributes(src_attributes,
-                           AttrDomain::Instance,
-                           AttrDomain::Instance,
-                           attribute_filter,
-                           Span<int>{shape_i},
                            element_attributes);
     elements[element_i] = element;
   });

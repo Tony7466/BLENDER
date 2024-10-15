@@ -5,6 +5,7 @@
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_geometry_nodes_log.hh"
 
+#include "BKE_collision_shape.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_nodes_gizmos_transforms.hh"
@@ -73,7 +74,8 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
                                            bke::GeometryComponent::Type::Mesh,
                                            bke::GeometryComponent::Type::PointCloud,
                                            bke::GeometryComponent::Type::GreasePencil,
-                                           bke::GeometryComponent::Type::Volume};
+                                           bke::GeometryComponent::Type::Volume,
+                                           bke::GeometryComponent::Type::CollisionShape};
 
   /* Keep track handled attribute names to make sure that we do not return the same name twice.
    * Currently #GeometrySet::attribute_foreach does not do that. Note that this will merge
@@ -158,11 +160,19 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
       }
       case bke::GeometryComponent::Type::Physics: {
         const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(component);
-        RigidBodyInfo &info = this->rigid_body_info.emplace();
+        PhysicsInfo &info = this->physics_info.emplace();
         info.has_world = physics_component.has_world();
         info.bodies_num = physics_component.bodies_num();
         info.constraints_num = physics_component.constraints_num();
         info.shapes_num = physics_component.shapes_num();
+        break;
+      }
+      case bke::GeometryComponent::Type::CollisionShape: {
+        const auto &shape_component = *static_cast<const bke::CollisionShapeComponent *>(
+            component);
+        CollisionShapeInfo &info = this->collision_shape_info.emplace();
+        const bke::CollisionShape *shape = shape_component.get();
+        info.shape_type = shape ? std::make_optional(shape->type()) : std::nullopt;
         break;
       }
     }

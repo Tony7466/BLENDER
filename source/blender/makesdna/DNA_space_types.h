@@ -1955,6 +1955,7 @@ typedef struct SpreadsheetColumn {
 
 typedef struct SpreadsheetInstanceID {
   int reference_index;
+  int component_type;
 } SpreadsheetInstanceID;
 
 typedef struct SpaceSpreadsheet {

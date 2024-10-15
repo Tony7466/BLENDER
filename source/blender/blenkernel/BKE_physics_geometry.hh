@@ -18,6 +18,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_geometry_fields.hh"
+#include "BKE_instances.hh"
 
 #include "DNA_customdata_types.h"
 
@@ -31,12 +32,9 @@ enum class CollisionShapeType;
 
 namespace blender::bke {
 
-class CollisionShape;
 class PhysicsWorldData;
 struct CustomDataAccessInfo;
 struct PhysicsWorldDataAccessInfo;
-
-using CollisionShapePtr = ImplicitSharingPtr<CollisionShape>;
 
 enum class PhysicsBodyAttribute {
   collision_shape,
@@ -82,19 +80,6 @@ enum class PhysicsConstraintAttribute {
   min_motor_force_angle,
   max_motor_force_axis,
   max_motor_force_angle,
-};
-
-enum class PhysicsShapeAttribute {
-  translation,
-  rotation,
-  scale,
-  size,
-  radius,
-  radius2,
-  height,
-  point0,
-  point1,
-  point2,
 };
 
 enum class PhysicsMotionType {
@@ -169,9 +154,16 @@ class PhysicsWorldState : public ImplicitSharingMixin {
   Map<ConstraintAttribute, GArray<>> constraint_data_;
   CustomData body_custom_data_;
   CustomData constraint_custom_data_;
-  CustomData shape_custom_data_;
 
-  Array<CollisionShapePtr> shapes_;
+  /**
+   * Contains the data that is used by the individual instances.
+   * Actual instances store an index ("handle") into this vector.
+   */
+  Vector<InstanceReference> shapes_;
+  /**
+   * Caches how often each shape is used.
+   */
+  mutable SharedCache<Array<int>> shape_user_counts_;
 
   mutable PhysicsWorldData *world_data_ = nullptr;
   /* Protects shared read/write access to world data. */
@@ -179,7 +171,7 @@ class PhysicsWorldState : public ImplicitSharingMixin {
 
  public:
   PhysicsWorldState();
-  PhysicsWorldState(int body_num, int constraint_num, int shape_num);
+  PhysicsWorldState(int body_num, int constraint_num);
   PhysicsWorldState(const PhysicsWorldState &other);
   ~PhysicsWorldState();
 
@@ -227,8 +219,37 @@ class PhysicsWorldState : public ImplicitSharingMixin {
                      int dst_body_offset,
                      int dst_constraint_offset);
 
-  Span<CollisionShapePtr> shapes() const;
-  MutableSpan<CollisionShapePtr> shapes_for_write();
+  /**
+   * Returns a handle for the given shape reference.
+   * If the reference exists already, the handle of the existing reference is returned.
+   * Otherwise a new handle is added.
+   */
+  int add_shape(const InstanceReference &reference);
+  /**
+   * Same as above, but does not deduplicate with existing references.
+   */
+  int add_new_shape(const InstanceReference &reference);
+  std::optional<int> find_shape_handle(const InstanceReference &query);
+
+  Span<InstanceReference> shapes() const;
+  void remove_unused_shapes();
+  /**
+   * Get cached user counts for every shape.
+   */
+  Span<int> shape_user_counts() const;
+
+  /**
+   * If references have a collection or object type, convert them into geometry instances
+   * recursively. After that, the geometry sets can be edited. There may still be instances of
+   * other types of they can't be converted to geometry sets.
+   */
+  void ensure_shape_geometry_instances();
+  /**
+   * With write access to the physics component, the data in the instanced geometry sets can be
+   * changed. This is a function on the component rather than each reference to ensure `const`
+   * correctness for that reason.
+   */
+  GeometrySet &geometry_set_from_shape(int shape_index);
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
@@ -263,7 +284,6 @@ class PhysicsWorldState : public ImplicitSharingMixin {
   static const PhysicsWorldDataAccessInfo &world_data_access_info();
   static const CustomDataAccessInfo &body_custom_data_access_info();
   static const CustomDataAccessInfo &constraint_custom_data_access_info();
-  static const CustomDataAccessInfo &shape_custom_data_access_info();
 
   /* Debug utility functions, should be removed eventually. */
 #ifndef NDEBUG
@@ -314,7 +334,7 @@ class PhysicsGeometry {
 
  public:
   PhysicsGeometry();
-  explicit PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num);
+  explicit PhysicsGeometry(int bodies_num, int constraints_num);
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
@@ -414,27 +434,21 @@ namespace physics_attributes {
 
 Span<PhysicsBodyAttribute> all_body_attributes();
 Span<PhysicsConstraintAttribute> all_constraint_attributes();
-Span<PhysicsShapeAttribute> all_shape_attributes();
 
 StringRef physics_attribute_name(PhysicsBodyAttribute attribute);
 StringRef physics_attribute_name(PhysicsConstraintAttribute attribute);
-StringRef physics_attribute_name(PhysicsShapeAttribute attribute);
 
 std::optional<PhysicsBodyAttribute> find_body_attribute(StringRef name);
 std::optional<PhysicsConstraintAttribute> find_constraint_attribute(StringRef name);
-std::optional<PhysicsShapeAttribute> find_shape_attribute(StringRef name);
 
 Span<std::string> all_body_attribute_names();
 Span<std::string> all_constraint_attribute_names();
-Span<std::string> all_shape_attribute_names();
 
 const CPPType &physics_attribute_type(PhysicsBodyAttribute attribute);
 const CPPType &physics_attribute_type(PhysicsConstraintAttribute attribute);
-const CPPType &physics_attribute_type(PhysicsShapeAttribute attribute);
 
 const void *physics_attribute_default_value(PhysicsBodyAttribute attribute);
 const void *physics_attribute_default_value(PhysicsConstraintAttribute attribute);
-const void *physics_attribute_default_value(PhysicsShapeAttribute attribute);
 template<typename T> const T &physics_attribute_default_value(PhysicsBodyAttribute attribute)
 {
   BLI_assert(physics_attribute_type(attribute).is<T>());
@@ -445,20 +459,6 @@ template<typename T> const T &physics_attribute_default_value(PhysicsConstraintA
   BLI_assert(physics_attribute_type(attribute).is<T>());
   return *static_cast<const T *>(physics_attribute_default_value(attribute));
 }
-template<typename T> const T &physics_attribute_default_value(PhysicsShapeAttribute attribute)
-{
-  BLI_assert(physics_attribute_type(attribute).is<T>());
-  return *static_cast<const T *>(physics_attribute_default_value(attribute));
-}
-
-GVArray physics_attribute_varray(PhysicsShapeAttribute attribute,
-                                 Span<bke::CollisionShapePtr> shapes);
-
-StringRef physics_shape_attribute_label(const bke::CollisionShapeType shape_type,
-                                        bke::PhysicsShapeAttribute attribute);
-bool physics_shape_attribute_valid(const CollisionShapeType shape_type,
-                                   PhysicsShapeAttribute attribute);
-bool physics_shape_geometry_valid(const CollisionShapeType shape_type);
 
 /* Writes to cache first, then updates engine data afterward.
  * This is used for attributes which do not have a direct property in engine data.
@@ -482,15 +482,6 @@ VArray<T> physics_attribute_lookup_or_default(const AttributeAccessor attributes
 {
   return *attributes.lookup_or_default<T>(physics_attribute_name(physics_attribute),
                                           AttrDomain::Edge,
-                                          physics_attribute_default_value<T>(physics_attribute));
-}
-
-template<typename T>
-VArray<T> physics_attribute_lookup_or_default(const AttributeAccessor attributes,
-                                              PhysicsShapeAttribute physics_attribute)
-{
-  return *attributes.lookup_or_default<T>(physics_attribute_name(physics_attribute),
-                                          AttrDomain::Instance,
                                           physics_attribute_default_value<T>(physics_attribute));
 }
 

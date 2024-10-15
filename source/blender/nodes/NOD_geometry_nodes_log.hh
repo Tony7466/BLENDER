@@ -48,6 +48,10 @@
 
 struct SpaceNode;
 
+namespace blender::bke {
+enum class CollisionShapeType;
+}
+
 namespace blender::nodes::geo_eval_log {
 
 using fn::GField;
@@ -155,9 +159,12 @@ class GeometryInfoLog : public ValueLog {
   struct InstancesInfo {
     int instances_num;
   };
-  struct RigidBodyInfo {
+  struct PhysicsInfo {
     bool has_world;
     int bodies_num, constraints_num, shapes_num;
+  };
+  struct CollisionShapeInfo {
+    std::optional<bke::CollisionShapeType> shape_type;
   };
   struct EditDataInfo {
     bool has_deformed_positions = false;
@@ -176,7 +183,8 @@ class GeometryInfoLog : public ValueLog {
   std::optional<PointCloudInfo> pointcloud_info;
   std::optional<GreasePencilInfo> grease_pencil_info;
   std::optional<InstancesInfo> instances_info;
-  std::optional<RigidBodyInfo> rigid_body_info;
+  std::optional<PhysicsInfo> physics_info;
+  std::optional<CollisionShapeInfo> collision_shape_info;
   std::optional<EditDataInfo> edit_data_info;
   std::optional<VolumeInfo> volume_info;
   std::optional<GridInfo> grid_info;

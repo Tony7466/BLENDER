@@ -51,13 +51,13 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  using ShapeType = bke::CollisionShape::ShapeType;
+  using ShapeType = bke::CollisionShapeType;
   node->custom1 = int(ShapeType::Box);
 }
 
 static void node_update(bNodeTree *tree, bNode *node)
 {
-  using ShapeType = bke::CollisionShape::ShapeType;
+  using ShapeType = bke::CollisionShapeType;
   const ShapeType type = ShapeType(node->custom1);
 
   bNodeSocket *socket_iter = static_cast<bNodeSocket *>(node->inputs.first);
@@ -193,35 +193,22 @@ static VArray<float3> gather_points(const GeometrySet &geometry_set)
   return VArray<float3>::ForContainer(positions);
 }
 
-static bke::CollisionShape::Ptr get_collision_shape(const bke::GeometrySet &geometry_set)
-{
-  if (!geometry_set.has_physics()) {
-    return nullptr;
-  }
-  const bke::PhysicsGeometry *physics = geometry_set.get_physics();
-  if (physics->shapes_num() == 0) {
-    return nullptr;
-  }
-  return physics->state().shapes().first();
-}
-
 static void find_child_shapes(const GeometrySet &geometry_set,
-                              Vector<bke::CollisionShapePtr> &r_child_shapes,
+                              Vector<const bke::CollisionShape *> &r_child_shapes,
                               Vector<float4x4> &r_child_transforms)
 {
-  const int num_shapes = geometry_set.has_physics() ? geometry_set.get_physics()->shapes_num() : 0;
+  const bool has_shape = geometry_set.has_collision_shape();
   const int num_instances = geometry_set.has_instances() ?
                                 geometry_set.get_instances()->instances_num() :
                                 0;
+  const int num_child_shapes = (has_shape ? 1 : 0) + num_instances;
 
-  r_child_shapes.reserve(num_shapes + num_instances);
-  r_child_transforms.reserve(num_shapes + num_instances);
-  if (geometry_set.has_physics()) {
-    for (const bke::CollisionShapePtr &child_shape : geometry_set.get_physics()->state().shapes())
-    {
-      r_child_shapes.append(child_shape);
-      r_child_transforms.append(float4x4::identity());
-    }
+  r_child_shapes.reserve(num_child_shapes);
+  r_child_transforms.reserve(num_child_shapes);
+  if (geometry_set.has_collision_shape()) {
+    const bke::CollisionShape *child_shape = geometry_set.get_collision_shape();
+    r_child_shapes.append(child_shape);
+    r_child_transforms.append(float4x4::identity());
   }
   if (geometry_set.has_instances()) {
     const bke::Instances &instances = *geometry_set.get_instances();
@@ -230,134 +217,134 @@ static void find_child_shapes(const GeometrySet &geometry_set,
     for (const int ref_index : instances.reference_handles()) {
       const GeometrySet &ref_geometry_set = references[ref_index].geometry_set();
       const float4x4 &transform = transforms[ref_index];
-      if (ref_geometry_set.has_physics()) {
-        for (const bke::CollisionShapePtr &child_shape :
-             ref_geometry_set.get_physics()->state().shapes())
-        {
-          r_child_shapes.append(child_shape);
-          r_child_transforms.append(transform);
-        }
+      if (ref_geometry_set.has_collision_shape()) {
+        r_child_shapes.append(ref_geometry_set.get_collision_shape());
+        r_child_transforms.append(transform);
       }
     }
   }
 }
 
 /* Keep in sync with the type_items enum in node_rna. */
-static bke::CollisionShape *make_collision_shape_from_type(
-    const bke::CollisionShape::ShapeType type, GeoNodeExecParams params)
+static bke::CollisionShape make_collision_shape_from_type(const bke::CollisionShapeType type,
+                                                          GeoNodeExecParams params)
 {
-  using ShapeType = bke::CollisionShape::ShapeType;
+  using ShapeType = bke::CollisionShapeType;
 
   switch (type) {
+    case ShapeType::Empty: {
+      return {};
+    }
     case ShapeType::Sphere: {
       const float radius = params.extract_input<float>("Radius");
-      return new bke::SphereCollisionShape(radius);
+      return bke::collision_shapes::make_sphere(radius);
     }
     case ShapeType::Box: {
       const float3 half_extent = 0.5f * params.extract_input<float3>("SizeVector");
-      return new bke::BoxCollisionShape(half_extent);
+      return bke::collision_shapes::make_box(half_extent);
     }
     case ShapeType::Triangle: {
       const float3 point0 = params.extract_input<float3>("Point0");
       const float3 point1 = params.extract_input<float3>("Point1");
       const float3 point2 = params.extract_input<float3>("Point2");
-      return new bke::TriangleCollisionShape(point0, point1, point2);
+      return bke::collision_shapes::make_triangle(point0, point1, point2);
     }
     case ShapeType::Capsule: {
       const float radius = params.extract_input<float>("Radius");
       const float height = params.extract_input<float>("Height");
-      return new bke::CapsuleCollisionShape(radius, height);
+      return bke::collision_shapes::make_capsule(radius, height);
     }
     case ShapeType::TaperedCapsule: {
       const float top_radius = params.extract_input<float>("Radius");
       const float bottom_radius = params.extract_input<float>("Radius 2");
       const float height = params.extract_input<float>("Height");
-      return new bke::TaperedCapsuleCollisionShape(top_radius, bottom_radius, height);
+      return bke::collision_shapes::make_tapered_capsule(top_radius, bottom_radius, height);
     }
     case ShapeType::Cylinder: {
       const float radius = params.extract_input<float>("Radius");
       const float height = params.extract_input<float>("Height");
-      return new bke::CylinderCollisionShape(radius, height);
+      return bke::collision_shapes::make_cylinder(radius, height);
     }
     case ShapeType::ConvexHull: {
       const GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
       const VArray<float3> points = gather_points(geometry_set);
-      return new bke::ConvexHullCollisionShape(points);
+      return bke::collision_shapes::make_convex_hull(points);
     }
     case ShapeType::StaticCompound: {
       const GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
-      Vector<bke::CollisionShapePtr> child_shapes;
+      Vector<const bke::CollisionShape *> child_shapes;
       Vector<float4x4> child_transforms;
       find_child_shapes(geometry_set, child_shapes, child_transforms);
-      return new bke::StaticCompoundCollisionShape(child_shapes, child_transforms);
+      return bke::collision_shapes::make_static_compound(child_shapes, child_transforms);
     }
     case ShapeType::MutableCompound: {
       const GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
-      Vector<bke::CollisionShapePtr> child_shapes;
+      Vector<const bke::CollisionShape *> child_shapes;
       Vector<float4x4> child_transforms;
       find_child_shapes(geometry_set, child_shapes, child_transforms);
-      return new bke::MutableCompoundCollisionShape(child_shapes, child_transforms);
+      return bke::collision_shapes::make_mutable_compound(child_shapes, child_transforms);
     }
     case ShapeType::RotatedTranslated: {
       const GeometrySet geometry_set = params.extract_input<GeometrySet>("Child Shape");
       const float3 translation = params.extract_input<float3>("Translation");
       const math::Quaternion rotation = params.extract_input<math::Quaternion>("Rotation");
-      const bke::CollisionShape::Ptr child_shape = get_collision_shape(geometry_set);
-      return new bke::RotatedTranslatedCollisionShape(child_shape, rotation, translation);
+      const bke::CollisionShape *child_shape = geometry_set.get_collision_shape();
+      if (!child_shape) {
+        return bke::collision_shapes::make_sphere(1.0f);
+      }
+      return bke::collision_shapes::make_rotated_translated(child_shape, rotation, translation);
     }
     case ShapeType::Scaled: {
       const GeometrySet geometry_set = params.extract_input<GeometrySet>("Child Shape");
       const float3 scale = params.extract_input<float3>("Size");
-      const bke::CollisionShape::Ptr child_shape = get_collision_shape(geometry_set);
+      const bke::CollisionShape *child_shape = geometry_set.get_collision_shape();
       if (!child_shape) {
-        return new bke::SphereCollisionShape(1.0f);
+        return bke::collision_shapes::make_sphere(1.0f);
       }
-      return new bke::ScaledCollisionShape(child_shape, scale);
+      return bke::collision_shapes::make_scaled_shape(child_shape, scale);
     }
     case ShapeType::OffsetCenterOfMass: {
       const GeometrySet geometry_set = params.extract_input<GeometrySet>("Child Shape");
       const float3 offset = params.extract_input<float3>("Translation");
-      const bke::CollisionShape::Ptr child_shape = get_collision_shape(geometry_set);
+      const bke::CollisionShape *child_shape = geometry_set.get_collision_shape();
       if (!child_shape) {
-        return new bke::SphereCollisionShape(1.0f);
+        return bke::collision_shapes::make_sphere(1.0f);
       }
-      return new bke::OffsetCenterOfMassShape(child_shape, offset);
+      return bke::collision_shapes::make_offset_center_of_mass_shape(child_shape, offset);
     }
     case ShapeType::Mesh: {
       const GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
       if (!geometry_set.has_mesh()) {
-        return new bke::SphereCollisionShape(1.0f);
+        return bke::collision_shapes::make_sphere(1.0f);
       }
-      return new bke::MeshCollisionShape(*geometry_set.get_mesh());
+      return bke::collision_shapes::make_mesh(*geometry_set.get_mesh());
     }
     case ShapeType::HeightField: {
       // TODO
       BLI_assert_unreachable();
-      return nullptr;
+      return {};
     }
     case ShapeType::SoftBody: {
       // TODO
       BLI_assert_unreachable();
-      return nullptr;
+      return {};
     }
   }
-  return nullptr;
+  return {};
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  const auto shape_type = bke::CollisionShape::ShapeType(params.node().custom1);
+  const auto shape_type = bke::CollisionShapeType(params.node().custom1);
 
-  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, 0, 1);
-  physics->state_for_write().shapes_for_write().first() = bke::CollisionShapePtr(
-      make_collision_shape_from_type(shape_type, params));
+  bke::CollisionShape shape = make_collision_shape_from_type(shape_type, params);
 
-  params.set_output("Shape", GeometrySet::from_physics(physics));
+  params.set_output("Shape", GeometrySet::from_collision_shape(new bke::CollisionShape(shape)));
 }
 
 static void node_rna(StructRNA *srna)
 {
-  using ShapeType = bke::CollisionShape::ShapeType;
+  using ShapeType = bke::CollisionShapeType;
 
   /* Make sure this matches implemented types in make_collision_shape_from_type. */
   static EnumPropertyItem type_items[] = {

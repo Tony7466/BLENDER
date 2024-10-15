@@ -134,7 +134,11 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
         break;
       }
       case GeometryComponent::Type::Physics: {
-        message += RPT_("Rigid Body");
+        message += RPT_("Physics");
+        break;
+      }
+      case GeometryComponent::Type::CollisionShape: {
+        message += RPT_("Collision Shape");
         break;
       }
     }

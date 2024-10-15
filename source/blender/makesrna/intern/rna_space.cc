@@ -96,6 +96,11 @@ const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
      ICON_PHYSICS,
      "Physics",
      "Physics component containing rigid bodies and constraints"},
+    {int(blender::bke::GeometryComponent::Type::CollisionShape),
+     "COLLISION_SHAPE",
+     ICON_MESH_ICOSPHERE,
+     "Collision Shape",
+     "Collision shape component for use with physics bodies"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

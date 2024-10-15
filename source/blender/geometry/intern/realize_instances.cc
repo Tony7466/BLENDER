@@ -221,7 +221,6 @@ struct RealizePhysicsInfo {
 struct PhysicsElementStartIndices {
   int body = 0;
   int constraint = 0;
-  int shape = 0;
 };
 
 struct RealizePhysicsTask {
@@ -818,7 +817,6 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                     base_instance_context.physics});
           gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
           gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
-          gather_info.r_offsets.physics_offsets.shape += physics->shapes_num();
         }
         break;
       }
@@ -858,6 +856,13 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         if (edit_component->gizmo_edit_hints_ || edit_component->curves_edit_hints_) {
           gather_info.r_tasks.edit_data_tasks.append({edit_component, base_transform});
         }
+        break;
+      }
+      case bke::GeometryComponent::Type::CollisionShape: {
+        const auto *shape_component = static_cast<const bke::CollisionShapeComponent *>(component);
+        UNUSED_VARS(shape_component);
+        /* TODO implement me! */
+        BLI_assert_unreachable();
         break;
       }
     }
@@ -2464,8 +2469,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          const RealizePhysicsTask &task,
                                          const OrderedAttributes &ordered_attributes,
                                          const bool world_was_moved,
-                                         bke::PhysicsGeometry & /*dst_physics*/,
-                                         MutableSpan<bke::CollisionShapePtr> all_dst_shapes,
+                                         bke::PhysicsGeometry &dst_physics,
                                          MutableSpan<int> all_dst_body_shapes,
                                          MutableSpan<float3> all_dst_positions,
                                          MutableSpan<math::Quaternion> all_dst_rotations,
@@ -2479,7 +2483,8 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   using ConstraintAttribute = bke::PhysicsConstraintAttribute;
 
   const RealizePhysicsInfo &physics_info = *task.physics_info;
-  const bke::PhysicsWorldState &state = physics_info.physics->state();
+  const bke::PhysicsWorldState &src_state = physics_info.physics->state();
+  bke::PhysicsWorldState &dst_state = dst_physics.state_for_write();
   /* Only change motion state of moved world data when the transform is non-zero. */
   const bool write_motion_state = (world_was_moved ? (task.transform == float4x4::identity()) :
                                                      true);
@@ -2488,22 +2493,25 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   /* Copy shapes in any case. */
   const bool write_shapes = true;
 
-  const IndexRange dst_body_range(task.start_indices.body, state.bodies_num());
-  const IndexRange dst_constraint_range(task.start_indices.constraint, state.constraints_num());
-  const IndexRange dst_shape_range(task.start_indices.shape, state.shapes_num());
+  const IndexRange dst_body_range(task.start_indices.body, src_state.bodies_num());
+  const IndexRange dst_constraint_range(task.start_indices.constraint,
+                                        src_state.constraints_num());
 
   if (write_shapes) {
-    const Span<bke::CollisionShapePtr> src_shapes = state.shapes();
+    const Span<bke::InstanceReference> src_shapes = src_state.shapes();
     const IndexRange src_shapes_range = src_shapes.index_range();
-    MutableSpan<bke::CollisionShapePtr> dst_shapes = all_dst_shapes.slice(dst_shape_range);
-    dst_shapes.copy_from(src_shapes);
+    Array<int> handle_map(src_shapes.size());
+
+    for (const int i : src_shapes.index_range()) {
+      const bke::InstanceReference &src_reference = src_shapes[i];
+      handle_map[i] = dst_state.add_shape(src_reference);
+    }
 
     const VArray<int> src_body_shapes = physics_info.body_shapes;
     MutableSpan<int> dst_body_shapes = all_dst_body_shapes.slice(dst_body_range);
     for (const int i : src_body_shapes.index_range()) {
       const int src_index = src_body_shapes[i];
-      dst_body_shapes[i] = (src_shapes_range.contains(src_index) ? dst_shape_range[src_index] :
-                                                                   -1);
+      dst_body_shapes[i] = (src_shapes_range.contains(src_index) ? handle_map[src_index] : -1);
     }
   }
 
@@ -2546,7 +2554,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   }
 
   if (write_constraints) {
-    const IndexRange src_body_range = state.bodies_range();
+    const IndexRange src_body_range = src_state.bodies_range();
     const VArray<int> src_constraint_body1 = physics_info.constraint_bodies1;
     const VArray<int> src_constraint_body2 = physics_info.constraint_bodies2;
 
@@ -2637,17 +2645,14 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   const bke::PhysicsGeometry &last_physics = *last_task.physics_info->physics;
   const int bodies_num = last_task.start_indices.body + last_physics.bodies_num();
   const int constraints_num = last_task.start_indices.constraint + last_physics.constraints_num();
-  const int shapes_num = last_task.start_indices.shape + last_physics.shapes_num();
 
   /* Allocate new curves data-block. */
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
-      bodies_num, constraints_num, shapes_num);
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(bodies_num, constraints_num);
 
   /* Move physics data ahead of copying attributes. */
   IndexMaskMemory memory;
   IndexMask copied_bodies = dst_physics->bodies_range();
   IndexMask copied_constraints = dst_physics->constraints_range();
-  IndexMask copied_shapes = dst_physics->shapes_range();
   if (has_moved_physics) {
     BLI_assert(tasks.index_range().contains(all_physics_info.world_data_task));
     const RealizePhysicsTask &task = tasks[all_physics_info.world_data_task];
@@ -2667,8 +2672,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
         dst_physics->constraints_range(),
         state.constraints_range().shift(task.start_indices.constraint),
         memory);
-    copied_shapes = IndexMask::from_difference(
-        dst_physics->shapes_range(), state.shapes_range().shift(task.start_indices.shape), memory);
   }
 
   r_realized_geometry.replace_physics(dst_physics);
@@ -2686,7 +2689,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     //                                                                   bke::AttrDomain::Point);
   }
 
-  MutableSpan<bke::CollisionShapePtr> shapes = dst_physics->state_for_write().shapes_for_write();
   SpanAttributeWriter<int> body_shapes = physics_attribute_lookup_for_write_only_span<int>(
       dst_attributes, BodyAttribute::collision_shape);
   SpanAttributeWriter<float3> position = physics_attribute_lookup_for_write_only_span<float3>(
@@ -2726,7 +2728,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
                                    ordered_attributes,
                                    world_was_moved,
                                    *dst_physics,
-                                   shapes,
                                    body_shapes.span,
                                    position.span,
                                    rotation.span,
@@ -2746,9 +2747,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
         break;
       case AttrDomain::Edge:
         dst_attribute.finish(copied_constraints);
-        break;
-      case AttrDomain::Instance:
-        dst_attribute.finish(copied_shapes);
         break;
       default:
         BLI_assert_unreachable();

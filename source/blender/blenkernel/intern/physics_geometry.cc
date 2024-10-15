@@ -102,33 +102,23 @@ static bool is_cache_dirty(const std::atomic<bool> &flag)
 }
 
 PhysicsWorldState::PhysicsWorldState()
-    : body_num_(0),
-      constraint_num_(0),
-      body_custom_data_({}),
-      constraint_custom_data_({}),
-      shape_custom_data_({})
+    : body_num_(0), constraint_num_(0), body_custom_data_({}), constraint_custom_data_({})
 {
   CustomData_reset(&body_custom_data_);
   CustomData_reset(&constraint_custom_data_);
-  CustomData_reset(&shape_custom_data_);
   this->tag_read_cache_changed();
 }
 
-PhysicsWorldState::PhysicsWorldState(int body_num, int constraint_num, int shape_num)
+PhysicsWorldState::PhysicsWorldState(int body_num, int constraint_num)
     : body_num_(body_num),
       constraint_num_(constraint_num),
       body_custom_data_({}),
-      constraint_custom_data_({}),
-      shape_custom_data_({})
-
+      constraint_custom_data_({})
 {
   CustomData_reset(&body_custom_data_);
   CustomData_reset(&constraint_custom_data_);
-  CustomData_reset(&shape_custom_data_);
   CustomData_realloc(&body_custom_data_, 0, body_num);
   CustomData_realloc(&constraint_custom_data_, 0, constraint_num);
-  CustomData_realloc(&shape_custom_data_, 0, shape_num);
-  shapes_.reinitialize(shape_num);
   this->tag_read_cache_changed();
 }
 
@@ -141,7 +131,6 @@ PhysicsWorldState::~PhysicsWorldState()
 {
   CustomData_free(&body_custom_data_, body_num_);
   CustomData_free(&constraint_custom_data_, constraint_num_);
-  CustomData_free(&shape_custom_data_, shapes_.size());
 
   /* World data is owned by the geometry when it's mutable (always the case on destruction). */
   delete world_data_;
@@ -152,10 +141,10 @@ PhysicsWorldState &PhysicsWorldState::operator=(const PhysicsWorldState &other)
   body_data_ = other.body_data_;
   constraint_data_ = other.constraint_data_;
   shapes_ = other.shapes_;
+  shape_user_counts_ = other.shape_user_counts_;
 
   CustomData_reset(&body_custom_data_);
   CustomData_reset(&constraint_custom_data_);
-  CustomData_reset(&shape_custom_data_);
   body_num_ = other.body_num_;
   constraint_num_ = other.constraint_num_;
   CustomData_init_from(&other.body_custom_data_, &body_custom_data_, CD_MASK_ALL, other.body_num_);
@@ -163,8 +152,6 @@ PhysicsWorldState &PhysicsWorldState::operator=(const PhysicsWorldState &other)
                        &constraint_custom_data_,
                        CD_MASK_ALL,
                        other.constraint_num_);
-  CustomData_init_from(
-      &other.shape_custom_data_, &shape_custom_data_, CD_MASK_ALL, other.shapes_.size());
 
   if (other.world_data_) {
     try_move_data(other,
@@ -259,7 +246,7 @@ void PhysicsWorldState::tag_constraints_changed()
 
 void PhysicsWorldState::tag_shapes_changed()
 {
-  /* Update same as if shape indices had been changed. */
+  this->shape_user_counts_.tag_dirty();
   this->tag_body_collision_shape_changed();
 }
 
@@ -459,10 +446,6 @@ void PhysicsWorldState::remove_attribute_caches()
       case AttrDomain::Edge:
         custom_data = &constraint_custom_data_;
         totelem = constraint_num_;
-        break;
-      case AttrDomain::Instance:
-        custom_data = &shape_custom_data_;
-        totelem = shapes_.size();
         break;
       default:
         BLI_assert_unreachable();
@@ -672,14 +655,153 @@ bool PhysicsWorldState::try_move_data(const PhysicsWorldState &src,
   return true;
 }
 
-Span<CollisionShapePtr> PhysicsWorldState::shapes() const
+int PhysicsWorldState::add_shape(const InstanceReference &reference)
+{
+  if (std::optional<int> handle = this->find_shape_handle(reference)) {
+    return *handle;
+  }
+  return this->add_new_shape(reference);
+}
+
+int PhysicsWorldState::add_new_shape(const InstanceReference &reference)
+{
+  this->tag_shapes_changed();
+  return shapes_.append_and_get_index(reference);
+}
+
+std::optional<int> PhysicsWorldState::find_shape_handle(const InstanceReference &query)
+{
+  for (const int i : shapes_.index_range()) {
+    const InstanceReference &reference = shapes_[i];
+    if (reference == query) {
+      return i;
+    }
+  }
+  return std::nullopt;
+}
+
+Span<InstanceReference> PhysicsWorldState::shapes() const
 {
   return shapes_;
 }
 
-MutableSpan<CollisionShapePtr> PhysicsWorldState::shapes_for_write()
+void PhysicsWorldState::remove_unused_shapes()
 {
-  return shapes_;
+  const int tot_bodies = bodies_num();
+  const int tot_references_before = shapes_.size();
+
+  if (tot_bodies == 0) {
+    /* If there are no instances, no reference is needed. */
+    shapes_.clear();
+    return;
+  }
+  if (tot_references_before == 1) {
+    /* There is only one reference and at least one instance. So the only existing reference is
+     * used. Nothing to do here. */
+    return;
+  }
+
+  const Span<int> reference_handles =
+      body_data_.lookup_default(PhysicsBodyAttribute::collision_shape, {}).as_span().typed<int>();
+
+  Array<bool> usage_by_handle(tot_references_before, false);
+  std::mutex mutex;
+
+  /* Loop over all instances to see which references are used. */
+  threading::parallel_for(reference_handles.index_range(), 1024, [&](IndexRange range) {
+    /* Use local counter to avoid lock contention. */
+    Array<bool> local_usage_by_handle(tot_references_before, false);
+
+    for (const int i : range) {
+      const int handle = reference_handles[i];
+      BLI_assert(handle >= 0 && handle < tot_references_before);
+      local_usage_by_handle[handle] = true;
+    }
+
+    std::lock_guard lock{mutex};
+    for (const int i : IndexRange(tot_references_before)) {
+      usage_by_handle[i] |= local_usage_by_handle[i];
+    }
+  });
+
+  if (!usage_by_handle.as_span().contains(false)) {
+    /* All references are used. */
+    return;
+  }
+
+  /* Create new references and a mapping for the handles. */
+  Vector<int> handle_mapping;
+  Vector<InstanceReference> new_references;
+  int next_new_handle = 0;
+  bool handles_have_to_be_updated = false;
+  for (const int old_handle : IndexRange(tot_references_before)) {
+    if (!usage_by_handle[old_handle]) {
+      /* Add some dummy value. It won't be read again. */
+      handle_mapping.append(-1);
+    }
+    else {
+      const InstanceReference &reference = shapes_[old_handle];
+      handle_mapping.append(next_new_handle);
+      new_references.append(reference);
+      if (old_handle != next_new_handle) {
+        handles_have_to_be_updated = true;
+      }
+      next_new_handle++;
+    }
+  }
+  shapes_ = new_references;
+
+  if (!handles_have_to_be_updated) {
+    /* All remaining handles are the same as before, so they don't have to be updated. This happens
+     * when unused handles are only at the end. */
+    return;
+  }
+
+  /* Update handles of instances. */
+  {
+    const MutableSpan<int> reference_handles = this->body_data_
+                                                   .lookup_or_add(
+                                                       PhysicsBodyAttribute::collision_shape, {})
+                                                   .as_mutable_span()
+                                                   .typed<int>();
+    threading::parallel_for(reference_handles.index_range(), 1024, [&](IndexRange range) {
+      for (const int i : range) {
+        reference_handles[i] = handle_mapping[reference_handles[i]];
+      }
+    });
+  }
+}
+
+Span<int> PhysicsWorldState::shape_user_counts() const
+{
+  shape_user_counts_.ensure([&](Array<int> &r_data) {
+    const int references_num = shapes_.size();
+    r_data.reinitialize(references_num);
+    r_data.fill(0);
+
+    const VArraySpan<int> handles = physics_attributes::physics_attribute_lookup_or_default<int>(
+        attributes(), PhysicsBodyAttribute::collision_shape);
+    for (const int handle : handles) {
+      if (handle >= 0 && handle < references_num) {
+        r_data[handle]++;
+      }
+    }
+  });
+  return shape_user_counts_.data();
+}
+
+void PhysicsWorldState::ensure_shape_geometry_instances()
+{
+  shapes_ = ensure_geometry_instances_span(shapes_);
+}
+
+GeometrySet &PhysicsWorldState::geometry_set_from_shape(const int reference_index)
+{
+  /* If this assert fails, it means #ensure_geometry_instances must be called first or that the
+   * reference can't be converted to a geometry set. */
+  BLI_assert(shapes_[reference_index].type() == InstanceReference::Type::GeometrySet);
+
+  return shapes_[reference_index].geometry_set();
 }
 
 void PhysicsWorldState::set_overlap_filter(OverlapFilterFn /*fn*/)
@@ -796,13 +918,14 @@ void PhysicsWorldState::compute_local_inertia(const IndexMask &selection)
       local_inertias.varray.set(body_i, float3(1.0f));
       return;
     }
-    const CollisionShapePtr &shape_ptr = shapes_[shape_index];
-    if (shape_ptr == nullptr) {
+    const InstanceReference &reference = shapes_[shape_index];
+    const CollisionShape *shape = reference.geometry_set().get_collision_shape();
+    if (shape == nullptr) {
       local_inertias.varray.set(body_i, float3(1.0f));
       return;
     }
 
-    local_inertias.varray.set(body_i, shape_ptr->calculate_local_inertia(masses[body_i]));
+    local_inertias.varray.set(body_i, shape->calculate_local_inertia(masses[body_i]));
   });
 
   local_inertias.finish();
@@ -979,25 +1102,7 @@ const CustomDataAccessInfo &PhysicsWorldState::constraint_custom_data_access_inf
   return constraint_custom_data_access;
 }
 
-const CustomDataAccessInfo &PhysicsWorldState::shape_custom_data_access_info()
-{
-  static CustomDataAccessInfo shape_custom_data_access = {
-      [](void *owner) -> CustomData * {
-        auto &state = *static_cast<PhysicsWorldState *>(owner);
-        return &state.shape_custom_data_;
-      },
-      [](const void *owner) -> const CustomData * {
-        const auto &state = static_cast<const PhysicsWorldState *>(owner);
-        return &state->shape_custom_data_;
-      },
-      [](const void *owner) -> int {
-        const auto &state = static_cast<const PhysicsWorldState *>(owner);
-        return state->shapes_.size();
-      }};
-  return shape_custom_data_access;
-}
-
-#  ifndef NDEBUG
+#ifndef NDEBUG
 void PhysicsWorldState::debug_print_status(const StringRef name) const
 {
   std::cout << name << "(" << (void *)this << ") | " << this->strong_users() << " users | "
@@ -1045,7 +1150,7 @@ void PhysicsWorldState::debug_print_exit(const StringRef name) const
     }
   }
 }
-#  endif
+#endif
 
 template<typename T>
 VArray<T> PhysicsGeometry::lookup_attribute(const PhysicsBodyAttribute attribute) const
@@ -1060,9 +1165,9 @@ PhysicsGeometry::PhysicsGeometry()
   world_state_ = new PhysicsWorldState();
 }
 
-PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
+PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
 {
-  world_state_ = new PhysicsWorldState(bodies_num, constraints_num, shapes_num);
+  world_state_ = new PhysicsWorldState(bodies_num, constraints_num);
   this->state_for_write().tag_body_topology_changed();
 }
 

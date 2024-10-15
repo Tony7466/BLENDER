@@ -652,11 +652,6 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                 main_physics, mask, attribute_filter);
             break;
           }
-          case AttrDomain::Instance: {
-            element_physics = geometry::extract_physics_shapes(
-                main_physics, mask, attribute_filter);
-            break;
-          }
           default:
             return std::nullopt;
         }

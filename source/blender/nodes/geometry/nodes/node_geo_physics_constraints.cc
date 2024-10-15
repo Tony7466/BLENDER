@@ -74,7 +74,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> disable_collision_field = params.extract_input<Field<bool>>(
       "Disable Collision");
 
-  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, count, 0);
+  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, count);
   const IndexMask constraints = physics->constraints_range();
 
   const bke::PhysicsFieldContext field_context{*physics, bke::AttrDomain::Edge};

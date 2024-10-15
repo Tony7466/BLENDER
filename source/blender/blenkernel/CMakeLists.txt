@@ -136,6 +136,7 @@ set(SRC
   intern/fmodifier.cc
   intern/freestyle.cc
   intern/geometry_component_curves.cc
+  intern/geometry_component_collision_shape.cc
   intern/geometry_component_edit_data.cc
   intern/geometry_component_grease_pencil.cc
   intern/geometry_component_instances.cc

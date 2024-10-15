@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_any.hh"
 #include "BLI_array.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_implicit_sharing_ptr.hh"
@@ -24,56 +25,76 @@
 
 struct Mesh;
 
+namespace JPH {
+class Shape;
+}
+
+namespace blender {
+class CPPType;
+namespace bke {
+struct GeometrySet;
+}  // namespace bke
+}  // namespace blender
+
 namespace blender::bke {
 
-struct GeometrySet;
-class CollisionShape;
-class BoxCollisionShape;
-class SphereCollisionShape;
-
-struct CollisionShapeImpl;
-struct TriangleMeshInterface;
-
 enum class CollisionShapeType {
-  Sphere,
-  Box,
-  Triangle,
-  Capsule,
-  TaperedCapsule,
-  Cylinder,
-  ConvexHull,
-  StaticCompound,
-  MutableCompound,
-  RotatedTranslated,
-  Scaled,
-  OffsetCenterOfMass,
-  Mesh,
-  HeightField,
-  SoftBody,
+  Empty = -1,
+  Sphere = 0,
+  Box = 1,
+  Triangle = 2,
+  Capsule = 3,
+  TaperedCapsule = 4,
+  Cylinder = 5,
+  ConvexHull = 6,
+  StaticCompound = 7,
+  MutableCompound = 8,
+  RotatedTranslated = 9,
+  Scaled = 10,
+  OffsetCenterOfMass = 11,
+  Mesh = 12,
+  HeightField = 13,
+  SoftBody = 14,
 };
 
-class CollisionShape : public ImplicitSharingMixin {
+enum class PhysicsShapeParam {
+  translation,
+  rotation,
+  scale,
+  size,
+  radius,
+  radius2,
+  height,
+  point0,
+  point1,
+  point2,
+};
+
+class CollisionShape {
  public:
-  using Ptr = ImplicitSharingPtr<CollisionShape>;
   using ShapeType = CollisionShapeType;
 
-  struct CollisionShapeResult {
-    CollisionShapeImpl *impl;
+  struct InitShape {
+    JPH::Shape *impl = nullptr;
     std::optional<std::string> error;
   };
 
  protected:
-  CollisionShapeImpl *impl_;
+  JPH::Shape *impl_ = nullptr;
   std::optional<std::string> error_;
 
  public:
-  CollisionShape() = delete;
-  virtual ~CollisionShape();
+  CollisionShape();
+  CollisionShape(const CollisionShape &other);
+  CollisionShape(JPH::Shape *impl, std::optional<std::string> error = std::nullopt);
+  ~CollisionShape();
 
-  void delete_self() override;
+  CollisionShape &operator=(const CollisionShape &other);
 
-  CollisionShapeImpl &impl();
-  const CollisionShapeImpl &impl() const;
+  bool is_empty() const;
+
+  JPH::Shape &impl();
+  const JPH::Shape &impl() const;
 
   std::optional<StringRef> error() const;
 
@@ -94,127 +115,44 @@ class CollisionShape : public ImplicitSharingMixin {
 
   float3 calculate_local_inertia(float mass) const;
 
-  GeometrySet create_geometry() const;
-
- protected:
-  CollisionShape(const CollisionShapeResult &result);
+  GeometrySet create_mesh_instances() const;
 
   friend class PhysicsGeometry;
 };
 
-using CollisionShapePtr = CollisionShape::Ptr;
+namespace collision_shapes {
 
-// class EmptyCollisionShape : public CollisionShape {
-//  public:
-//   EmptyCollisionShape();
-// };
+CollisionShape make_empty();
+CollisionShape make_box(const float3 &half_extent);
+CollisionShape make_sphere(float radius);
+CollisionShape make_triangle(const float3 &pt0, const float3 &pt1, const float3 &pt2);
+CollisionShape make_convex_hull(const VArray<float3> &points);
+CollisionShape make_capsule(float radius, float height);
+CollisionShape make_tapered_capsule(float top_radius, float bottom_radius, float height);
+CollisionShape make_cylinder(float radius, float height);
+CollisionShape make_scaled_shape(const CollisionShape *child_shape, const float3 &scale);
+CollisionShape make_offset_center_of_mass_shape(const CollisionShape *child_shape,
+                                                const float3 &offset);
+CollisionShape make_rotated_translated(const CollisionShape *child_shape,
+                                       const math::Quaternion &rotation,
+                                       const float3 &translation);
+CollisionShape make_mutable_compound(Span<const CollisionShape *> child_shapes,
+                                     Span<float4x4> child_transforms);
+CollisionShape make_static_compound(Span<const CollisionShape *> child_shapes,
+                                    Span<float4x4> child_transforms);
+CollisionShape make_mesh(const Mesh &mesh);
 
-class BoxCollisionShape : public CollisionShape {
- public:
-  BoxCollisionShape(const float3 &half_extent);
+}  // namespace collision_shapes
 
-  float3 half_extent() const;
-};
-
-class TriangleCollisionShape : public CollisionShape {
- public:
-  TriangleCollisionShape(const float3 &pt0, const float3 &pt1, const float3 &pt2);
-};
-
-class ConvexHullCollisionShape : public CollisionShape {
- public:
-  ConvexHullCollisionShape(const VArray<float3> &points);
-};
-
-class SphereCollisionShape : public CollisionShape {
- public:
-  SphereCollisionShape(float radius);
-
-  float radius() const;
-};
-
-class CapsuleCollisionShape : public CollisionShape {
- public:
-  CapsuleCollisionShape(float radius, float height);
-};
-
-class TaperedCapsuleCollisionShape : public CollisionShape {
- public:
-  TaperedCapsuleCollisionShape(float top_radius, float bottom_radius, float height);
-};
-
-class CylinderCollisionShape : public CollisionShape {
- public:
-  CylinderCollisionShape(float radius, float height);
-};
-
-class ScaledCollisionShape : public CollisionShape {
- public:
-  CollisionShapePtr child_shape_;
-
-  ScaledCollisionShape(const CollisionShapePtr &child_shape, const float3 &scale);
-};
-
-class OffsetCenterOfMassShape : public CollisionShape {
- public:
-  CollisionShapePtr child_shape_;
-
-  OffsetCenterOfMassShape(const CollisionShapePtr &child_shape, const float3 &offset);
-};
-
-class RotatedTranslatedCollisionShape : public CollisionShape {
- public:
-  CollisionShapePtr child_shape_;
-
-  RotatedTranslatedCollisionShape(const CollisionShapePtr &child_shape,
-                                  const math::Quaternion &rotation,
-                                  const float3 &translation);
-};
-
-class MutableCompoundCollisionShape : public CollisionShape {
- public:
-  MutableCompoundCollisionShape(Span<CollisionShapePtr> child_shapes,
-                                Span<float4x4> child_transforms);
-};
-
-class StaticCompoundCollisionShape : public CollisionShape {
- public:
-  StaticCompoundCollisionShape(Span<CollisionShapePtr> child_shapes,
-                               Span<float4x4> child_transforms);
-};
-
-class MeshCollisionShape : public CollisionShape {
- public:
-  MeshCollisionShape(const Mesh &mesh);
-};
-
-// class TriangleMeshCollisionShape : public CollisionShape {
-//  public:
-//   struct TriangleMeshInterface *mesh_interface = nullptr;
-//
-//   TriangleMeshCollisionShape(TriangleMeshInterface *mesh_interface);
-//
-//   static TriangleMeshCollisionShape *from_mesh(const Mesh &mesh);
-//
-//   virtual ~TriangleMeshCollisionShape();
-// };
-
-// class ScaledTriangleMeshCollisionShape : public CollisionShape {
-//  public:
-//   ScaledTriangleMeshCollisionShape(const TriangleMeshCollisionShape *child_shape, float3 scale);
-// };
-//
-// class StaticPlaneCollisionShape : public CollisionShape {
-//  public:
-//   StaticPlaneCollisionShape(const float3 &plane_normal, float plane_constant);
-// };
-//
-// class CompoundCollisionShape : public CollisionShape {
-//  public:
-//   Array<CollisionShape::Ptr> child_shapes_;
-//
-//   CompoundCollisionShape(const VArray<CollisionShape::Ptr> &child_shapes,
-//                          const VArray<float4x4> &child_transforms);
-// };
+StringRef physics_shape_param_name(PhysicsShapeParam param);
+StringRef physics_shape_param_label(const CollisionShapeType shape_type, PhysicsShapeParam param);
+bool physics_shape_param_valid(const CollisionShapeType shape_type, PhysicsShapeParam param);
+const CPPType &physics_shape_param_type(const PhysicsShapeParam param);
+bool physics_shape_has_geometry(const CollisionShapeType shape_type);
+blender::Any<> physics_shape_get_param(const JPH::Shape &shape, PhysicsShapeParam param);
+template<typename T> T physics_shape_get_param(const JPH::Shape &shape, PhysicsShapeParam param)
+{
+  return physics_shape_get_param(shape, param).get<T>();
+}
 
 }  // namespace blender::bke

@@ -44,8 +44,6 @@ static void geometry_set_points_to_rigid_bodies(GeometrySet &geometry_set,
                                                 Field<int> shape_index_field,
                                                 const AttributeFilter & /*attribute_filter*/)
 {
-  using CollisionShapePtr = ImplicitSharingPtr<bke::CollisionShape>;
-
   const PointCloud *points = geometry_set.get_pointcloud();
   if (points == nullptr || points->totpoint == 0) {
     geometry_set.remove_geometry_during_modify();
@@ -74,13 +72,18 @@ static void geometry_set_points_to_rigid_bodies(GeometrySet &geometry_set,
   const VArray<float3> src_angular_velocities = field_evaluator.get_evaluated<float3>(5);
   const VArray<int> src_shape_index = field_evaluator.get_evaluated<int>(6);
 
-  const Span<CollisionShapePtr> shapes = shapes_geometry.has_physics() ?
-                                             shapes_geometry.get_physics()->state().shapes() :
-                                             Span<CollisionShapePtr>{};
-
   const int num_bodies = selection.size();
-  auto *physics = new bke::PhysicsGeometry(num_bodies, 0, shapes.size());
-  physics->state_for_write().shapes_for_write().copy_from(shapes);
+  auto *physics = new bke::PhysicsGeometry(num_bodies, 0);
+
+  Array<int> handle_map;
+  if (shapes_geometry.has_instances()) {
+    const bke::Instances *instances = shapes_geometry.get_instances();
+    handle_map.reinitialize(instances->references_num());
+    for (const int i : instances->references().index_range()) {
+      const bke::InstanceReference &reference = instances->references()[i];
+      handle_map[i] = physics->state_for_write().add_shape(reference);
+    }
+  }
 
   // Array<int> body_shape_handles(num_bodies);
   // selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
@@ -97,7 +100,10 @@ static void geometry_set_points_to_rigid_bodies(GeometrySet &geometry_set,
   AttributeWriter<float3> dst_angular_velocities = physics->body_angular_velocities_for_write();
 
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
-    dst_body_shapes.varray.set(pos, src_shape_index[index]);
+    const int original_index = src_shape_index[index];
+    const int shape_index = mod_i(original_index, std::max(int(handle_map.size()), 1));
+    dst_body_shapes.varray.set(pos,
+                               handle_map.index_range().contains(shape_index) ? shape_index : -1);
     dst_masses.varray.set(pos, src_masses[index]);
     dst_inertias.varray.set(pos, src_inertias[index]);
     dst_positions.varray.set(pos, src_positions[index]);

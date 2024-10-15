@@ -13,6 +13,7 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "BKE_collision_shape.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set_instances.hh"
@@ -151,14 +152,26 @@ class InstanceReferenceViewItem : public InstancesTreeViewItem {
  private:
   const bke::InstanceReference &reference_;
   int reference_index_;
+  bke::GeometryComponent::Type component_type_;
   int user_count_;
 
  public:
   InstanceReferenceViewItem(const bke::Instances &instances, const int reference_index)
-      : reference_(instances.references()[reference_index]), reference_index_(reference_index)
+      : reference_(instances.references()[reference_index]),
+        reference_index_(reference_index),
+        component_type_(bke::GeometryComponent::Type::Instance),
+        user_count_(instances.reference_user_counts()[reference_index])
   {
     label_ = std::to_string(reference_index);
-    user_count_ = instances.reference_user_counts()[reference_index];
+  }
+
+  InstanceReferenceViewItem(const bke::PhysicsGeometry &physics, const int reference_index)
+      : reference_(physics.state().shapes()[reference_index]),
+        reference_index_(reference_index),
+        component_type_(bke::GeometryComponent::Type::Physics),
+        user_count_(physics.state().shape_user_counts()[reference_index])
+  {
+    label_ = std::to_string(reference_index);
   }
 
   void build_row(uiLayout &row) override
@@ -175,6 +188,11 @@ class InstanceReferenceViewItem : public InstancesTreeViewItem {
   int reference_index() const
   {
     return reference_index_;
+  }
+
+  bke::GeometryComponent::Type component_type() const
+  {
+    return component_type_;
   }
 };
 
@@ -201,6 +219,9 @@ class GeometryInstancesTreeView : public ui::AbstractTreeView {
     if (const bke::Instances *instances = root_geometry_set_.get_instances()) {
       this->build_tree_for_instances(root_item, *instances);
     }
+    if (const bke::PhysicsGeometry *physics = root_geometry_set_.get_physics()) {
+      this->build_tree_for_physics(root_item, *physics);
+    }
   }
 
   void build_tree_for_instances(ui::TreeViewItemContainer &parent, const bke::Instances &instances)
@@ -209,6 +230,21 @@ class GeometryInstancesTreeView : public ui::AbstractTreeView {
     for (const int reference_i : references.index_range()) {
       auto &reference_item = parent.add_tree_item<InstanceReferenceViewItem>(instances,
                                                                              reference_i);
+      const bke::InstanceReference &reference = references[reference_i];
+      bke::GeometrySet reference_geometry;
+      reference.to_geometry_set(reference_geometry);
+      if (const bke::Instances *child_instances = reference_geometry.get_instances()) {
+        this->build_tree_for_instances(reference_item, *child_instances);
+      }
+    }
+  }
+
+  void build_tree_for_physics(ui::TreeViewItemContainer &parent,
+                              const bke::PhysicsGeometry &physics)
+  {
+    const Span<bke::InstanceReference> references = physics.state().shapes();
+    for (const int reference_i : references.index_range()) {
+      auto &reference_item = parent.add_tree_item<InstanceReferenceViewItem>(physics, reference_i);
       const bke::InstanceReference &reference = references[reference_i];
       bke::GeometrySet reference_geometry;
       reference.to_geometry_set(reference_geometry);
@@ -226,8 +262,6 @@ static StringRefNull physics_domain_to_label(const bke::AttrDomain domain)
       return IFACE_("Body");
     case bke::AttrDomain::Edge:
       return IFACE_("Constraint");
-    case bke::AttrDomain::Instance:
-      return IFACE_("Shape");
     default:
       BLI_assert_unreachable();
       return "";
@@ -241,8 +275,6 @@ static BIFIconID physics_domain_to_icon(const bke::AttrDomain domain)
       return ICON_RIGID_BODY;
     case bke::AttrDomain::Edge:
       return ICON_RIGID_BODY_CONSTRAINT;
-    case bke::AttrDomain::Instance:
-      return ICON_MESH_ICOSPHERE;
     default:
       BLI_assert_unreachable();
       return ICON_NONE;
@@ -559,6 +591,30 @@ class PhysicsDomainViewItem : public DataSetViewItem {
   }
 };
 
+class CollisionShapeViewItem : public DataSetViewItem {
+ private:
+  const bke::CollisionShape *shape_ = nullptr;
+
+ public:
+  CollisionShapeViewItem(const bke::CollisionShape *shape) : shape_(shape)
+  {
+    label_ = IFACE_("Collision Shape");
+  }
+
+  std::optional<GeometryDataIdentifier> get_geometry_data_id() const override
+  {
+    return GeometryDataIdentifier{
+        bke::GeometryComponent::Type::CollisionShape, std::nullopt, std::nullopt};
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    uiItemL(&row, label_.c_str(), ICON_MESH_ICOSPHERE);
+    const std::string type_name = shape_ ? bke::CollisionShape::type_name(shape_->type()) : "";
+    draw_row_suffix(*this, type_name);
+  }
+};
+
 class GeometryDataSetTreeView : public ui::AbstractTreeView {
  private:
   bke::GeometrySet geometry_set_;
@@ -602,6 +658,9 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
 
     const bke::PhysicsGeometry *physics = geometry.get_physics();
     this->build_tree_for_physics(physics, parent);
+
+    const bke::CollisionShape *collision_shape = geometry.get_collision_shape();
+    this->build_tree_for_collision_shape(collision_shape, parent);
   }
 
   void build_tree_for_mesh(const Mesh *mesh, ui::TreeViewItemContainer &parent)
@@ -667,7 +726,12 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
     physics_item.uncollapse_by_default();
     physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Point);
     physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Edge);
-    physics_item.add_tree_item<PhysicsDomainViewItem>(physics, bke::AttrDomain::Instance);
+  }
+
+  void build_tree_for_collision_shape(const bke::CollisionShape *shape,
+                                      ui::TreeViewItemContainer &parent)
+  {
+    parent.add_tree_item<CollisionShapeViewItem>(shape);
   }
 };
 
@@ -685,11 +749,11 @@ void InstancesTreeViewItem::get_parent_instance_ids(
     Vector<SpreadsheetInstanceID> &r_instance_ids) const
 {
   if (auto *reference_item = dynamic_cast<const InstanceReferenceViewItem *>(this)) {
-    r_instance_ids.append({reference_item->reference_index()});
+    r_instance_ids.append({reference_item->reference_index(), int(reference_item->component_type())});
   }
   this->foreach_parent([&](const ui::AbstractTreeViewItem &item) {
     if (auto *reference_item = dynamic_cast<const InstanceReferenceViewItem *>(&item)) {
-      r_instance_ids.append({reference_item->reference_index()});
+      r_instance_ids.append({reference_item->reference_index(), int(reference_item->component_type())});
     }
   });
   std::reverse(r_instance_ids.begin(), r_instance_ids.end());
@@ -708,7 +772,7 @@ std::optional<bool> InstancesTreeViewItem::should_be_active() const
   for (const int i : instance_ids.index_range()) {
     const SpreadsheetInstanceID &a = sspreadsheet.instance_ids[i];
     const SpreadsheetInstanceID &b = instance_ids[i];
-    if (a.reference_index != b.reference_index) {
+    if (a.component_type != b.component_type || a.reference_index != b.reference_index) {
       return false;
     }
   }

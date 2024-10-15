@@ -556,10 +556,10 @@ class NODE_MT_category_simulation_read(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMass")
         node_add_menu.add_node_type(layout, "GeometryNodeInputBodyMotionState")
         node_add_menu.add_node_type(layout, "GeometryNodeInputBodyActivationState")
+        node_add_menu.add_node_type(layout, "GeometryNodeBodyCollisionShape")
         layout.separator()
         # TODO add constraint inputs here
         layout.separator()
-        node_add_menu.add_node_type(layout, "GeometryNodeInputShapeBounds")
         node_add_menu.add_node_type(layout, "GeometryNodeInputShapeInfo")
         node_add_menu.add_node_type(layout, "GeometryNodeInputShapeCenterOfMass")
         node_add_menu.add_node_type(layout, "GeometryNodeCollisionShapeInertia")

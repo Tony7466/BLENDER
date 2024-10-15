@@ -29,8 +29,6 @@
 
 namespace blender::bke {
 
-using CollisionShapePtr = ImplicitSharingPtr<CollisionShape>;
-
 // Layer that objects can be in, determines which other objects it can collide with
 // Typically you at least want to have 1 layer for moving bodies and 1 layer for static bodies, but
 // you can have more layers if you want. E.g. you could have a layer for high detail collision
@@ -195,9 +193,6 @@ class JoltPhysicsWorldData : NonCopyable, NonMovable {
   void ensure_body_and_constraint_indices() const;
   void ensure_bodies_and_constraints_in_world();
 
-  void update_bodies(const IndexMask &selection,
-                     AttributeAccessor attributes,
-                     const Span<CollisionShapePtr> shapes);
   void init_constraints(const IndexMask &selection);
   void update_constraints(const IndexMask &selection, AttributeAccessor attributes);
 
@@ -207,7 +202,7 @@ class JoltPhysicsWorldData : NonCopyable, NonMovable {
   void step_simulation(float delta_time, int collision_steps);
 
   void set_body_shapes(const IndexMask &selection,
-                       const Span<CollisionShapePtr> shapes,
+                       const Span<InstanceReference> shapes,
                        const Span<int> shape_handles);
 
   void apply_force(const IndexMask &selection,
@@ -229,7 +224,7 @@ class JoltPhysicsWorldData : NonCopyable, NonMovable {
   Span<JPH::Body *> bodies() const;
   Span<JPH::Constraint *> constraints() const;
 
-  bool validate(AttributeAccessor attributes, Span<CollisionShapePtr> shapes);
+  bool validate(AttributeAccessor attributes, Span<InstanceReference> shapes);
 
  private:
   void setup();

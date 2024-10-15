@@ -126,10 +126,6 @@ void PhysicsComponent::ensure_owns_direct_data()
   }
 }
 
-}  // namespace blender::bke
-
-namespace blender::bke {
-
 std::optional<AttributeAccessor> PhysicsComponent::attributes() const
 {
   return std::make_optional(physics_ ? physics_->attributes() :

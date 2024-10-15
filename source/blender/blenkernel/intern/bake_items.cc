@@ -99,7 +99,8 @@ void GeometryBakeItem::prepare_geometry_for_bake(GeometrySet &main_geometry,
                                       GeometryComponent::Type::PointCloud,
                                       GeometryComponent::Type::Volume,
                                       GeometryComponent::Type::Instance,
-                                      GeometryComponent::Type::Physics});
+                                      GeometryComponent::Type::Physics,
+                                      GeometryComponent::Type::CollisionShape});
   });
 }
 

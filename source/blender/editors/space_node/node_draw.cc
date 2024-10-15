@@ -35,6 +35,7 @@
 
 #include "BLT_translation.hh"
 
+#include "BKE_collision_shape.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
@@ -1798,15 +1799,25 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         break;
       }
       case bke::GeometryComponent::Type::Physics: {
-        if (value_log.rigid_body_info.has_value()) {
-          const geo_log::GeometryInfoLog::RigidBodyInfo &rigid_body_info =
-              *value_log.rigid_body_info;
+        if (value_log.physics_info.has_value()) {
+          const geo_log::GeometryInfoLog::PhysicsInfo &physics_info = *value_log.physics_info;
           fmt::format_to(fmt::appender(buf),
                          TIP_("\u2022 Rigid Body: {} bodies, {} constraints, {} shapes {}"),
-                         to_string(rigid_body_info.bodies_num),
-                         to_string(rigid_body_info.constraints_num),
-                         to_string(rigid_body_info.shapes_num),
-                         rigid_body_info.has_world ? ", has world" : "");
+                         to_string(physics_info.bodies_num),
+                         to_string(physics_info.constraints_num),
+                         to_string(physics_info.shapes_num),
+                         physics_info.has_world ? ", has world" : "");
+        }
+        break;
+      }
+      case bke::GeometryComponent::Type::CollisionShape: {
+        if (value_log.physics_info.has_value()) {
+          const geo_log::GeometryInfoLog::CollisionShapeInfo &shape_info =
+              *value_log.collision_shape_info;
+          const StringRef shape_type_name =
+              (shape_info.shape_type ? bke::CollisionShape::type_name(*shape_info.shape_type) :
+                                       "---");
+          fmt::format_to(fmt::appender(buf), TIP_("\u2022 Collision Shape: {}"), shape_type_name);
         }
         break;
       }
@@ -1853,6 +1864,10 @@ static void create_inspection_string_for_geometry_socket(fmt::memory_buffer &buf
       }
       case bke::GeometryComponent::Type::Volume: {
         fmt::format_to(fmt::appender(buf), CTX_TIP_(BLT_I18NCONTEXT_ID_ID, "Volume"));
+        break;
+      }
+      case bke::GeometryComponent::Type::CollisionShape: {
+        fmt::format_to(fmt::appender(buf), TIP_("Collision Shape"));
         break;
       }
       case bke::GeometryComponent::Type::Edit: {

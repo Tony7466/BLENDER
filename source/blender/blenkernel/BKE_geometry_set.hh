@@ -31,6 +31,7 @@ namespace blender::bke {
 struct AttributeKind;
 class AttributeAccessor;
 struct AttributeMetaData;
+class CollisionShape;
 class ComponentAttributeProviders;
 class CurvesEditHints;
 class Instances;
@@ -44,7 +45,7 @@ struct GizmoEditHints;
 
 namespace blender::bke {
 
-#define GEO_COMPONENT_TYPE_ENUM_SIZE 8
+#define GEO_COMPONENT_TYPE_ENUM_SIZE 9
 
 enum class GeometryOwnershipType {
   /* The geometry is owned. This implies that it can be changed. */
@@ -79,6 +80,7 @@ class GeometryComponent : public ImplicitSharingMixin {
     Edit = 5,
     GreasePencil = 6,
     Physics = 7,
+    CollisionShape = 8,
   };
 
  private:
@@ -315,6 +317,11 @@ struct GeometrySet {
    */
   static GeometrySet from_physics(PhysicsGeometry *physics,
                                   GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  /**
+   * Create a new geometry set that only contains the given collision shape.
+   */
+  static GeometrySet from_collision_shape(
+      CollisionShape *shape, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   /* Utility methods for access. */
   /**
@@ -346,9 +353,13 @@ struct GeometrySet {
    */
   bool has_grease_pencil() const;
   /**
-   * Returns true when the geometry set has a rigid body component that has a world.
+   * Returns true when the geometry set has a rigid body component.
    */
   bool has_physics() const;
+  /**
+   * Returns true when the geometry set has a collision shape component.
+   */
+  bool has_collision_shape() const;
   /**
    * Return true if the geometry set has any component that isn't empty.
    */
@@ -390,6 +401,10 @@ struct GeometrySet {
    * Returns a read-only rigid body world or null.
    */
   const PhysicsGeometry *get_physics() const;
+  /**
+   * Returns a read-only collision shape or null.
+   */
+  const CollisionShape *get_collision_shape() const;
 
   /**
    * Returns a mutable mesh or null. No ownership is transferred.
@@ -427,6 +442,10 @@ struct GeometrySet {
    * Returns a mutable rigid body world or null. No ownership is transferred.
    */
   PhysicsGeometry *get_physics_for_write();
+  /**
+   * Returns a mutable collision shape or null. No ownership is transferred.
+   */
+  CollisionShape *get_collision_shape_for_write();
 
   /* Utility methods for replacement. */
   /**
@@ -463,6 +482,11 @@ struct GeometrySet {
    */
   void replace_physics(PhysicsGeometry *physics,
                        GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  /**
+   * Clear the existing collision shape and replace it with the given one.
+   */
+  void replace_collision_shape(CollisionShape *shape,
+                               GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   friend bool operator==(const GeometrySet &a, const GeometrySet &b)
   {
@@ -867,6 +891,42 @@ class PhysicsComponent : public GeometryComponent {
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
   static constexpr inline GeometryComponent::Type static_type = Type::Physics;
+};
+
+/**
+ * Geometry component for non-persistent simulation state.
+ */
+class CollisionShapeComponent : public GeometryComponent {
+ private:
+  CollisionShape *shape_ = nullptr;
+  GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
+
+ public:
+  CollisionShapeComponent();
+  CollisionShapeComponent(CollisionShape *impl,
+                          GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  ~CollisionShapeComponent();
+  GeometryComponentPtr copy() const override;
+
+  void clear() override;
+  bool has_shape() const;
+
+  /**
+   * Clear the component and replace it with the new simulation state.
+   */
+  void replace(CollisionShape *shape,
+               GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  CollisionShape *release();
+
+  const CollisionShape *get() const;
+  CollisionShape *get_for_write();
+
+  bool is_empty() const;
+
+  bool owns_direct_data() const override;
+  void ensure_owns_direct_data() override;
+
+  static constexpr inline GeometryComponent::Type static_type = Type::CollisionShape;
 };
 
 bool attribute_is_builtin_on_component_type(const GeometryComponent::Type type, StringRef name);

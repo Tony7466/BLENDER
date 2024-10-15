@@ -58,6 +58,8 @@ GeometryComponentPtr GeometryComponent::create(Type component_type)
       return GeometryComponentPtr(new GreasePencilComponent());
     case Type::Physics:
       return GeometryComponentPtr(new PhysicsComponent());
+    case Type::CollisionShape:
+      return GeometryComponentPtr(new CollisionShapeComponent());
   }
   BLI_assert_unreachable();
   return {};
@@ -367,6 +369,12 @@ const PhysicsGeometry *GeometrySet::get_physics() const
   return (component == nullptr) ? nullptr : component->get();
 }
 
+const CollisionShape *GeometrySet::get_collision_shape() const
+{
+  const CollisionShapeComponent *component = this->get_component<CollisionShapeComponent>();
+  return (component == nullptr) ? nullptr : component->get();
+}
+
 bool GeometrySet::has_pointcloud() const
 {
   const PointCloudComponent *component = this->get_component<PointCloudComponent>();
@@ -414,6 +422,12 @@ bool GeometrySet::has_physics() const
 {
   const PhysicsComponent *component = this->get_component<PhysicsComponent>();
   return component != nullptr && component->has_physics();
+}
+
+bool GeometrySet::has_collision_shape() const
+{
+  const CollisionShapeComponent *component = this->get_component<CollisionShapeComponent>();
+  return component != nullptr && component->has_shape();
 }
 
 bool GeometrySet::is_empty() const
@@ -470,6 +484,14 @@ GeometrySet GeometrySet::from_physics(PhysicsGeometry *physics, GeometryOwnershi
 {
   GeometrySet geometry_set;
   geometry_set.replace_physics(physics, ownership);
+  return geometry_set;
+}
+
+GeometrySet GeometrySet::from_collision_shape(CollisionShape *shape,
+                                              GeometryOwnershipType ownership)
+{
+  GeometrySet geometry_set;
+  geometry_set.replace_collision_shape(shape, ownership);
   return geometry_set;
 }
 
@@ -572,6 +594,20 @@ void GeometrySet::replace_physics(PhysicsGeometry *physics, GeometryOwnershipTyp
   component.replace(physics, ownership);
 }
 
+void GeometrySet::replace_collision_shape(CollisionShape *shape, GeometryOwnershipType ownership)
+{
+  if (shape == nullptr) {
+    this->remove<CollisionShapeComponent>();
+    return;
+  }
+  if (shape == this->get_collision_shape()) {
+    return;
+  }
+  this->remove<CollisionShapeComponent>();
+  CollisionShapeComponent &component = this->get_component_for_write<CollisionShapeComponent>();
+  component.replace(shape, ownership);
+}
+
 Mesh *GeometrySet::get_mesh_for_write()
 {
   MeshComponent *component = this->get_component_ptr<MeshComponent>();
@@ -642,6 +678,12 @@ void GeometrySet::count_memory(MemoryCounter &memory) const
 PhysicsGeometry *GeometrySet::get_physics_for_write()
 {
   PhysicsComponent *component = this->get_component_ptr<PhysicsComponent>();
+  return component == nullptr ? nullptr : component->get_for_write();
+}
+
+CollisionShape *GeometrySet::get_collision_shape_for_write()
+{
+  CollisionShapeComponent *component = this->get_component_ptr<CollisionShapeComponent>();
   return component == nullptr ? nullptr : component->get_for_write();
 }
 
@@ -727,6 +769,7 @@ bool attribute_is_builtin_on_component_type(const GeometryComponent::Type type,
       return component->attributes()->is_builtin(name);
     }
     case GeometryComponent::Type::Volume:
+    case GeometryComponent::Type::CollisionShape:
     case GeometryComponent::Type::Edit: {
       return false;
     }

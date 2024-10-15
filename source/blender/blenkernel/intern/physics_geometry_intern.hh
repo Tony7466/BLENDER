@@ -36,9 +36,9 @@ inline PhysicsMotionType to_blender(const JPH::EMotionType motion_type)
   return PhysicsMotionType::Dynamic;
 }
 
-inline CollisionShape::ShapeType to_blender(const JPH::EShapeSubType subtype)
+inline CollisionShapeType to_blender(const JPH::EShapeSubType subtype)
 {
-  using ShapeType = CollisionShape::ShapeType;
+  using ShapeType = CollisionShapeType;
   switch (subtype) {
     case JPH::EShapeSubType::Sphere:
       return ShapeType::Sphere;
@@ -173,45 +173,6 @@ inline JPH::AABox to_jolt(const Bounds<float3> &bounds)
 }
 
 #endif
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Internal collision shape access
- * \{ */
-
-struct CollisionShapeImpl {
-  ~CollisionShapeImpl() = delete;
-
-  void destroy()
-  {
-#ifdef WITH_JOLT
-      this->as_jolt_shape().Release();
-#endif
-  }
-
-  JPH::Shape &as_jolt_shape()
-  {
-    return *reinterpret_cast<JPH::Shape *>(this);
-  }
-
-  const JPH::Shape &as_jolt_shape() const
-  {
-    return *reinterpret_cast<const JPH::Shape *>(this);
-  }
-
-  static CollisionShapeImpl *wrap(JPH::Shape *shape)
-  {
-    shape->AddRef();
-    return reinterpret_cast<CollisionShapeImpl *>(shape);
-  }
-
-  static const CollisionShapeImpl *wrap(const JPH::Shape *shape)
-  {
-    shape->AddRef();
-    return reinterpret_cast<const CollisionShapeImpl *>(shape);
-  }
-};
 
 /** \} */
 

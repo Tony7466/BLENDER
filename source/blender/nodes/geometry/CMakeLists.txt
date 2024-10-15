@@ -40,6 +40,7 @@ set(SRC
   nodes/node_geo_bake.cc
   nodes/node_geo_blur_attribute.cc
   nodes/node_geo_bodies_to_points.cc
+  nodes/node_geo_body_collision_shape.cc
   nodes/node_geo_boolean.cc
   nodes/node_geo_bounding_box.cc
   nodes/node_geo_collection_info.cc
@@ -133,7 +134,6 @@ set(SRC
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
   nodes/node_geo_input_scene_time.cc
-  nodes/node_geo_input_shape_bounds.cc
   nodes/node_geo_input_shape_info.cc
   nodes/node_geo_input_shape_center_of_mass.cc
   nodes/node_geo_input_shortest_edge_paths.cc

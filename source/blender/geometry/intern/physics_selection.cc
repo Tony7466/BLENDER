@@ -97,42 +97,22 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     return *single ? std::nullopt : std::make_optional<bke::PhysicsGeometry *>(nullptr);
   }
 
-  threading::EnumerableThreadSpecific<IndexMaskMemory> memory;
+  IndexMaskMemory memory;
   IndexMask body_mask;
   IndexMask constraint_mask;
-  IndexMask shape_mask;
   switch (selection_domain) {
     case bke::AttrDomain::Point: {
       const VArraySpan<bool> span(selection);
-      body_mask = IndexMask::from_bools(span, memory.local());
-      threading::parallel_invoke(
-          src_physics.bodies_num() > 1024,
-          [&]() {
-            constraint_mask = constraint_selection_from_body(
-                src_body1, src_body2, span, src_physics.bodies_num(), memory.local());
-          },
-          [&]() {
-            shape_mask = shape_selection_from_body(
-                src_body_shapes, body_mask, src_physics.shapes_num(), memory.local());
-          });
+      body_mask = IndexMask::from_bools(span, memory);
+      constraint_mask = constraint_selection_from_body(
+          src_body1, src_body2, span, src_physics.bodies_num(), memory);
       break;
     }
     case bke::AttrDomain::Edge: {
       const VArraySpan<bool> span(selection);
-      constraint_mask = IndexMask::from_bools(span, memory.local());
+      constraint_mask = IndexMask::from_bools(span, memory);
       body_mask = body_selection_from_constraint(
-          src_body1, src_body2, constraint_mask, src_physics.bodies_num(), memory.local());
-      shape_mask = shape_selection_from_body(
-          src_body_shapes, body_mask, src_physics.shapes_num(), memory.local());
-      break;
-    }
-    case bke::AttrDomain::Instance: {
-      const VArraySpan<bool> span(selection);
-      shape_mask = IndexMask::from_bools(span, memory.local());
-      body_mask = body_selection_from_shape(
-          src_body_shapes, span, src_physics.shapes_num(), memory.local());
-      constraint_mask = constraint_selection_from_body(
-          src_body1, src_body2, span, src_physics.bodies_num(), memory.local());
+          src_body1, src_body2, constraint_mask, src_physics.bodies_num(), memory);
       break;
     }
     default:
@@ -149,8 +129,8 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     return std::nullopt;
   }
 
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
-      body_mask.size(), constraint_mask.size(), shape_mask.size());
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(body_mask.size(),
+                                                               constraint_mask.size());
 
   dst_physics->state_for_write().move_or_copy_selection(
       src_physics.state(), body_mask, constraint_mask, attribute_filter);
@@ -172,23 +152,19 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
     return std::nullopt;
   }
 
-  threading::EnumerableThreadSpecific<IndexMaskMemory> memory;
+  IndexMaskMemory memory;
   const IndexRange body_mask = src_physics.bodies_range();
   IndexMask constraint_mask;
-  IndexMask shape_mask;
   switch (selection_domain) {
     case bke::AttrDomain::Point: {
       const VArraySpan<bool> span(selection);
       constraint_mask = constraint_selection_from_body(
-          src_body1, src_body2, span, src_physics.bodies_num(), memory.local());
-      shape_mask = shape_selection_from_body(
-          src_body_shapes, body_mask, src_physics.shapes_num(), memory.local());
+          src_body1, src_body2, span, src_physics.bodies_num(), memory);
       break;
     }
     case bke::AttrDomain::Edge: {
       const VArraySpan<bool> span(selection);
-      constraint_mask = IndexMask::from_bools(span, memory.local());
-      shape_mask = src_physics.shapes_range();
+      constraint_mask = IndexMask::from_bools(span, memory);
       break;
     }
     default:
@@ -201,8 +177,8 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
     return std::nullopt;
   }
 
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
-      src_physics.bodies_num(), constraint_mask.size(), src_physics.shapes_num());
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(src_physics.bodies_num(),
+                                                               constraint_mask.size());
 
   dst_physics->state_for_write().move_or_copy_selection(
       src_physics.state(), body_mask, constraint_mask, attribute_filter);

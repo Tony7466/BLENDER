@@ -159,22 +159,6 @@ class PhysicsStateConstraintAttributeProvider final : public BuiltinAttributePro
   bool exists(const void *owner) const final;
 };
 
-/**
- * Provider for builtin shape attributes.
- */
-class PhysicsStateShapeAttributeProvider final : public BuiltinAttributeProvider {
- public:
-  PhysicsShapeAttribute attribute_;
-
-  PhysicsStateShapeAttributeProvider(PhysicsShapeAttribute attribute);
-
-  GAttributeReader try_get_for_read(const void *owner) const final;
-  GAttributeWriter try_get_for_write(void *owner) const final;
-  bool try_delete(void *owner) const final;
-  bool try_create(void *owner, const AttributeInit &initializer) const final;
-  bool exists(const void *owner) const final;
-};
-
 /** \} */
 
 const AttributeAccessorFunctions &get_physics_accessor_functions_ref();

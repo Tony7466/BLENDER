@@ -195,12 +195,6 @@ void GeometryDataSource::foreach_default_column_ids(
   if (component_->type() == bke::GeometryComponent::Type::GreasePencil) {
     fn({(char *)"Name"}, false);
   }
-  if (component_->type() == bke::GeometryComponent::Type::Physics) {
-    if (domain_ == bke::AttrDomain::Instance) {
-      fn({(char *)"Type"}, false);
-      fn({(char *)"Status"}, false);
-    }
-  }
 
   extra_columns_.foreach_default_column_ids(fn);
 
@@ -316,36 +310,6 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
               *mesh, domain_, column_id.name))
       {
         return values;
-      }
-    }
-  }
-  else if (component_->type() == bke::GeometryComponent::Type::Physics) {
-    if (const bke::PhysicsGeometry *physics =
-            static_cast<const bke::PhysicsComponent &>(*component_).get())
-    {
-      if (domain_ == bke::AttrDomain::Instance) {
-        if (STREQ(column_id.name, "Type")) {
-          const Span<bke::CollisionShapePtr> shapes = physics->state().shapes();
-          return std::make_unique<ColumnValues>(
-              column_id.name, VArray<std::string>::ForFunc(domain_num, [shapes](int64_t index) {
-                const bke::CollisionShapePtr &shape = shapes[index];
-                if (shape) {
-                  return std::string(bke::CollisionShape::type_name(shapes[index]->type()));
-                }
-                return std::string("---");
-              }));
-        }
-        if (STREQ(column_id.name, "Status")) {
-          const Span<bke::CollisionShapePtr> shapes = physics->state().shapes();
-          return std::make_unique<ColumnValues>(
-              column_id.name, VArray<std::string>::ForFunc(domain_num, [shapes](int64_t index) {
-                const bke::CollisionShapePtr &shape = shapes[index];
-                if (shape && shape->error()) {
-                  return std::string(shape->error().value());
-                }
-                return std::string("");
-              }));
-        }
       }
     }
   }
@@ -675,20 +639,33 @@ bke::GeometrySet get_geometry_set_for_instance_ids(const bke::GeometrySet &root_
 {
   bke::GeometrySet geometry = root_geometry;
   for (const SpreadsheetInstanceID &instance_id : instance_ids) {
-    const bke::Instances *instances = geometry.get_instances();
-    if (!instances) {
-      /* Return the best available geometry. */
-      return geometry;
+    switch (bke::GeometryComponent::Type(instance_id.component_type)) {
+      case bke::GeometryComponent::Type::Instance:
+        if (const bke::Instances *instances = geometry.get_instances()) {
+          const Span<bke::InstanceReference> references = instances->references();
+          const int index = instance_id.reference_index;
+          if (references.index_range().contains(index)) {
+            const bke::InstanceReference &reference = references[index];
+            reference.to_geometry_set(geometry);
+          }
+        }
+        break;
+      case bke::GeometryComponent::Type::Physics:
+        if (const bke::PhysicsGeometry *physics = geometry.get_physics()) {
+          const Span<bke::InstanceReference> references = physics->state().shapes();
+          const int index = instance_id.reference_index;
+          if (references.index_range().contains(index)) {
+            const bke::InstanceReference &reference = references[index];
+            reference.to_geometry_set(geometry);
+          }
+        }
+        break;
+      default:
+        break;
     }
-    const Span<bke::InstanceReference> references = instances->references();
-    if (instance_id.reference_index < 0 || instance_id.reference_index >= references.size()) {
-      /* Return the best available geometry. */
-      return geometry;
-    }
-    const bke::InstanceReference &reference = references[instance_id.reference_index];
-    bke::GeometrySet reference_geometry;
-    reference.to_geometry_set(reference_geometry);
-    geometry = reference_geometry;
+
+    /* Return the best available geometry. */
+    return geometry;
   }
   return geometry;
 }
