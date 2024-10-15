@@ -1435,6 +1435,8 @@ def km_uv_editor(params):
         ])
 
     if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        # Quick switch to select tool, since left select can't easily
+        # select with any tool active.
         items.extend([
             op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
         ])
@@ -1780,6 +1782,8 @@ def km_view3d(params):
         ])
 
     if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        # Quick switch to select tool, since left select can't easily
+        # select with any tool active.
         items.extend([
             op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
         ])
@@ -2914,6 +2918,8 @@ def km_sequencercommon(params):
     ])
 
     if params.select_mouse == 'LEFTMOUSE' and not params.legacy:
+        # Quick switch to select tool, since left select can't easily
+        # select with any tool active.
         items.extend([
             op_tool_cycle("builtin.select_box", {"type": 'W', "value": 'PRESS'}),
         ])
