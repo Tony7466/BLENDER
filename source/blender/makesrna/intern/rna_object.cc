@@ -35,7 +35,6 @@
 #include "BKE_collection.hh"
 #include "BKE_editlattice.h"
 #include "BKE_editmesh.hh"
-#include "BKE_grease_pencil.hh"
 #include "BKE_layer.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
