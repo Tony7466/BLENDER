@@ -106,6 +106,17 @@ static Vector<StringRefNull> missing_capabilities_get(VkPhysicalDevice vk_physic
   if (!extensions.contains(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
     missing_capabilities.append(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
   }
+  /* VK_EXT_dynamic_rendering_unused_attachments are required for correct working. Renderdoc hides
+   * this extension, but most platforms do work. However when the Windows Intel driver crashes when
+   * using iGPUs; they don't support this extension at all.
+   *
+   * TODO(jbakker): Make dynamic rendering optional to allow running on Windows/Intel iGPU.
+   */
+  if (!bool(G.debug & G_DEBUG_GPU_RENDERDOC)) {
+    if (!extensions.contains(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME)) {
+      missing_capabilities.append(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME);
+    }
+  }
 
   return missing_capabilities;
 }
@@ -375,7 +386,7 @@ Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)
     device.init(ghost_context);
   }
 
-  VKContext *context = new VKContext(ghost_window, ghost_context, device.current_thread_data());
+  VKContext *context = new VKContext(ghost_window, ghost_context, device.resources);
   device.context_register(*context);
   GHOST_SetVulkanSwapBuffersCallbacks((GHOST_ContextHandle)ghost_context,
                                       VKContext::swap_buffers_pre_callback,
@@ -455,20 +466,25 @@ void VKBackend::render_end()
   VKThreadData &thread_data = device.current_thread_data();
   thread_data.rendering_depth -= 1;
   BLI_assert_msg(thread_data.rendering_depth >= 0, "Unbalanced `GPU_render_begin/end`");
-
-  if (G.background || !BLI_thread_is_main()) {
-    /* When **not** running on the main thread (or doing background rendering) we assume that there
-     * is no swap chain in play. Rendering happens on a single thread and when finished all the
-     * resources have been used and are in a state that they can be discarded. It can still be that
-     * a non-main thread discards a resource that is in use by another thread. We move discarded
-     * resources to a device global discard pool (`device.orphaned_data`). The next time the main
-     * thread goes to the next swap chain image the device global discard pool will be added to the
-     * discard pool of the new swap chain image.*/
+  if (G.background) {
+    /* Garbage collection when performing background rendering. In this case the rendering is
+     * already 'thread-safe'. We move the resources to the device discard list and we destroy it
+     * the next frame. */
     if (thread_data.rendering_depth == 0) {
       VKResourcePool &resource_pool = thread_data.resource_pool_get();
-      resource_pool.discard_pool.destroy_discarded_resources(device);
+      device.orphaned_data.destroy_discarded_resources(device);
+      device.orphaned_data.move_data(resource_pool.discard_pool);
       resource_pool.reset();
-      resource_pool.discard_pool.move_data(device.orphaned_data);
+    }
+  }
+
+  else if (!BLI_thread_is_main()) {
+    /* Foreground rendering using a worker/render thread. In this case we move the resources to the
+     * device discard list and it will be cleared by the main thread. */
+    if (thread_data.rendering_depth == 0) {
+      VKResourcePool &resource_pool = thread_data.resource_pool_get();
+      device.orphaned_data.move_data(resource_pool.discard_pool);
+      resource_pool.reset();
     }
   }
 }
@@ -490,26 +506,25 @@ void VKBackend::capabilities_init(VKDevice &device)
       device.physical_device_vulkan_11_features_get().shaderDrawParameters;
 
   GCaps.max_texture_size = max_ii(limits.maxImageDimension1D, limits.maxImageDimension2D);
-  GCaps.max_texture_3d_size = limits.maxImageDimension3D;
-  GCaps.max_texture_layers = limits.maxImageArrayLayers;
-  GCaps.max_textures = limits.maxDescriptorSetSampledImages;
-  GCaps.max_textures_vert = limits.maxPerStageDescriptorSampledImages;
-  GCaps.max_textures_geom = limits.maxPerStageDescriptorSampledImages;
-  GCaps.max_textures_frag = limits.maxPerStageDescriptorSampledImages;
-  GCaps.max_samplers = limits.maxSamplerAllocationCount;
-  GCaps.max_images = limits.maxPerStageDescriptorStorageImages;
+  GCaps.max_texture_3d_size = min_uu(limits.maxImageDimension3D, INT_MAX);
+  GCaps.max_texture_layers = min_uu(limits.maxImageArrayLayers, INT_MAX);
+  GCaps.max_textures = min_uu(limits.maxDescriptorSetSampledImages, INT_MAX);
+  GCaps.max_textures_vert = GCaps.max_textures_geom = GCaps.max_textures_frag = min_uu(
+      limits.maxPerStageDescriptorSampledImages, INT_MAX);
+  GCaps.max_samplers = min_uu(limits.maxSamplerAllocationCount, INT_MAX);
+  GCaps.max_images = min_uu(limits.maxPerStageDescriptorStorageImages, INT_MAX);
   for (int i = 0; i < 3; i++) {
-    GCaps.max_work_group_count[i] = limits.maxComputeWorkGroupCount[i];
-    GCaps.max_work_group_size[i] = limits.maxComputeWorkGroupSize[i];
+    GCaps.max_work_group_count[i] = min_uu(limits.maxComputeWorkGroupCount[i], INT_MAX);
+    GCaps.max_work_group_size[i] = min_uu(limits.maxComputeWorkGroupSize[i], INT_MAX);
   }
-  GCaps.max_uniforms_vert = limits.maxPerStageDescriptorUniformBuffers;
-  GCaps.max_uniforms_frag = limits.maxPerStageDescriptorUniformBuffers;
-  GCaps.max_batch_indices = limits.maxDrawIndirectCount;
-  GCaps.max_batch_vertices = limits.maxDrawIndexedIndexValue;
-  GCaps.max_vertex_attribs = limits.maxVertexInputAttributes;
-  GCaps.max_varying_floats = limits.maxVertexOutputComponents;
-  GCaps.max_shader_storage_buffer_bindings = limits.maxPerStageDescriptorStorageBuffers;
-  GCaps.max_compute_shader_storage_blocks = limits.maxPerStageDescriptorStorageBuffers;
+  GCaps.max_uniforms_vert = GCaps.max_uniforms_frag = min_uu(
+      limits.maxPerStageDescriptorUniformBuffers, INT_MAX);
+  GCaps.max_batch_indices = min_uu(limits.maxDrawIndirectCount, INT_MAX);
+  GCaps.max_batch_vertices = min_uu(limits.maxDrawIndexedIndexValue, INT_MAX);
+  GCaps.max_vertex_attribs = min_uu(limits.maxVertexInputAttributes, INT_MAX);
+  GCaps.max_varying_floats = min_uu(limits.maxVertexOutputComponents, INT_MAX);
+  GCaps.max_shader_storage_buffer_bindings = GCaps.max_compute_shader_storage_blocks = min_uu(
+      limits.maxPerStageDescriptorStorageBuffers, INT_MAX);
   GCaps.max_storage_buffer_size = size_t(limits.maxStorageBufferRange);
 
   GCaps.max_parallel_compilations = BLI_system_thread_count();
