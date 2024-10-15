@@ -238,17 +238,17 @@ void select_from_group(GreasePencil &grease_pencil,
         const OffsetIndices<int> points_by_curve = curves.points_by_curve();
         threading::parallel_for(curves.curves_range(), 1024, [&](const IndexRange range) {
           for (const int curve_i : range) {
-            bool any_point_selected = false;
-            if (select) {
-              const IndexRange points = points_by_curve[curve_i];
-              for (const int point_i : points) {
-                if (BKE_defvert_find_index(&dverts[point_i], def_nr)) {
-                  any_point_selected = true;
-                  break;
-                }
+            const IndexRange points = points_by_curve[curve_i];
+            bool any_point_in_group = false;
+            for (const int point_i : points) {
+              if (BKE_defvert_find_index(&dverts[point_i], def_nr)) {
+                any_point_in_group = true;
+                break;
               }
             }
-            selection.span[curve_i] = any_point_selected;
+            if (any_point_in_group) {
+              selection.span[curve_i] = select;
+            }
           }
         });
         break;
