@@ -534,8 +534,6 @@ bool LightTree::should_split(LightTreeEmitter *emitters,
   /* Limit depth to 32 as the bit trail to the current node is stored in a 32bit unit, meaning the
    * maximum storable depth is 32. */
   if (UNLIKELY(depth >= 32)) {
-    /* Assert in case the depth somehow exceeds 32 */
-    assert(!(depth > 32));
     for (int i = start; i < end; i++) {
       const LightTreeEmitter *emitter = emitters + i;
       measure.add(emitter->measure);
