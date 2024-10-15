@@ -116,7 +116,8 @@ static Array<int> point_counts_to_keep_concurrent(const bke::CurvesGeometry &cur
   curves.ensure_evaluated_lengths();
   float max_length = 0;
   for (const int stroke : curves.curves_range()) {
-    const float len = curves.evaluated_length_total_for_curve(stroke, false);
+    const bool cyclic = curves.cyclic()[stroke];
+    const float len = curves.evaluated_length_total_for_curve(stroke, cyclic);
     max_length = math::max(max_length, len);
   }
 
@@ -128,7 +129,8 @@ static Array<int> point_counts_to_keep_concurrent(const bke::CurvesGeometry &cur
   }
 
   auto get_stroke_factor = [&](const float factor, const int index) {
-    const float max_factor = max_length / curves.evaluated_length_total_for_curve(index, false);
+    const bool cyclic = curves.cyclic()[index];
+    const float max_factor = max_length / curves.evaluated_length_total_for_curve(index, cyclic);
     if (time_alignment == MOD_GREASE_PENCIL_BUILD_TIMEALIGN_START) {
       if (clamp_points) {
         return std::clamp(factor * max_factor, 0.0f, 1.0f);
