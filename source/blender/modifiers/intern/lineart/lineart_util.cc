@@ -16,7 +16,7 @@
 
 #include "BLI_math_matrix.h"
 
-#include "MOD_lineart.h"
+#include "MOD_lineart.hh"
 
 #include "lineart_intern.hh"
 

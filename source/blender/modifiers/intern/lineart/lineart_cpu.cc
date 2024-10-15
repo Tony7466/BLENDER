@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-#include "MOD_lineart.h"
+#include "MOD_lineart.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_math_base.hh"
@@ -2552,7 +2552,7 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
                                   bool allow_duplicates,
                                   bool do_shadow_casting,
                                   ListBase *shadow_elns,
-                                  blender::Span<Object *> including_objects)
+                                  blender::Set<Object *> &including_objects)
 {
   double proj[4][4], view[4][4], result[4][4];
   float inv[4][4];
@@ -5093,8 +5093,10 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
   /* Get view vector before loading geometries, because we detect feature lines there. */
   lineart_main_get_view_vector(ld);
 
-  blender::Vector<Object *> *including_objects = reinterpret_cast<blender::Vector<Object *> *>(
-      lmd.object_dependencies);
+  LineartModifierRuntime *runtime = reinterpret_cast<LineartModifierRuntime*>(lmd.runtime);
+  blender::Set<Object *> *including_objects = runtime?runtime->object_dependencies:nullptr;
+
+  BLI_assert(including_objects!=nullptr);
 
   lineart_main_load_geometries(depsgraph,
                                scene,
@@ -5103,8 +5105,7 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
                                lmd.calculation_flags & MOD_LINEART_ALLOW_DUPLI_OBJECTS,
                                false,
                                shadow_elns,
-                               including_objects ? including_objects->as_span() :
-                                                   blender::Span<Object *>());
+                               *including_objects);
 
   if (shadow_generated) {
     lineart_main_transform_and_add_shadow(ld, shadow_veln, shadow_eeln);

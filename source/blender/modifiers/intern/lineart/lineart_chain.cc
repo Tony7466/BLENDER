@@ -9,7 +9,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 
-#include "MOD_lineart.h"
+#include "MOD_lineart.hh"
 
 #include "lineart_intern.hh"
 

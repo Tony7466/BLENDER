@@ -12,6 +12,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector.h"
+#include "BLI_set.hh"
 #include "BLI_threads.h"
 
 #include "ED_grease_pencil.hh"
@@ -22,6 +23,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct LineartModifierRuntime {
+  /* This list is constructed during `update_depsgraph()` call, and stays valid until the next
+   * update. This way line art can load objects from this list instead of iterating over all
+   * obejcts that may or may not have finished evaluating. */
+  blender::Set<Object *> *object_dependencies;
+} LineartModifierRuntime;
 
 typedef struct LineartStaticMemPoolNode {
   Link item;

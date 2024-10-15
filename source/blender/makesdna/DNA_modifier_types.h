@@ -3220,10 +3220,7 @@ typedef struct GreasePencilLineartModifierData {
   /* Keep a pointer to the render buffer so we can call destroy from #ModifierData. */
   struct LineartData *la_data_ptr;
 
-  /* This runtime list is constructed during `update_depsgraph()` call, and stays valid until the
-   * next update. This way line art can load objects from this list instead of iterating over all
-   * obejcts that may or may not have finished evaluating. This points to a `Vector<Object *>` */
-  void *object_dependencies;
+  void *runtime;
 } GreasePencilLineartModifierData;
 
 typedef struct GreasePencilArmatureModifierData {

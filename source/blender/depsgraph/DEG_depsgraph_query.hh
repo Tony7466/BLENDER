@@ -13,6 +13,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_iterator.h"
 #include "BLI_utildefines.h"
+#include "BLI_set.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -202,9 +203,9 @@ struct DEGObjectIterSettings {
 
   /**
    * If not empty, the iterator should only return objects that are in this list (or their
-   * instances are in it).
+   * instances are in it). Pointers in this span should be the original data-block.
    */
-  blender::Span<Object *> including_objects;
+  blender::Set<Object *> including_objects;
 };
 
 /**

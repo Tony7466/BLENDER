@@ -6,7 +6,7 @@
  * \ingroup modifiers
  */
 
-#include "MOD_lineart.h"
+#include "MOD_lineart.hh"
 
 #include "lineart_intern.hh"
 
@@ -1251,8 +1251,10 @@ bool lineart_main_try_generate_shadow_v3(Depsgraph *depsgraph,
 
   lineart_main_get_view_vector(ld);
 
-  blender::Vector<Object *> *including_objects = reinterpret_cast<blender::Vector<Object *> *>(
-      lmd->object_dependencies);
+  LineartModifierRuntime *runtime = reinterpret_cast<LineartModifierRuntime*>(lmd->runtime);
+  blender::Set<Object *> *including_objects = runtime?runtime->object_dependencies:nullptr;
+  
+  BLI_assert(including_objects!=nullptr);
 
   lineart_main_load_geometries(depsgraph,
                                scene,
@@ -1261,8 +1263,7 @@ bool lineart_main_try_generate_shadow_v3(Depsgraph *depsgraph,
                                lmd->flags & MOD_LINEART_ALLOW_DUPLI_OBJECTS,
                                true,
                                nullptr,
-                               including_objects ? including_objects->as_span() :
-                                                   blender::Span<Object *>());
+                               *including_objects);
 
   if (!ld->geom.vertex_buffer_pointers.first) {
     /* No geometry loaded, return early. */
