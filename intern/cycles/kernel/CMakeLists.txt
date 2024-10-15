@@ -764,7 +764,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
   endif()
 
   if(WIN32 AND (${HIP_VERSION} STREQUAL "6.1.40252"))
-    message(WARNING "${HIP_VERSION} has known rendering artifacts with HIPRT. 5.7 is recommended instead")
+    message(WARNING "HIP SDK ${HIP_VERSION} has known rendering artifacts with HIPRT. 5.7 is recommended instead")
   endif()
 
   set(hiprt_compile_flags_bvh
