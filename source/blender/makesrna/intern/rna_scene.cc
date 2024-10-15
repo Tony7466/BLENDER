@@ -36,6 +36,7 @@
 
 #include "BKE_armature.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_paint.hh"
 #include "BKE_volume.hh"
@@ -1703,6 +1704,9 @@ static void rna_RenderSettings_views_format_set(PointerRNA *ptr, int value)
 
 static void rna_RenderSettings_engine_set(PointerRNA *ptr, int value)
 {
+  if (G.is_rendering || G.is_break) {
+    return;
+  }
   RenderData *rd = (RenderData *)ptr->data;
   RenderEngineType *type = static_cast<RenderEngineType *>(BLI_findlink(&R_engines, value));
 
@@ -1752,6 +1756,9 @@ static int rna_RenderSettings_engine_get(PointerRNA *ptr)
 
 static void rna_RenderSettings_engine_update(Main *bmain, Scene * /*unused*/, PointerRNA * /*ptr*/)
 {
+  if (G.is_rendering || G.is_break) {
+    return;
+  }
   ED_render_engine_changed(bmain, true);
 }
 
