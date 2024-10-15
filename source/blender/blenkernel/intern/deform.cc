@@ -27,6 +27,7 @@
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
+#include "BLI_string_utf8.h"
 
 #include "BLT_translation.hh"
 
@@ -752,6 +753,18 @@ void BKE_object_defgroup_unique_name(bDeformGroup *dg, Object *ob)
 {
   DeformGroupUniqueNameData data{ob, dg};
   BLI_uniquename_cb(defgroup_unique_check, &data, DATA_("Group"), '.', dg->name, sizeof(dg->name));
+}
+
+void BKE_object_defgroup_set_name(bDeformGroup* dg, Object* ob, const char *new_name)
+{
+  std::string old_name = dg->name;
+  STRNCPY_UTF8(dg->name, new_name);
+  BKE_object_defgroup_unique_name(dg, ob);
+
+  if (ob->type == OB_GREASE_PENCIL) {
+    /* Update vgroup names stored in CurvesGeometry */
+    BKE_grease_pencil_vgroup_name_update(ob, old_name.c_str(), dg->name);
+  }
 }
 
 float BKE_defvert_find_weight(const MDeformVert *dvert, const int defgroup)
