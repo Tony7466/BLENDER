@@ -766,7 +766,6 @@ class NlaInsertTest(AbstractKeyframingTest, unittest.TestCase):
         # Inserting over the existing keyframe.
         bpy.context.scene.frame_set(10)
         with bpy.context.temp_override(**_get_view3d_context()):
-            print("\033[96mInserting key via operator\033[0m")
             bpy.ops.anim.keyframe_insert()
 
         # Check that the expected F-Curves exist.
